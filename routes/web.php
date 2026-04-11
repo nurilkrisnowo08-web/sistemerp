@@ -377,3 +377,4 @@ Route::get('/inventory-welding/daily-recap', [WeldingStockController::class, 'da
 Route::get('/inventory-welding/monthly-recap', [WeldingStockController::class, 'recap'])->name('welding.recap');
 // Pastiin lokasinya bareng sama route welding lainnya
 Route::post('/welding/deploy', [App\Http\Controllers\WeldingStockController::class, 'deployWelding'])->name('welding.deploy');
+Route::get('/delivery/print/{no_sj}', [DeliveryController::class, 'print']);
