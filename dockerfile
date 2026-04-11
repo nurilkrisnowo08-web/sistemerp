@@ -1,5 +1,10 @@
-FROM php:8.2-cli
+FROM node:18 as nodebuilder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY . .
 
+FROM php:8.2-cli
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libjpeg-dev \
@@ -7,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install gd
 
 WORKDIR /app
-COPY . .
+COPY --from=nodebuilder /app /app
 
 RUN composer install
 
