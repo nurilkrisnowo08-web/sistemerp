@@ -1,19 +1,22 @@
-FROM node:18 as nodebuilder
+FROM php:8.3.28-cli
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    unzip git curl libzip-dev zip \
+    nodejs npm \
+    && docker-php-ext-install zip pdo pdo_mysql
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
 WORKDIR /app
-COPY package*.json ./
-RUN npm install --omit=dev
+
 COPY . .
 
-FROM php:8.3.28-cli
-RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    && docker-php-ext-install gd
+# Install PHP deps
+RUN composer install --no-dev --optimize-autoloader
 
-WORKDIR /app
-COPY --from=nodebuilder /app /app
+# Install Node deps & build
+RUN npm install && npm run build
 
-RUN composer install
-
-CMD php artisan serve --host=0.0.0.0 --port=8080
+CMD php -S 0.0.0.0:$PORT -t public
