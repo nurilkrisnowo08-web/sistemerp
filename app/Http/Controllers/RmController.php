@@ -180,39 +180,166 @@ class RmController extends Controller
         return view('Gudang.rm_recap_print', compact('data', 'title', 'customer', 'targetDate'));
     }
 
-    public function poSupplierIndex(Request $request) {
-        $selectedCustomer = $request->customer; $posQuery = DB::table('supplier_pos')->whereIn('status', ['PENDING', 'PARTIAL']);
-        if ($selectedCustomer && $selectedCustomer != 'ALL') { $posQuery->whereExists(function ($query) use ($selectedCustomer) { $query->select(DB::raw(1))->from('supplier_po_items')->leftJoin('master_materials', 'supplier_po_items.material_code', '=', 'master_materials.alias_code')->whereColumn('supplier_po_items.supplier_po_id', 'supplier_pos.id')->where('master_materials.customer_code', $selectedCustomer); }); }
-        $pos = $posQuery->orderBy('id', 'desc')->get();
-        foreach ($pos as $po) {
-            $po->items = DB::table('supplier_po_items')->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')->select('supplier_po_items.*', 'mm.material_type as spec_real', 'mm.alias_code as alias_real', 'mm.thickness', 'mm.size', 'mm.customer_code as client_code')->where('supplier_po_id', $po->id)->get();
-            foreach($po->items as $item) { $item->target_parts = DB::table('rm_stocks')->where('customer', trim($item->client_code))->where('spec', trim($item->spec_real))->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', trim($item->thickness) . 'X' . trim($item->size)))->select('material_code as part_no', 'material_name as part_name')->distinct()->get(); }
-        }
-        $clients = DB::table('customers')->get(); $masterMaterials = DB::table('master_materials')->get();
-        return view('Gudang.po_supplier_index', compact('pos', 'clients', 'masterMaterials', 'selectedCustomer'));
+public function poSupplierIndex(Request $request) 
+{
+    $selectedCustomer = $request->customer; 
+    
+    // ✨ FIX: Hanya ambil status PENDING dan PARTIAL saja. 
+    // RECEIVED dan COMPLETED kita buang karena sudah masuk History.
+    $posQuery = DB::table('supplier_pos')->whereIn('status', ['PENDING', 'PARTIAL']);
+
+    // Logic Otomatis: Cari berdasarkan PT di Header atau Material di dalemnya
+    if ($selectedCustomer && $selectedCustomer != 'ALL') { 
+        $posQuery->where(function($q) use ($selectedCustomer) {
+            $q->where('customer_code', trim($selectedCustomer))
+              ->orWhereExists(function ($query) use ($selectedCustomer) {
+                  $query->select(DB::raw(1))
+                        ->from('supplier_po_items')
+                        ->leftJoin('master_materials', 'supplier_po_items.material_code', '=', 'master_materials.alias_code')
+                        ->whereColumn('supplier_po_items.supplier_po_id', 'supplier_pos.id')
+                        ->where('master_materials.customer_code', trim($selectedCustomer));
+              });
+        });
     }
 
-    public function poArrivalStore(Request $request, $id) {
-        $request->validate(['item_id' => 'required', 'coil_id' => 'required', 'qty_arrival' => 'required|numeric|min:1']);
-        $item = DB::table('supplier_po_items')->where('id', $request->item_id)->first();
-        DB::beginTransaction();
-        try {
-            $m = DB::table('master_materials')->where('alias_code', $item->material_code)->first();
-            $specTarget = trim($m->material_type); $sizeTarget = trim($m->thickness) . ' X ' . trim($m->size);
-            $previousMapping = DB::table('rm_stocks')->where('spec', $specTarget)->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))->where('customer', trim($m->customer_code))->select('material_code', 'material_name')->distinct()->get();
-            if ($previousMapping->isEmpty()) {
-                $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $m->alias_code, 'material_name' => $m->material_type, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
-                DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $m->alias_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'no_produksi' => strtoupper(trim($request->coil_id)), 'created_at' => now()]);
-            } else { foreach ($previousMapping as $p) {
-                $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $p->material_code, 'material_name' => $p->material_name, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
-                DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $p->material_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'no_produksi' => strtoupper(trim($request->coil_id)), 'created_at' => now()]);
-            } }
-            DB::table('supplier_po_items')->where('id', $request->item_id)->increment('qty_received', $request->qty_arrival);
-            $totalItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->count(); $doneItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->whereRaw('qty_received >= qty_order')->count();
-            $status = ($doneItems == $totalItems) ? 'COMPLETED' : 'PARTIAL'; DB::table('supplier_pos')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
-            DB::commit(); return redirect()->back()->with('success', 'Inbound data processed.');
-        } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
+    $pos = $posQuery->orderBy('id', 'desc')->get();
+
+    // Mapping Detail (Tetap aman sesuai struktur lu)
+    foreach ($pos as $po) {
+        $po->items = DB::table('supplier_po_items')
+            ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
+            ->select('supplier_po_items.*', 'mm.material_type as spec_real', 'mm.alias_code as alias_real', 'mm.thickness', 'mm.size', 'mm.customer_code as client_code')
+            ->where('supplier_po_id', $po->id)
+            ->get();
+
+        foreach($po->items as $item) { 
+            $item->target_parts = DB::table('rm_stocks')
+                ->where('customer', trim($item->client_code))
+                ->where('spec', trim($item->spec_real))
+                ->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', trim($item->thickness) . 'X' . trim($item->size)))
+                ->select('material_code as part_no', 'material_name as part_name')
+                ->distinct()
+                ->get(); 
+        }
     }
+
+    $clients = DB::table('customers')->get(); 
+    $masterMaterials = DB::table('master_materials')->get();
+    
+    return view('Gudang.po_supplier_index', compact('pos', 'clients', 'masterMaterials', 'selectedCustomer'));
+}
+
+ public function poArrivalStore(Request $request, $id) 
+{
+    // 1. Validasi Input
+    $request->validate([
+        'item_id' => 'required',
+        'coil_id' => 'required',
+        'qty_arrival' => 'required|numeric|min:1'
+    ]);
+
+    // 2. Ambil data item
+    $item = DB::table('supplier_po_items')->where('id', $request->item_id)->first();
+
+    if (!$item) {
+        return back()->with('error', 'Item PO tidak ditemukan di database rill!');
+    }
+
+    // 3. Cek sisa kuota (Safety Check)
+    $sisaBarang = $item->qty_order - $item->qty_received;
+    if ($request->qty_arrival > $sisaBarang) {
+        return back()->with('error', "Gagal! Input ({$request->qty_arrival}) melebihi sisa pesanan ({$sisaBarang}).");
+    }
+
+    DB::beginTransaction();
+    try {
+        // Ambil spek asli dari master material
+        $m = DB::table('master_materials')->where('alias_code', $item->material_code)->first();
+        if (!$m) { throw new \Exception("Master Material '{$item->material_code}' tidak ditemukan!"); }
+
+        $specTarget = trim($m->material_type); 
+        $sizeTarget = trim($m->thickness) . ' X ' . trim($m->size);
+        
+        // Cari apakah material ini sudah pernah ada di stok
+        $previousMapping = DB::table('rm_stocks')
+            ->where('spec', $specTarget)
+            ->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))
+            ->where('customer', trim($m->customer_code))
+            ->select('material_code', 'material_name')
+            ->distinct()
+            ->get();
+
+        $logCreated = false;
+
+        // Jika mapping kosong atau ada, tetep buat baris stok baru (sesuai logic lu rill)
+        if ($previousMapping->isEmpty()) {
+            $newId = DB::table('rm_stocks')->insertGetId([
+                'material_code' => $m->alias_code, 
+                'material_name' => $m->material_type, 
+                'customer' => trim($m->customer_code) ?? '-', 
+                'spec' => $specTarget, 
+                'size' => $sizeTarget, 
+                'coil_id' => strtoupper(trim($request->coil_id)), 
+                'stock_pcs' => $request->qty_arrival, 
+                'min_stock' => 500, 'max_stock' => 1000, 
+                'created_at' => now(), 'updated_at' => now()
+            ]);
+            
+            DB::table('rm_incoming_logs')->insert([
+                'rm_stock_id' => $newId, 
+                'material_code' => $m->alias_code, 
+                'pcs_in' => $request->qty_arrival, 
+                'source' => 'supplier', 
+                'no_produksi' => strtoupper(trim($request->coil_id)), 
+                'created_at' => now()
+            ]);
+        } else { 
+            foreach ($previousMapping as $p) {
+                $newId = DB::table('rm_stocks')->insertGetId([
+                    'material_code' => $p->material_code, 
+                    'material_name' => $p->material_name, 
+                    'customer' => trim($m->customer_code) ?? '-', 
+                    'spec' => $specTarget, 'size' => $sizeTarget, 
+                    'coil_id' => strtoupper(trim($request->coil_id)), 
+                    'stock_pcs' => $request->qty_arrival, 
+                    'min_stock' => 500, 'max_stock' => 1000, 
+                    'created_at' => now(), 'updated_at' => now()
+                ]);
+                
+                if (!$logCreated) {
+                    DB::table('rm_incoming_logs')->insert([
+                        'rm_stock_id' => $newId, 
+                        'material_code' => $p->material_code, 
+                        'pcs_in' => $request->qty_arrival, 
+                        'source' => 'supplier', 
+                        'no_produksi' => strtoupper(trim($request->coil_id)), 
+                        'created_at' => now()
+                    ]);
+                    $logCreated = true;
+                }
+            } 
+        }
+
+        // ✨ 4. UPDATE QTY RECEIVED (Ini yang bikin Balance keganti)
+        DB::table('supplier_po_items')->where('id', $request->item_id)->increment('qty_received', $request->qty_arrival);
+
+        // ✨ 5. UPDATE STATUS PO (Header)
+        // Pastiin nama kolomnya 'supplier_po_id' ya rill, sesuai database lu
+        $totalItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->count(); 
+        $doneItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->whereRaw('qty_received >= qty_order')->count();
+        
+        $status = ($doneItems == $totalItems) ? 'COMPLETED' : 'PARTIAL'; 
+        DB::table('supplier_pos')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
+
+        DB::commit(); 
+        return redirect()->back()->with('success', 'Data masuk berhasil disimpan rill!');
+
+    } catch (\Exception $e) { 
+        DB::rollback(); 
+        // Kalau gagal, kita bakal tau erornya apa rill!
+        return back()->with('error', 'Gagal Simpan: ' . $e->getMessage()); 
+    }
+}
 
     public function printPO($id) {
         $po = DB::table('supplier_pos')->where('id', $id)->first(); if (!$po) return "Not found.";
@@ -221,7 +348,51 @@ class RmController extends Controller
         return view('Gudang.print_po', compact('po'));
     }
 
-    public function poSupplierStore(Request $request) { $request->validate(['po_no' => 'required|unique:supplier_pos,no_po_supplier', 'supplier_name' => 'required', 'items' => 'required|array']); DB::beginTransaction(); try { $poId = DB::table('supplier_pos')->insertGetId(['no_po_supplier' => strtoupper($request->po_no), 'supplier_name' => strtoupper($request->supplier_name), 'status' => 'PENDING', 'created_at' => now(), 'updated_at' => now()]); foreach ($request->items as $item) { DB::table('supplier_po_items')->insert(['supplier_po_id' => $poId, 'material_code' => $item['spec'], 'qty_order' => $item['qty'], 'qty_received' => 0, 'created_at' => now(), 'updated_at' => now()]); } DB::commit(); return redirect()->back()->with('success', 'PO Initialized.'); } catch (\Exception $e) { DB::rollBack(); return back()->with('error', $e->getMessage()); } }
+   public function poSupplierStore(Request $request) 
+{ 
+    // Validasi Wajib ada customer_code rill!
+    $request->validate([
+        'po_no' => 'required|unique:supplier_pos,no_po_supplier', 
+        'supplier_name' => 'required', 
+        'customer_code' => 'required', // ✨ FIX: Wajib diisi
+        'items' => 'required|array'
+    ]); 
+
+    DB::beginTransaction(); 
+    try { 
+        // 1. Simpan Header (Tabel supplier_pos)
+        $poId = DB::table('supplier_pos')->insertGetId([
+            'no_po_supplier' => strtoupper($request->po_no), 
+            'supplier_name'  => strtoupper($request->supplier_name), 
+            'customer_code'  => $request->customer_code, // ✨ FIX: Simpan kode PT-nya rill!
+            'status'         => 'PENDING', 
+            'created_at'     => now(), 
+            'updated_at'     => now()
+        ]); 
+
+        // 2. Simpan Detail Item (Tabel supplier_po_items)
+        foreach ($request->items as $item) { 
+            // Pastikan data spec dan qty ada isinya
+            if(!empty($item['spec']) && !empty($item['qty'])) {
+                DB::table('supplier_po_items')->insert([
+                    'supplier_po_id' => $poId, 
+                    'material_code'  => $item['spec'], 
+                    'qty_order'      => $item['qty'], 
+                    'qty_received'   => 0, 
+                    'created_at'     => now(), 
+                    'updated_at'     => now()
+                ]); 
+            }
+        } 
+
+        DB::commit(); 
+        return redirect()->back()->with('success', 'PO Initialized Successfully rill!'); 
+
+    } catch (\Exception $e) { 
+        DB::rollBack(); 
+        return back()->with('error', 'Gagal Simpan: ' . $e->getMessage()); 
+    } 
+}
 
     /**
      * ✨ FIX: Fungsi Hapus (image_bf54dd) gue balikin rill!
