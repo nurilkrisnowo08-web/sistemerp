@@ -377,3 +377,16 @@ Route::get('/inventory-welding/daily-recap', [WeldingStockController::class, 'da
 Route::get('/inventory-welding/monthly-recap', [WeldingStockController::class, 'recap'])->name('welding.recap');
 // Pastiin lokasinya bareng sama route welding lainnya
 Route::post('/welding/deploy', [App\Http\Controllers\WeldingStockController::class, 'deployWelding'])->name('welding.deploy');
+
+Route::prefix('welding')->name('welding.')->group(function () {
+    // Halaman Utama Terminal Welding
+    Route::get('/index', [WeldingStockController::class, 'index'])->name('index');
+    
+    // Halaman History / Archive Vault (INI YANG BARU RILL!)
+    Route::get('/history', [WeldingStockController::class, 'history'])->name('history');
+    
+    // Prosedur Kerja
+    Route::post('/deploy', [WeldingStockController::class, 'deployWelding'])->name('deploy');
+    Route::put('/start/{id}', [WeldingStockController::class, 'startWelding'])->name('start');
+    Route::put('/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('finish');
+});

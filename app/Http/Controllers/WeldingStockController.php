@@ -10,21 +10,15 @@ class WeldingStockController extends Controller
 {
     /**
      * 1. TERMINAL HUB LIVE
-     * Menampilkan antrean aktif dan daftar stok yang tersedia untuk diambil.
+     * Menampilkan antrean aktif dan daftar stok yang tersedia.
      */
-    public function index(Request $request)
+   public function index(Request $request)
 {
+    // Gunakan tanggal hari ini (Y-m-d)
     $date = $request->date ?? date('Y-m-d');
 
-    // ✨ LOGIKA LEDGER WELDING (Planning View)
     $inventoryWelding = DB::table('finished_goods')
-        ->select(
-            'part_no',
-            'part_name',
-            'customer',
-            'welding_stock as live_stock' // Ini saldo saat ini di HeidiSQL
-        )
-        // Kita cuma ambil part yang punya rute Welding atau yang ada stoknya
+        ->select('part_no', 'part_name', 'customer', 'welding_stock as live_stock')
         ->where(function($q) {
             $q->where('welding_stock', '>', 0)
               ->orWhereExists(function ($query) {
@@ -36,28 +30,26 @@ class WeldingStockController extends Controller
         })
         ->get()
         ->map(function($item) use ($date) {
-            // 1. Hitung Masuk dari Stamping (IN-S) hari ini
-            // (Asumsi: ProduksiController nyatet ke production_logs saat finish stamping)
-            $in_stamping = DB::table('production_logs')
-                ->where('part_no', $item->part_no)
-                ->whereDate('created_at', $date)
-                ->sum('qty');
+            // Kita bersihkan part_no dari spasi dan karakter aneh buat perbandingan rill
+            $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
-            // 2. Hitung Keluar ke Proses Las (OUT) hari ini
-            // (Barang yang dideploy/diambil dari gudang welding ke meja las)
-            $out_welding = DB::table('welding_batches')
-                ->where('part_no', $item->part_no)
+            // 1. ✨ HITUNG IN (Dari Stamping)
+            // Gue pake LIKE biar lebih aman nemu datanya
+            $item->in_s = DB::table('production_logs')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->whereDate('created_at', $date)
-                ->sum('qty_masuk');
+                ->sum('qty') ?? 0;
 
-            // 3. Hitung Saldo Awal (INIT)
-            // Rumus: Live Stock (sekarang) - Masuk + Keluar
-            $item->init = $item->live_stock - $in_stamping + $out_welding;
-            $item->in_s = $in_stamping;
-            $item->out = $out_welding;
+            // 2. ✨ HITUNG OUT (Dari Tombol TAKE/Deploy)
+            $item->out = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->whereDate('created_at', $date)
+                ->sum('qty_masuk') ?? 0;
+
+            // 3. Saldo Awal (Init) = Stok Sekarang - Masuk + Keluar
+            $item->init = $item->live_stock - $item->in_s + $item->out;
             
-            // 4. Hitung Sisa Jalan (RUN) 
-            // Misal standar per box/pallet adalah 50 pcs
+            // 4. Hitung Sisa Pallet (Run)
             $item->run = ($item->live_stock > 0) ? round($item->live_stock / 50, 1) : 0;
 
             return $item;
@@ -75,8 +67,8 @@ class WeldingStockController extends Controller
 }
 
     /**
-     * ✨ FUNGSI BARU: AMBIL BARANG DARI GUDANG WELDING (DEPLOY)
-     * Mengurangi welding_stock dan membuat baris baru di welding_batches.
+     * ✨ FIX DEPLOY: Tombol TAKE / PENGAMBILAN
+     * Ini yang bakal nyatet angka di kolom "OUT" rill!
      */
     public function deployWelding(Request $request)
     {
@@ -86,21 +78,20 @@ class WeldingStockController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Cek stok di gudang WIP (welding_stock)
             $fg = DB::table('finished_goods')
-                ->whereRaw("REPLACE(part_no, ' ', '') COLLATE utf8mb4_unicode_ci = ?", [$cleanPart])
+                ->whereRaw("REPLACE(part_no, ' ', '') = ?", [$cleanPart])
                 ->first();
 
             if (!$fg || $fg->welding_stock < $qty_ambil) {
                 throw new \Exception("Stok di Gudang Welding tidak cukup! Tersedia: " . ($fg->welding_stock ?? 0));
             }
 
-            // 2. POTONG STOK WELDING (Karena barang dibawa ke meja kerja)
+            // 1. Potong saldo utama di gudang WIP
             DB::table('finished_goods')
                 ->where('id', $fg->id)
                 ->decrement('welding_stock', $qty_ambil, ['updated_at' => now()]);
 
-            // 3. BIKIN ANTREAN KERJA (BATCH BARU)
+            // 2. Buat batch baru (Ini yang dibaca sebagai "OUT" hari ini di Dashboard)
             DB::table('welding_batches')->insert([
                 'no_produksi_stamping' => 'WLD-' . date('Ymd-His'), 
                 'part_no'              => $part_no,
@@ -111,16 +102,13 @@ class WeldingStockController extends Controller
             ]);
 
             DB::commit();
-            return back()->with('success', "Berhasil deploy $qty_ambil Pcs dari stok Welding.");
+            return back()->with('success', "Berhasil deploy $qty_ambil Pcs ke proses Las rill!");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', "Gagal Deploy: " . $e->getMessage());
         }
     }
 
-    /**
-     * 2. START OPERATION
-     */
     public function startWelding($id)
     {
         $target = DB::table('welding_batches')->where('id', $id)->first();
@@ -134,9 +122,6 @@ class WeldingStockController extends Controller
         return back()->with('error', 'Batch tidak ditemukan!');
     }
 
-    /**
-     * 3. FINISH & TRANSFER TO ACTUAL STOCK (FG)
-     */
     public function finishWelding(Request $request, $id)
     {
         $batch = DB::table('welding_batches')->where('id', $id)->first();
@@ -148,24 +133,23 @@ class WeldingStockController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. TAMBAH KE STOK ACTUAL (FG)
+            // 1. Pindahkan hasil OK ke Actual Stock (Finished Goods)
             $affected = DB::table('finished_goods')
-                ->whereRaw("REPLACE(part_no, ' ', '') COLLATE utf8mb4_unicode_ci = ?", [$cleanPart])
+                ->whereRaw("REPLACE(part_no, ' ', '') = ?", [$cleanPart])
                 ->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
             
             if ($affected === 0) {
                 throw new \Exception("Part No [ $cleanPart ] tidak terdaftar di database Finished Goods!");
             }
 
-            // 2. CATAT LOG PRODUKSI (Kolektif)
-            // Note: Hilangkan qty_ng jika kolom tidak ada di tabel production_logs Anda
+            // 2. Log Produksi untuk laporan harian
             DB::table('production_logs')->insert([
                 'part_no'    => $batch->part_no,
                 'qty'        => $qty_ok,
                 'created_at' => now()
             ]);
 
-            // 3. TUTUP BATCH WELDING
+            // 3. Selesaikan status Batch
             DB::table('welding_batches')
                 ->where('id', $id)
                 ->update([
@@ -176,10 +160,44 @@ class WeldingStockController extends Controller
                 ]);
 
             DB::commit();
-            return back()->with('success', 'Selesai! Barang resmi masuk ke Finished Goods.');
+            return back()->with('success', 'Selesai rill! Barang resmi masuk ke Finished Goods.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return back()->with('error', 'Gagal: ' . $e->getMessage()); 
         }
     }
+
+    public function history(Request $request)
+{
+    $customerFilter = $request->customer;
+    $startDate = $request->start_date ?? date('Y-m-d');
+    $endDate = $request->end_date ?? date('Y-m-d');
+
+    $query = DB::table('welding_batches')
+        ->join('finished_goods', 'welding_batches.part_no', '=', 'finished_goods.part_no')
+        ->select(
+            'welding_batches.*', 
+            'finished_goods.customer', 
+            'finished_goods.part_name'
+        )
+        ->where('welding_batches.status ENUM', 'COMPLETED');
+
+    // Filter per Customer
+    if ($customerFilter && $customerFilter != 'ALL') {
+        $query->where('finished_goods.customer', trim($customerFilter));
+    }
+
+    // Filter per Tanggal
+    if ($request->start_date) {
+        $query->whereDate('welding_batches.updated_at', '>=', $startDate);
+    }
+    if ($request->end_date) {
+        $query->whereDate('welding_batches.updated_at', '<=', $endDate);
+    }
+
+    $history = $query->orderBy('welding_batches.updated_at', 'desc')->get();
+    $clients = DB::table('customers')->get();
+
+    return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
+}
 }
