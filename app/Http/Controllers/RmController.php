@@ -406,4 +406,34 @@ public function poSupplierIndex(Request $request)
         DB::table('master_materials')->insert(['customer_code' => trim($request->customer_code), 'material_type' => trim($request->material_type), 'thickness' => trim($request->thickness), 'size' => trim($request->size), 'alias_code' => trim($request->alias_code), 'full_spec' => trim($request->material_type) . ' ' . trim($request->thickness) . ' X ' . trim($request->size), 'created_at' => now(), 'updated_at' => now()]); 
         return back()->with('success', 'Specification registered.'); 
     }
+    /**
+ * Menampilkan Riwayat PO yang sudah selesai (COMPLETED)
+ */
+public function poSupplierHistory(Request $request) 
+{
+    $selectedCustomer = $request->customer; 
+    
+    // Ambil data yang statusnya COMPLETED (Atau status final lainnya)
+    $posQuery = DB::table('supplier_pos')->where('status', 'COMPLETED');
+
+    // Filter per PT kalau ada yang dipilih
+    if ($selectedCustomer && $selectedCustomer != 'ALL') { 
+        $posQuery->where('customer_code', trim($selectedCustomer));
+    }
+
+    $pos = $posQuery->orderBy('updated_at', 'desc')->get();
+
+    foreach ($pos as $po) {
+        $po->items = DB::table('supplier_po_items')
+            ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
+            ->select('supplier_po_items.*', 'mm.material_type as spec_real', 'mm.alias_code as alias_real', 'mm.thickness', 'mm.size')
+            ->where('supplier_po_id', $po->id) // Sesuaikan nama kolom FK lu rill!
+            ->get();
+    }
+
+    $clients = DB::table('customers')->get(); 
+    
+    // Pastiin lu punya file view: resources/views/Gudang/po_supplier_history.blade.php
+    return view('Gudang.po_supplier_history', compact('pos', 'clients', 'selectedCustomer'));
+}
 }
