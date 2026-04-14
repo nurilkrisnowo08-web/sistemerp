@@ -93,7 +93,7 @@ class ProduksiController extends Controller
     /**
      * ✨ FIX ROUTING LOGIC: Biar IN di Welding Terminal Gak Nol rill!
      */
-    public function updateResult(Request $request, $id) 
+   public function updateResult(Request $request, $id) 
     {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
         if (!$p) return redirect()->back()->with('error', 'Batch tidak ditemukan!');
@@ -133,10 +133,11 @@ class ProduksiController extends Controller
                     
                     if ($affected === 0) { throw new \Exception("Gagal! Part [ $cleanPart ] tidak terdaftar di database FG rill!"); }
 
-                    // ✨ FIX IN: Catat Log Produksi agar angka IN di Terminal Welding muncul!
+                    // ✨ FIX: Tambahin Label 'WELDING' biar gak kebaca di FG rill!
                     DB::table('production_logs')->insert([
                         'part_no'    => $p->material_code,
                         'qty'        => $qty_ok,
+                        'process_type' => 'WELDING', // <--- INI KUNCINYA
                         'created_at' => now(),
                     ]);
                     
@@ -148,9 +149,11 @@ class ProduksiController extends Controller
                         ->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
                     
                     if ($affected > 0) {
+                        // ✨ FIX: Tambahin Label 'FG' buat barang yang masuk ke Finish Goods
                         DB::table('production_logs')->insert([
                             'part_no'    => $p->material_code,
                             'qty'        => $qty_ok,
+                            'process_type' => 'FG', // <--- INI KUNCINYA
                             'created_at' => now(),
                         ]);
                         $routeMsg = "Stok FG berhasil bertambah.";
