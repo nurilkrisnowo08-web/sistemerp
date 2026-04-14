@@ -76,7 +76,7 @@
                 <thead>
                     <tr>
                         <th class="text-left pl-4" style="width: 30%;">Part Identification</th>
-                        <th style="width: 10%;">Initial</th>
+                        <th style="width: 10%;">STOCK AWAL</th>
                         <th class="text-success" style="width: 10%;">In (Stamping)</th>
                         <th class="text-danger" style="width: 10%;">Out (Take)</th>
                         <th style="width: 15%;">Live Stock</th>

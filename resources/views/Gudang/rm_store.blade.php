@@ -116,7 +116,7 @@
                 <thead>
                     <tr class="text-center">
                         <th class="text-left pl-4">Part Identification (Alias & Spec)</th>
-                        <th>Initial</th><th>In(S)</th><th>In(R)</th><th>Out</th><th>Live Stock</th><th>Run Rate</th><th class="no-print">Action</th>
+                        <th>STOCK AWAL</th><th>In(S)</th><th>In(R)</th><th>Out</th><th>Live Stock</th><th>Run Rate</th><th class="no-print">Action</th>
                     </tr>
                 </thead>
                 <tbody>
