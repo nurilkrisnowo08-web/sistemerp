@@ -118,7 +118,7 @@
                         </tr>
                         <tr>
                             <th style="background:#858796 !important;">Initial</th>
-                            <th style="background:#36b9cc !important;">IN (STP)</th>
+                            <th style="background:#36b9cc !important;">IN </th>
                             <th style="background:#e74a3b !important;">OUT (DELV)</th>
                             <th style="background:#1cc88a !important;">FINAL</th>
                         </tr>
