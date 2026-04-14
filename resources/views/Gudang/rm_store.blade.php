@@ -7,26 +7,15 @@
 <style>
     :root { --primary: #4361ee; --primary-soft: #f0f3ff; --dark: #0f172a; --slate-bg: #f8fafc; }
     body { background-color: var(--slate-bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dark); }
-    .card-modern { border: none; border-radius: 20px; background: #ffffff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02); margin-bottom: 1.5rem; overflow: hidden; border: 1px solid #eef2f6; }
+    .card-modern { border: none; border-radius: 16px; background: #ffffff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); margin-bottom: 1.5rem; }
     
     .btn-historical { background: #4b4d5a; color: #ffffff !important; border-radius: 50px; padding: 8px 25px; font-weight: 700; border: none; transition: 0.3s; display: inline-flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 13px; text-decoration: none !important; }
     .btn-historical:hover { background: #343a40; transform: translateY(-2px); }
 
-    /* ✨ STYLE MUTATION LEDGER RILL */
-    .table-ledger thead th { vertical-align: middle; border: none; }
-    .header-mutation-label { background: #1e293b; color: #f8fafc; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; padding: 10px !important; }
-    .table-ledger th { background-color: #fdfdfd; text-transform: uppercase; font-size: 10px; font-weight: 800; color: #94a3b8; letter-spacing: 0.8px; padding: 15px; border-bottom: 2px solid #f1f5f9 !important; }
-    
-    .rm-row-header { cursor: pointer; transition: background 0.2s; }
+    .table thead th { background-color: #f1f5f9; text-transform: uppercase; font-size: 10px; font-weight: 800; color: #64748b; letter-spacing: 0.8px; padding: 15px; border: none; }
+    .rm-row-header { cursor: pointer; transition: background 0.2s; border-bottom: 1px solid #f1f5f9 !important; }
     .rm-row-header:hover { background-color: var(--primary-soft) !important; }
     
-    /* Column Colors */
-    .col-init { background: rgba(148, 163, 184, 0.05); color: #64748b; font-family: 'JetBrains Mono'; }
-    .col-in-s { background: rgba(16, 185, 129, 0.05); color: #10b981; font-family: 'JetBrains Mono'; }
-    .col-in-r { background: rgba(6, 182, 212, 0.05); color: #0891b2; font-family: 'JetBrains Mono'; }
-    .col-out { background: rgba(239, 68, 68, 0.05); color: #ef4444; font-family: 'JetBrains Mono'; }
-    .col-live { background: rgba(67, 97, 238, 0.05); color: var(--primary); font-family: 'Orbitron'; font-weight: 800 !important; }
-
     .badge-coil { background: #fff; color: var(--dark); border: 2.5px solid #e2e8f0; padding: 5px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: 800; font-size: 11px; cursor: pointer; transition: 0.2s; display: inline-block; }
     .badge-coil:hover { border-color: var(--primary); color: var(--primary); transform: translateY(-2px); }
     
@@ -43,7 +32,7 @@
 </style>
 
 <div class="container-fluid mt-3">
-    {{-- NOTIFIKASI SYSTEM --}}
+    {{-- NOTIFIKASI SYSTEM rill --}}
     @if(session('success')) <div class="alert alert-success border-0 shadow-sm mb-4 animate__animated animate__fadeInDown" style="border-radius:12px;"><b>✅ SUCCESS:</b> {{ session('success') }}</div> @endif
     @if(session('error')) <div class="alert alert-danger border-0 shadow-sm mb-4 animate__animated animate__shakeX" style="border-radius:12px;"><b>⚠️ ERROR:</b> {{ session('error') }}</div> @endif
 
@@ -53,7 +42,7 @@
             <div class="d-flex align-items-center">
                 <i class="fas fa-calendar-check text-primary mr-3 fa-lg"></i>
                 <h6 class="mb-0 font-weight-bold text-uppercase" style="letter-spacing: 1px;">
-                    SHIFT OPERATIONAL: <span class="text-primary">{{ \Carbon\Carbon::parse($startDate)->format('l, d F Y') }}</span>
+                    SHIFT OPERATIONAL: <span class="text-primary">{{ strtoupper(date('l, d F Y')) }}</span>
                 </h6>
             </div>
             <div class="bg-light px-3 py-1 rounded border">
@@ -66,7 +55,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4 no-print">
         <div>
             <h4 class="font-weight-extrabold m-0">RM_HUB <span class="text-primary text-sm">Industrial Portal v2.0 rill</span></h4>
-            <p class="text-muted small font-weight-bold mb-0">Raw Material Mutation Ledger System</p>
+            <p class="text-muted small font-weight-bold mb-0">Raw Material Tracking System</p>
         </div>
         <div class="d-flex align-items-center">
             <a href="{{ route('rm.log_print') }}" class="btn-historical mr-3">
@@ -95,43 +84,30 @@
         </form>
     </div>
 
-    {{-- ✨ MAIN TABLE: MUTATION LEDGER VIEW ✨ --}}
+    {{-- Main Table Section --}}
     <div class="card-modern overflow-hidden shadow-sm">
         <div class="table-responsive">
-            <table class="table table-ledger mb-0 text-center">
+            <table class="table table-hover mb-0">
                 <thead>
-                    <tr>
-                        <th rowspan="2" class="text-left pl-4" style="width: 25%;">Identification (Alias & Spec)</th>
-                        <th colspan="4" class="header-mutation-label">Inventory Mutation Ledger (PCS)</th>
-                        <th rowspan="2" style="width: 12%;">Live Stock</th>
-                        <th rowspan="2" style="width: 8%;">Run</th>
-                        <th rowspan="2" class="no-print" style="width: 10%;">ACT</th>
-                    </tr>
-                    <tr>
-                        <th class="col-init">Stock Awal</th>
-                        <th class="col-in-s">In (S)</th>
-                        <th class="col-in-r">In (R)</th>
-                        <th class="col-out">Out (Prod)</th>
+                    <tr class="text-center">
+                        <th class="text-left pl-4">Identification (Alias & Spec)</th>
+                        <th>Stock awal</th><th>In(S)</th><th>In(R)</th><th>Out</th><th>Live</th><th>Run</th><th class="no-print">ACT</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($groupedMaterials as $group)
                     @php $slug = Str::slug($group->group_key); @endphp
                     <tr class="rm-row-header" data-toggle="collapse" data-target="#det-{{ $slug }}">
-                        <td class="pl-4 py-4 text-left">
+                        <td class="pl-4">
                             <div class="font-weight-bold text-primary" style="font-size: 13px;">{{ $group->alias_code ?? $group->group_key }}</div>
                             <div class="small text-muted font-weight-bold" style="font-size: 9px;">SPEC: {{ $group->spec }} | DIM: {{ $group->size }}</div>
                         </td>
-                        <td class="col-init">{{ number_format($group->total_init) }}</td>
-                        <td class="col-in-s">+{{ number_format($group->total_in_s) }}</td>
-                        <td class="col-in-r">+{{ number_format($group->total_in_r) }}</td>
-                        <td class="col-out">-{{ number_format($group->total_out) }}</td>
-                        <td class="col-live text-center">{{ number_format($group->total_live) }}</td>
-                        <td class="text-center">
-                            <span class="badge badge-light border font-weight-bold">
-                                {{ number_format($group->total_live / ($group->std_qty_batch ?? 300), 1) }}x
-                            </span>
-                        </td>
+                        <td class="text-center font-weight-bold text-muted">{{ number_format($group->total_init) }}</td>
+                        <td class="text-center text-success font-weight-bold">+{{ number_format($group->total_in_s) }}</td>
+                        <td class="text-center text-info font-weight-bold">+{{ number_format($group->total_in_r) }}</td>
+                        <td class="text-center text-danger font-weight-bold">-{{ number_format($group->total_out) }}</td>
+                        <td class="text-center"><span class="h6 font-weight-bold text-dark">{{ number_format($group->total_live) }}</span></td>
+                        <td class="text-center"><span class="badge badge-light border">{{ number_format($group->total_live / ($group->std_qty_batch ?? 300), 1) }}x</span></td>
                         <td class="text-center no-print"><i class="fas fa-chevron-down text-muted small"></i></td>
                     </tr>
                     
@@ -158,7 +134,7 @@
                                                     <small class="d-block text-muted mt-1 font-weight-bold" style="font-size: 9px;">REG_DATE: {{ date('d/m/Y', strtotime($p->created_at)) }}</small>
                                                 </div>
                                                 <div class="text-right">
-                                                    <div class="small font-weight-bold text-muted">UNIT_STOCK</div>
+                                                    <div class="small font-weight-bold text-muted">LIVE_STOCK</div>
                                                     <div class="h6 font-weight-bold text-primary mb-0">{{ number_format($p->stock_pcs) }}</div>
                                                 </div>
                                             </div>
@@ -182,6 +158,7 @@
                                             <div class="text-right">
                                                 <div class="btn-group">
                                                     <button class="btn btn-act btn-sm mr-1" onclick="openAssignPart('{{ $p->id }}', '{{ $p->customer }}')"><i class="fas fa-plus text-primary"></i></button>
+                                                    {{-- ✨ Tombol Edit Unit rill --}}
                                                     <button class="btn btn-act btn-sm mr-1" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{ $p->stock_pcs }}')"><i class="fas fa-edit text-warning"></i></button>
                                                     <form action="{{ route('rm.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Delete Unit?')">@csrf @method('DELETE')<button type="submit" class="btn btn-act btn-sm"><i class="fas fa-trash"></i></button></form>
                                                 </div>
@@ -227,39 +204,37 @@
     </div>
 </div>
 
-{{-- --- MODALS SECTION --- --}}
-
 {{-- MODAL UNIT PROFILE --}}
 <div class="modal fade" id="modalUnitProfile" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0" style="border-radius: 12px; overflow:hidden; background: #f3f4f6;">
             <div class="modal-body p-4">
                 <div class="label-container shadow-lg" style="background:#fff; padding:20px; border-radius:10px; border-top: 5px solid var(--primary);">
-                    <div class="text-center font-weight-bold mb-3 text-muted small">PT. ASALTA MANDIRI AGUNG</div>
+                    <div class="text-center font-weight-bold mb-3">PT. ASALTA MANDIRI AGUNG</div>
                     <div class="row">
-                        <div class="col-6 mb-2"><small class="text-muted d-block uppercase font-weight-bold">COIL_NO:</small><b id="v_coil" class="text-primary">--</b></div>
-                        <div class="col-6 mb-2"><small class="text-muted d-block uppercase font-weight-bold">SPEC:</small><b id="v_spec">--</b></div>
-                        <div class="col-6 mb-2"><small class="text-muted d-block uppercase font-weight-bold">SIZE:</small><b id="v_size">--</b></div>
-                        <div class="col-6 mb-2"><small class="text-muted d-block uppercase font-weight-bold">TARGET_CYC:</small><b id="v_target">--</b></div>
+                        <div class="col-6 mb-2"><small class="text-muted d-block">COIL_NO:</small><b id="v_coil" class="text-primary">--</b></div>
+                        <div class="col-6 mb-2"><small class="text-muted d-block">SPEC:</small><b id="v_spec">--</b></div>
+                        <div class="col-6 mb-2"><small class="text-muted d-block">SIZE:</small><b id="v_size">--</b></div>
+                        <div class="col-6 mb-2"><small class="text-muted d-block">TARGET_BATCH:</small><b id="v_target">--</b></div>
                     </div>
                     <div class="bg-light p-3 rounded mt-2">
-                        <small class="font-weight-bold d-block mb-1 uppercase" style="font-size: 10px;">Mapped Components:</small>
-                        <div id="v_parts_list" class="d-flex flex-column gap-1"></div>
+                        <small class="font-weight-bold d-block mb-1">PRODUCING_COMPONENTS:</small>
+                        <div id="v_parts_list"></div>
                     </div>
-                    <div class="mt-3 text-center small text-muted font-weight-bold">STARTED: <span id="v_date">--</span></div>
+                    <div class="mt-3 text-center small text-muted">STARTED: <span id="v_date">--</span></div>
                 </div>
-                <button class="btn btn-dark btn-block mt-4 py-3 font-weight-bold rounded-pill shadow" data-dismiss="modal">CLOSE DETAILS</button>
+                <button class="btn btn-secondary btn-block mt-4 py-3 font-weight-bold rounded-pill shadow" data-dismiss="modal">CLOSE DETAILS</button>
             </div>
         </div>
     </div>
 </div>
 
-{{-- MODAL TAMBAH RM --}}
+{{-- REGISTER NEW BATCH MODAL rill --}}
 <div class="modal fade" id="modalTambahRM" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px; overflow: hidden;">
             <div class="modal-header bg-primary text-white py-3">
-                <h6 class="mb-0 font-weight-bold uppercase"><i class="fas fa-plus-circle mr-2"></i>Register_New_Batch</h6>
+                <h6 class="mb-0 font-weight-bold"><i class="fas fa-plus-circle mr-2"></i>REGISTER_NEW_BATCH</h6>
             </div>
             <form action="{{ route('rm.store_batch') }}" method="POST">
                 @csrf
@@ -275,6 +250,7 @@
                             </div>
                             <div class="form-group mb-3">
                                 <label class="small font-weight-bold">SPECIFICATION</label>
+                                {{-- Dropdown Spec yang akan diisi otomatis tanpa duplikat via JS rill --}}
                                 <select id="selectMasterSpec" class="form-control" required disabled>
                                     <option>-- SELECT CLIENT --</option>
                                 </select>
@@ -286,8 +262,14 @@
                                 <input type="text" name="coil_id" class="form-control font-weight-bold text-primary" placeholder="SAI_XXX" required>
                             </div>
                             <div class="row">
-                                <div class="col-6"><label class="small font-weight-bold">MIN_STOK</label><input type="number" name="min_stock" class="form-control" value="500" required></div>
-                                <div class="col-6"><label class="small font-weight-bold">MAX_STOK</label><input type="number" name="max_stock" class="form-control" value="1000" required></div>
+                                <div class="col-6">
+                                    <label class="small font-weight-bold">MIN_STOK (PCS)</label>
+                                    <input type="number" name="min_stock" class="form-control" value="500" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="small font-weight-bold">MAX_STOK (PCS)</label>
+                                    <input type="number" name="max_stock" class="form-control" value="1000" required>
+                                </div>
                             </div>
                         </div>
                         <div class="col-md-6 pl-4">
@@ -296,11 +278,12 @@
                                 <input type="number" name="stock_pcs" class="form-control font-weight-bold h5 text-success" placeholder="0" required>
                             </div>
                             <div class="form-group mb-3">
-                                <label class="small font-weight-bold text-primary">STD_QTY_BATCH</label>
+                                <label class="small font-weight-bold text-primary">STD_QTY_BATCH (CYCLES)</label>
                                 <input type="number" name="std_qty_batch" class="form-control border-primary" value="300" required>
+                                <small class="text-muted" style="font-size: 8px;">*Standard target per production run</small>
                             </div>
                             <div class="form-group mb-0">
-                                <label class="small font-weight-bold">MAPPED_PARTS</label>
+                                <label class="small font-weight-bold">MAPPED_PARTS (CHOOSE MULTIPLE)</label>
                                 <select name="part_nos[]" id="selectPart" class="form-control" multiple style="height:120px;" required disabled></select>
                             </div>
                         </div>
@@ -314,7 +297,7 @@
     </div>
 </div>
 
-{{-- MODAL EDIT UNIT --}}
+{{-- MODAL EDIT UNIT rill --}}
 <div class="modal fade" id="modalEditUnit" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px;">
@@ -341,10 +324,8 @@
     </div>
 </div>
 
-{{-- MODAL ASSIGN PART --}}
+{{-- MODAL LAINNYA TETAP --}}
 <div class="modal fade" id="modalAssignPart" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-primary text-white py-3"><h6>ASSIGN_COMPONENT</h6></div><form action="{{ route('rm.assign_part') }}" method="POST">@csrf<input type="hidden" name="rm_stock_id" id="ap_rm_id"><div class="modal-body p-4"><div class="form-group mb-0"><label class="small font-weight-bold text-muted">SELECT PART TO ADD</label><select name="part_no" id="ap_select_part" class="form-control" required></select></div></div><div class="modal-footer border-0 p-4 pt-0"><button type="submit" class="btn btn-primary btn-block py-2 font-weight-bold rounded-pill">MAP_COMPONENT</button></div></form></div></div></div>
-
-{{-- MODAL MASTER SPEC --}}
 <div class="modal fade" id="modalMasterSpec" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-dark text-white py-3"><h6>SPEC_REGISTRY_MANAGER</h6></div><form action="{{ route('rm.store_master') }}" method="POST">@csrf<div class="modal-body p-4">
     <div class="form-group mb-2"><label class="small font-weight-bold">CLIENT</label><select name="customer_code" class="form-control">@foreach($availableCustomers as $c) <option value="{{ trim($c->code) }}">{{ $c->name }}</option> @endforeach</select></div>
     <div class="form-group mb-2"><label class="small font-weight-bold">ALIAS_CODE</label><input type="text" name="alias_code" class="form-control" required></div>
@@ -375,6 +356,7 @@
         }});
     }
     
+    // ✨ FIX EDIT: Pastikan nembak ke /rm/unit-update/ rill
     function openEditUnit(id, coil, qty) { 
         $('#ed_coil').val(coil); 
         $('#ed_qty').val(qty.replace(/,/g, '')); 
@@ -390,24 +372,33 @@
             var c = $(this).val(); 
             var sD = $('#selectMasterSpec'); 
             var pD = $('#selectPart');
+            
             if(c) { 
                 $.ajax({ 
                     url: "/get-parts-and-specs/" + encodeURIComponent(c), 
                     type: "GET", 
                     success: function(res) { 
+                        // ✨ FIX: Menampilkan nama di dropdown Spec TANPA DUPLIKAT rill
                         var s = '<option value="">-- SELECT SPEC --</option>'; 
                         let uniqueSpecs = [];
                         $.each(res.specs, function(k, v) { 
+                            // Bikin kunci unik dari spec + size rill
                             let key = (v.material_type + v.thickness + v.size).replace(/\s+/g, '').toUpperCase();
                             if(!uniqueSpecs.includes(key)){
                                 uniqueSpecs.push(key);
+                                // Label Spec yang bersih rill
                                 s += `<option value="${v.material_type}" data-spec="${v.material_type}" data-size="${v.thickness} X ${v.size}">
                                         [${v.alias_code}] - ${v.material_type} (${v.thickness}x${v.size})
                                       </option>`;
                             }
                         }); 
                         sD.html(s).prop('disabled', false); 
-                        var p = ''; $.each(res.parts, function(k, v) { p += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; }); 
+                        
+                        // Dropdown Part rill
+                        var p = ''; 
+                        $.each(res.parts, function(k, v) { 
+                            p += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; 
+                        }); 
                         pD.html(p).prop('disabled', false); 
                     } 
                 }); 
