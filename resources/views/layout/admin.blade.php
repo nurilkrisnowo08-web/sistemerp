@@ -268,4 +268,130 @@
 
     @yield('scripts')
 </body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MRP System - AMK</title>
+
+    <!-- ✅ FONT -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- ✅ FONT AWESOME -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <!-- ✅ SB ADMIN CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        #wrapper {
+            display: flex;
+        }
+
+        #content-wrapper {
+            width: 100%;
+        }
+
+        .sidebar {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+
+<body id="page-top">
+
+<div id="wrapper">
+
+    <!-- 🔥 SIDEBAR -->
+    <ul class="navbar-nav bg-dark sidebar sidebar-dark accordion" id="accordionSidebar">
+
+        <a class="sidebar-brand d-flex align-items-center justify-content-center" href="#">
+            <div class="sidebar-brand-text mx-3">MRP AMK</div>
+        </a>
+
+        <hr class="sidebar-divider">
+
+        <li class="nav-item">
+            <a class="nav-link" href="{{ route('dashboard') }}">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+        </li>
+
+        <hr class="sidebar-divider">
+
+        <div class="sidebar-heading">Master</div>
+
+        <li class="nav-item">
+            <a class="nav-link" href="#">
+                <i class="fas fa-users"></i>
+                <span>Customers</span>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" href="#">
+                <i class="fas fa-cubes"></i>
+                <span>Parts</span>
+            </a>
+        </li>
+
+    </ul>
+    <!-- END SIDEBAR -->
+
+    <!-- 🔥 CONTENT -->
+    <div id="content-wrapper" class="d-flex flex-column">
+
+        <div id="content">
+
+            <!-- 🔥 TOPBAR -->
+            <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 shadow">
+
+                <button id="sidebarToggleTop" class="btn btn-link d-md-none rounded-circle mr-3">
+                    <i class="fa fa-bars"></i>
+                </button>
+
+                <h5 class="m-0 font-weight-bold text-dark">
+                    ASALTA MANDIRI AGUNG
+                </h5>
+
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <span class="mr-3">{{ Auth::user()->name ?? 'Admin' }}</span>
+                    </li>
+                </ul>
+
+            </nav>
+
+            <!-- 🔥 MAIN CONTENT -->
+            <div class="container-fluid">
+                @yield('content')
+            </div>
+
+        </div>
+
+        <!-- 🔥 FOOTER -->
+        <footer class="sticky-footer bg-white">
+            <div class="container my-auto">
+                <div class="text-center">
+                    © {{ date('Y') }} PT. ASALTA MANDIRI AGUNG
+                </div>
+            </div>
+        </footer>
+
+    </div>
+
+</div>
+
+<!-- ✅ JS WAJIB -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
+
+</body>
 </html>
