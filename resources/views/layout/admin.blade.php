@@ -4,18 +4,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MRP System - AMK</title>
-    
-    <!-- LOCAL ASSET -->
-    <link href="{{ asset('admin/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
-    <link href="{{ asset('admin/css/sb-admin-2.min.css') }}" rel="stylesheet">
 
     <!-- FONT -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- ICON -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <!-- SB ADMIN CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+
     <style>
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f1f5f9; 
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f1f5f9;
         }
 
         #accordionSidebar {
@@ -41,7 +43,6 @@
 
         .topbar {
             background: #fff !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
     </style>
 </head>
@@ -49,7 +50,7 @@
 <body id="page-top">
 <div id="wrapper">
 
-<!-- 🔥 SIDEBAR (FULL TIDAK HILANG) -->
+<!-- 🔥 SIDEBAR -->
 <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
 
     <a class="sidebar-brand d-flex align-items-center justify-content-center" href="#">
@@ -169,7 +170,9 @@
 
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                    <span class="mr-3">{{ Auth::user()->name ?? 'Admin' }}</span>
+                    <span class="mr-3 font-weight-bold">
+                        {{ Auth::user()->name ?? 'Admin' }}
+                    </span>
                 </li>
             </ul>
 
@@ -204,10 +207,10 @@
 
 </div>
 
-<!-- JS -->
-<script src="{{ asset('admin/vendor/jquery/jquery.min.js') }}"></script>
-<script src="{{ asset('admin/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ asset('admin/js/sb-admin-2.min.js') }}"></script>
+<!-- JS CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
 
 <script>
 function updateClock() {
