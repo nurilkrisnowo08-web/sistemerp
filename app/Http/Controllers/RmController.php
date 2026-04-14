@@ -341,6 +341,32 @@ public function poSupplierIndex(Request $request)
     }
 }
 
+/**
+ * Update Data Coil/Unit RM
+ */
+public function updateUnit(Request $request, $id) 
+{
+    // ✨ Validasi biar aman rill
+    $request->validate([
+        'coil_id' => 'required',
+        'stock_pcs' => 'required|numeric'
+    ]);
+
+    try {
+        // Update data di tabel rm_stocks
+        DB::table('rm_stocks')->where('id', $id)->update([
+            'coil_id'   => strtoupper(trim($request->coil_id)),
+            'stock_pcs' => $request->stock_pcs,
+            'updated_at' => now()
+        ]);
+
+        return redirect()->back()->with('success', 'Unit Profile Updated rill!');
+        
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Gagal update: ' . $e->getMessage());
+    }
+}
+
     public function printPO($id) {
         $po = DB::table('supplier_pos')->where('id', $id)->first(); if (!$po) return "Not found.";
         $po->items = DB::table('supplier_po_items')->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')->select('supplier_po_items.*', 'mm.material_type', 'mm.thickness', 'mm.size', 'mm.customer_code as client_code')->where('supplier_po_id', $id)->get();
