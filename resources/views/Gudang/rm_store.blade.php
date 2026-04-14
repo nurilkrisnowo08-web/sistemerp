@@ -91,7 +91,7 @@
                 <thead>
                     <tr class="text-center">
                         <th class="text-left pl-4">Identification (Alias & Spec)</th>
-                        <th>Init</th><th>In(S)</th><th>In(R)</th><th>Out</th><th>Live</th><th>Run</th><th class="no-print">ACT</th>
+                        <th>Stock awal</th><th>In(S)</th><th>In(R)</th><th>Out</th><th>Live</th><th>Run</th><th class="no-print">ACT</th>
                     </tr>
                 </thead>
                 <tbody>
