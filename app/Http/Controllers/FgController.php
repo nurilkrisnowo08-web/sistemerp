@@ -13,7 +13,6 @@ class FgController extends Controller
         $customer = $request->customer;
         $date = $request->date ?? date('Y-m-d');
 
-        // SAKTI: Ambil data master untuk modal Tambah Part
         $parts = DB::table('parts')->get(); 
         $masterMaterials = DB::table('master_materials')->get(); 
 
@@ -21,10 +20,10 @@ class FgController extends Controller
             $allFG = DB::table('finished_goods')->where('customer', $customer)->get();
             
             foreach ($allFG as $fg) {
-                // SAKTI: IN ke FG adalah barang hasil produksi (QTY POSITIF / > 0)
-                // Gue ganti dari '< 0' jadi '> 0' biar angkanya kebaca, Guru!
+                // ✨ FIX IN: Cuma ambil log yang tujuannya 'FG' rill!
                 $fg->in_stp = DB::table('production_logs')
                     ->where('part_no', $fg->part_no)
+                    ->where('process_type', 'FG') // <-- Filter Anti-Bocor
                     ->whereDate('created_at', $date)
                     ->where('qty', '>', 0) 
                     ->sum('qty');
@@ -34,9 +33,10 @@ class FgController extends Controller
                     ->whereDate('created_at', $date)
                     ->sum('qty_delivery');
 
-                // Logika Backtracking (Menghitung stok mundur ke tanggal yang dipilih)
+                // ✨ Backtracking Logic (Filter FG juga rill!)
                 $total_in_setelah = DB::table('production_logs')
                     ->where('part_no', $fg->part_no)
+                    ->where('process_type', 'FG') // <-- Filter Anti-Bocor
                     ->whereDate('created_at', '>', $date)
                     ->where('qty', '>', 0)
                     ->sum('qty');
@@ -46,7 +46,6 @@ class FgController extends Controller
                     ->whereDate('created_at', '>', $date)
                     ->sum('qty_delivery');
 
-                // Stok Akhir pada tanggal tersebut = Stok Sekarang - (Masuk Setelahnya) + (Keluar Setelahnya)
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $total_in_setelah + $total_out_setelah;
                 $fg->stock_awal = $fg->stock_akhir - $fg->in_stp + $fg->out_delv;
                 $fg->stock_day = ($fg->needs_per_day > 0) ? round($fg->stock_akhir / $fg->needs_per_day, 1) : 0;
@@ -54,10 +53,11 @@ class FgController extends Controller
 
             $stockOut = DB::table('deliveries')->where('customer_code', $customer)->whereDate('created_at', $date)->orderBy('created_at', 'desc')->get();
             
-            // LOG MASUK: Pastikan filter QTY > 0 agar muncul di tabel bawah
+            // ✨ LOG MASUK: Filter murni tujuannya 'FG' rill!
             $stockIn = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                 ->where('finished_goods.customer', $customer)
+                ->where('production_logs.process_type', 'FG') // <-- Filter Anti-Bocor
                 ->where('production_logs.qty', '>', 0)
                 ->whereDate('production_logs.created_at', $date)
                 ->select('production_logs.*')
@@ -77,13 +77,7 @@ class FgController extends Controller
         ));
     }
 
-    // --- FUNGSI LAIN DIBAWAH INI TETAP UTUH (TIDAK ADA PERUBAHAN) ---
-
-    public function create()
-    {
-        $customers = DB::table('customers')->get();
-        return view('finished_goods.create', compact('customers'));
-    }
+    public function create() { $customers = DB::table('customers')->get(); return view('finished_goods.create', compact('customers')); }
 
     public function store(Request $request)
     {
@@ -99,16 +93,10 @@ class FgController extends Controller
             'created_at'    => now(), 
             'updated_at'    => now(),
         ]);
-        
         return redirect()->route('fg.index', ['customer' => $request->customer])->with('success', 'Part Berhasil Ditambah!');
     }
 
-    public function edit($id)
-    {
-        $fg = DB::table('finished_goods')->where('id', $id)->first();
-        $customers = DB::table('customers')->get();
-        return view('finished_goods.edit', compact('fg', 'customers'));
-    }
+    public function edit($id) { $fg = DB::table('finished_goods')->where('id', $id)->first(); $customers = DB::table('customers')->get(); return view('finished_goods.edit', compact('fg', 'customers')); }
 
     public function monthlyRecap(Request $request)
     {
@@ -123,8 +111,9 @@ class FgController extends Controller
             $endOfMonth = date('Y-m-t', strtotime("$year-$month-01"));
 
             foreach ($recap as $fg) {
-                // SAKTI: Ganti ke QTY > 0 agar angka mutasi bulanan terbaca
+                // ✨ Filter FG rill!
                 $fg->total_in = DB::table('production_logs')->where('part_no', $fg->part_no)
+                    ->where('process_type', 'FG') 
                     ->where('qty', '>', 0)
                     ->whereMonth('created_at', $month)->whereYear('created_at', $year)
                     ->sum('qty');
@@ -134,6 +123,7 @@ class FgController extends Controller
                     ->sum('qty_delivery');
 
                 $future_in = DB::table('production_logs')->where('part_no', $fg->part_no)
+                    ->where('process_type', 'FG')
                     ->where('qty', '>', 0)
                     ->whereDate('created_at', '>', $endOfMonth)
                     ->sum('qty');
@@ -146,6 +136,7 @@ class FgController extends Controller
 
             $in_logs = DB::table('production_logs')->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                 ->where('finished_goods.customer', $customer)
+                ->where('production_logs.process_type', 'FG') // filter rill!
                 ->where('production_logs.qty', '>', 0)
                 ->whereDate('production_logs.created_at', $daily_date)
                 ->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
@@ -197,6 +188,7 @@ class FgController extends Controller
 
             foreach ($recap as $fg) {
                 $fg->total_in = DB::table('production_logs')->where('part_no', $fg->part_no)
+                    ->where('process_type', 'FG') // filter rill!
                     ->where('qty', '>', 0)
                     ->whereMonth('created_at', $month)->whereYear('created_at', $year)
                     ->sum('qty');
@@ -206,6 +198,7 @@ class FgController extends Controller
                     ->sum('qty_delivery');
                 
                 $future_in = DB::table('production_logs')->where('part_no', $fg->part_no)
+                    ->where('process_type', 'FG')
                     ->where('qty', '>', 0)
                     ->whereDate('created_at', '>', $endOfMonth)->sum('qty');
                 $future_out = DB::table('deliveries')->where('part_no', $fg->part_no)->whereDate('created_at', '>', $endOfMonth)->sum('qty_delivery');
@@ -218,28 +211,20 @@ class FgController extends Controller
             if ($daily_date) {
                 $in_logs = DB::table('production_logs')->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                     ->where('finished_goods.customer', $customer)
+                    ->where('production_logs.process_type', 'FG') // filter rill!
                     ->where('production_logs.qty', '>', 0)
                     ->whereDate('production_logs.created_at', $daily_date)
                     ->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
                 $dailyDetails = DB::table('deliveries')->where('customer_code', $customer)->whereDate('created_at', $daily_date)->select(DB::raw('DATE(created_at) as tgl'), 'part_no', DB::raw('0 as in_qty'), 'qty_delivery as out_qty', 'created_at as jam')->unionAll($in_logs)->orderBy('jam', 'desc')->get();
             }
-
             return view('finished_goods.print', compact('recap', 'dailyDetails', 'customer', 'month_name', 'year', 'daily_date'));
         }
         return redirect()->back();
     }
 
-    public function getParts($customer)
-    {
-        $parts = DB::table('parts')->where('customer_code', $customer)->select('part_no', 'part_name')->get();
-        return response()->json($parts);
-    }
+    public function getParts($customer) { $parts = DB::table('parts')->where('customer_code', $customer)->select('part_no', 'part_name')->get(); return response()->json($parts); }
 
-    public function destroy($id)
-    {
-        DB::table('finished_goods')->where('id', $id)->delete();
-        return redirect()->back()->with('success', 'Data Part Berhasil Dihapus, Guru!');
-    }
+    public function destroy($id) { DB::table('finished_goods')->where('id', $id)->delete(); return redirect()->back()->with('success', 'Data Part Berhasil Dihapus, Guru!'); }
 
     public function history(Request $request)
     {
