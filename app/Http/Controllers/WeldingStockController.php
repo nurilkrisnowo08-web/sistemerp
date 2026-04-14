@@ -10,6 +10,7 @@ class WeldingStockController extends Controller
 {
     /**
      * 1. TERMINAL HUB LIVE
+     * Menampilkan antrean aktif dan daftar stok yang tersedia.
      */
     public function index(Request $request)
     {
@@ -28,23 +29,24 @@ class WeldingStockController extends Controller
             })
             ->get()
             ->map(function($item) use ($date) {
+                // Bersihkan part_no buat perbandingan rill
                 $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
-                // 1. ✨ FIX IN: Tambahin filter 'process_type' = 'WELDING' 
-                // Biar yang muncul cuma barang yang beneran dikirim ke Welding rill!
+                // 1. ✨ ADJUST IN: Tambahin filter 'process_type' = 'WELDING'
+                // Biar angka IN di sini murni kiriman Stamping yang mau di-Las rill!
                 $item->in_s = DB::table('production_logs')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->where('process_type', 'WELDING') 
                     ->whereDate('created_at', $date)
                     ->sum('qty') ?? 0;
 
-                // 2. HITUNG OUT (Dari Tombol TAKE/Deploy)
+                // 2. ✨ HITUNG OUT (Dari Tombol TAKE/Deploy)
                 $item->out = DB::table('welding_batches')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->whereDate('created_at', $date)
                     ->sum('qty_masuk') ?? 0;
 
-                // 3. Saldo Awal (Init)
+                // 3. Saldo Awal (Init) = Stok Sekarang - Masuk + Keluar
                 $item->init = $item->live_stock - $item->in_s + $item->out;
                 
                 // 4. Hitung Sisa Pallet (Run)
@@ -65,7 +67,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * ✨ FUNGSI DEPLOY (TETAP)
+     * ✨ FUNGSI DEPLOY: TETAP UTUH
      */
     public function deployWelding(Request $request)
     {
@@ -104,9 +106,6 @@ class WeldingStockController extends Controller
         }
     }
 
-    /**
-     * START WELDING (TETAP)
-     */
     public function startWelding($id)
     {
         $target = DB::table('welding_batches')->where('id', $id)->first();
@@ -120,9 +119,6 @@ class WeldingStockController extends Controller
         return back()->with('error', 'Batch tidak ditemukan!');
     }
 
-    /**
-     * ✨ FIX FINISH: Tambahin label 'FG' di log
-     */
     public function finishWelding(Request $request, $id)
     {
         $batch = DB::table('welding_batches')->where('id', $id)->first();
@@ -142,7 +138,7 @@ class WeldingStockController extends Controller
                 throw new \Exception("Part No [ $cleanPart ] tidak terdaftar di database Finished Goods!");
             }
 
-            // ✨ FIX LOG: Kasih tanda 'FG' biar gak nyasar ke dashboard Welding lagi rill!
+            // ✨ ADJUST LOG: Kasih label 'FG' biar log ini gak dihitung sebagai "IN" di Welding lagi rill!
             DB::table('production_logs')->insert([
                 'part_no'    => $batch->part_no,
                 'qty'        => $qty_ok,
@@ -167,9 +163,6 @@ class WeldingStockController extends Controller
         }
     }
 
-    /**
-     * HISTORY (TETAP)
-     */
     public function history(Request $request)
     {
         $customerFilter = $request->customer;
@@ -178,7 +171,11 @@ class WeldingStockController extends Controller
 
         $query = DB::table('welding_batches')
             ->join('finished_goods', 'welding_batches.part_no', '=', 'finished_goods.part_no')
-            ->select('welding_batches.*', 'finished_goods.customer', 'finished_goods.part_name')
+            ->select(
+                'welding_batches.*', 
+                'finished_goods.customer', 
+                'finished_goods.part_name'
+            )
             ->where('welding_batches.status ENUM', 'COMPLETED');
 
         if ($customerFilter && $customerFilter != 'ALL') {
