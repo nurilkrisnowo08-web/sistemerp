@@ -389,4 +389,6 @@ Route::prefix('welding')->name('welding.')->group(function () {
     Route::post('/deploy', [WeldingStockController::class, 'deployWelding'])->name('deploy');
     Route::put('/start/{id}', [WeldingStockController::class, 'startWelding'])->name('start');
     Route::put('/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('finish');
+
+    Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
 });

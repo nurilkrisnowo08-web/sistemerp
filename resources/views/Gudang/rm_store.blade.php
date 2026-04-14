@@ -2,7 +2,7 @@
 
 @section('content')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 
 <style>
     :root { --primary: #4361ee; --primary-soft: #f0f3ff; --dark: #0f172a; --slate-bg: #f8fafc; }
@@ -204,7 +204,7 @@
     </div>
 </div>
 
-{{-- MODAL UNIT PROFILE rill --}}
+{{-- MODAL UNIT PROFILE --}}
 <div class="modal fade" id="modalUnitProfile" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0" style="border-radius: 12px; overflow:hidden; background: #f3f4f6;">
@@ -250,6 +250,7 @@
                             </div>
                             <div class="form-group mb-3">
                                 <label class="small font-weight-bold">SPECIFICATION</label>
+                                {{-- Dropdown Spec yang akan diisi otomatis tanpa duplikat via JS rill --}}
                                 <select id="selectMasterSpec" class="form-control" required disabled>
                                     <option>-- SELECT CLIENT --</option>
                                 </select>
@@ -296,7 +297,7 @@
     </div>
 </div>
 
-{{-- MODAL EDIT UNIT: FIXED rill --}}
+{{-- MODAL EDIT UNIT rill --}}
 <div class="modal fade" id="modalEditUnit" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px;">
@@ -323,7 +324,7 @@
     </div>
 </div>
 
-{{-- MODAL LAINNYA --}}
+{{-- MODAL LAINNYA TETAP --}}
 <div class="modal fade" id="modalAssignPart" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-primary text-white py-3"><h6>ASSIGN_COMPONENT</h6></div><form action="{{ route('rm.assign_part') }}" method="POST">@csrf<input type="hidden" name="rm_stock_id" id="ap_rm_id"><div class="modal-body p-4"><div class="form-group mb-0"><label class="small font-weight-bold text-muted">SELECT PART TO ADD</label><select name="part_no" id="ap_select_part" class="form-control" required></select></div></div><div class="modal-footer border-0 p-4 pt-0"><button type="submit" class="btn btn-primary btn-block py-2 font-weight-bold rounded-pill">MAP_COMPONENT</button></div></form></div></div></div>
 <div class="modal fade" id="modalMasterSpec" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-dark text-white py-3"><h6>SPEC_REGISTRY_MANAGER</h6></div><form action="{{ route('rm.store_master') }}" method="POST">@csrf<div class="modal-body p-4">
     <div class="form-group mb-2"><label class="small font-weight-bold">CLIENT</label><select name="customer_code" class="form-control">@foreach($availableCustomers as $c) <option value="{{ trim($c->code) }}">{{ $c->name }}</option> @endforeach</select></div>
@@ -355,7 +356,7 @@
         }});
     }
     
-    // ✨ FIX: Sesuaikan rute unit-update rill
+    // ✨ FIX EDIT: Pastikan nembak ke /rm/unit-update/ rill
     function openEditUnit(id, coil, qty) { 
         $('#ed_coil').val(coil); 
         $('#ed_qty').val(qty.replace(/,/g, '')); 
@@ -377,11 +378,11 @@
                     url: "/get-parts-and-specs/" + encodeURIComponent(c), 
                     type: "GET", 
                     success: function(res) { 
-                        // ✨ FIX: Menampilkan nama di dropdown Spec tanpa Double rill
+                        // ✨ FIX: Menampilkan nama di dropdown Spec TANPA DUPLIKAT rill
                         var s = '<option value="">-- SELECT SPEC --</option>'; 
                         let uniqueSpecs = [];
                         $.each(res.specs, function(k, v) { 
-                            // Key unik berdasarkan Spec + Size biar gak double rill
+                            // Bikin kunci unik dari spec + size rill
                             let key = (v.material_type + v.thickness + v.size).replace(/\s+/g, '').toUpperCase();
                             if(!uniqueSpecs.includes(key)){
                                 uniqueSpecs.push(key);
@@ -393,6 +394,7 @@
                         }); 
                         sD.html(s).prop('disabled', false); 
                         
+                        // Dropdown Part rill
                         var p = ''; 
                         $.each(res.parts, function(k, v) { 
                             p += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; 

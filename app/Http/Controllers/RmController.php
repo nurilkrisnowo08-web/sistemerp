@@ -420,6 +420,66 @@ public function updateUnit(Request $request, $id)
     } 
 }
 
+public function rmMutation(Request $request)
+{
+    $customer = trim($request->customer);
+    $date = $request->date ?? date('Y-m-d'); // Tanggal yang mau diaudit
+    $availableCustomers = DB::table('customers')->get();
+
+    // 1. Ambil semua master RM
+    $query = DB::table('rm_stocks')
+        ->leftJoin('master_materials as mm', function($join) {
+            $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
+                 ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
+        })
+        ->select('rm_stocks.*', 'mm.alias_code');
+
+    if ($customer) {
+        $query->where('rm_stocks.customer', $customer);
+    }
+
+    $rmData = $query->get()->map(function($rm) use ($date) {
+        // --- PROSES BACKTRACKING RILL ---
+
+        // A. Hitung mutasi MASUK setelah tanggal target
+        $in_setelah = DB::table('rm_incoming_logs')
+            ->where('rm_stock_id', $rm->id)
+            ->whereDate('created_at', '>', $date)
+            ->sum('pcs_in');
+
+        // B. Hitung mutasi KELUAR setelah tanggal target
+        $out_setelah = DB::table('rm_production_logs')
+            ->where('rm_stock_id', $rm->id)
+            ->whereDate('created_at', '>', $date)
+            ->sum('pcs_used');
+
+        // C. Hitung mutasi MASUK & KELUAR PADA tanggal target (IN & OUT)
+        $in_period = DB::table('rm_incoming_logs')
+            ->where('rm_stock_id', $rm->id)
+            ->whereDate('created_at', $date)
+            ->sum('pcs_in');
+
+        $out_period = DB::table('rm_production_logs')
+            ->where('rm_stock_id', $rm->id)
+            ->whereDate('created_at', $date)
+            ->sum('pcs_used');
+
+        // D. KUNCI RILL: Hitung Stok Akhir & Awal di hari itu
+        // Akhir = Stok Sekarang - Masuk Nanti + Keluar Nanti
+        $rm->final_stock = ($rm->stock_pcs) - $in_setelah + $out_setelah;
+        
+        // Awal = Akhir - Masuk Hari Ini + Keluar Hari Ini
+        $rm->initial_stock = $rm->final_stock - $in_period + $out_period;
+        
+        $rm->in_qty = $in_period;
+        $rm->out_qty = $out_period;
+
+        return $rm;
+    });
+
+    return view('Gudang.rm_mutation', compact('rmData', 'availableCustomers', 'customer', 'date'));
+}
+
     /**
      * ✨ FIX: Fungsi Hapus (image_bf54dd) gue balikin rill!
      */
