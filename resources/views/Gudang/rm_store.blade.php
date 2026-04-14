@@ -158,6 +158,7 @@
                                             <div class="text-right">
                                                 <div class="btn-group">
                                                     <button class="btn btn-act btn-sm mr-1" onclick="openAssignPart('{{ $p->id }}', '{{ $p->customer }}')"><i class="fas fa-plus text-primary"></i></button>
+                                                    {{-- ✨ Tombol Edit Unit rill --}}
                                                     <button class="btn btn-act btn-sm mr-1" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{ $p->stock_pcs }}')"><i class="fas fa-edit text-warning"></i></button>
                                                     <form action="{{ route('rm.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Delete Unit?')">@csrf @method('DELETE')<button type="submit" class="btn btn-act btn-sm"><i class="fas fa-trash"></i></button></form>
                                                 </div>
@@ -228,7 +229,7 @@
     </div>
 </div>
 
-{{-- ✨ UPDATED: REGISTER NEW BATCH MODAL rill ✨ --}}
+{{-- REGISTER NEW BATCH MODAL rill --}}
 <div class="modal fade" id="modalTambahRM" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px; overflow: hidden;">
@@ -295,9 +296,35 @@
     </div>
 </div>
 
+{{-- MODAL EDIT UNIT: FIXED rill --}}
+<div class="modal fade" id="modalEditUnit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:15px;">
+            <div class="modal-header bg-warning py-3">
+                <h6>EDIT_UNIT_PROFILE</h6>
+            </div>
+            <form id="editUnitForm" method="POST">
+                @csrf @method('PUT')
+                <div class="modal-body p-4">
+                    <div class="form-group mb-3">
+                        <label class="small font-weight-bold">UNIT_COIL_ID</label>
+                        <input type="text" name="coil_id" id="ed_coil" class="form-control" required>
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-bold">STOCK_QTY (PCS)</label>
+                        <input type="number" name="stock_pcs" id="ed_qty" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="submit" class="btn btn-warning btn-block py-2 font-weight-bold rounded-pill">COMMIT_CHANGES</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- MODAL LAINNYA --}}
 <div class="modal fade" id="modalAssignPart" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-primary text-white py-3"><h6>ASSIGN_COMPONENT</h6></div><form action="{{ route('rm.assign_part') }}" method="POST">@csrf<input type="hidden" name="rm_stock_id" id="ap_rm_id"><div class="modal-body p-4"><div class="form-group mb-0"><label class="small font-weight-bold text-muted">SELECT PART TO ADD</label><select name="part_no" id="ap_select_part" class="form-control" required></select></div></div><div class="modal-footer border-0 p-4 pt-0"><button type="submit" class="btn btn-primary btn-block py-2 font-weight-bold rounded-pill">MAP_COMPONENT</button></div></form></div></div></div>
-<div class="modal fade" id="modalEditUnit" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-warning py-3"><h6>EDIT_UNIT_PROFILE</h6></div><form id="editUnitForm" method="POST">@csrf @method('PUT')<div class="modal-body p-4"><div class="form-group mb-3"><label class="small font-weight-bold">UNIT_COIL_ID</label><input type="text" name="coil_id" id="ed_coil" class="form-control" required></div><div class="form-group mb-0"><label class="small font-weight-bold">STOCK_QTY (PCS)</label><input type="number" name="stock_pcs" id="ed_qty" class="form-control" required></div></div><div class="modal-footer border-0 p-4 pt-0"><button type="submit" class="btn btn-warning btn-block py-2 font-weight-bold rounded-pill">COMMIT_CHANGES</button></div></form></div></div></div>
 <div class="modal fade" id="modalMasterSpec" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border-radius:15px;"><div class="modal-header bg-dark text-white py-3"><h6>SPEC_REGISTRY_MANAGER</h6></div><form action="{{ route('rm.store_master') }}" method="POST">@csrf<div class="modal-body p-4">
     <div class="form-group mb-2"><label class="small font-weight-bold">CLIENT</label><select name="customer_code" class="form-control">@foreach($availableCustomers as $c) <option value="{{ trim($c->code) }}">{{ $c->name }}</option> @endforeach</select></div>
     <div class="form-group mb-2"><label class="small font-weight-bold">ALIAS_CODE</label><input type="text" name="alias_code" class="form-control" required></div>
@@ -312,7 +339,6 @@
         $('#v_target').text(data.target_batch + ' PCS'); $('#v_date').text(data.date);
         let pList = ''; 
         data.parts.forEach(p => { 
-            // ✨ FIX: Menampilkan nama di modal profile rill
             pList += `<div style="font-size: 11px; font-weight: 800; color: #4361ee; font-family: 'JetBrains Mono';">${p.no}</div>
                       <div style="font-size: 10px; color: #64748b; margin-bottom: 8px; text-transform: uppercase;">${p.name}</div>`; 
         });
@@ -323,14 +349,19 @@
     function openAssignPart(rmId, customer) {
         $('#ap_rm_id').val(rmId); $.ajax({ url: "/get-parts-and-specs/" + encodeURIComponent(customer), type: "GET", success: function(res) {
             let opt = ''; $.each(res.parts, function(k, v) { 
-                // ✨ FIX: Menampilkan nama di modal assign part rill
                 opt += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; 
             });
             $('#ap_select_part').html(opt); $('#modalAssignPart').modal('show');
         }});
     }
     
-    function openEditUnit(id, coil, qty) { $('#ed_coil').val(coil); $('#ed_qty').val(qty); $('#editUnitForm').attr('action', '/rm/unit-update/' + id); $('#modalEditUnit').modal('show'); }
+    // ✨ FIX: Sesuaikan rute unit-update rill
+    function openEditUnit(id, coil, qty) { 
+        $('#ed_coil').val(coil); 
+        $('#ed_qty').val(qty.replace(/,/g, '')); 
+        $('#editUnitForm').attr('action', '/rm/unit-update/' + id); 
+        $('#modalEditUnit').modal('show'); 
+    }
     
     $(document).ready(function() {
         $('#autoFilterForm select, #autoFilterForm input[type="date"]').on('change', function() { $(this).closest('form').submit(); });
@@ -346,21 +377,22 @@
                     url: "/get-parts-and-specs/" + encodeURIComponent(c), 
                     type: "GET", 
                     success: function(res) { 
-                        // ✨ FIX: Menampilkan nama di dropdown Spec rill
+                        // ✨ FIX: Menampilkan nama di dropdown Spec tanpa Double rill
                         var s = '<option value="">-- SELECT SPEC --</option>'; 
                         let uniqueSpecs = [];
                         $.each(res.specs, function(k, v) { 
+                            // Key unik berdasarkan Spec + Size biar gak double rill
                             let key = (v.material_type + v.thickness + v.size).replace(/\s+/g, '').toUpperCase();
                             if(!uniqueSpecs.includes(key)){
                                 uniqueSpecs.push(key);
+                                // Label Spec yang bersih rill
                                 s += `<option value="${v.material_type}" data-spec="${v.material_type}" data-size="${v.thickness} X ${v.size}">
-                                        [${v.alias_code}] - ${v.material_type} (${v.material_name})
+                                        [${v.alias_code}] - ${v.material_type} (${v.thickness}x${v.size})
                                       </option>`;
                             }
                         }); 
                         sD.html(s).prop('disabled', false); 
                         
-                        // ✨ FIX: Menampilkan nama di dropdown Part rill
                         var p = ''; 
                         $.each(res.parts, function(k, v) { 
                             p += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; 
