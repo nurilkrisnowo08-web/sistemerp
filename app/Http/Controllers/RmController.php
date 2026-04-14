@@ -367,6 +367,74 @@ public function updateUnit(Request $request, $id)
     }
 }
 
+public function indexRM(Request $request) 
+{
+    $customer = trim($request->customer);
+    // ✨ Range Tanggal rill!
+    $startDate = $request->start_date ?? date('Y-m-d');
+    $endDate = $request->end_date ?? date('Y-m-d');
+
+    // 1. Ambil data RM
+    $materials = DB::table('rm_stocks')
+        ->leftJoin('master_materials as mm', function($join) {
+            $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
+                 ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
+        })
+        ->select('rm_stocks.*', 'mm.alias_code', 'mm.std_qty_batch');
+
+    if ($customer) {
+        $materials->where('rm_stocks.customer', $customer);
+    }
+
+    $groupedMaterials = $materials->get()->groupBy(function($item) {
+        return $item->alias_code ?? (trim($item->spec) . ' (' . str_replace(' ', '', $item->size) . ')');
+    })->map(function($group) use ($startDate, $endDate) {
+        $ids = $group->pluck('id')->toArray();
+        
+        // --- 📊 LOGIKA PERMUTASIAN RILL ---
+        
+        // A. Mutasi DALAM periode filter (IN & OUT)
+        $in_s = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_in');
+        
+        $out = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_used');
+
+        // B. BACKTRACKING: Mutasi SETELAH periode filter sampai detik ini
+        $future_in = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
+            ->whereDate('created_at', '>', $endDate)->sum('pcs_in');
+            
+        $future_out = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
+            ->whereDate('created_at', '>', $endDate)->sum('pcs_used');
+
+        // C. Stok Real-time Detik Ini
+        $liveNow = $group->unique('coil_id')->sum('stock_pcs');
+
+        // D. KUNCI RILL: Hitung Stok Akhir & Awal pada tanggal tersebut
+        // Stok Akhir (di tanggal endDate) = Stok Sekarang - Masuk Masa Depan + Keluar Masa Depan
+        $stockAkhirPeriod = $liveNow - $future_in + $future_out;
+        
+        // Stok Awal (di tanggal startDate) = Stock Akhir - Total IN + Total OUT
+        $stockAwalPeriod = $stockAkhirPeriod - $in_s + $out;
+
+        $rep = $group->first();
+        return (object)[
+            'group_key' => $rep->alias_code ?? $rep->spec,
+            'spec' => $rep->spec,
+            'size' => $rep->size,
+            'alias' => $rep->alias_code,
+            'total_init' => $stockAwalPeriod,
+            'total_in' => $in_s,
+            'total_out' => $out,
+            'total_final' => $stockAkhirPeriod,
+            'details' => $group->unique('coil_id')
+        ];
+    });
+
+    $availableCustomers = DB::table('customers')->get();
+    return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
+}
+
     public function printPO($id) {
         $po = DB::table('supplier_pos')->where('id', $id)->first(); if (!$po) return "Not found.";
         $po->items = DB::table('supplier_po_items')->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')->select('supplier_po_items.*', 'mm.material_type', 'mm.thickness', 'mm.size', 'mm.customer_code as client_code')->where('supplier_po_id', $id)->get();
