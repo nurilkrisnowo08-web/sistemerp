@@ -162,4 +162,68 @@ class WeldingStockController extends Controller
             return back()->with('success', 'Selesai rill! Barang resmi masuk ke Finished Goods.');
         } catch (\Exception $e) { DB::rollBack(); return back()->with('error', 'Gagal: ' . $e->getMessage()); }
     }
+
+    public function history(Request $request)
+    {
+        $customerFilter = $request->customer;
+        $startDate = $request->start_date ?? date('Y-m-d');
+        $endDate = $request->end_date ?? date('Y-m-d');
+        $clients = DB::table('customers')->get();
+
+        // 1. Ambil data master WIP Welding (Biar sisa 0 tetep kelacak rill!)
+        $query = DB::table('finished_goods')
+            ->select('part_no', 'part_name', 'customer', 'welding_stock');
+
+        if ($customerFilter && $customerFilter != 'ALL') {
+            $query->where('customer', trim($customerFilter));
+        }
+
+        $history = $query->get()->map(function($item) use ($startDate, $endDate) {
+            $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
+
+            // A. IN Period (Stamping -> Welding) rill
+            $in_period = DB::table('production_logs')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('process_type', 'WELDING')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty');
+
+            // B. OUT Period (Pengerjaan Las Selesai -> Masuk ke FG)
+            $out_period = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('status ENUM', 'COMPLETED')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty_ok');
+
+            // C. BACKTRACKING: Cari mutasi SETELAH endDate sampai Detik Ini
+            $future_in = DB::table('production_logs')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('process_type', 'WELDING')
+                ->whereDate('created_at', '>', $endDate)
+                ->sum('qty');
+
+            $future_out = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('status ENUM', 'COMPLETED')
+                ->whereDate('created_at', '>', $endDate)
+                ->sum('qty_ok');
+
+            // D. HITUNG RILL!
+            // Stok Akhir (di tanggal endDate) = Stok Sekarang - Masuk Masa Depan + Keluar Masa Depan
+            $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
+            
+            // Stok Awal (di tanggal startDate) = Stok Akhir - Masuk Hari Ini + Keluar Hari Ini
+            $item->stock_awal = $item->stock_akhir - $in_period + $out_period;
+            
+            $item->total_in = $in_period;
+            $item->total_out = $out_period;
+
+            return $item;
+        })->filter(function($i) {
+            // Tampilkan hanya yang ada pergerakan atau ada stok rill
+            return ($i->stock_awal > 0 || $i->total_in > 0 || $i->total_out > 0 || $i->stock_akhir > 0);
+        });
+
+        return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
+    }
 }
