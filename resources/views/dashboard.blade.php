@@ -1,7 +1,7 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Roboto+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 
 <style>
     :root {
@@ -11,179 +11,227 @@
     }
     .main-terminal { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); min-height: 100vh; padding: 1.5rem; }
 
-    /* ✨ ANIMASI LASER STREAM (HEADER) */
+    /* ✨ ANIMASI LASER */
     @keyframes laserFlow { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
     .laser-line { height: 1px; background: linear-gradient(90deg, transparent, var(--ind-cyan), transparent); width: 100%; position: absolute; animation: laserFlow 2s linear infinite; }
     
-    /* 🚨 CRITICAL TICKER (ALIRAN DATA KRITIS) */
-    .ticker-wrap { background: #fff; border: 1px solid #fee2e2; border-radius: 12px; overflow: hidden; padding: 10px 0; margin-bottom: 2rem; box-shadow: 0 5px 15px rgba(239, 68, 68, 0.05); }
+    /* 🚨 TICKER */
+    .ticker-wrap { background: #fff; border: 1px solid #fee2e2; border-radius: 12px; overflow: hidden; padding: 10px 0; margin-bottom: 2rem; }
     .ticker-move { display: flex; width: max-content; animation: ticker 30s linear infinite; }
     .ticker-item { padding: 0 30px; font-weight: 800; font-size: 11px; color: var(--ind-danger); display: flex; align-items: center; text-transform: uppercase; }
     @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 
-    /* ✨ SCANNING TABLE EFFECT */
-    @keyframes scan { 0% { top: -100%; } 100% { top: 100%; } }
-    .table-scan { position: relative; overflow: hidden; }
-    .table-scan::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 50px; background: linear-gradient(180deg, transparent, rgba(6, 182, 212, 0.05), transparent); animation: scan 3s linear infinite; pointer-events: none; }
+    /* 📊 ANALYSIS PANEL rill */
+    .analysis-panel { 
+        display: none; background: #fff; border-radius: 24px; padding: 25px; 
+        margin-bottom: 20px; border: 1px solid #e2e8f0; box-shadow: 0 15px 40px rgba(0,0,0,0.05); 
+        animation: fadeInDown 0.4s ease-out;
+    }
 
-    /* UI CARDS & FLOW */
-    .tactical-card { background: #fff; border: none; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); transition: all 0.4s; position: relative; overflow: hidden; text-decoration: none !important; }
-    .tactical-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(59, 130, 246, 0.1); }
-    .stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #94a3b8; }
-    .stat-value { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 800; color: var(--ind-navy); }
+    .tactical-card { 
+        background: #fff; border: none; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+        transition: all 0.4s; position: relative; overflow: hidden; cursor: pointer;
+    }
+    .tactical-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(59, 130, 246, 0.1); }
+    
+    .btn-analysis {
+        font-size: 9px; font-weight: 800; padding: 4px 12px; border-radius: 50px;
+        background: var(--ind-navy); color: #fff; border: none; transition: 0.3s;
+    }
+    .btn-analysis:hover { background: var(--ind-blue); transform: scale(1.1); }
 
-    .flow-path { background: var(--ind-navy); border-radius: 30px; padding: 40px; position: relative; overflow: hidden; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3); border: 1px solid rgba(255,255,255,0.1); }
-    .flow-step { text-align: center; color: #fff; z-index: 2; position: relative; flex: 1; }
-    @keyframes gearRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .gear-anim { animation: gearRotate 4s linear infinite; display: inline-block; color: var(--ind-warning); }
+    .stat-value { font-family: 'Roboto Mono', monospace; font-size: 32px; font-weight: 800; }
+    
+    .table-analysis { font-size: 11px; }
+    .table-analysis th { text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; border: none; }
 </style>
 
-<div class="container-fluid main-terminal text-dark anim-fade-up">
+<div class="container-fluid main-terminal text-dark">
     
-    {{-- 🛸 1. HEADER HUD WITH LASER STREAM --}}
-    <div class="bg-white p-4 mb-4 shadow-sm border-bottom position-relative overflow-hidden" style="border-radius: 24px; margin-top: -10px;">
-        <div class="laser-line" style="top: 0; animation-delay: 0s;"></div>
-        <div class="laser-line" style="bottom: 0; animation-delay: 1s; opacity: 0.5;"></div>
-        
+    {{-- 🛸 HEADER HUD --}}
+    <div class="bg-white p-4 mb-4 shadow-sm border-bottom position-relative overflow-hidden" style="border-radius: 24px;">
+        <div class="laser-line" style="top: 0;"></div>
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h1 class="h3 mb-0 text-gray-900 font-weight-extrabold uppercase" style="letter-spacing: -1px;">
-                    Intelligence <span style="color: var(--ind-blue)">Command Center</span>
-                </h1>
-                <p class="text-muted font-weight-bold mb-0 small uppercase"><i class="fas fa-microchip mr-2 text-primary"></i> SYSTEM_OPS: <span class="text-success">ONLINE</span> // PIC: Musa Wahab</p>
+                <h1 class="h3 mb-0 font-weight-extrabold uppercase">Intelligence <span class="text-primary">Command Center</span></h1>
+                <p class="text-muted font-weight-bold mb-0 small uppercase">L-TIME: {{ date('H:i:s') }} // ANALYTICS_READY_rill</p>
             </div>
-            <div class="bg-light px-4 py-2 rounded-pill font-weight-bold" style="font-family: 'Roboto Mono';">
-                <i class="far fa-clock text-primary mr-2"></i>{{ date('H:i:s') }}
+            <div class="dropdown">
+                <button class="btn btn-dark rounded-pill px-4 font-weight-bold dropdown-toggle" data-toggle="dropdown">QUICK_NAV</button>
+                <div class="dropdown-menu dropdown-menu-right border-0 shadow-lg" style="border-radius: 15px;">
+                    <a class="dropdown-item font-weight-bold py-2" href="{{ route('rm.store') }}">RAW_MATERIAL</a>
+                    <a class="dropdown-item font-weight-bold py-2" href="{{ route('welding.index') }}">WELDING_WIP</a>
+                    <a class="dropdown-item font-weight-bold py-2" href="{{ route('fg.index') }}">FINISHED_GOODS</a>
+                </div>
             </div>
         </div>
     </div>
 
-    {{-- 🚨 2. CRITICAL LIVE TICKER (ALIRAN DATA CRITICAL) --}}
+    {{-- 🚨 LIVE TICKER --}}
     @if(count($permintaanStok) > 0)
-    <div class="ticker-wrap">
-        <div class="ticker-move">
-            @foreach($permintaanStok->merge($permintaanStok) as $p) {{-- Merge biar loop nyambung --}}
-            <div class="ticker-item">
-                <i class="fas fa-exclamation-circle mr-2"></i> 
-                ALERT: STOCK [{{ $p->part_no }}] - {{ $p->part_name }} ({{ $p->customer_code ?? 'AMK' }}) IS CRITICAL! ACTUAL: {{ $p->actual_stock }}
-            </div>
-            @endforeach
-        </div>
-    </div>
+    <div class="ticker-wrap"><div class="ticker-move">
+        @foreach($permintaanStok->merge($permintaanStok) as $p)
+        <div class="ticker-item"><i class="fas fa-exclamation-circle mr-2"></i> CRITICAL: {{ $p->part_no }} - {{ $p->part_name }} (STOK: {{ $p->actual_stock }})</div>
+        @endforeach
+    </div></div>
     @endif
 
-    {{-- 🚀 3. TACTICAL SUMMARY --}}
-    <div class="row mb-5">
-        <a href="{{ route('parts.index') }}" class="col-md-3 tactical-card p-4 mx-2 flex-fill" style="border-left: 6px solid var(--ind-blue);">
-            <div class="stat-label">Inventory Assets</div>
-            <div class="stat-value roll-number" data-target="{{ $totalParts }}">0</div>
-            <div class="small font-weight-bold text-muted mt-2"><i class="fas fa-database mr-1"></i> Part Registered</div>
-        </a>
+    {{-- 🚀 TACTICAL SUMMARY CARDS --}}
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="tactical-card p-4 h-100" onclick="toggleAnalysis('inventory')">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="stat-label uppercase font-weight-bold small text-muted">Assets</div>
+                    <button class="btn-analysis">ANALYSIS</button>
+                </div>
+                <div class="stat-value text-dark roll-number" data-target="{{ $totalParts }}">0</div>
+                <div class="small font-weight-bold text-muted uppercase mt-2">Parts Registered</div>
+            </div>
+        </div>
 
-        <a href="{{ route('fg.index', ['status' => 'crit']) }}" class="col-md-3 tactical-card p-4 mx-2 flex-fill" style="border-left: 6px solid var(--ind-danger);">
-            <div class="stat-label text-danger">Stock Critical</div>
-            <div class="stat-value text-danger roll-number" data-target="{{ $critCount }}">0</div>
-            <div class="small font-weight-bold text-danger mt-2 alert-pulse"><i class="fas fa-exclamation-triangle mr-1"></i> Need Production</div>
-        </a>
+        <div class="col-md-3 mb-3">
+            <div class="tactical-card p-4 h-100" onclick="toggleAnalysis('critical')">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="stat-label uppercase font-weight-bold small text-danger">Shortage</div>
+                    <button class="btn-analysis">ANALYSIS</button>
+                </div>
+                <div class="stat-value text-danger roll-number" data-target="{{ $critCount }}">0</div>
+                <div class="small font-weight-bold text-danger uppercase mt-2 alert-pulse">Need Production</div>
+            </div>
+        </div>
 
-        <a href="{{ route('fg.index') }}" class="col-md-3 tactical-card p-4 mx-2 flex-fill" style="border-left: 6px solid var(--ind-success);">
-            <div class="stat-label text-success">Finished Goods In</div>
-            <div class="stat-value text-success">+<span class="roll-number" data-target="{{ $todayProd }}">0</span></div>
-            <div class="small font-weight-bold text-muted mt-2"><i class="fas fa-warehouse mr-1"></i> Production Today</div>
-        </a>
+        <div class="col-md-3 mb-3">
+            <div class="tactical-card p-4 h-100" onclick="toggleAnalysis('production')">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="stat-label uppercase font-weight-bold small text-success">Finished</div>
+                    <button class="btn-analysis">ANALYSIS</button>
+                </div>
+                <div class="stat-value text-success">+<span class="roll-number" data-target="{{ $todayProd }}">0</span></div>
+                <div class="small font-weight-bold text-muted uppercase mt-2">Units Today</div>
+            </div>
+        </div>
 
-        <a href="{{ route('delivery.index') }}" class="col-md-3 tactical-card p-4 mx-2 flex-fill" style="border-left: 6px solid var(--ind-warning);">
-            <div class="stat-label text-warning">Shipment Out</div>
-            <div class="stat-value text-warning">-<span class="roll-number" data-target="{{ $todayDelv }}">0</span></div>
-            <div class="small font-weight-bold text-muted mt-2"><i class="fas fa-truck mr-1"></i> Units Dispatched</div>
-        </a>
-    </div>
-
-    {{-- 🌊 4. PO FLOW SYSTEM --}}
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="flow-path d-flex align-items-center justify-content-between">
-                <a href="{{ route('po-customer.index') }}" class="flow-step text-decoration-none">
-                    <i class="fas fa-file-invoice fa-2x mb-3 text-primary d-block"></i>
-                    <div class="stat-label text-gray-400">Total PO</div>
-                    <div class="h4 font-weight-extrabold text-white mb-0">{{ $totalPO }} <small style="font-size: 10px; color: var(--ind-cyan);">ACTIVE</small></div>
-                </a>
-                <div class="flow-line-container"><div class="flow-pulse"></div></div>
-                <a href="{{ route('produksi.index') }}" class="flow-step text-decoration-none">
-                    <i class="fas fa-desktop fa-2x mb-3 gear-anim d-block"></i>
-                    <div class="stat-label text-gray-400">Live Monitoring</div>
-                    <div class="h4 font-weight-extrabold text-warning mb-0">PRODUKSI</div>
-                </a>
-                <div class="flow-line-container"><div class="flow-pulse" style="animation-delay: 1.5s;"></div></div>
-                <a href="{{ route('fg.index') }}" class="flow-step text-decoration-none">
-                    <i class="fas fa-warehouse fa-2x mb-3 text-success d-block"></i>
-                    <div class="stat-label text-gray-400">Inventory FG</div>
-                    <div class="h4 font-weight-extrabold text-success mb-0">AVAILABLE</div>
-                </a>
-                <div class="flow-line-container"><div class="flow-pulse" style="animation-delay: 2.5s;"></div></div>
-                <a href="{{ route('delivery.index') }}" class="flow-step text-decoration-none">
-                    <i class="fas fa-paper-plane fa-2x mb-3 text-danger d-block"></i>
-                    <div class="stat-label text-gray-400">Pending SJ</div>
-                    <div class="h4 font-weight-extrabold text-danger mb-0">{{ $pendingDelvCount }} <small style="font-size: 10px;">MANIFEST</small></div>
-                </a>
+        <div class="col-md-3 mb-3">
+            <div class="tactical-card p-4 h-100" onclick="toggleAnalysis('delivery')">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="stat-label uppercase font-weight-bold small text-warning">Dispatched</div>
+                    <button class="btn-analysis">ANALYSIS</button>
+                </div>
+                <div class="stat-value text-warning">-<span class="roll-number" data-target="{{ $todayDelv }}">0</span></div>
+                <div class="small font-weight-bold text-muted uppercase mt-2">Shipment Today</div>
             </div>
         </div>
     </div>
 
-    {{-- 📊 5. CRITICAL TABLE & CHART --}}
-    <div class="row">
-        <div class="col-lg-6 mb-4">
-            <div class="tactical-card h-100 p-0 table-scan">
-                <div class="p-4 border-bottom bg-danger d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-white small uppercase tracking-widest"><i class="fas fa-bolt mr-2"></i> Critical Shortage Ledger</h6>
-                    <span class="badge bg-white text-danger font-weight-bold">{{ count($permintaanStok) }} PARTS</span>
-                </div>
-                <div class="table-responsive" style="max-height: 380px;">
-                    <table class="table table-ledger text-center mb-0">
-                        <thead>
-                            <tr><th>Customer</th><th class="text-left">Part Identity</th><th>Stock</th></tr>
-                        </thead>
+    {{-- 📊 ANALYSIS DROP-PANELS rill --}}
+    
+    <div id="panel-delivery" class="analysis-panel animate__animated">
+        <div class="row">
+            <div class="col-md-7 border-right">
+                <h6 class="font-weight-bold mb-4 uppercase tracking-widest"><i class="fas fa-chart-line mr-2 text-warning"></i> Delivery Performance Trend</h6>
+                <div style="height: 250px;"><canvas id="deliveryChart"></canvas></div>
+            </div>
+            <div class="col-md-5">
+                <h6 class="font-weight-bold mb-3 uppercase tracking-widest"><i class="fas fa-shipping-fast mr-2 text-warning"></i> Customer Dispatch List</h6>
+                <div class="table-responsive" style="max-height: 250px;">
+                    <table class="table table-analysis">
+                        <thead><tr><th>Client</th><th>Part</th><th class="text-right">Qty</th></tr></thead>
                         <tbody>
-                            @foreach($permintaanStok as $p)
+                            {{-- Contoh looping data dari controller rill --}}
+                            @forelse($deliveryToday as $d)
                             <tr>
-                                <td><span class="badge badge-light border text-primary">{{ $p->customer_code ?? 'AMK' }}</span></td>
-                                <td class="text-left">
-                                    <div class="font-weight-bold" style="font-family: 'Roboto Mono'; font-size: 11px;">{{ $p->part_no }}</div>
-                                    <div class="small text-muted" style="font-size: 9px;">{{ Str::limit($p->part_name, 25) }}</div>
-                                </td>
-                                <td>
-                                    <div class="text-danger font-weight-extrabold">{{ number_format($p->actual_stock) }}</div>
-                                    <div class="text-muted small" style="font-size: 9px;">MIN: {{ $p->min_stock_pcs }}</div>
-                                </td>
+                                <td class="font-weight-bold">{{ $d->customer_name }}</td>
+                                <td>{{ $d->part_no }}</td>
+                                <td class="text-right text-danger font-weight-bold">-{{ number_format($d->qty_delivery) }}</td>
                             </tr>
-                            @endforeach
+                            @empty
+                            <tr><td colspan="3" class="text-center py-4 text-muted">No dispatches recorded today.</td></tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-
-        <div class="col-lg-6 mb-4">
-            <div class="tactical-card h-100 p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h6 class="font-weight-bold text-dark small uppercase tracking-widest"><i class="fas fa-chart-area mr-2 text-primary"></i> Focus Analytics</h6>
-                    <form action="{{ route('dashboard') }}" method="GET" id="chartFilter">
-                        <select name="customer" class="filter-select shadow-sm" onchange="document.getElementById('chartFilter').submit()">
-                            <option value="">-- ALL CUSTOMERS --</option>
-                            @foreach($customersList as $cust)
-                                <option value="{{ $cust }}" {{ $selectedCustomer == $cust ? 'selected' : '' }}>{{ $cust }}</option>
-                            @endforeach
-                        </select>
-                    </form>
-                </div>
-                <div style="height: 280px;"><canvas id="dbChart"></canvas></div>
-            </div>
-        </div>
     </div>
+
+    <div id="panel-inventory" class="analysis-panel animate__animated">
+        <h6 class="font-weight-bold mb-4 uppercase"><i class="fas fa-boxes mr-2 text-primary"></i> Inventory Distribution by Customer</h6>
+        <div style="height: 250px;"><canvas id="inventoryPieChart"></canvas></div>
+    </div>
+
+    {{-- 📊 MAIN STOCK CHART --}}
+    <div class="tactical-card p-4 mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="font-weight-bold m-0 uppercase tracking-widest"><i class="fas fa-warehouse mr-2 text-primary"></i> Live Inventory Focus</h6>
+            <form action="{{ route('dashboard') }}" method="GET" id="chartFilter">
+                <select name="customer" class="btn btn-light btn-sm rounded-pill font-weight-bold px-3 border shadow-sm" onchange="this.form.submit()">
+                    <option value="">-- ALL CLIENTS --</option>
+                    @foreach($customersList as $cust)
+                        <option value="{{ $cust }}" {{ $selectedCustomer == $cust ? 'selected' : '' }}>{{ $cust }}</option>
+                    @endforeach
+                </select>
+            </form>
+        </div>
+        <div style="height: 350px;"><canvas id="dbChart"></canvas></div>
+    </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    // 💡 Toggle Analysis Function rill
+    function toggleAnalysis(type) {
+        // Hide all panels first
+        document.querySelectorAll('.analysis-panel').forEach(p => {
+            if(p.id !== 'panel-' + type) p.style.display = 'none';
+        });
+        
+        const target = document.getElementById('panel-' + type);
+        if(target.style.display === 'block') {
+            target.style.display = 'none';
+        } else {
+            target.style.display = 'block';
+            if(type === 'delivery') initDeliveryChart();
+            if(type === 'inventory') initInventoryChart();
+        }
+    }
+
+    // 📈 Chart Initialization functions rill
+    function initDeliveryChart() {
+        const ctx = document.getElementById('deliveryChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: {!! json_encode($delvDates ?? []) !!}, // Hari ke 1 - 30 rill
+                datasets: [{
+                    label: 'Units Dispatched',
+                    data: {!! json_encode($delvQtys ?? []) !!},
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function initInventoryChart() {
+        const ctx = document.getElementById('inventoryPieChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: {!! json_encode($labels ?? []) !!},
+                datasets: [{
+                    data: {!! json_encode($actStockData ?? []) !!},
+                    backgroundColor: ['#3b82f6', '#10b981', '#f43f5e', '#f59e0b', '#8b5cf6']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+        });
+    }
+
+    // Existing Scripts (Roll Numbers & Main Chart)
     document.addEventListener("DOMContentLoaded", function() {
         const rollNumbers = document.querySelectorAll('.roll-number');
         rollNumbers.forEach(el => {
@@ -196,17 +244,17 @@
             }, 30);
         });
 
-        const ctx = document.getElementById('dbChart').getContext('2d');
-        new Chart(ctx, {
+        const ctxMain = document.getElementById('dbChart').getContext('2d');
+        new Chart(ctxMain, {
             type: 'bar',
             data: {
                 labels: {!! json_encode($labels) !!},
                 datasets: [
-                    { label: 'ACTUAL', data: {!! json_encode($actStockData) !!}, backgroundColor: 'rgba(59, 130, 246, 0.85)', borderRadius: 10 },
-                    { label: 'MIN', data: {!! json_encode($minStockData) !!}, backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: '#ef4444', borderWidth: 2, type: 'line', pointRadius: 0, tension: 0.4 }
+                    { label: 'ACTUAL', data: {!! json_encode($actStockData) !!}, backgroundColor: 'rgba(67, 97, 238, 0.8)', borderRadius: 12 },
+                    { label: 'MIN', data: {!! json_encode($minStockData) !!}, borderColor: '#ef4444', type: 'line', borderWidth: 2, pointRadius: 0 }
                 ]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { family: 'Roboto Mono', size: 8 }, maxRotation: 45, minRotation: 45 } }, y: { beginAtZero: true } } }
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
         });
     });
 </script>
