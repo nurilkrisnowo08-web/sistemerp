@@ -234,7 +234,6 @@
         <div class="terminal-side">
             <div class="glass-terminal animate__animated animate__zoomIn">
                 <div class="terminal-header">
-                    <img src="{{ asset('public/admin/img/logo-asalta.png') }}" alt="Logo">
                     <h2>MRP ACCESS</h2>
                     <p>Secure Terminal Entry</p>
                 </div>
