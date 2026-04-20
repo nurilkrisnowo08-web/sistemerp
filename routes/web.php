@@ -395,10 +395,22 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-Route::name('welding.')->group(function() {
-    // Kalau ditaruh di sini, namanya jadi welding.welding.cancel_deploy
-    Route::delete('/...', [Controller::class, '...'])->name('welding.cancel_deploy'); 
+// 1. Rute utama terminal
+Route::get('/inventory-welding', [App\Http\Controllers\WeldingStockController::class, 'index'])->name('welding.index');
+
+// 2. Rute Cancel Deploy (Gue pake POST biar kebal filter hosting rill!)
+Route::post('/inventory-welding/cancel-deploy/{id}', [App\Http\Controllers\WeldingStockController::class, 'cancelDeploy'])->name('welding.cancel_deploy');
+
+// 3. Rute Start & Finish
+Route::put('/welding/start/{id}', [App\Http\Controllers\WeldingStockController::class, 'startWelding'])->name('welding.start');
+Route::put('/welding/finish/{id}', [App\Http\Controllers\WeldingStockController::class, 'finishWelding'])->name('welding.finish');
+Route::post('/welding/deploy', [App\Http\Controllers\WeldingStockController::class, 'deployWelding'])->name('welding.deploy');
+
+// 4. ✨ TOMBOL RESET CACHE (WAJIB ADA RILL!)
+Route::get('/bersihin-rill', function() {
+    \Artisan::call('route:clear');
+    \Artisan::call('view:clear');
+    \Artisan::call('config:clear');
+    return "Cache Bersih Rill! Sekarang buka lagi terminal welding lu.";
 });
-Route::delete('/inventory-welding/cancel-deploy/{id}', [App\Http\Controllers\WeldingStockController::class, 'cancelDeploy'])
-    ->name('welding.cancel_deploy');
 });
