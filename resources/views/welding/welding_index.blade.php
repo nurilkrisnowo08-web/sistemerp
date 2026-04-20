@@ -13,23 +13,36 @@
     
     .heading-hub { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(135deg, var(--brand-primary), #7209b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    /* 📈 LEDGER TABLE PREMIUM rill */
+    /* 📈 LEDGER TABLE */
     .ledger-container { background: #fff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 30px; }
     .table-ledger thead th { background: #f8fafc; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 15px; border-bottom: 2px solid #edf2f7; }
     .table-ledger td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; }
     
-    /* 🏷️ PT NAVIGATION SULTAN (Ini yang lu minta rill!) */
-    .nav-section { background: #fff; padding: 15px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 25px; border: 1px solid #e2e8f0; }
+    /* 🏷️ PT NAVIGATION SULTAN (FIX SAMAR RILL!) */
+    .nav-section { background: #fff; padding: 18px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 25px; border: 1px solid #e2e8f0; }
+    
     .nav-pills .nav-link { 
-        border-radius: 12px; padding: 12px 20px; font-weight: 800; color: #64748b; 
-        font-size: 12px; transition: 0.3s; border: 2px solid transparent; margin-right: 10px;
-        background: #f8fafc; display: flex; align-items: center;
+        border-radius: 12px; padding: 12px 24px; font-weight: 800; 
+        transition: 0.3s; margin-right: 12px;
+        /* Inactive State: Biar Gak Samar rill! */
+        background: #f1f5f9; 
+        color: #475569 !important; 
+        border: 2px solid #e2e8f0;
+        display: flex; align-items: center;
     }
+    
     .nav-pills .nav-link.active { 
-        background: var(--dark-surface) !important; color: #fff !important; 
-        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3); border-color: var(--brand-primary);
+        /* Active State: Galak rill! */
+        background: var(--dark-surface) !important; 
+        color: #fff !important; 
+        border-color: var(--brand-primary);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.3);
     }
-    .nav-pills .nav-link:hover:not(.active) { background: #edf2f7; border-color: #cbd5e1; }
+
+    .nav-pills .nav-link:hover:not(.active) { 
+        background: #e2e8f0; 
+        border-color: #cbd5e1; 
+    }
 
     /* 🔴 NOTIF BADGE rill */
     .count-badge {
@@ -38,7 +51,7 @@
         box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
     }
 
-    /* 🛠️ WORK CARDS rill */
+    /* 🛠️ WORK CARDS */
     .work-card { 
         background: #fff; border-radius: 24px; border: 1px solid #eef2f6; 
         padding: 24px; margin-bottom: 16px; transition: 0.3s; 
@@ -49,6 +62,9 @@
     .qty-display { font-family: 'Orbitron'; font-weight: 800; font-size: 32px; color: var(--dark-surface); line-height: 1; }
 
     .btn-action-rill { border-radius: 15px; font-weight: 900; letter-spacing: 0.5px; transition: 0.3s; padding: 12px 25px; }
+
+    .sultan-input { border-radius: 15px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
+    .sultan-input:focus { border-color: var(--brand-primary); box-shadow: none; background: #f8faff; }
 
     @media (max-width: 768px) {
         .work-card { flex-direction: column; text-align: center; gap: 15px; }
@@ -118,11 +134,10 @@
 
     {{-- 📑 PT NAVIGATION WITH BADGES --}}
     <div class="nav-section animate__animated animate__fadeInUp">
-        <h6 class="font-weight-bold text-uppercase text-muted mb-3" style="font-size: 10px; letter-spacing: 1px;">Select Customer Line:</h6>
+        <h6 class="font-weight-bold text-uppercase text-muted mb-3" style="font-size: 10px; letter-spacing: 1px; padding-left: 5px;">Select Customer Line:</h6>
         <ul class="nav nav-pills" id="ptTab">
             @foreach($availableCustomers as $index => $customer)
             @php 
-                // Hitung jumlah barang yang lagi diproses di customer ini rill!
                 $count = $activeWelding->where('customer', $customer)->count(); 
                 $slugPT = Str::slug($customer);
             @endphp
@@ -179,7 +194,6 @@
             <div class="text-center py-5 bg-white rounded-24 border-2 border-dashed">
                 <i class="fas fa-box-open fa-3x text-light mb-3"></i>
                 <p class="text-muted font-weight-bold mb-0">No active batches for {{ $customer }} rill.</p>
-                <small class="text-muted">Take some components from the ledger above to begin rill.</small>
             </div>
             @endforelse
         </div>
@@ -187,40 +201,34 @@
     </div>
 </div>
 
-{{-- 🏁 MODAL FINISH --}}
+{{-- MODALS TETEP SAMA RILL --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 30px;">
-            <div class="modal-header bg-success text-white p-4">
-                <h5 class="modal-title font-weight-extrabold uppercase"><i class="fas fa-check-circle mr-3"></i> Quality Gate rill</h5>
-            </div>
+            <div class="modal-header bg-success text-white p-4"><h5 class="modal-title font-weight-extrabold uppercase">Quality Gate rill</h5></div>
             <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-4 text-center">
-                    <small class="text-muted font-weight-bold text-uppercase">Final Inspection for:</small>
                     <h2 class="font-weight-extrabold text-dark mb-4" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }} PCS</h2>
                     <div class="row">
                         <div class="col-6">
                             <label class="small font-weight-bold text-success uppercase">Qty OK</label>
-                            <input type="number" name="qty_ok" class="form-control text-center sultan-input" value="{{ $aw->qty_masuk }}" required style="font-size: 20px;">
+                            <input type="number" name="qty_ok" class="form-control text-center sultan-input" value="{{ $aw->qty_masuk }}" required>
                         </div>
                         <div class="col-6">
                             <label class="small font-weight-bold text-danger uppercase">Qty NG</label>
-                            <input type="number" name="qty_ng" class="form-control text-center sultan-input" value="0" required style="font-size: 20px;">
+                            <input type="number" name="qty_ng" class="form-control text-center sultan-input" value="0" required>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">FINALIZE & TRANSFER TO FG rill</button>
-                </div>
+                <div class="modal-footer border-0 p-4"><button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">TRANSFER TO FG rill</button></div>
             </form>
         </div>
     </div>
 </div>
 @endforeach
 
-{{-- 🚀 MODAL DEPLOY --}}
 <div class="modal fade" id="modalDeployWelding" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 30px;">
@@ -228,19 +236,15 @@
             <form action="{{ route('welding.deploy') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4">
-                    <label class="small font-weight-bold text-muted uppercase">Select Component</label>
                     <select name="part_no" id="part_select" class="form-control sultan-input mb-4" required>
                         <option value="" disabled selected>-- CHOOSE PART --</option>
                         @foreach($inventoryWelding as $inv)
                             <option value="{{ $inv->part_no }}">{{ $inv->part_no }} (STOCK: {{ $inv->live_stock }})</option>
                         @endforeach
                     </select>
-                    <label class="small font-weight-bold text-muted uppercase text-center d-block">Quantity to Take</label>
                     <input type="number" name="qty_ambil" class="form-control text-center sultan-input" required style="font-size: 32px; height: 80px;" placeholder="0">
                 </div>
-                <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">DEPLOY TO TERMINAL rill</button>
-                </div>
+                <div class="modal-footer border-0 p-4"><button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">DEPLOY TO TERMINAL rill</button></div>
             </form>
         </div>
     </div>
