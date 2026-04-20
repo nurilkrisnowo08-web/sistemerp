@@ -32,18 +32,16 @@
     .sultan-input { border-radius: 15px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
     .sultan-input:focus { border-color: var(--brand-primary); box-shadow: none; background: #f8faff; }
 
-    .btn-action-rill { border-radius: 12px; font-weight: 800; font-size: 10px; letter-spacing: 1px; transition: 0.3s; padding: 10px 18px; text-transform: uppercase; }
+    .btn-action-rill { border-radius: 12px; font-weight: 800; font-size: 10px; letter-spacing: 1px; transition: 0.3s; padding: 10px 25px; text-transform: uppercase; }
     
-    /* 📱 MOBILE OPTIMIZATION rill */
     @media (max-width: 768px) {
         .work-card { flex-direction: column; text-align: center; gap: 15px; }
-        .col-md-2, .col-md-4 { width: 100%; border: none !important; padding: 0 !important; }
         .qty-display { font-size: 32px; }
     }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
-    {{-- HEADER rill --}}
+    {{-- HEADER HUB rill --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
         <div>
             <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v2.2</span></h1>
@@ -58,8 +56,8 @@
             <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg mr-2" style="background: var(--brand-primary); border:none;" data-toggle="modal" data-target="#modalDeployWelding">
                 <i class="fas fa-plus-circle mr-2"></i> DEPLOY
             </button>
-            <div class="bg-white px-4 py-2 rounded-2xl shadow-sm border">
-                <small class="text-muted font-weight-bold d-block uppercase" style="font-size: 8px;">Date</small>
+            <div class="bg-white px-4 py-2 rounded-2xl shadow-sm border text-right">
+                <small class="text-muted font-weight-bold d-block uppercase" style="font-size: 8px;">Shift Date</small>
                 <span class="font-weight-bold text-dark" style="font-family: 'JetBrains Mono'; font-size: 14px;">{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</span>
             </div>
         </div>
@@ -71,7 +69,7 @@
         </div>
     @endif
 
-    {{-- LEDGER TABLE rill --}}
+    {{-- LEDGER TABLE (Tanpa fitur return ke RM rill!) --}}
     <div class="ledger-container animate__animated animate__fadeInUp">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
@@ -83,7 +81,7 @@
                         <th class="text-danger">OUT</th>
                         <th>LIVE</th>
                         <th>PLT</th>
-                        <th class="text-right pr-4">COMMAND</th>
+                        <th class="text-right pr-4">COMMAND rill</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -99,14 +97,11 @@
                         <td class="col-live">{{ number_format($inv->live_stock) }}</td>
                         <td><span class="badge badge-light border px-2 py-1 font-weight-bold">{{ $inv->run }}x</span></td>
                         <td class="text-right pr-4">
-                            <div class="btn-group">
-                                <button class="btn btn-outline-primary btn-action-rill mr-1" onclick="quickTake('{{ $inv->part_no }}')">TAKE</button>
-                                <button class="btn btn-outline-danger btn-action-rill" onclick="openReturnModal('{{ $inv->part_no }}', '{{ $inv->live_stock }}')">RETURN</button>
-                            </div>
+                            <button class="btn btn-outline-primary btn-action-rill" onclick="quickTake('{{ $inv->part_no }}')">TAKE rill</button>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="7" class="py-5 text-muted">-- NO DATA --</td></tr>
+                    <tr><td colspan="7" class="py-5 text-muted">-- NO DATA AVAILABLE --</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -144,7 +139,7 @@
                 </div>
                 <div class="col-md-2 text-center">
                     @if($aw->batch_status == 'PENDING')
-                        <span class="badge badge-warning py-2 px-3 rounded-pill font-weight-bold">WAITING rill</span>
+                        <span class="badge badge-warning py-2 px-3 rounded-pill font-weight-bold">WAITING</span>
                     @else
                         <span class="badge badge-info py-2 px-3 rounded-pill font-weight-bold animate-pulse"><i class="fas fa-sync-alt fa-spin mr-1"></i> WELDING...</span>
                     @endif
@@ -161,42 +156,14 @@
                 </div>
             </div>
             @empty
-            <div class="text-center py-5 bg-white rounded-24 border border-dashed">No active batches.</div>
+            <div class="text-center py-5 bg-white rounded-24 border border-dashed">No active batches for this client.</div>
             @endforelse
         </div>
         @endforeach
     </div>
 </div>
 
-{{-- MODAL RETURN rill --}}
-<div class="modal fade" id="modalReturnWIP" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
-            <div class="modal-header bg-danger text-white p-4">
-                <h5 class="modal-title font-weight-extrabold uppercase"><i class="fas fa-undo-alt mr-3"></i> Return to Store rill</h5>
-            </div>
-            <form action="{{ route('welding.return') }}" method="POST">
-                @csrf
-                <div class="modal-body p-4">
-                    <input type="hidden" name="part_no" id="return_part_no">
-                    <div class="bg-light p-4 rounded-24 mb-4 text-center border">
-                        <small class="text-muted font-weight-extrabold uppercase">Live Stock in WIP:</small>
-                        <h2 id="display_return_stock" class="font-weight-extrabold text-danger mb-0" style="font-family: 'Orbitron';">0 PCS</h2>
-                    </div>
-                    <div class="form-group text-center">
-                        <label class="small font-weight-extrabold text-muted uppercase">Qty to Return</label>
-                        <input type="number" name="qty_return" id="input_return_qty" class="form-control text-center sultan-input py-4" required style="font-size: 28px;" placeholder="0">
-                    </div>
-                </div>
-                <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-danger btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">CONFIRM RETURN rill</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- MODAL FINISH rill --}}
+{{-- MODAL: QUALITY GATE (FINISH) + NG DESCRIPTION rill --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -222,8 +189,8 @@
                         </div>
                     </div>
                     <div class="form-group mb-0">
-                        <label class="small font-weight-extrabold text-muted uppercase ml-1">NG Description (Reason)</label>
-                        <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Contoh: Welding bocor, penyok rill..."></textarea>
+                        <label class="small font-weight-extrabold text-muted uppercase ml-1">NG Description (Reason rill)</label>
+                        <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Sebutkan alasan jika ada barang NG..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4">
@@ -268,13 +235,6 @@
     function quickTake(partNo) {
         $('#part_select').val(partNo);
         $('#modalDeployWelding').modal('show');
-    }
-
-    function openReturnModal(partNo, currentStock) {
-        $('#return_part_no').val(partNo);
-        $('#display_return_stock').text(currentStock + ' PCS');
-        $('#input_return_qty').val(currentStock);
-        $('#modalReturnWIP').modal('show');
     }
 </script>
 @endsection

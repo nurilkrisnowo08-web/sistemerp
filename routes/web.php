@@ -395,6 +395,6 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-Route::post('/welding/return', [App\Http\Controllers\WeldingController::class, 'returnToStore'])
-    ->name('welding.return');
+Route::delete('/welding/cancel-deploy/{id}', [App\Http\Controllers\WeldingController::class, 'cancelDeploy'])
+    ->name('welding.cancel_deploy');
 });

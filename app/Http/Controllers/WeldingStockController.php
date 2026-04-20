@@ -226,59 +226,41 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
-   public function returnToStore(Request $request)
-{
-    $request->validate([
-        'part_no' => 'required',
-        'qty_return' => 'required|integer|min:1' // Pake integer biar gak ada koma rill
-    ]);
 
+public function cancelDeploy($id)
+{
     DB::beginTransaction();
     try {
-        // 1. Ambil data stok di WIP rill
-        $wip = DB::table('welding_wip')->where('part_no', $request->part_no)->first();
+        // 1. Cari data batch yang lagi aktif rill
+        // Sesuaikan nama tabel batch lu (misal: welding_batches atau production_logs)
+        $batch = DB::table('welding_batches')->where('id', $id)->first();
 
-        // 2. Pastiin barangnya emang ada di Gudang RM dulu rill
-        $rm = DB::table('raw_materials')->where('part_no', $request->part_no)->first();
-
-        if (!$rm) {
-            return back()->with('error', 'Part tidak terdaftar di database Gudang RM rill!');
+        if (!$batch) {
+            return back()->with('error', 'Data batch tidak ditemukan rill!');
         }
 
-        if (!$wip || $wip->actual_stock < $request->qty_return) {
-            return back()->with('error', 'Stok WIP tidak cukup untuk di-return rill!');
-        }
-
-        // 3. Eksekusi Pengurangan & Penambahan rill
-        // Kurangi stok di WIP
+        // 2. Balikin qty_masuk ke stok local welding_wip rill
         DB::table('welding_wip')
-            ->where('part_no', $request->part_no)
-            ->decrement('actual_stock', $request->qty_return);
+            ->where('part_no', $batch->part_no)
+            ->increment('actual_stock', $batch->qty_masuk);
 
-        // Tambahkan kembali ke Raw Material Store
-        DB::table('raw_materials')
-            ->where('part_no', $request->part_no)
-            ->increment('qty_stock', $request->qty_return);
+        // 3. Hapus data antrean batch rill
+        DB::table('welding_batches')->where('id', $id)->delete();
 
-        // 4. Catat Log Transaksi rill (Sangat penting buat audit stok)
+        // 4. Catat Log Pembatalan rill
         DB::table('production_logs')->insert([
-            'part_no'    => $request->part_no,
-            'qty'        => $request->qty_return,
-            'process_type' => 'RETURN_WIP_TO_RM',
-            'operator'   => auth()->user()->name ?? 'System',
-            'keterangan' => 'Operator mengembalikan barang ke gudang rill',
-            'created_at' => now(),
-            'updated_at' => now()
+            'part_no' => $batch->part_no,
+            'qty' => $batch->qty_masuk,
+            'process_type' => 'CANCEL_DEPLOY_TO_WIP',
+            'operator' => auth()->user()->name ?? 'System',
+            'created_at' => now()
         ]);
 
         DB::commit();
-        return back()->with('success', 'Barang [' . $request->part_no . '] Berhasil dikembalikan ke Gudang rill!');
-
+        return back()->with('success', 'Batch berhasil dibatalkan dan balik ke Live Stock rill!');
     } catch (\Exception $e) {
         DB::rollback();
-        // Log eror asli buat debugging lu rill
-        \Log::error("Return Error: " . $e->getMessage());
-        return back()->with('error', 'Sistem Gagal: ' . $e->getMessage());
+        return back()->with('error', 'Gagal batal: ' . $e->getMessage());
     }
 }
 }
