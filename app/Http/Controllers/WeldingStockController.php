@@ -226,11 +226,11 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
-    public function returnToStore(Request $request)
+   public function returnToStore(Request $request)
 {
     $request->validate([
         'part_no' => 'required',
-        'qty_return' => 'required|numeric|min:1'
+        'qty_return' => 'required|integer|min:1' // Pake integer biar gak ada koma rill
     ]);
 
     DB::beginTransaction();
@@ -238,32 +238,47 @@ class WeldingStockController extends Controller
         // 1. Ambil data stok di WIP rill
         $wip = DB::table('welding_wip')->where('part_no', $request->part_no)->first();
 
+        // 2. Pastiin barangnya emang ada di Gudang RM dulu rill
+        $rm = DB::table('raw_materials')->where('part_no', $request->part_no)->first();
+
+        if (!$rm) {
+            return back()->with('error', 'Part tidak terdaftar di database Gudang RM rill!');
+        }
+
         if (!$wip || $wip->actual_stock < $request->qty_return) {
             return back()->with('error', 'Stok WIP tidak cukup untuk di-return rill!');
         }
 
-        // 2. Kurangi stok di WIP
-        DB::table('welding_wip')->where('part_no', $request->part_no)
+        // 3. Eksekusi Pengurangan & Penambahan rill
+        // Kurangi stok di WIP
+        DB::table('welding_wip')
+            ->where('part_no', $request->part_no)
             ->decrement('actual_stock', $request->qty_return);
 
-        // 3. Tambahkan kembali ke Raw Material Store (atau tabel asal stok lu)
-        DB::table('raw_materials')->where('part_no', $request->part_no)
+        // Tambahkan kembali ke Raw Material Store
+        DB::table('raw_materials')
+            ->where('part_no', $request->part_no)
             ->increment('qty_stock', $request->qty_return);
 
-        // 4. Catat Log Transaksi rill
+        // 4. Catat Log Transaksi rill (Sangat penting buat audit stok)
         DB::table('production_logs')->insert([
-            'part_no' => $request->part_no,
-            'qty' => $request->qty_return,
+            'part_no'    => $request->part_no,
+            'qty'        => $request->qty_return,
             'process_type' => 'RETURN_WIP_TO_RM',
+            'operator'   => auth()->user()->name ?? 'System',
+            'keterangan' => 'Operator mengembalikan barang ke gudang rill',
             'created_at' => now(),
-            'operator' => auth()->user()->name ?? 'System'
+            'updated_at' => now()
         ]);
 
         DB::commit();
-        return back()->with('success', 'Barang berhasil di-return ke Gudang rill!');
+        return back()->with('success', 'Barang [' . $request->part_no . '] Berhasil dikembalikan ke Gudang rill!');
+
     } catch (\Exception $e) {
         DB::rollback();
-        return back()->with('error', 'Gagal return: ' . $e->getMessage());
+        // Log eror asli buat debugging lu rill
+        \Log::error("Return Error: " . $e->getMessage());
+        return back()->with('error', 'Sistem Gagal: ' . $e->getMessage());
     }
 }
 }
