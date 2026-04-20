@@ -13,7 +13,7 @@
     
     .heading-hub { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(135deg, var(--brand-primary), #7209b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     
-    /* 📈 LEDGER PLANNING STYLE */
+    /* 📈 LEDGER PLANNING STYLE rill */
     .ledger-container { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 40px; }
     .table-ledger thead th { background: #fdfdfd; color: #94a3b8; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 20px; border-bottom: 2px solid #f1f5f9; }
     .table-ledger td { padding: 18px 20px; vertical-align: middle; border-bottom: 1px solid #f8fafc; font-size: 13px; font-weight: 700; }
@@ -23,32 +23,28 @@
     .col-out { color: var(--brand-danger); font-family: 'JetBrains Mono'; background: rgba(239, 68, 68, 0.03); }
     .col-live { background: rgba(67, 97, 238, 0.05); font-weight: 800 !important; color: var(--brand-primary); font-size: 15px !important; border-left: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
     
-    /* 🏷️ PT NAVIGATION */
-    .pt-nav-container { background: #fff; padding: 10px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 30px; }
-    .nav-pills .nav-link { border-radius: 14px; padding: 12px 28px; font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 11px; transition: 0.3s; }
-    .nav-pills .nav-link.active { background-color: var(--dark-surface); color: #fff; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.3); }
-    
-    /* 🛠️ WORK CARDS */
+    /* 🛠️ WORK CARDS rill */
     .work-card { background: #fff; border-radius: 24px; border: 1px solid #eef2f6; padding: 24px; margin-bottom: 16px; transition: 0.3s; display: flex; align-items: center; }
     .work-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); border-color: var(--brand-primary); }
     .qty-display { font-family: 'Orbitron'; font-weight: 800; font-size: 26px; color: var(--dark-surface); line-height: 1; }
     
-    /* Status Indicators */
-    .status-indicator { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-    .status-waiting { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
-    .status-processing { background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe; }
+    /* Input Style Sultan rill */
+    .sultan-input { border-radius: 15px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
+    .sultan-input:focus { border-color: var(--brand-primary); box-shadow: none; background: #f8faff; }
+
+    @keyframes gearRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .gear-anim { animation: gearRotate 4s linear infinite; display: inline-block; color: var(--brand-warning); }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v2.0</span></h1>
+            <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v2.1</span></h1>
             <p class="text-muted font-weight-bold small uppercase mb-0">
-                <i class="fas fa-microchip text-primary mr-2"></i> WIP Control & Production Ledger rill
+                <i class="fas fa-microchip text-primary mr-2"></i> WIP Control & Quality Verification rill
             </p>
         </div>
         <div class="d-flex align-items-center">
-            {{-- ✨ TAMBAHAN: Tombol History/Archive Vault --}}
             <a href="{{ route('welding.history') }}" class="btn btn-light rounded-pill px-4 font-weight-extrabold border mr-3 shadow-sm" style="height: 48px; display: flex; align-items: center;">
                 <i class="fas fa-history mr-2 text-muted"></i> ARCHIVE VAULT
             </a>
@@ -63,25 +59,19 @@
         </div>
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success border-0 shadow-lg animate__animated animate__backInRight p-3 mb-4" style="border-radius: 15px; background: var(--brand-success); color: white;">
-            <div class="d-flex align-items-center"><i class="fas fa-check-circle mr-3"></i> <b>SYSTEM SUCCESS:</b> &nbsp; {{ session('success') }}</div>
-        </div>
-    @endif
-
-    {{-- ✨ SECTION 1: PLANNING LEDGER ✨ --}}
+    {{-- SECTION 1: PLANNING LEDGER rill --}}
     <div class="ledger-container animate__animated animate__fadeInUp">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
                 <thead>
                     <tr>
-                        <th class="text-left pl-4" style="width: 30%;">Part Identification</th>
-                        <th style="width: 10%;">STOCK AWAL</th>
-                        <th class="text-success" style="width: 10%;">In (Stamping)</th>
-                        <th class="text-danger" style="width: 10%;">Out (Take)</th>
-                        <th style="width: 15%;">Live Stock</th>
-                        <th style="width: 10%;">Pallet (Run)</th>
-                        <th class="text-right pr-4" style="width: 15%;">Quick Action</th>
+                        <th class="text-left pl-4">Part Identification</th>
+                        <th>STOCK AWAL</th>
+                        <th class="text-success">In (Stamping)</th>
+                        <th class="text-danger">Out (Take)</th>
+                        <th>Live Stock</th>
+                        <th>Pallet (Run)</th>
+                        <th class="text-right pr-4">Quick Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -95,15 +85,9 @@
                         <td class="col-in font-weight-bold">+{{ number_format($inv->in_s) }}</td>
                         <td class="col-out font-weight-bold">-{{ number_format($inv->out) }}</td>
                         <td class="col-live">{{ number_format($inv->live_stock) }}</td>
-                        <td>
-                            <span class="badge badge-light border px-3 py-1 font-weight-bold" style="font-family: 'JetBrains Mono'; border-radius: 8px;">
-                                <i class="fas fa-box mr-1 opacity-50"></i>{{ $inv->run }}x
-                            </span>
-                        </td>
+                        <td><span class="badge badge-light border px-3 py-1 font-weight-bold" style="font-family: 'JetBrains Mono'; border-radius: 8px;">{{ $inv->run }}x</span></td>
                         <td class="text-right pr-4">
-                            <button class="btn btn-outline-primary btn-sm rounded-pill px-4 font-weight-extrabold" onclick="quickTake('{{ $inv->part_no }}')">
-                                <i class="fas fa-hand-holding-box mr-1"></i> TAKE
-                            </button>
+                            <button class="btn btn-outline-primary btn-sm rounded-pill px-4 font-weight-extrabold" onclick="quickTake('{{ $inv->part_no }}')">TAKE</button>
                         </td>
                     </tr>
                     @empty
@@ -114,13 +98,13 @@
         </div>
     </div>
 
-    {{-- SECTION 2: ACTIVE PROCESS (Tabbed by Client) --}}
+    {{-- SECTION 2: ACTIVE BATCHES rill --}}
     <div class="pt-nav-container animate__animated animate__fadeInUp">
-        <ul class="nav nav-pills" id="ptTab" role="tablist">
+        <ul class="nav nav-pills" id="ptTab">
             @foreach($availableCustomers as $index => $customer)
             <li class="nav-item">
                 <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ Str::slug($customer) }}">
-                    <i class="fas fa-building mr-2 small"></i>{{ strtoupper($customer) }}
+                    {{ strtoupper($customer) }}
                 </a>
             </li>
             @endforeach
@@ -131,10 +115,9 @@
         @foreach($availableCustomers as $index => $customer)
         <div class="tab-pane fade {{ $index == 0 ? 'show active' : '' }}" id="pt-{{ Str::slug($customer) }}">
             @php $filteredBatches = $activeWelding->where('customer', $customer); @endphp
-            
             @forelse($filteredBatches as $aw)
             <div class="work-card animate__animated animate__fadeInUp shadow-sm">
-                <div class="col-md-2 font-weight-extrabold text-primary" style="font-family: 'JetBrains Mono'; font-size: 15px;">
+                <div class="col-md-2 font-weight-extrabold text-primary" style="font-family: 'JetBrains Mono';">
                     <i class="fas fa-qrcode mr-2 opacity-50"></i>{{ $aw->no_produksi_stamping }}
                 </div>
                 <div class="col-md-4 border-left pl-4">
@@ -147,9 +130,9 @@
                 </div>
                 <div class="col-md-2 text-center">
                     @if($aw->batch_status == 'PENDING')
-                        <span class="status-indicator status-waiting"><i class="fas fa-clock mr-2"></i>Waiting</span>
+                        <span class="badge badge-warning py-2 px-3 rounded-pill font-weight-bold">WAITING</span>
                     @else
-                        <span class="status-indicator status-processing"><i class="fas fa-sync-alt fa-spin mr-2"></i>Welding...</span>
+                        <span class="badge badge-info py-2 px-3 rounded-pill font-weight-bold animate-pulse"><i class="fas fa-sync-alt fa-spin mr-1"></i> WELDING...</span>
                     @endif
                 </div>
                 <div class="col-md-2 text-right">
@@ -173,45 +156,13 @@
     </div>
 </div>
 
-{{-- MODAL: TAKE FROM WIP STOCK --}}
-<div class="modal fade" id="modalDeployWelding" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
-            <div class="modal-header bg-dark text-white p-4">
-                <h5 class="modal-title font-weight-extrabold uppercase"><i class="fas fa-truck-loading mr-3"></i> WIP Deployment</h5>
-            </div>
-            <form action="{{ route('welding.deploy') }}" method="POST">
-                @csrf
-                <div class="modal-body p-4">
-                    <div class="form-group mb-4">
-                        <label class="small font-weight-extrabold text-muted uppercase ml-1">Part Identification</label>
-                        <select name="part_no" id="part_select" class="form-control" required style="height: 55px; border-radius: 15px; font-weight: 800; border: 2px solid #f1f5f9;">
-                            <option value="" disabled selected>-- CHOOSE COMPONENT --</option>
-                            @foreach($inventoryWelding as $inv)
-                                <option value="{{ $inv->part_no }}">{{ $inv->part_no }} (STOCK: {{ $inv->live_stock }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group mb-0 text-center">
-                        <label class="small font-weight-extrabold text-muted uppercase mb-2">Quantity to Deploy</label>
-                        <input type="number" name="qty_ambil" class="form-control text-center font-weight-extrabold text-primary" required style="font-size: 32px; height: 80px; border-radius: 20px; background: #f8faff; border: 2px solid #eef2f6;" placeholder="0">
-                    </div>
-                </div>
-                <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">DEPLOY TO TERMINAL</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-{{-- MODAL: QUALITY GATE (FINISH) --}}
+{{-- MODAL: QUALITY GATE (FINISH) + NG DESCRIPTION rill --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
             <div class="modal-header bg-success text-white p-4">
-                <h5 class="modal-title font-weight-extrabold uppercase"><i class="fas fa-check-double mr-3"></i> Quality Gate</h5>
+                <h5 class="modal-title font-weight-extrabold uppercase"><i class="fas fa-check-double mr-3"></i> Quality Gate rill</h5>
             </div>
             <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
                 @csrf @method('PUT')
@@ -220,25 +171,58 @@
                         <small class="text-muted font-weight-extrabold uppercase">Target Verification:</small>
                         <h2 class="font-weight-extrabold text-dark mb-0" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }} PCS</h2>
                     </div>
-                    <div class="row">
+                    <div class="row mb-3">
                         <div class="col-6">
                             <label class="small font-weight-extrabold text-success uppercase">Qty OK</label>
-                            <input type="number" name="qty_ok" class="form-control text-center font-weight-extrabold" value="{{ $aw->qty_masuk }}" required style="font-size: 24px; border-radius: 15px; height: 60px; border: 2px solid #ecfdf5;">
+                            <input type="number" name="qty_ok" class="form-control text-center sultan-input py-4" value="{{ $aw->qty_masuk }}" required style="font-size: 20px;">
                         </div>
                         <div class="col-6">
                             <label class="small font-weight-extrabold text-danger uppercase">Qty NG</label>
-                            <input type="number" name="qty_ng" class="form-control text-center font-weight-extrabold" value="0" required style="font-size: 24px; border-radius: 15px; height: 60px; border: 2px solid #fef2f2;">
+                            <input type="number" name="qty_ng" class="form-control text-center sultan-input py-4" value="0" required style="font-size: 20px;">
                         </div>
+                    </div>
+                    
+                    {{-- ✨ NEW: NG DESCRIPTION PROCESS rill --}}
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-extrabold text-muted uppercase ml-1">NG / Reject Description (Optional)</label>
+                        <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Sebutkan alasan jika ada barang NG..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">TRANSFER TO FINISHED GOODS</button>
+                    <button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">FINALIZE & TRANSFER TO FG</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 @endforeach
+
+{{-- MODAL DEPLOY rill --}}
+<div class="modal fade" id="modalDeployWelding" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
+            <div class="modal-header bg-dark text-white p-4"><h5 class="modal-title font-weight-extrabold uppercase">WIP Deployment rill</h5></div>
+            <form action="{{ route('welding.deploy') }}" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="form-group mb-4">
+                        <label class="small font-weight-extrabold text-muted uppercase">Part Identification</label>
+                        <select name="part_no" id="part_select" class="form-control sultan-input" style="height: 55px;">
+                            @foreach($inventoryWelding as $inv)
+                                <option value="{{ $inv->part_no }}">{{ $inv->part_no }} (STOCK: {{ $inv->live_stock }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group mb-0 text-center">
+                        <label class="small font-weight-extrabold text-muted uppercase">Quantity to Deploy</label>
+                        <input type="number" name="qty_ambil" class="form-control text-center sultan-input" required style="font-size: 32px; height: 80px;" placeholder="0">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4"><button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">DEPLOY TO TERMINAL</button></div>
+            </form>
+        </div>
+    </div>
+</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>

@@ -226,4 +226,44 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
+    public function returnToStore(Request $request)
+{
+    $request->validate([
+        'part_no' => 'required',
+        'qty_return' => 'required|numeric|min:1'
+    ]);
+
+    DB::beginTransaction();
+    try {
+        // 1. Ambil data stok di WIP rill
+        $wip = DB::table('welding_wip')->where('part_no', $request->part_no)->first();
+
+        if (!$wip || $wip->actual_stock < $request->qty_return) {
+            return back()->with('error', 'Stok WIP tidak cukup untuk di-return rill!');
+        }
+
+        // 2. Kurangi stok di WIP
+        DB::table('welding_wip')->where('part_no', $request->part_no)
+            ->decrement('actual_stock', $request->qty_return);
+
+        // 3. Tambahkan kembali ke Raw Material Store (atau tabel asal stok lu)
+        DB::table('raw_materials')->where('part_no', $request->part_no)
+            ->increment('qty_stock', $request->qty_return);
+
+        // 4. Catat Log Transaksi rill
+        DB::table('production_logs')->insert([
+            'part_no' => $request->part_no,
+            'qty' => $request->qty_return,
+            'process_type' => 'RETURN_WIP_TO_RM',
+            'created_at' => now(),
+            'operator' => auth()->user()->name ?? 'System'
+        ]);
+
+        DB::commit();
+        return back()->with('success', 'Barang berhasil di-return ke Gudang rill!');
+    } catch (\Exception $e) {
+        DB::rollback();
+        return back()->with('error', 'Gagal return: ' . $e->getMessage());
+    }
+}
 }
