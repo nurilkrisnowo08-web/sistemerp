@@ -395,7 +395,10 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-// Tambahin rute ini rill!
+Route::name('welding.')->group(function() {
+    // Kalau ditaruh di sini, namanya jadi welding.welding.cancel_deploy
+    Route::delete('/...', [Controller::class, '...'])->name('welding.cancel_deploy'); 
+});
 Route::delete('/inventory-welding/cancel-deploy/{id}', [App\Http\Controllers\WeldingStockController::class, 'cancelDeploy'])
     ->name('welding.cancel_deploy');
 });
