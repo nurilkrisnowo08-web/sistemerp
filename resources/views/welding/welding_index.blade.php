@@ -24,7 +24,7 @@
     .col-live { background: rgba(67, 97, 238, 0.05); font-weight: 800 !important; color: var(--brand-primary); font-size: 15px !important; border-left: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
     
     /* 🛠️ WORK CARDS rill */
-    .work-card { background: #fff; border-radius: 24px; border: 1px solid #eef2f6; padding: 24px; margin-bottom: 16px; transition: 0.3s; display: flex; align-items: center; }
+    .work-card { background: #fff; border-radius: 24px; border: 1px solid #eef2f6; padding: 24px; margin-bottom: 16px; transition: 0.3s; display: flex; align-items: center; position: relative; }
     .work-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); border-color: var(--brand-primary); }
     .qty-display { font-family: 'Orbitron'; font-weight: 800; font-size: 26px; color: var(--dark-surface); line-height: 1; }
     
@@ -34,6 +34,9 @@
 
     .btn-action-rill { border-radius: 12px; font-weight: 800; font-size: 10px; letter-spacing: 1px; transition: 0.3s; padding: 10px 25px; text-transform: uppercase; }
     
+    /* Badge Count rill */
+    .badge-count { background: var(--brand-primary); color: white; border-radius: 50px; padding: 2px 8px; font-size: 9px; margin-left: 5px; vertical-align: middle; }
+
     @media (max-width: 768px) {
         .work-card { flex-direction: column; text-align: center; gap: 15px; }
         .qty-display { font-size: 32px; }
@@ -46,7 +49,7 @@
         <div>
             <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v2.2</span></h1>
             <p class="text-muted font-weight-bold small uppercase mb-0">
-                <i class="fas fa-microchip text-primary mr-2"></i> WIP Control & Quality Verification rill
+                <i class="fas fa-microchip text-primary mr-2"></i> WIP Control & Performance Hub rill
             </p>
         </div>
         <div class="d-flex align-items-center mt-3 mt-md-0">
@@ -69,7 +72,7 @@
         </div>
     @endif
 
-    {{-- LEDGER TABLE (Tanpa fitur return ke RM rill!) --}}
+    {{-- LEDGER TABLE rill --}}
     <div class="ledger-container animate__animated animate__fadeInUp">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
@@ -108,12 +111,21 @@
         </div>
     </div>
 
-    {{-- CUSTOMER TABS rill --}}
+    {{-- CUSTOMER TABS (With Auto Badge Count rill!) --}}
     <div class="pt-nav-container animate__animated animate__fadeInUp">
-        <ul class="nav nav-pills">
+        <ul class="nav nav-pills" id="ptTab">
             @foreach($availableCustomers as $index => $customer)
+            @php 
+                // Hitung ada berapa batch aktif di PT ini rill
+                $countBatch = $activeWelding->where('customer', $customer)->count(); 
+            @endphp
             <li class="nav-item">
-                <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ Str::slug($customer) }}">{{ strtoupper($customer) }}</a>
+                <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ Str::slug($customer) }}">
+                    {{ strtoupper($customer) }}
+                    @if($countBatch > 0)
+                        <span class="badge-count">{{ $countBatch }}</span>
+                    @endif
+                </a>
             </li>
             @endforeach
         </ul>
@@ -139,31 +151,44 @@
                 </div>
                 <div class="col-md-2 text-center">
                     @if($aw->batch_status == 'PENDING')
-                        <span class="badge badge-warning py-2 px-3 rounded-pill font-weight-bold">WAITING</span>
+                        <span class="badge badge-warning py-2 px-3 rounded-pill font-weight-bold">WAITING rill</span>
                     @else
                         <span class="badge badge-info py-2 px-3 rounded-pill font-weight-bold animate-pulse"><i class="fas fa-sync-alt fa-spin mr-1"></i> WELDING...</span>
                     @endif
                 </div>
                 <div class="col-md-2 text-right">
                     @if($aw->batch_status == 'PENDING')
-                        <form action="{{ route('welding.start', $aw->id) }}" method="POST">
-                            @csrf @method('PUT')
-                            <button class="btn btn-primary btn-block font-weight-extrabold py-3 shadow" style="border-radius: 16px;">START PROCESS</button>
-                        </form>
+                        <div class="d-flex flex-column">
+                            <form action="{{ route('welding.start', $aw->id) }}" method="POST">
+                                @csrf @method('PUT')
+                                <button class="btn btn-primary btn-block font-weight-extrabold py-2 mb-2 shadow" style="border-radius: 12px;">START PROCESS</button>
+                            </form>
+                            
+                            {{-- ✨ FITUR CANCEL: Balikin antrean ke Live Stock rill --}}
+                            <form action="{{ route('welding.cancel_deploy', $aw->id) }}" method="POST" onsubmit="return confirm('Batalkan proses dan balikin stok ke Rak rill?')">
+                                @csrf @method('DELETE')
+                                <button type="submit" class="btn btn-link text-danger btn-sm p-0 font-weight-bold">
+                                    <i class="fas fa-undo-alt mr-1"></i> CANCEL DEPLOY
+                                </button>
+                            </form>
+                        </div>
                     @else
                         <button class="btn btn-success btn-block font-weight-extrabold py-3 shadow" style="border-radius: 16px;" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">FINISH & TRANSFER</button>
                     @endif
                 </div>
             </div>
             @empty
-            <div class="text-center py-5 bg-white rounded-24 border border-dashed">No active batches for this client.</div>
+            <div class="text-center py-5 bg-white rounded-24 border border-dashed">
+                <i class="fas fa-box-open fa-3x text-light mb-3"></i>
+                <p class="text-muted font-weight-bold mb-0">No active batches for {{ $customer }} rill.</p>
+            </div>
             @endforelse
         </div>
         @endforeach
     </div>
 </div>
 
-{{-- MODAL: QUALITY GATE (FINISH) + NG DESCRIPTION rill --}}
+{{-- MODAL FINISH rill --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -189,8 +214,8 @@
                         </div>
                     </div>
                     <div class="form-group mb-0">
-                        <label class="small font-weight-extrabold text-muted uppercase ml-1">NG Description (Reason rill)</label>
-                        <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Sebutkan alasan jika ada barang NG..."></textarea>
+                        <label class="small font-weight-extrabold text-muted uppercase ml-1">NG Description (Reason)</label>
+                        <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Contoh: Welding bocor, penyok rill..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4">
