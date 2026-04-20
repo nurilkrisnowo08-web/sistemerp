@@ -176,21 +176,31 @@ class DeliveryController extends Controller
      * 5. PRINT SURAT JALAN (MENYAMBUNGKAN DATA CUSTOMER)
      */
     public function print($no_sj)
-    {
-        $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
+{
+    // 1. Ambil semua item di SJ tersebut rill
+    $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
 
-        if ($items->isEmpty()) {
-            return redirect()->route('delivery.index')->with('error', 'Data SJ tidak ditemukan!');
-        }
-
-        $sj = $items->first();
-        $po = DB::table('purchase_orders')->where('id', $sj->po_id)->first();
-
-        // SAKTI: Mengambil data Nama PT dan Alamat lengkap dari tabel customers
-        $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
-
-        return view('delivery.print', compact('items', 'sj', 'po', 'no_sj', 'customer'));
+    if ($items->isEmpty()) {
+        return redirect()->route('delivery.index')->with('error', 'Data SJ tidak ditemukan rill!');
     }
+
+    // 2. Ambil sampel 1 baris buat data Header
+    $sj = $items->first();
+
+    // 3. Ambil data PO rill
+    // Catatan: Kalau sj->po_id kosong, kita coba cari pake po_number biar aman!
+    $po = DB::table('purchase_orders')
+            ->where('id', $sj->po_id)
+            ->orWhere('po_number', $sj->po_number) // Fallback rill
+            ->first();
+
+    // 4. Ambil data Nama PT dan Alamat lengkap
+    $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
+
+    // 5. Pastiin rute folder View lu bener rill! 
+    // Kalau filenya di resources/views/Gudang/print_sj.blade.php ganti ke 'Gudang.print_sj'
+    return view('Gudang.print_sj', compact('items', 'sj', 'po', 'no_sj', 'customer'));
+}
 
     /**
      * 6. PRINT REKAP PO (TETAP)

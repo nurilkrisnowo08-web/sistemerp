@@ -62,7 +62,10 @@ Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
     Route::get('/delivery/history', [DeliveryController::class, 'history'])->name('delivery.history');
     Route::post('/delivery/store', [DeliveryController::class, 'store'])->name('delivery.store');
     Route::get('/delivery/create/{po_number}', [DeliveryController::class, 'create'])->name('delivery.create')->where('po_number', '.*');
-    Route::get('/delivery/print/{no_sj}', [DeliveryController::class, 'print'])->name('delivery.print');
+    // Cari rute print lu, ganti jadi kayak gini rill:
+Route::get('/delivery/print/{no_sj}', [DeliveryController::class, 'printSJ'])
+    ->name('delivery.print')
+    ->where('no_sj', '.*'); 
     Route::get('/delivery/print-rekap-po/{po_number}', [DeliveryController::class, 'printRekapPO'])->name('delivery.print-rekap-po')->where('po_number', '.*');
 
     // --- PRODUCTION & WELDING ---
