@@ -394,7 +394,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
     Route::put('/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('finish');
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
-    // Tambahkan baris ini rill!
-Route::post('/inventory-welding/return', [App\Http\Controllers\WeldingController::class, 'returnToStore'])
+   
+Route::post('/welding/return', [App\Http\Controllers\WeldingController::class, 'returnToStore'])
     ->name('welding.return');
 });
