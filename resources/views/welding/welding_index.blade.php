@@ -32,16 +32,15 @@
     .sultan-input { border-radius: 15px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
     .sultan-input:focus { border-color: var(--brand-primary); box-shadow: none; background: #f8faff; }
 
-    @keyframes gearRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .gear-anim { animation: gearRotate 4s linear infinite; display: inline-block; color: var(--brand-warning); }
+    .btn-action-rill { border-radius: 12px; font-weight: 800; font-size: 10px; letter-spacing: 1px; transition: 0.3s; padding: 8px 16px; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v2.1</span></h1>
+            <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v2.2</span></h1>
             <p class="text-muted font-weight-bold small uppercase mb-0">
-                <i class="fas fa-microchip text-primary mr-2"></i> WIP Control & Quality Verification rill
+                <i class="fas fa-microchip text-primary mr-2"></i> WIP Control & Performance Hub rill
             </p>
         </div>
         <div class="d-flex align-items-center">
@@ -65,13 +64,13 @@
             <table class="table table-ledger mb-0 text-center">
                 <thead>
                     <tr>
-                        <th class="text-left pl-4">Part Identification</th>
+                        <th class="text-left pl-4" style="width: 25%;">Part Identification</th>
                         <th>STOCK AWAL</th>
                         <th class="text-success">In (Stamping)</th>
                         <th class="text-danger">Out (Take)</th>
                         <th>Live Stock</th>
-                        <th>Pallet (Run)</th>
-                        <th class="text-right pr-4">Quick Action</th>
+                        <th>Pallet</th>
+                        <th class="text-right pr-4">Quick Command rill</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,7 +86,11 @@
                         <td class="col-live">{{ number_format($inv->live_stock) }}</td>
                         <td><span class="badge badge-light border px-3 py-1 font-weight-bold" style="font-family: 'JetBrains Mono'; border-radius: 8px;">{{ $inv->run }}x</span></td>
                         <td class="text-right pr-4">
-                            <button class="btn btn-outline-primary btn-sm rounded-pill px-4 font-weight-extrabold" onclick="quickTake('{{ $inv->part_no }}')">TAKE</button>
+                            <div class="d-flex justify-content-end gap-2">
+                                <button class="btn btn-outline-primary btn-action-rill mr-1" onclick="quickTake('{{ $inv->part_no }}')">TAKE</button>
+                                {{-- ✨ FITUR RETURN: Balikin ke Gudang RM rill --}}
+                                <button class="btn btn-outline-danger btn-action-rill" onclick="openReturnModal('{{ $inv->part_no }}', '{{ $inv->live_stock }}')">RETURN</button>
+                            </div>
                         </td>
                     </tr>
                     @empty
@@ -156,7 +159,35 @@
     </div>
 </div>
 
-{{-- MODAL: QUALITY GATE (FINISH) + NG DESCRIPTION rill --}}
+{{-- MODAL: RETURN WIP TO RM rill --}}
+<div class="modal fade" id="modalReturnWIP" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
+            <div class="modal-header bg-danger text-white p-4">
+                <h5 class="modal-title font-weight-extrabold uppercase"><i class="fas fa-undo-alt mr-3"></i> Return to Store</h5>
+            </div>
+            <form action="{{ route('welding.return') }}" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <input type="hidden" name="part_no" id="return_part_no">
+                    <div class="bg-light p-4 rounded-24 mb-4 text-center border">
+                        <small class="text-muted font-weight-extrabold uppercase">Live Stock in WIP Terminal:</small>
+                        <h2 id="display_return_stock" class="font-weight-extrabold text-danger mb-0" style="font-family: 'Orbitron';">0 PCS</h2>
+                    </div>
+                    <div class="form-group mb-0 text-center">
+                        <label class="small font-weight-extrabold text-muted uppercase mb-2">Quantity to Return rill</label>
+                        <input type="number" name="qty_return" id="input_return_qty" class="form-control text-center sultan-input" required style="font-size: 32px; height: 80px;" placeholder="0">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4">
+                    <button type="submit" class="btn btn-danger btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">CONFIRM RETURN TO GUDANG</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL: QUALITY GATE (FINISH) rill --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -181,8 +212,6 @@
                             <input type="number" name="qty_ng" class="form-control text-center sultan-input py-4" value="0" required style="font-size: 20px;">
                         </div>
                     </div>
-                    
-                    {{-- ✨ NEW: NG DESCRIPTION PROCESS rill --}}
                     <div class="form-group mb-0">
                         <label class="small font-weight-extrabold text-muted uppercase ml-1">NG / Reject Description (Optional)</label>
                         <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Sebutkan alasan jika ada barang NG..."></textarea>
@@ -229,6 +258,14 @@
     function quickTake(partNo) {
         $('#part_select').val(partNo);
         $('#modalDeployWelding').modal('show');
+    }
+
+    // ✨ NEW SCRIPT FOR RETURN rill
+    function openReturnModal(partNo, currentStock) {
+        $('#return_part_no').val(partNo);
+        $('#display_return_stock').text(currentStock + ' PCS');
+        $('#input_return_qty').val(currentStock);
+        $('#modalReturnWIP').modal('show');
     }
 </script>
 @endsection
