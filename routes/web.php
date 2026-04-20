@@ -395,6 +395,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-Route::delete('/welding/cancel-deploy/{id}', [App\Http\Controllers\WeldingController::class, 'cancelDeploy'])
+// Tambahin rute ini biar tombol CANCEL DEPLOY ada tujuannya rill!
+Route::delete('/welding/cancel-deploy/{id}', [App\Http\Controllers\WeldingStockController::class, 'cancelDeploy'])
     ->name('welding.cancel_deploy');
 });
