@@ -197,42 +197,4 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
-
-    /**
-     * 6. CANCEL DEPLOY rill
-     */
-    public function cancelDeploy($id)
-    {
-        DB::beginTransaction();
-        try {
-            $batch = DB::table('welding_batches')->where('id', $id)->first();
-
-            if (!$batch) {
-                return back()->with('error', 'Data batch tidak ditemukan rill!');
-            }
-
-            // Balikin stok ke finished_goods.welding_stock rill
-            DB::table('finished_goods')
-                ->whereRaw("REPLACE(part_no, ' ', '') = ?", [str_replace(' ', '', trim($batch->part_no))])
-                ->increment('welding_stock', $batch->qty_masuk);
-
-            // Hapus data antrean
-            DB::table('welding_batches')->where('id', $id)->delete();
-
-            // Catat Log
-            DB::table('production_logs')->insert([
-                'part_no' => $batch->part_no,
-                'qty' => $batch->qty_masuk,
-                'process_type' => 'CANCEL_DEPLOY',
-                'operator' => auth()->user()->name ?? 'System',
-                'created_at' => now()
-            ]);
-
-            DB::commit();
-            return back()->with('success', 'Batch berhasil dibatalkan dan stok balik ke Rak rill!');
-        } catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Gagal batal: ' . $e->getMessage());
-        }
-    }
 }
