@@ -34,8 +34,8 @@
 
     @media (max-width: 768px) {
         .work-card { flex-direction: column; text-align: center; gap: 15px; padding: 20px; }
+        .col-md-2, .col-md-4 { width: 100% !important; border: none !important; padding: 0 !important; }
         .qty-display { font-size: 32px; }
-        .hide-mobile { display: none; }
     }
 </style>
 
@@ -56,7 +56,6 @@
         </div>
     </div>
 
-    {{-- ALERT SYSTEM rill --}}
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-lg p-3 mb-4" style="border-radius: 15px; background: var(--brand-success); color: white;">
             <b>SUCCESS:</b> {{ session('success') }} rill!
@@ -64,11 +63,11 @@
     @endif
     @if(session('error'))
         <div class="alert alert-danger border-0 shadow-lg p-3 mb-4" style="border-radius: 15px;">
-            <b>ERROR:</b> {{ session('error') }}
+            <b>ERROR:</b> {{ session('error') }} rill!
         </div>
     @endif
 
-    {{-- 📊 LEDGER TABLE (Stock Monitoring) rill --}}
+    {{-- 📊 LEDGER TABLE rill --}}
     <div class="ledger-container animate__animated animate__fadeInUp">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
@@ -79,7 +78,8 @@
                         <th class="text-success">IN</th>
                         <th class="text-danger">OUT</th>
                         <th class="col-live">LIVE STOCK</th>
-                        <th>COMMAND</th>
+                        <th>PLT</th>
+                        <th class="text-right pr-4">COMMAND</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,12 +93,13 @@
                         <td class="text-success">+{{ number_format($inv->in_s) }}</td>
                         <td class="text-danger">-{{ number_format($inv->out) }}</td>
                         <td class="col-live">{{ number_format($inv->live_stock) }}</td>
-                        <td>
+                        <td><span class="badge badge-light border px-2 py-1 font-weight-bold">{{ $inv->run }}x</span></td>
+                        <td class="text-right pr-4">
                             <button class="btn btn-outline-primary btn-sm rounded-pill px-4 font-weight-extrabold" onclick="quickTake('{{ trim($inv->part_no) }}')">TAKE</button>
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="py-5 text-muted">No Data rill.</td></tr>
+                    <tr><td colspan="7" class="py-5 text-muted">No Data rill.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -110,12 +111,12 @@
         <ul class="nav nav-pills" id="ptTab">
             @foreach($availableCustomers as $index => $customer)
             @php 
-                $count = $activeWelding->where('customer', $customer)->count(); 
+                $countInPT = $activeWelding->where('customer', $customer)->count(); 
                 $slugPT = Str::slug($customer);
             @endphp
             <li class="nav-item">
                 <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ $slugPT }}">
-                    {{ strtoupper($customer) }} @if($count > 0) <span class="badge-count">{{ $count }}</span> @endif
+                    {{ strtoupper($customer) }} @if($countInPT > 0) <span class="badge-count">{{ $countInPT }}</span> @endif
                 </a>
             </li>
             @endforeach
@@ -139,7 +140,7 @@
                 </div>
                 <div class="col-md-2 text-center">
                     <div class="qty-display">{{ number_format($aw->qty_masuk) }}</div>
-                    <small class="text-muted font-weight-extrabold" style="font-size: 8px;">QTY TAKE</small>
+                    <small class="text-muted font-weight-extrabold" style="font-size: 8px;">QTY TAKE rill</small>
                 </div>
                 <div class="col-md-2 text-center">
                     @if($aw->batch_status == 'PENDING')
@@ -151,26 +152,28 @@
                 <div class="col-md-2 text-right">
                     @if($aw->batch_status == 'PENDING')
                         <div class="d-flex flex-column">
-                            <form action="{{ route('welding.start', $aw->id) }}" method="POST">
-                                @csrf @method('PUT')
-                                <button class="btn btn-primary btn-block font-weight-extrabold py-2 mb-2 shadow-sm" style="border-radius: 12px;">START</button>
+                            <form action="{{ url('/welding/start/' . $aw->id) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <button class="btn btn-primary btn-block font-weight-extrabold py-2 mb-2 shadow-sm" style="border-radius: 12px;">START rill</button>
                             </form>
                             
-                            {{-- ✨ FIX: Pake url() biar gak eror Route Not Found di Hostinger rill! --}}
+                            {{-- ✨ FIX CANCEL: Pake URL Langsung biar anti Layar Merah di Hostinger rill! --}}
                             <form action="{{ url('/inventory-welding/cancel-deploy/' . $aw->id) }}" method="POST" onsubmit="return confirm('Batalin rill?')">
-                                @csrf @method('DELETE')
+                                @csrf
+                                @method('DELETE')
                                 <button type="submit" class="btn btn-link text-danger btn-sm p-0 font-weight-bold text-decoration-none">
                                     <i class="fas fa-undo-alt mr-1"></i> CANCEL DEPLOY
                                 </button>
                             </form>
                         </div>
                     @else
-                        <button class="btn btn-success btn-block font-weight-extrabold py-3 shadow" style="border-radius: 16px;" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">FINISH & FG</button>
+                        <button class="btn btn-success btn-block font-weight-extrabold py-3 shadow" style="border-radius: 16px;" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">FINISH & FG rill</button>
                     @endif
                 </div>
             </div>
             @empty
-            <div class="text-center py-5 bg-white rounded-24 border border-dashed">No active batches for this client rill.</div>
+            <div class="text-center py-5 bg-white rounded-24 border border-dashed">No active batches for {{ $customer }} rill.</div>
             @endforelse
         </div>
         @endforeach
@@ -185,29 +188,32 @@
             <div class="modal-header bg-success text-white p-4">
                 <h5 class="modal-title font-weight-extrabold uppercase">Quality Gate rill</h5>
             </div>
-            <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
-                @csrf @method('PUT')
+            <form action="{{ url('/welding/finish/' . $aw->id) }}" method="POST">
+                @csrf 
+                @method('PUT')
                 <div class="modal-body p-4">
                     <div class="bg-light p-4 rounded-24 mb-4 text-center border">
-                        <small class="text-muted font-weight-bold">Target:</small>
+                        <small class="text-muted font-weight-bold uppercase">Target Verification:</small>
                         <h2 class="font-weight-extrabold text-dark mb-0" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }} PCS</h2>
                     </div>
                     <div class="row mb-3 text-center">
                         <div class="col-6">
-                            <label class="small font-weight-bold text-success">Qty OK</label>
+                            <label class="small font-weight-bold text-success uppercase">Qty OK</label>
                             <input type="number" name="qty_ok" class="form-control text-center sultan-input py-3" value="{{ $aw->qty_masuk }}" required>
                         </div>
                         <div class="col-6">
-                            <label class="small font-weight-bold text-danger">Qty NG</label>
+                            <label class="small font-weight-bold text-danger uppercase">Qty NG</label>
                             <input type="number" name="qty_ng" class="form-control text-center sultan-input py-3" value="0" required>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="small font-weight-bold text-muted">NG Reason (Optional rill)</label>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-bold text-muted uppercase">NG Reason (Optional rill)</label>
                         <textarea name="ng_description" class="form-control sultan-input" rows="2" placeholder="Sebutkan alasan jika ada reject..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4"><button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">TRANSFER TO FG</button></div>
+                <div class="modal-footer border-0 p-4">
+                    <button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">TRANSFER TO FG rill</button>
+                </div>
             </form>
         </div>
     </div>
@@ -218,7 +224,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
             <div class="modal-header bg-dark text-white p-4"><h5 class="modal-title font-weight-extrabold uppercase">WIP Deployment rill</h5></div>
-            <form action="{{ route('welding.deploy') }}" method="POST">
+            <form action="{{ url('/welding/deploy') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4">
                     <div class="form-group mb-4">
@@ -235,7 +241,7 @@
                         <input type="number" name="qty_ambil" class="form-control text-center sultan-input" required style="font-size: 32px; height: 80px;" placeholder="0">
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4"><button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">DEPLOY TO TERMINAL</button></div>
+                <div class="modal-footer border-0 p-4"><button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">DEPLOY TO TERMINAL rill</button></div>
             </form>
         </div>
     </div>
