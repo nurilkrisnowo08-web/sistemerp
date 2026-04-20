@@ -187,19 +187,20 @@ class DeliveryController extends Controller
     // 2. Ambil sampel 1 baris buat data Header
     $sj = $items->first();
 
-    // 3. Ambil data PO rill
-    // Catatan: Kalau sj->po_id kosong, kita coba cari pake po_number biar aman!
+    // 3. ✨ FIX ERROR po_number & po_id rill
+    // Kita cari data PO berdasarkan ID atau Nomor PO yang ada di baris SJ
     $po = DB::table('purchase_orders')
-            ->where('id', $sj->po_id)
-            ->orWhere('po_number', $sj->po_number) // Fallback rill
+            ->where('id', $sj->po_id ?? 0) // Pake null coalescing biar gak crash rill
+            ->orWhere('po_number', $sj->po_number ?? ($sj->no_po ?? '')) // Cek po_number atau no_po rill
             ->first();
 
     // 4. Ambil data Nama PT dan Alamat lengkap
     $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
 
-    // 5. Pastiin rute folder View lu bener rill! 
-    // Kalau filenya di resources/views/Gudang/print_sj.blade.php ganti ke 'Gudang.print_sj'
-    return view('Gudang.print_sj', compact('items', 'sj', 'po', 'no_sj', 'customer'));
+    // 5. ✨ FIX VIEW PATH (Sesuai gambar folder lu rill!)
+    // Lu punya folder: resources/views/delivery/print.blade.php
+    // Maka manggilnya: 'delivery.print'
+    return view('delivery.print', compact('items', 'sj', 'po', 'no_sj', 'customer'));
 }
 
     /**
