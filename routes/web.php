@@ -15,6 +15,13 @@ Route::get('/quality-control-room', [QualityGateController::class, 'index'])->na
 Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
 // Tambahin di bawah rute approve lu rill!
 Route::delete('/quality-control-delete/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'destroy'])->name('quality.destroy');
+
+
+// 1. Buat rute VAULT (Mutasi Stok)
+Route::get('/welding-vault', [App\Http\Controllers\WeldingStockController::class, 'history'])->name('welding.history');
+
+// 2. Buat rute HISTORY (Riwayat Produksi yang baru kita bikin)
+Route::get('/welding-history-prod', [App\Http\Controllers\WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
 // Rute Pembersih Cache yang PASTI JALAN rill
 Route::get('/bersihkan-cache-rill', function() {
     \Artisan::call('route:clear');
@@ -407,10 +414,6 @@ Route::prefix('welding')->name('welding.')->group(function () {
     Route::put('/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('finish');
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
-  // 1. Buat rute VAULT (Mutasi Stok)
-Route::get('/welding-vault', [App\Http\Controllers\WeldingStockController::class, 'history'])->name('welding.history');
-
-// 2. Buat rute HISTORY (Riwayat Produksi yang baru kita bikin)
-Route::get('/welding-history-prod', [App\Http\Controllers\WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
+  
 
 });
