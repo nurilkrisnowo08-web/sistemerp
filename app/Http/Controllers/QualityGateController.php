@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Auth;
 
 class QualityGateController extends Controller {
     public function index() {
-        // Ambil data yang nunggu QC dari Stamping rill
+        // Ambil data yang nunggu QC dari Stamping 
         $stampingQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
-        // Ambil data yang nunggu QC dari Welding rill
+        // Ambil data yang nunggu QC dari Welding 
         $weldingQueue = DB::table('welding_batches')->where('status ENUM', 'WAITING_QC')->get();
 
         return view('Quality.index', compact('stampingQueue', 'weldingQueue'));
@@ -26,7 +26,7 @@ class QualityGateController extends Controller {
                 $origin = 'WELDING'; $batchNo = $batch->no_produksi_stamping; $partNo = $batch->part_no; $qty = $batch->qty_ok;
             }
 
-            // 1. Simpan ke tabel quality_inspections yang barusan lu bikin rill!
+            // 1. Simpan ke tabel quality_inspections yang barusan lu bikin !
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -40,7 +40,7 @@ class QualityGateController extends Controller {
                 'created_at'    => now(), 'updated_at' => now()
             ]);
 
-            // 2. ✨ UPDATE STOK FG: Di sini stok resmi nambah rill!
+            // 2. ✨ UPDATE STOK FG: Di sini stok resmi nambah !
             DB::table('finished_goods')
                 ->whereRaw("REPLACE(part_no, ' ', '') = ?", [str_replace([' ', '-'], '', trim($partNo))])
                 ->increment('actual_stock', $request->qty_ok_final);
@@ -51,7 +51,7 @@ class QualityGateController extends Controller {
             DB::table($table)->where('id', $id)->update([$statusCol => 'COMPLETED', 'updated_at' => now()]);
 
             DB::commit();
-            return back()->with('success', 'Barang Lulus QC & Masuk Finished Goods rill!');
+            return back()->with('success', 'Barang Lulus QC & Masuk Finished Goods !');
         } catch (\Exception $e) { DB::rollBack(); return back()->with('error', 'Gagal: ' . $e->getMessage()); }
     }
 }

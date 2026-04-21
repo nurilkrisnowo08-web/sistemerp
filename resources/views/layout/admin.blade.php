@@ -155,7 +155,7 @@
                     @yield('content')
                 </div>
             </div>
-            <footer class="bg-white py-4 border-top"><div class="container my-auto text-center font-weight-bold uppercase" style="font-size: 0.7rem;">&copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem rill.</div></footer>
+            <footer class="bg-white py-4 border-top"><div class="container my-auto text-center font-weight-bold uppercase" style="font-size: 0.7rem;">&copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem .</div></footer>
         </div>
     </div>
 
