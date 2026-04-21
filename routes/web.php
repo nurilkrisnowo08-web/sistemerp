@@ -407,7 +407,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
     Route::put('/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('finish');
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
-    // Pastikan nama fungsinya historyWelding sesuai dengan yang di Controller
+    
 Route::get('/welding-history', [App\Http\Controllers\WeldingStockController::class, 'historyWelding'])->name('welding.history');
    
 
