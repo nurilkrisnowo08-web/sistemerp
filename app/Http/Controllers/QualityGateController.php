@@ -18,6 +18,7 @@ class QualityGateController extends Controller {
         $weldingQueue = DB::table('welding_batches')
             ->where('status', 'COMPLETED')
             ->whereNull('qc_at')
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return view('Quality.index', compact('produksiQueue', 'weldingQueue'));
@@ -42,6 +43,11 @@ class QualityGateController extends Controller {
             } else {
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
                 if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
+
+                // ✨ PROTEKSI KEAMANAN: Validasi agar input tidak melebihi kiriman welding
+                if ($request->qty_ok_final > $batch->qty_ok) {
+                    throw new \Exception("Gagal! Input Qty OK (" . $request->qty_ok_final . ") melebihi jumlah yang dikirim dari area Welding (" . $batch->qty_ok . ").");
+                }
                 
                 $origin = 'WELDING'; 
                 $batchNo = $batch->no_produksi_stamping; 
