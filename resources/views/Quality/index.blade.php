@@ -14,39 +14,19 @@
 
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
     .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--ind-navy); }
-    
-    /* Notif Style rill */
     .alert-ind { border-radius: 10px; border: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-
-    /* Card Design rill */
-    .qc-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+    .qc-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.3s ease; }
     .qc-card:hover { transform: translateY(-4px); box-shadow: 0 12px 20px -5px rgba(0,0,0,0.1); border-color: var(--ind-blue); }
-    
     .card-header-ind { background: #f8fafc; padding: 1.25rem; border-bottom: 1px solid #e2e8f0; border-radius: 12px 12px 0 0; }
-
-    /* Text & Inputs rill */
     .tech-code { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: #64748b; font-weight: 700; }
     .part-title { font-weight: 800; font-size: 1.2rem; color: var(--ind-navy); }
     .qty-badge { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; font-weight: 800; }
     .label-ind { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #475569; margin-bottom: 0.4rem; display: block; }
-    
-    .input-ind { 
-        border: 2px solid #e2e8f0; border-radius: 8px; font-weight: 700; padding: 0.6rem; transition: 0.2s;
-    }
+    .input-ind { border: 2px solid #e2e8f0; border-radius: 8px; font-weight: 700; padding: 0.6rem; transition: 0.2s; }
     .input-ind:focus { border-color: var(--ind-blue); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); outline: none; }
-
-    .btn-execute {
-        font-family: 'Orbitron', sans-serif; font-size: 0.75rem; padding: 12px; border-radius: 8px;
-        text-transform: uppercase; font-weight: 800; border: none; letter-spacing: 1px; color: white; transition: 0.2s;
-    }
+    .btn-execute { font-family: 'Orbitron', sans-serif; font-size: 0.75rem; padding: 12px; border-radius: 8px; text-transform: uppercase; font-weight: 800; border: none; letter-spacing: 1px; color: white; transition: 0.2s; }
     .btn-prod { background: var(--ind-navy); }
     .btn-wld { background: var(--ind-amber); }
-
     .empty-placeholder { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 3rem; color: #94a3b8; font-weight: 700; text-align: center; }
 </style>
 
@@ -61,9 +41,10 @@
         </div>
     </div>
 
+    {{-- ALERT SYSTEM rill --}}
     @if(session('success'))
         <div class="alert alert-success alert-ind mb-4 border-left-success" style="border-left: 5px solid #10b981 !important;">
-            <i class="fas fa-check-circle mr-2"></i> {{ session('success') }} rill!
+            <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
         </div>
     @endif
 
@@ -75,11 +56,7 @@
 
     <div class="row">
         <div class="col-lg-6 mb-4">
-            <div class="d-flex align-items-center mb-3">
-                <div style="width: 4px; height: 20px; background: var(--ind-blue); border-radius: 2px;" class="mr-3"></div>
-                <h5 class="font-weight-bold m-0">PRODUKSI_ANTICIPATED</h5>
-            </div>
-
+            <h5 class="font-weight-bold mb-3 ml-2">PRODUKSI_ANTICIPATED rill</h5>
             <div class="row">
                 @forelse($produksiQueue as $p)
                 <div class="col-md-12 mb-4">
@@ -107,6 +84,18 @@
                                         <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="0">
                                     </div>
                                 </div>
+
+                                {{-- ✨ BARU: Input Inspector rill --}}
+                                <div class="form-group mb-3">
+                                    <label class="label-ind">Authorized_Inspector rill</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-user-shield text-muted"></i></span>
+                                        </div>
+                                        <input type="text" name="inspector_name" class="form-control input-ind border-left-0" value="{{ Auth::user()?->name }}" placeholder="Input name..." required>
+                                    </div>
+                                </div>
+
                                 <textarea name="ng_reason" class="form-control input-ind mb-3" rows="2" placeholder="Describe NG reason if any..."></textarea>
                                 <button type="submit" class="btn btn-block btn-execute btn-prod shadow-sm">
                                     Release_to_Inventory <i class="fas fa-arrow-right ml-2"></i>
@@ -122,11 +111,7 @@
         </div>
 
         <div class="col-lg-6 mb-4">
-            <div class="d-flex align-items-center mb-3">
-                <div style="width: 4px; height: 20px; background: var(--ind-amber); border-radius: 2px;" class="mr-3"></div>
-                <h5 class="font-weight-bold m-0">WELDING_ANTICIPATED</h5>
-            </div>
-
+            <h5 class="font-weight-bold mb-3 ml-2">WELDING_ANTICIPATED rill</h5>
             <div class="row">
                 @forelse($weldingQueue as $w)
                 <div class="col-md-12 mb-4">
@@ -154,6 +139,18 @@
                                         <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="0">
                                     </div>
                                 </div>
+
+                                {{-- ✨ BARU: Input Inspector rill --}}
+                                <div class="form-group mb-3">
+                                    <label class="label-ind">Authorized_Inspector rill</label>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-white border-right-0"><i class="fas fa-user-shield text-muted"></i></span>
+                                        </div>
+                                        <input type="text" name="inspector_name" class="form-control input-ind border-left-0" value="{{ Auth::user()?->name }}" placeholder="Input name..." required>
+                                    </div>
+                                </div>
+
                                 <textarea name="ng_reason" class="form-control input-ind mb-3" rows="2" placeholder="Record defects..."></textarea>
                                 <button type="submit" class="btn btn-block btn-execute btn-wld shadow-sm">
                                     Approve_Assembly <i class="fas fa-shield-alt ml-2"></i>
