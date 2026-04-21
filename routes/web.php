@@ -398,4 +398,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
 // Ruangan Quality Gate 
 Route::get('/quality-gate', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
 Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.gate.approve');
+// Jalur Quality Gate rill
+Route::get('/quality-gate-control', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
+Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.gate.approve');
 });
