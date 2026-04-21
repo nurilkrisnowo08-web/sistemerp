@@ -52,7 +52,7 @@ class WeldingStockController extends Controller
                 return $item;
             });
 
-        // ✨ FIX: JOIN PAKE REPLACE BIAR KEBUL SPASI RILL!
+        // ✨ JOIN PAKE REPLACE rill!
         $activeWelding = DB::table('welding_batches')
             ->leftJoin('finished_goods', function($join) {
                 $join->on(DB::raw("REPLACE(welding_batches.part_no, ' ', '')"), '=', DB::raw("REPLACE(finished_goods.part_no, ' ', '')"));
@@ -124,7 +124,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4. FINISH & TRANSFER (KE FG) rill
+     * 4. ✨ FIX FINISH: Kirim ke Quality Gate rill!
      */
     public function finishWelding(Request $request, $id)
     {
@@ -133,97 +133,87 @@ class WeldingStockController extends Controller
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $cleanPart = str_replace(' ', '', trim($batch->part_no));
+        $keterangan = $request->keterangan; // Ambil catatan rill
 
         DB::beginTransaction();
         try {
-            DB::table('finished_goods')
-                ->whereRaw("REPLACE(part_no, ' ', '') = ?", [$cleanPart])
-                ->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
+            // ❌ JANGAN INCREMENT STOK ACTUAL DI SINI RILL!
+            // Logic increment actual_stock pindah ke QualityGateController pas di-Approve.
 
-            DB::table('production_logs')->insert([
-                'part_no'      => $batch->part_no,
-                'qty'          => $qty_ok,
-                'process_type' => 'FG',
-                'created_at'   => now()
-            ]);
+            // ❌ JANGAN INSERT LOG FG DI SINI RILL!
+            // Log FG bakal dibikin pas barang bener-bener lulus sensor QC.
 
+            // ✅ UPDATE BATCH: Belokin ke Quality Gate rill!
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok'      => $qty_ok, 
                 'qty_ng'      => $qty_ng,
-                'status ENUM' => 'COMPLETED', 
+                'keterangan'  => $keterangan,
+                'status ENUM' => 'WAITING_QC', // Kirim ke gerbang QC rill!
                 'updated_at'  => now()
             ]);
 
             DB::commit();
-            return back()->with('success', 'Selesai rill! Barang masuk FG.');
-        } catch (\Exception $e) { DB::rollBack(); return back()->with('error', 'Gagal: ' . $e->getMessage()); }
+            return back()->with('success', 'Proses Las Selesai! Barang dikirim ke Quality Gate rill.');
+        } catch (\Exception $e) { 
+            DB::rollBack(); 
+            return back()->with('error', 'Gagal: ' . $e->getMessage()); 
+        }
     }
 
     /**
      * 5. HISTORY rill
      */
     public function history(Request $request)
-{
-    $customerFilter = $request->customer;
-    $startDate = $request->start_date ?? date('Y-m-d');
-    $endDate = $request->end_date ?? date('Y-m-d');
-    $clients = DB::table('customers')->get(); // Pastiin tabel customers lu ada rill
+    {
+        $customerFilter = $request->customer;
+        $startDate = $request->start_date ?? date('Y-m-d');
+        $endDate = $request->end_date ?? date('Y-m-d');
+        $clients = DB::table('customers')->get();
 
-    // 1. Ambil data master finished_goods buat acuan stok rill
-    $query = DB::table('finished_goods')
-        ->select('part_no', 'part_name', 'customer', 'welding_stock');
+        $query = DB::table('finished_goods')
+            ->select('part_no', 'part_name', 'customer', 'welding_stock');
 
-    if ($customerFilter && $customerFilter != 'ALL') {
-        $query->where('customer', trim($customerFilter));
+        if ($customerFilter && $customerFilter != 'ALL') {
+            $query->where('customer', trim($customerFilter));
+        }
+
+        $history = $query->get()->map(function($item) use ($startDate, $endDate) {
+            $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
+
+            $in_period = DB::table('production_logs')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('process_type', 'WELDING')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty');
+
+            $out_period = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('status ENUM', 'COMPLETED')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty_ok');
+
+            $future_in = DB::table('production_logs')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('process_type', 'WELDING')
+                ->whereDate('created_at', '>', $endDate)
+                ->sum('qty');
+
+            $future_out = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('status ENUM', 'COMPLETED')
+                ->whereDate('created_at', '>', $endDate)
+                ->sum('qty_ok');
+
+            $item->total_in = $in_period;
+            $item->total_out = $out_period;
+            $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
+            $item->stock_awal = $item->stock_akhir - $in_period + $out_period;
+
+            return $item;
+        })->filter(function($i) {
+            return ($i->stock_awal > 0 || $i->total_in > 0 || $i->total_out > 0 || $i->stock_akhir > 0);
+        });
+
+        return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
-
-    $history = $query->get()->map(function($item) use ($startDate, $endDate) {
-        $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
-
-        // A. Hitung barang MASUK di periode filter rill
-        $in_period = DB::table('production_logs')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('process_type', 'WELDING')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-            ->sum('qty');
-
-        // B. Hitung barang KELUAR (Selesai Las) di periode filter rill
-        $out_period = DB::table('welding_batches')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('status ENUM', 'COMPLETED')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-            ->sum('qty_ok');
-
-        // C. LOGIKA BACKTRACKING: Cari mutasi SETELAH endDate sampai detik ini rill!
-        $future_in = DB::table('production_logs')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('process_type', 'WELDING')
-            ->whereDate('created_at', '>', $endDate)
-            ->sum('qty');
-
-        $future_out = DB::table('welding_batches')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('status ENUM', 'COMPLETED')
-            ->whereDate('created_at', '>', $endDate)
-            ->sum('qty_ok');
-
-        // D. KOKALAN DATA RILL!
-        $item->total_in = $in_period;
-        $item->total_out = $out_period;
-        
-        // Stok Akhir (di tanggal endDate) = Stok Sekarang - Masuk Masa Depan + Keluar Masa Depan
-        $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
-        
-        // Stok Awal (di tanggal startDate) = Stok Akhir - Masuk di Periode + Keluar di Periode
-        $item->stock_awal = $item->stock_akhir - $in_period + $out_period;
-
-        return $item;
-    })->filter(function($i) {
-        // Tampilkan hanya yang ada pergerakan atau ada stok rill biar gak penuh datanya
-        return ($i->stock_awal > 0 || $i->total_in > 0 || $i->total_out > 0 || $i->stock_akhir > 0);
-    });
-
-    return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
-}
 }

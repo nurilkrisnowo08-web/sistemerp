@@ -91,7 +91,7 @@ class ProduksiController extends Controller
     }
 
     /**
-     * ✨ FIX UPDATE RESULT: Pastiin Terkirim ke Welding & Simpan Keterangan rill!
+     * ✨ FIX UPDATE RESULT: Belok ke Quality Gate rill!
      */
     public function updateResult(Request $request, $id) 
     {
@@ -102,14 +102,13 @@ class ProduksiController extends Controller
         $qty_ok = (int)$request->qty_hasil_ok; 
         $qty_ng_mat = (int)($request->qty_ng_material ?? 0);
         $qty_ng_proc = (int)($request->qty_ng_process ?? 0);
-        $keterangan = $request->keterangan; // Ambil dari input rill
+        $keterangan = $request->keterangan; 
 
-        // Bersihkan part no rill
         $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
 
         DB::beginTransaction();
         try {
-            // 1. Logic Return Material (Gak diubah rill)
+            // 1. Logic Return Material (Tetap rill)
             if ($qty_return > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -131,12 +130,11 @@ class ProduksiController extends Controller
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
 
                 if ($target == 'WELDING') {
-                    // ✅ UPDATE WELDING STOCK RILL!
+                    // ✅ JIKA KE WELDING: Tetap logic lama rill (Langsung Masuk)
                     DB::table('finished_goods')
                         ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                         ->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
 
-                    // ✅ CATAT LOG (Keterangan sengaja gak dimasukin sini dulu biar gak error rill!)
                     DB::table('production_logs')->insert([
                         'part_no'      => $p->material_code,
                         'qty'          => $qty_ok,
@@ -144,42 +142,36 @@ class ProduksiController extends Controller
                         'created_at'   => now(),
                     ]);
                     
+                    $status_akhir = 'COMPLETED'; // Langsung selesai rill
                     $routeMsg = "Barang ditransfer ke GUDANG WELDING.";
                 } else {
-                    // ✅ UPDATE FG STOCK RILL!
-                    DB::table('finished_goods')
-                        ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                        ->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
-                    
-                    DB::table('production_logs')->insert([
-                        'part_no'      => $p->material_code,
-                        'qty'          => $qty_ok,
-                        'process_type' => 'FG',
-                        'created_at'   => now(),
-                    ]);
-                    $routeMsg = "Stok FG berhasil bertambah.";
+                    // ✅ JIKA KE FG: Masuk ke Quality Gate rill!
+                    // Note: Stok TIDAK di-increment di sini rill, nanti di QualityGateController
+                    $status_akhir = 'WAITING_QC'; 
+                    $routeMsg = "Barang dikirim ke QUALITY GATE untuk verifikasi rill.";
                 }
+            } else {
+                $status_akhir = 'COMPLETED'; // Kalau gak ada barang OK rill
             }
 
-            // 3. ✨ UPDATE PRODUKSI BATCHES: Simpan Keterangan rill!
-            // Di sini aman karena kolom 'keterangan' emang ada di tabel produksi_batches
+            // 3. ✨ UPDATE PRODUKSI BATCHES: Status disesuaikan rill!
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->update([
                 'qty_hasil_ok'         => $qty_ok, 
                 'qty_ng_material'      => $qty_ng_mat,
                 'qty_ng_process'       => $qty_ng_proc,
                 'qty_hasil_ng'         => $qty_ng_mat + $qty_ng_proc,
                 'qty_return_warehouse' => $qty_return,
-                'keterangan'           => $keterangan, // Simpan ke baris 17 rill!
-                'status'               => 'COMPLETED', 
+                'keterangan'           => $keterangan,
+                'status'               => $status_akhir, // Dinamis rill (WAITING_QC atau COMPLETED)
                 'updated_at'           => now()
             ]);
 
             DB::commit();
-            return redirect()->route('produksi.index')->with('success', 'Batch Selesai rill. ' . ($routeMsg ?? ''));
+            return redirect()->route('produksi.index')->with('success', 'Batch diproses rill. ' . ($routeMsg ?? ''));
 
         } catch (\Exception $e) { 
             DB::rollback(); 
-            return back()->with('error', 'Gagal Transmisi! Pesan: ' . $e->getMessage()); 
+            return back()->with('error', 'Gagal rill! Pesan: ' . $e->getMessage()); 
         }
     }
 
@@ -238,7 +230,7 @@ class ProduksiController extends Controller
                 'produksi_batches.qty_ng_material',
                 'produksi_batches.qty_ng_process',
                 'produksi_batches.qty_return_warehouse',
-                'produksi_batches.keterangan', // Biar history bisa nampilin catatan rill
+                'produksi_batches.keterangan', 
                 'produksi_batches.status',
                 DB::raw('MIN(produksi_batches.id) as id'),
                 DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
