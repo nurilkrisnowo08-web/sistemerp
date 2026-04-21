@@ -44,7 +44,7 @@ class QualityGateController extends Controller {
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
                 if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
 
-                // ✨ PROTEKSI KEAMANAN: Validasi agar input tidak melebihi kiriman welding
+                // PROTEKSI KEAMANAN: Validasi agar input tidak melebihi kiriman welding
                 if ($request->qty_ok_final > $batch->qty_ok) {
                     throw new \Exception("Gagal! Input Qty OK (" . $request->qty_ok_final . ") melebihi jumlah yang dikirim dari area Welding (" . $batch->qty_ok . ").");
                 }
@@ -69,7 +69,7 @@ class QualityGateController extends Controller {
                 throw new \Exception("Gagal! Part No [$partNo] tidak terdaftar di Tabel Master Finished Goods.");
             }
 
-            // 4. Simpan Laporan Inspeksi ke Tabel quality_inspections
+            // 4. Simpan Laporan Inspeksi ke Tabel quality_inspections (History Pemeriksaan)
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -99,8 +99,12 @@ class QualityGateController extends Controller {
                 'created_at'   => now()
             ]);
 
-            // 7. Finalisasi Status Batch dan Sinkronisasi Timestamp QC
+            // 7. Finalisasi Status Batch & Timpa Angka Operator dengan Angka Verifikasi QC
+            // Ini memastikan History Welding sinkron dengan hasil pengecekan fisik QC
             DB::table($table)->where('id', $id)->update([
+                'qty_ok'     => $request->qty_ok_final, // Timpa data ok
+                'qty_ng'     => $request->qty_ng_final, // Timpa data ng
+                'keterangan' => $request->ng_reason ?? '', // Timpa catatan operator dengan catatan QC
                 'status'     => 'COMPLETED',
                 'qc_at'      => now(),
                 'qc_by'      => $inspectorName,

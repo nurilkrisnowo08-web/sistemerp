@@ -9,7 +9,6 @@
         --ind-emerald: #059669; --ind-rose: #e11d48; --ind-slate: #f1f5f9;
         --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
     }
-
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
     .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--ind-navy); }
     .qc-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; transition: 0.3s; box-shadow: var(--card-shadow); }
@@ -26,7 +25,6 @@
 </style>
 
 <div class="container-fluid py-4">
-    {{-- Header Section --}}
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-xl border shadow-sm">
         <div>
             <h2 class="industrial-header m-0">UNIT_VERIFICATION <span class="text-primary">v4.0</span></h2>
@@ -39,7 +37,6 @@
         </div>
     </div>
 
-    {{-- Alerts --}}
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm mb-4" style="border-left: 6px solid #10b981 !important;">
             <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
@@ -52,10 +49,9 @@
                 <div style="width: 5px; height: 25px; background: var(--ind-blue); border-radius: 10px;" class="mr-3"></div>
                 <h5 class="font-weight-bold m-0 text-uppercase">Production Queue</h5>
             </div>
-
             @forelse($produksiQueue as $p)
             <div class="qc-card mb-4">
-                <div class="card-header-ind d-flex justify-content-between">
+                <div class="card-header-ind d-flex justify-content-between align-items-start">
                     <div>
                         <div class="tech-code">BATCH_SERIAL: {{ $p->no_produksi }}</div>
                         <div class="part-title">{{ $p->material_code }}</div>
@@ -84,10 +80,6 @@
                         </div>
                         <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-sm mb-3">COMMIT RELEASE TO INVENTORY</button>
                     </form>
-                    <form action="{{ route('quality.destroy', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" onsubmit="return confirm('Attention: Permanent deletion of batch. Proceed?')">
-                        @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-block bg-light text-danger font-weight-bold border-0" style="font-size: 11px;">REJECT & PURGE DATA</button>
-                    </form>
                 </div>
             </div>
             @empty
@@ -103,7 +95,7 @@
 
             @forelse($weldingQueue as $w)
             <div class="qc-card mb-4" style="border-top: 5px solid var(--ind-amber);">
-                <div class="card-header-ind d-flex justify-content-between">
+                <div class="card-header-ind d-flex justify-content-between align-items-start">
                     <div>
                         <div class="tech-code">WLD_BATCH: {{ $w->no_produksi_stamping }}</div>
                         <div class="part-title">{{ $w->part_no }}</div>
@@ -118,24 +110,14 @@
                         @csrf
                         <div class="row mb-4">
                             <div class="col-6">
-                                <label class="label-ind text-emerald">Verification OK</label>
-                                <input type="number" 
-                                       id="ok-{{ $w->id }}" 
-                                       name="qty_ok_final" 
-                                       class="form-control input-ind text-emerald" 
-                                       value="{{ $w->qty_ok }}" 
-                                       oninput="syncWeldingQty('{{ $w->id }}', 'ok')"
-                                       required>
+                                <label class="label-ind text-emerald">Actual OK (Final)</label>
+                                {{-- ✨ VALUE DIKOSONGKAN --}}
+                                <input type="number" id="ok-{{ $w->id }}" name="qty_ok_final" class="form-control input-ind text-emerald" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ok')" required>
                             </div>
                             <div class="col-6">
-                                <label class="label-ind text-rose">Detected NG</label>
-                                <input type="number" 
-                                       id="ng-{{ $w->id }}" 
-                                       name="qty_ng_final" 
-                                       class="form-control input-ind text-rose" 
-                                       value="0" 
-                                       oninput="syncWeldingQty('{{ $w->id }}', 'ng')"
-                                       required>
+                                <label class="label-ind text-rose">Actual NG (Verify)</label>
+                                {{-- ✨ VALUE DIKOSONGKAN --}}
+                                <input type="number" id="ng-{{ $w->id }}" name="qty_ng_final" class="form-control input-ind text-rose" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ng')" required>
                             </div>
                         </div>
 
@@ -145,8 +127,9 @@
                         </div>
 
                         <div class="form-group mb-4">
-                            <label class="label-ind">Analysis / Notes</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record verification notes...">{{ $w->keterangan }}</textarea>
+                            <label class="label-ind">Analysis / Notes (Optional)</label>
+                            {{-- ✨ TEXTAREA DIKOSONGKAN --}}
+                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input QC analysis here..."></textarea>
                         </div>
 
                         <button type="submit" id="btn-{{ $w->id }}" class="btn btn-block btn-action shadow-sm" style="background: var(--ind-amber); color: #fff;">
@@ -167,10 +150,6 @@
 </div>
 
 <script>
-    /**
-     * Sinkronisasi Otomatis Qty OK dan NG 
-     * Agar totalnya tidak melebihi WIP yang dikirim
-     */
     function syncWeldingQty(id, type) {
         const totalWip = parseInt(document.getElementById('total-wip-' + id).innerText);
         const okInput = document.getElementById('ok-' + id);
@@ -181,28 +160,17 @@
         let ngVal = parseInt(ngInput.value) || 0;
 
         if (type === 'ok') {
-            if (okVal > totalWip) {
-                okInput.value = totalWip;
-                ngInput.value = 0;
-            } else {
-                ngInput.value = totalWip - okVal;
-            }
+            if (okVal > totalWip) { okInput.value = totalWip; ngInput.value = 0; }
+            else { ngInput.value = totalWip - okVal; }
         } else {
-            if (ngVal > totalWip) {
-                ngInput.value = totalWip;
-                okInput.value = 0;
-            } else {
-                okInput.value = totalWip - ngVal;
-            }
+            if (ngVal > totalWip) { ngInput.value = totalWip; okInput.value = 0; }
+            else { okInput.value = totalWip - ngVal; }
         }
 
-        // Final safety check
         if (parseInt(okInput.value) + parseInt(ngInput.value) > totalWip) {
-            btn.disabled = true;
-            btn.innerText = "OVER QUANTITY!";
+            btn.disabled = true; btn.innerText = "OVER QUANTITY!";
         } else {
-            btn.disabled = false;
-            btn.innerHTML = 'VERIFY & STORE TO FG <i class="fas fa-shield-alt ml-2"></i>';
+            btn.disabled = false; btn.innerHTML = 'VERIFY & STORE TO FG <i class="fas fa-shield-alt ml-2"></i>';
         }
     }
 </script>
