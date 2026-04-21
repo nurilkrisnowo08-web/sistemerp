@@ -91,12 +91,12 @@
 <div class="container-fluid py-4">
     <div class="d-flex align-items-center justify-content-between mb-5">
         <div>
-            <h2 class="industrial-header font-weight-black mb-0">Quality <span class="text-primary">Gate rill</span></h2>
+            <h2 class="industrial-header font-weight-black mb-0">Quality <span class="text-primary">Gate </span></h2>
             <p class="text-muted small font-weight-bold">INDUSTRIAL_CORE // VERIFICATION_UNIT_v4.0</p>
         </div>
         <div class="text-right">
             <span class="badge badge-soft-primary px-3 py-2 border border-primary text-primary">
-                <i class="fas fa-sync fa-spin mr-2"></i> LIVE_MONITORING rill
+                <i class="fas fa-sync fa-spin mr-2"></i> LIVE_MONITORING 
             </span>
         </div>
     </div>
@@ -128,7 +128,7 @@
                                 @csrf
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="small font-weight-extrabold text-success">QTY OK (FINAL) rill</label>
+                                        <label class="small font-weight-extrabold text-success">QTY OK (FINAL) </label>
                                         <div class="input-group">
                                             <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-check-circle text-success"></i></span></div>
                                             <input type="number" name="qty_ok_final" class="form-control input-industrial border-left-0" value="{{ $s->qty_hasil_ok }}" required>
@@ -143,10 +143,10 @@
                                     </div>
                                 </div>
                                 <div class="form-group mb-4">
-                                    <textarea name="ng_reason" class="form-control input-industrial" rows="2" placeholder="Tulis alasan jika ada barang NG rill..."></textarea>
+                                    <textarea name="ng_reason" class="form-control input-industrial" rows="2" placeholder="Tulis alasan jika ada barang NG ..."></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-block btn-release btn-release-stamping text-white font-weight-bold">
-                                    RELEASE TO FG rill <i class="fas fa-paper-plane ml-2"></i>
+                                    RELEASE TO FG  <i class="fas fa-paper-plane ml-2"></i>
                                 </button>
                             </form>
                         </div>
@@ -156,7 +156,7 @@
                 <div class="col-12">
                     <div class="empty-state">
                         <i class="fas fa-box-open fa-3x mb-3 opacity-20"></i>
-                        <p class="font-weight-bold mb-0">ANTREAN STAMPING BERSIH RILL</p>
+                        <p class="font-weight-bold mb-0">ANTREAN STAMPING BERSIH </p>
                     </div>
                 </div>
                 @endforelse
@@ -197,9 +197,9 @@
                                         <input type="number" name="qty_ng_final" class="form-control input-industrial" value="0">
                                     </div>
                                 </div>
-                                <textarea name="ng_reason" class="form-control input-industrial mb-4" rows="2" placeholder="Alasan NG Welding rill..."></textarea>
+                                <textarea name="ng_reason" class="form-control input-industrial mb-4" rows="2" placeholder="Alasan NG Welding ..."></textarea>
                                 <button type="submit" class="btn btn-warning btn-block btn-release btn-release-welding text-white font-weight-bold">
-                                    APPROVE TO FG rill <i class="fas fa-shield-alt ml-2"></i>
+                                    APPROVE TO FG  <i class="fas fa-shield-alt ml-2"></i>
                                 </button>
                             </form>
                         </div>
@@ -209,7 +209,7 @@
                 <div class="col-12">
                     <div class="empty-state">
                         <i class="fas fa-fire-extinguisher fa-3x mb-3 opacity-20"></i>
-                        <p class="font-weight-bold mb-0">MEJA QC WELDING KOSONG RILL</p>
+                        <p class="font-weight-bold mb-0">MEJA QC WELDING KOSONG </p>
                     </div>
                 </div>
                 @endforelse

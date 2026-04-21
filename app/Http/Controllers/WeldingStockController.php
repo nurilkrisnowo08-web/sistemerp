@@ -52,7 +52,7 @@ class WeldingStockController extends Controller
                 return $item;
             });
 
-        // ✨ JOIN PAKE REPLACE rill!
+        // ✨ FIX: Nama kolom 'status ENUM' ganti jadi 'status' rill!
         $activeWelding = DB::table('welding_batches')
             ->leftJoin('finished_goods', function($join) {
                 $join->on(DB::raw("REPLACE(welding_batches.part_no, ' ', '')"), '=', DB::raw("REPLACE(finished_goods.part_no, ' ', '')"));
@@ -61,9 +61,9 @@ class WeldingStockController extends Controller
                 'welding_batches.*', 
                 'finished_goods.customer', 
                 'finished_goods.part_name', 
-                DB::raw("welding_batches.`status ENUM` as batch_status")
+                'welding_batches.status as batch_status'
             )
-            ->whereIn('welding_batches.status ENUM', ['PENDING', 'PROSES'])
+            ->whereIn('welding_batches.status', ['PENDING', 'PROSES'])
             ->get();
 
         $availableCustomers = $inventoryWelding->pluck('customer')->unique()->filter();
@@ -94,11 +94,12 @@ class WeldingStockController extends Controller
                 ->where('id', $fg->id)
                 ->decrement('welding_stock', $qty_ambil, ['updated_at' => now()]);
 
+            // ✨ FIX: Pakai kolom 'status' rill
             DB::table('welding_batches')->insert([
                 'no_produksi_stamping' => 'WLD-' . date('Ymd-His'), 
                 'part_no'              => $part_no,
                 'qty_masuk'            => $qty_ambil,
-                'status ENUM'          => 'PENDING',
+                'status'               => 'PENDING',
                 'created_at'           => now(),
                 'updated_at'           => now()
             ]);
@@ -116,8 +117,9 @@ class WeldingStockController extends Controller
      */
     public function startWelding($id)
     {
+        // ✨ FIX: Pakai kolom 'status' rill
         DB::table('welding_batches')->where('id', $id)->update([
-            'status ENUM' => 'PROSES',
+            'status' => 'PROSES',
             'updated_at' => now()
         ]);
         return back()->with('success', 'Proses Las Dimulai rill!');
@@ -133,22 +135,20 @@ class WeldingStockController extends Controller
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $keterangan = $request->keterangan; // Ambil catatan rill
+        $keterangan = $request->keterangan; 
 
         DB::beginTransaction();
         try {
             // ❌ JANGAN INCREMENT STOK ACTUAL DI SINI RILL!
-            // Logic increment actual_stock pindah ke QualityGateController pas di-Approve.
-
             // ❌ JANGAN INSERT LOG FG DI SINI RILL!
-            // Log FG bakal dibikin pas barang bener-bener lulus sensor QC.
+            // Semuanya dipindah ke QualityGateController pas tombol RELEASE diklik rill.
 
-            // ✅ UPDATE BATCH: Belokin ke Quality Gate rill!
+            // ✅ UPDATE BATCH: Status jadi WAITING_QC rill!
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok'      => $qty_ok, 
                 'qty_ng'      => $qty_ng,
                 'keterangan'  => $keterangan,
-                'status ENUM' => 'WAITING_QC', // Kirim ke gerbang QC rill!
+                'status'      => 'WAITING_QC', // Belok ke QC dulu rill!
                 'updated_at'  => now()
             ]);
 
@@ -186,9 +186,10 @@ class WeldingStockController extends Controller
                 ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
                 ->sum('qty');
 
+            // ✨ FIX: Pakai kolom 'status' rill
             $out_period = DB::table('welding_batches')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                ->where('status ENUM', 'COMPLETED')
+                ->where('status', 'COMPLETED')
                 ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
                 ->sum('qty_ok');
 
@@ -198,14 +199,16 @@ class WeldingStockController extends Controller
                 ->whereDate('created_at', '>', $endDate)
                 ->sum('qty');
 
+            // ✨ FIX: Pakai kolom 'status' rill
             $future_out = DB::table('welding_batches')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                ->where('status ENUM', 'COMPLETED')
+                ->where('status', 'COMPLETED')
                 ->whereDate('created_at', '>', $endDate)
                 ->sum('qty_ok');
 
             $item->total_in = $in_period;
             $item->total_out = $out_period;
+            
             $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
             $item->stock_awal = $item->stock_akhir - $in_period + $out_period;
 
