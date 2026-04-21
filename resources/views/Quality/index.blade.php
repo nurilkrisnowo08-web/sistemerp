@@ -9,6 +9,7 @@
         --ind-emerald: #059669; --ind-rose: #e11d48; --ind-slate: #f1f5f9;
         --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
     }
+
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
     .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--ind-navy); }
     .qc-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; transition: 0.3s; box-shadow: var(--card-shadow); }
@@ -25,6 +26,7 @@
 </style>
 
 <div class="container-fluid py-4">
+    {{-- Header Section --}}
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-xl border shadow-sm">
         <div>
             <h2 class="industrial-header m-0">UNIT_VERIFICATION <span class="text-primary">v4.0</span></h2>
@@ -37,9 +39,16 @@
         </div>
     </div>
 
+    {{-- Alerts --}}
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm mb-4" style="border-left: 6px solid #10b981 !important;">
             <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm mb-4" style="border-left: 6px solid #ef4444 !important;">
+            <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
         </div>
     @endif
 
@@ -49,6 +58,7 @@
                 <div style="width: 5px; height: 25px; background: var(--ind-blue); border-radius: 10px;" class="mr-3"></div>
                 <h5 class="font-weight-bold m-0 text-uppercase">Production Queue</h5>
             </div>
+
             @forelse($produksiQueue as $p)
             <div class="qc-card mb-4">
                 <div class="card-header-ind d-flex justify-content-between align-items-start">
@@ -74,11 +84,30 @@
                                 <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="0" required>
                             </div>
                         </div>
+
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
-                            <input type="text" name="inspector_name" class="form-control input-ind" value="{{ Auth::user()?->name }}" required>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-light border-right-0" style="border: 2px solid #e2e8f0; border-radius: 10px 0 0 10px;">
+                                        <i class="fas fa-user-check text-muted"></i>
+                                    </span>
+                                </div>
+                                {{-- ✨ KOSONG: Wajib diisi manual --}}
+                                <input type="text" name="inspector_name" class="form-control input-ind border-left-0" placeholder="Type Inspector Name..." required>
+                            </div>
                         </div>
+
+                        <div class="form-group mb-4">
+                            <label class="label-ind">Anomaly / Reject Reason (Optional)</label>
+                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record defects..."></textarea>
+                        </div>
+
                         <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-sm mb-3">COMMIT RELEASE TO INVENTORY</button>
+                    </form>
+                    <form action="{{ route('quality.destroy', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" onsubmit="return confirm('Attention: Permanent deletion of batch. Proceed?')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-block bg-light text-danger font-weight-bold border-0" style="font-size: 11px;">REJECT & PURGE DATA</button>
                     </form>
                 </div>
             </div>
@@ -111,24 +140,25 @@
                         <div class="row mb-4">
                             <div class="col-6">
                                 <label class="label-ind text-emerald">Actual OK (Final)</label>
-                                {{-- ✨ VALUE DIKOSONGKAN --}}
+                                {{-- ✨ CLEAR 0: QC harus input sendiri --}}
                                 <input type="number" id="ok-{{ $w->id }}" name="qty_ok_final" class="form-control input-ind text-emerald" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ok')" required>
                             </div>
                             <div class="col-6">
                                 <label class="label-ind text-rose">Actual NG (Verify)</label>
-                                {{-- ✨ VALUE DIKOSONGKAN --}}
+                                {{-- ✨ CLEAR 0: QC harus input sendiri --}}
                                 <input type="number" id="ng-{{ $w->id }}" name="qty_ng_final" class="form-control input-ind text-rose" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ng')" required>
                             </div>
                         </div>
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
-                            <input type="text" name="inspector_name" class="form-control input-ind" value="{{ Auth::user()?->name }}" required>
+                            {{-- ✨ KOSONG: Wajib diisi manual --}}
+                            <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Type Inspector Name..." required>
                         </div>
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Analysis / Notes (Optional)</label>
-                            {{-- ✨ TEXTAREA DIKOSONGKAN --}}
+                            {{-- ✨ CLEAR: Tanpa narik keterangan operator --}}
                             <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input QC analysis here..."></textarea>
                         </div>
 
