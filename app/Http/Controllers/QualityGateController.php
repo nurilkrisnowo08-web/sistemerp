@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
-        // Ambil antrean yang statusnya WAITING_QC rill
-        $stampingQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
+        // 1. Ambil antrean Produksi (Stamping) - Variabel disesuaikan buat UI rill!
+        $produksiQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
+        
+        // 2. Ambil antrean Welding
         $weldingQueue = DB::table('welding_batches')->where('status', 'WAITING_QC')->get();
 
-        return view('Quality.index', compact('stampingQueue', 'weldingQueue'));
+        // Pastiin variabel produksiQueue dikirim ke view Quality.index rill
+        return view('Quality.index', compact('produksiQueue', 'weldingQueue'));
     }
 
     public function approve(Request $request, $type, $id) {
@@ -37,7 +40,7 @@ class QualityGateController extends Controller {
 
             $inspectorName = Auth::user()->name ?? 'QC_OFFICER';
 
-            // 2. Simpan Laporan ke quality_inspections (Sesuai image_82dda1.png rill!)
+            // 2. Simpan Laporan ke quality_inspections (Sesuai database lu rill!)
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -52,13 +55,13 @@ class QualityGateController extends Controller {
                 'updated_at'    => now()
             ]);
 
-            // 3. Update Stok FG (Finished Goods) rill!
+            // 3. ✨ UPDATE STOK FG: Bersihkan spasi & strip biar ketemu datanya rill!
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->increment('actual_stock', $request->qty_ok_final, ['updated_at' => now()]);
 
-            // 4. Catat ke production_logs sebagai barang FG rill
+            // 4. Catat ke production_logs sebagai barang Finished Goods (FG)
             DB::table('production_logs')->insert([
                 'part_no'      => $partNo,
                 'qty'          => $request->qty_ok_final,
@@ -66,7 +69,7 @@ class QualityGateController extends Controller {
                 'created_at'   => now()
             ]);
 
-            // 5. Update tabel asal (Selesaikan status & isi jejak QC rill!)
+            // 5. Update tabel asal (Status COMPLETED & catat siapa yang Approve rill!)
             DB::table($table)->where('id', $id)->update([
                 'status'     => 'COMPLETED',
                 'qc_at'      => now(),
@@ -75,7 +78,7 @@ class QualityGateController extends Controller {
             ]);
 
             DB::commit();
-            return back()->with('success', 'Barang berhasil lulus QC dan masuk Gudang FG rill!');
+            return back()->with('success', 'Barang resmi masuk Gudang FG rill!');
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
