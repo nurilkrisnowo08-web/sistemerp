@@ -26,14 +26,19 @@
 </style>
 
 <div class="container-fluid py-4">
-    {{-- Header Section --}}
+    {{-- 🛸 Header Section --}}
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-xl border shadow-sm">
         <div>
             <h2 class="industrial-header m-0">UNIT_VERIFICATION <span class="text-primary">v4.0</span></h2>
             <small class="text-muted font-weight-bold uppercase">Operational Mode: Active Inspection</small>
         </div>
-        <div class="text-right">
-            <span class="badge badge-outline-primary border-primary px-3 py-2 text-primary font-weight-bold">
+        <div class="text-right d-flex align-items-center">
+            {{-- ✨ Tombol History QC Baru --}}
+            <a href="{{ route('quality.history') }}" class="btn btn-outline-dark rounded-pill px-4 font-weight-bold mr-3 shadow-sm">
+                <i class="fas fa-history mr-2"></i> QC_HISTORY_AUDIT
+            </a>
+
+            <span class="badge badge-outline-primary border-primary px-3 py-2 text-primary font-weight-bold" style="border: 2px solid; border-radius: 12px;">
                 <i class="fas fa-sync-alt fa-spin mr-2"></i> DATA FEED ACTIVE
             </span>
         </div>
@@ -93,7 +98,6 @@
                                         <i class="fas fa-user-check text-muted"></i>
                                     </span>
                                 </div>
-                                {{-- ✨ KOSONG: Wajib diisi manual --}}
                                 <input type="text" name="inspector_name" class="form-control input-ind border-left-0" placeholder="Type Inspector Name..." required>
                             </div>
                         </div>
@@ -140,25 +144,21 @@
                         <div class="row mb-4">
                             <div class="col-6">
                                 <label class="label-ind text-emerald">Actual OK (Final)</label>
-                                {{-- ✨ CLEAR 0: QC harus input sendiri --}}
                                 <input type="number" id="ok-{{ $w->id }}" name="qty_ok_final" class="form-control input-ind text-emerald" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ok')" required>
                             </div>
                             <div class="col-6">
                                 <label class="label-ind text-rose">Actual NG (Verify)</label>
-                                {{-- ✨ CLEAR 0: QC harus input sendiri --}}
                                 <input type="number" id="ng-{{ $w->id }}" name="qty_ng_final" class="form-control input-ind text-rose" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ng')" required>
                             </div>
                         </div>
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
-                            {{-- ✨ KOSONG: Wajib diisi manual --}}
                             <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Type Inspector Name..." required>
                         </div>
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Analysis / Notes (Optional)</label>
-                            {{-- ✨ CLEAR: Tanpa narik keterangan operator --}}
                             <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input QC analysis here..."></textarea>
                         </div>
 
@@ -190,11 +190,19 @@
         let ngVal = parseInt(ngInput.value) || 0;
 
         if (type === 'ok') {
-            if (okVal > totalWip) { okInput.value = totalWip; ngInput.value = 0; }
-            else { ngInput.value = totalWip - okVal; }
+            if (okVal > totalWip) { 
+                okInput.value = totalWip; 
+                ngInput.value = 0; 
+            } else { 
+                ngInput.value = totalWip - okVal; 
+            }
         } else {
-            if (ngVal > totalWip) { ngInput.value = totalWip; okInput.value = 0; }
-            else { okInput.value = totalWip - ngVal; }
+            if (ngVal > totalWip) { 
+                ngInput.value = totalWip; 
+                okInput.value = 0; 
+            } else { 
+                okInput.value = totalWip - ngVal; 
+            }
         }
 
         if (parseInt(okInput.value) + parseInt(ngInput.value) > totalWip) {

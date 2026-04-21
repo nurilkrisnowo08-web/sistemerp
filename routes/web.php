@@ -15,6 +15,7 @@ Route::get('/quality-control-room', [QualityGateController::class, 'index'])->na
 Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
 // Tambahin di bawah rute approve lu rill!
 Route::delete('/quality-control-delete/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'destroy'])->name('quality.destroy');
+Route::get('/quality/history', [QualityGateController::class, 'history'])->name('quality.history');
 
 
 // 1. Buat rute VAULT (Mutasi Stok)

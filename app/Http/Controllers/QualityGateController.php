@@ -136,4 +136,16 @@ class QualityGateController extends Controller {
             return back()->with('error', 'Gagal melakukan penghapusan data: ' . $e->getMessage());
         }
     }
+    /**
+     * Menampilkan riwayat hasil inspeksi QC (Audit Trail)
+     */
+    public function history()
+    {
+        // Mengambil data inspeksi terbaru
+        $historyData = DB::table('quality_inspections')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('Quality.history', compact('historyData'));
+    }
 }
