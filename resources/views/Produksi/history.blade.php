@@ -51,7 +51,7 @@
     <div class="d-flex justify-content-between align-items-end mb-4">
         <div>
             <h3 class="font-weight-bold" style="letter-spacing: -1.5px; color: var(--ind-steel); font-size: 26px;">PRODUCTION_HISTORY</h3>
-            <p class="text-muted small font-weight-bold mb-0">PT. ASALTA MANDIRI AGUNG // SHEET_LEVEL_AUDIT rill</p>
+            <p class="text-muted small font-weight-bold mb-0">PT. ASALTA MANDIRI AGUNG // SHEET_LEVEL_AUDIT </p>
         </div>
         <div class="hud-actions">
             <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 font-weight-bold shadow-sm mr-2">
@@ -74,8 +74,8 @@
                         <th>OK (PCS)</th>
                         <th>NG (PCS)</th>
                         <th>YIELD</th>
-                        {{-- ✨ TAMBAHAN KOLOM KETERANGAN rill --}}
-                        <th class="text-left">REASON/REMARK rill</th>
+                        {{-- ✨ TAMBAHAN KOLOM KETERANGAN  --}}
+                        <th class="text-left">REASON/REMARK </th>
                     </tr>
                 </thead>
                 <tbody id="historyLogBody">
@@ -91,7 +91,7 @@
                         <td class="text-success font-weight-bold">{{ number_format($h->qty_hasil_ok) }}</td>
                         <td class="text-danger font-weight-bold">{{ number_format($h->qty_ng_material + $h->qty_ng_process) }}</td>
                         <td><b style="color: {{ $color }}; font-size: 15px;">{{ number_format($yield, 1) }}%</b></td>
-                        {{-- ✨ TAMPILKAN KETERANGAN rill --}}
+                        {{-- ✨ TAMPILKAN KETERANGAN  --}}
                         <td class="text-left small italic text-muted" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             {{ $h->keterangan ?? '-' }}
                         </td>
@@ -121,7 +121,7 @@
                     <div class="donut-container" style="--p: {{ $yield }}%; --c: {{ $chartColor }};">
                         <div class="donut-text">{{ number_format($yield, 0) }}%</div>
                     </div>
-                    <small class="font-weight-bold text-muted d-block mt-3 uppercase">Production Accuracy rill</small>
+                    <small class="font-weight-bold text-muted d-block mt-3 uppercase">Production Accuracy </small>
                 </div>
 
                 <div class="row mb-3 text-center small font-weight-bold">
@@ -142,10 +142,10 @@
                     </div>
                 </div>
 
-                {{-- ✨ TAMBAHAN: CATATAN PRODUKSI DI MODAL rill --}}
+                {{-- ✨ TAMBAHAN: CATATAN PRODUKSI DI MODAL  --}}
                 <div class="p-3 bg-light rounded border">
-                    <small class="label-title text-uppercase font-weight-bold" style="font-size: 9px; color: #94a3b8;">Production Notes rill:</small>
-                    <p class="mb-0 font-weight-bold text-dark small">{{ $h->keterangan ?? 'No specific notes recorded rill.' }}</p>
+                    <small class="label-title text-uppercase font-weight-bold" style="font-size: 9px; color: #94a3b8;">Production Notes :</small>
+                    <p class="mb-0 font-weight-bold text-dark small">{{ $h->keterangan ?? 'No specific notes recorded .' }}</p>
                 </div>
             </div>
         </div>
@@ -168,7 +168,7 @@
                 <th rowspan="2" style="width: 20%">PART NUMBER</th>
                 <th colspan="3">MUTASI PRODUKSI (PCS)</th>
                 <th rowspan="2">YIELD</th>
-                <th colspan="3">DETIL REJECT & CATATAN rill</th>
+                <th colspan="3">DETIL REJECT & CATATAN </th>
             </tr>
             <tr>
                 <th>AMBIL</th>
@@ -176,7 +176,7 @@
                 <th>NG TOT</th>
                 <th>MATERIAL</th>
                 <th>PROCESS</th>
-                <th>REMARK/CATATAN rill</th>
+                <th>REMARK/CATATAN </th>
             </tr>
         </thead>
         <tbody>
@@ -190,7 +190,7 @@
                 <td class="font-bold">{{ number_format(($h->qty_ambil_pcs > 0 ? ($h->qty_hasil_ok/$h->qty_ambil_pcs)*100 : 0), 1) }}%</td>
                 <td>{{ $h->qty_ng_material }}</td>
                 <td>{{ $h->qty_ng_process }}</td>
-                {{-- ✨ KETERANGAN DI PRINT OUT rill --}}
+                {{-- ✨ KETERANGAN DI PRINT OUT  --}}
                 <td class="text-left">{{ $h->keterangan ?? '-' }}</td>
             </tr>
             @endforeach
@@ -200,7 +200,7 @@
     <div class="ttd-box">
         <p>Bogor, {{ date('d F Y') }}</p>
         <p style="margin-top: 60px;">( ................................. )</p>
-        <p>PIC PRODUKSI rill</p>
+        <p>PIC PRODUKSI </p>
     </div>
 </div>
 
