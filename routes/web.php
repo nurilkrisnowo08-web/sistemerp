@@ -395,14 +395,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-Route::get('/quality-gate-room', [QualityGateController::class, 'index'])->name('quality.gate.index');
-Route::post('/quality-gate/approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.gate.approve');
-
-// Rute Pembersih (WAJIB RILL!)
-Route::get('/bersihin-rill', function() {
-    \Artisan::call('route:clear');
-    \Artisan::call('view:clear');
-    \Artisan::call('cache:clear');
-    return "SUKSES RILL! Sekarang balik ke Dashboard terus REFRESH.";
-});
+// Pastikan namanya quality.index biar simpel rill
+Route::get('/quality-inspections', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.index');
+Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.approve');
 });

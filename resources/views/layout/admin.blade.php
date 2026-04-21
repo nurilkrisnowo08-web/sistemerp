@@ -114,11 +114,11 @@
                 <a class="nav-link" href="{{ route('ppic.index') }}"><i class="fas fa-fw fa-calendar-days"></i><span>Planning PPIC</span></a>
             </li>
 
-           {{-- ✨ RUANGAN QUALITY GATE ! ✨ --}}
+          {{-- ✨ MENU QUALITY GATE rill --}}
 <div class="sidebar-heading">QUALITY_CONTROL</div>
-<li class="nav-item {{ Request::is('quality-gate*') ? 'active' : '' }}">
-    <a class="nav-link" href="{{ route('quality.gate.index') }}">
-        <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate </span>
+<li class="nav-item {{ Request::is('quality*') ? 'active' : '' }}">
+    <a class="nav-link" href="{{ route('quality.index') }}">
+        <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate rill</span>
     </a>
 </li>
 
