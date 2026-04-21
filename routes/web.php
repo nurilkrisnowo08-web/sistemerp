@@ -395,10 +395,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-// Ruangan Quality Gate 
+// DI WEB.PHP CUKUP PAKAI INI SATU AJA RILL!
 Route::get('/quality-gate', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
-Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.gate.approve');
-// Jalur Quality Gate rill
-Route::get('/quality-gate-control', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
 Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.gate.approve');
 });
