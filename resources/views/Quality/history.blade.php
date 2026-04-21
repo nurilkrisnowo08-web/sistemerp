@@ -34,6 +34,9 @@
     
     .chart-box { background: #fff; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
     
+    /* ✨ Remark Style */
+    .remark-text { font-size: 11px; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+
     /* Modal Detail */
     .modal-content { border-radius: 24px; border: none; }
     .detail-label { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
@@ -88,6 +91,7 @@
                         <th class="text-danger">NG</th>
                         <th>Yield</th>
                         <th>Inspector</th>
+                        <th class="text-left">Analysis / Remark</th> {{-- ✨ HEADER BARU --}}
                     </tr>
                 </thead>
                 <tbody class="bg-white">
@@ -113,9 +117,12 @@
                             </span>
                         </td>
                         <td class="text-uppercase small font-weight-bold">{{ $h->inspector }}</td>
+                        <td class="text-left">
+                            <div class="remark-text">{{ $h->ng_reason ?: '-' }}</div> {{-- ✨ DATA BARU --}}
+                        </td>
                     </tr>
                     @empty
-                    <tr><td colspan="8" class="py-5 text-muted">No audit logs found.</td></tr>
+                    <tr><td colspan="9" class="py-5 text-muted">No audit logs found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
