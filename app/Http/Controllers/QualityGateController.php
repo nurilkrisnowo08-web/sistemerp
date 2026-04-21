@@ -98,4 +98,18 @@ class QualityGateController extends Controller {
             return back()->with('error', $e->getMessage()); 
         }
     }
+    // Tambahin ini di QualityGateController lu rill!
+public function destroy($type, $id)
+{
+    try {
+        if ($type == 'stamping') {
+            DB::table('produksi_batches')->where('id', $id)->delete();
+        } else {
+            DB::table('welding_batches')->where('id', $id)->delete();
+        }
+        return back()->with('success', 'Batch antrean berhasil dihapus total rill!');
+    } catch (\Exception $e) {
+        return back()->with('error', 'Gagal hapus rill: ' . $e->getMessage());
+    }
+}
 }
