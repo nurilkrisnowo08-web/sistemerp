@@ -58,9 +58,9 @@ class QualityGateController extends Controller {
             'created_at'    => now(), 'updated_at' => now()
         ]);
 
-        // 2. Update Stok FG rill
+        // 2. Update Stok FG 
         DB::table('finished_goods')
-            ->where('id', $fg_exist->id) // Pake ID biar pasti masuk rill!
+            ->where('id', $fg_exist->id) // Pake ID biar pasti masuk 
             ->increment('actual_stock', $request->qty_ok_final, ['updated_at' => now()]);
 
         // 3. Catat Log 
