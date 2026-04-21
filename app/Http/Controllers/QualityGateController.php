@@ -11,7 +11,7 @@ class QualityGateController extends Controller {
     $weldingQueue = DB::table('welding_batches')->where('status', 'WAITING_QC')->get();
 
     // Sesuaiin sama nama folder lu: Quality (Q gede) rill!
-    return view('Quality.index', compact('stampingQueue', 'weldingQueue'));
+    return view('Quality.index', compact('stampingQueue', 'weldingQueue')); 
 }
 
    public function approve(Request $request, $type, $id) {
