@@ -1,119 +1,193 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <style>
-    :root { --brand-indigo: #4361ee; --brand-slate: #0f172a; --ui-bg: #f8fafc; }
-    body { background-color: var(--ui-bg); font-family: 'Plus Jakarta Sans', sans-serif; }
-
-    .history-filter-bar { 
-        background: var(--brand-slate); border-radius: 24px; padding: 30px; 
-        margin-bottom: 2rem; color: white; box-shadow: 0 15px 30px -10px rgba(15, 23, 42, 0.3);
+    :root {
+        --brand-primary: #4361ee; --brand-success: #10b981; --brand-danger: #ef4444;
+        --brand-warning: #f59e0b; --dark-surface: #0f172a; --bg-main: #f8fafc;
     }
-    .form-control-history { 
-        border-radius: 12px; padding: 12px 15px; border: none; 
-        background: rgba(255, 255, 255, 0.1); color: white; font-weight: 600; font-size: 13px;
-    }
-    .form-control-history option { color: #334155; }
-
-    .card-history { border: none; border-radius: 28px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.03); background: #fff; overflow: hidden; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #334155; }
+    .heading-history { font-family: 'Orbitron'; font-weight: 900; color: var(--dark-surface); letter-spacing: -1px; text-transform: uppercase; }
     
-    .table-ledger thead th { vertical-align: middle; border: 1px solid #f1f5f9; }
-    .header-mutation-label { background: var(--brand-indigo); color: #ffffff; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; padding: 12px !important; }
-    .table-ledger th { background-color: #fcfdfe; color: #94a3b8; font-weight: 800; text-transform: uppercase; font-size: 10px; padding: 15px; }
-    
-    .col-init { background: rgba(148, 163, 184, 0.03); color: #64748b; font-family: 'JetBrains Mono'; font-weight: 700; }
-    .col-in { background: rgba(16, 185, 129, 0.03); color: #10b981; font-family: 'JetBrains Mono'; font-weight: 700; }
-    .col-out { background: rgba(239, 68, 68, 0.03); color: #ef4444; font-family: 'JetBrains Mono'; font-weight: 700; }
-    .col-final { background: rgba(67, 97, 238, 0.05); color: var(--brand-indigo); font-family: 'Orbitron'; font-weight: 800 !important; }
+    .stat-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+    .stat-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+    .stat-value { font-family: 'Orbitron'; font-size: 22px; font-weight: 800; color: var(--dark-surface); }
 
-    .id-code { font-family: 'JetBrains Mono'; font-weight: 800; color: var(--brand-slate); font-size: 14px; }
+    .ledger-container { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .table-history thead th { background: #f8fafc; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 18px 15px; border-bottom: 2px solid #edf2f7; font-weight: 800; }
+    .table-history tbody tr { cursor: pointer; transition: 0.2s; }
+    .table-history tbody tr:hover { background-color: #f8faff; }
+    .table-history td { padding: 16px 15px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 600; font-size: 13px; }
+
+    .yield-badge { padding: 4px 10px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 12px; }
+    .chart-box { background: #fff; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
+    .remark-text { font-size: 11px; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 
-<div class="container-fluid mt-4 animate__animated animate__fadeIn">
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
+<div class="container-fluid py-4 px-4">
+    {{-- 1. HEADER --}}
+    <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h1 class="font-weight-bold mb-1" style="letter-spacing: -1.5px; color: var(--brand-slate);">Mutation <span style="color: var(--brand-indigo)">Ledger Vault rill</span></h1>
-            <p class="text-muted mb-0 font-weight-medium small text-uppercase">Audit Trail WIP Welding Department</p>
+            <h1 class="heading-history mb-1">WELDING_HISTORY <span class="text-primary">AUDIT</span></h1>
+            <p class="text-muted font-weight-bold small uppercase mb-0">PT. ASALTA MANDIRI AGUNG // UNIT_VERIFICATION_LOGS</p>
         </div>
-        <a href="{{ route('welding.index') }}" class="btn btn-white rounded-pill px-4 border font-weight-bold shadow-sm mt-3 mt-md-0">
-            <i class="fas fa-terminal mr-2"></i> Live Terminal
-        </a>
+        <div>
+            <button class="btn btn-dark rounded-pill px-4 font-weight-extrabold shadow-sm mr-2" onclick="window.print()">
+                <i class="fas fa-file-pdf mr-2"></i> EXPORT_PDF
+            </button>
+            <a href="{{ route('welding.index') }}" class="btn btn-outline-primary rounded-pill px-4 font-weight-extrabold shadow-sm">
+                <i class="fas fa-desktop mr-2"></i> MONITORING
+            </a>
+        </div>
     </div>
 
-    {{-- FILTER PANEL --}}
-    <div class="history-filter-bar animate__animated animate__fadeInDown">
-        <form action="{{ route('welding.history') }}" method="GET" class="row align-items-end">
-            <div class="col-md-3 mb-3 mb-md-0">
-                <label class="small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Customer Line</label>
-                <select name="customer" class="form-control-history w-100">
-                    <option value="ALL">-- ALL CUSTOMERS --</option>
-                    @foreach($clients as $c)
-                        <option value="{{ $c->name }}" {{ ($customerFilter == $c->name) ? 'selected' : '' }}>{{ strtoupper($c->name) }}</option>
-                    @endforeach
-                </select>
+    {{-- 2. STATS --}}
+    @php
+        $totalBatch = $historyData->count();
+        $totalOk = $historyData->sum('qty_ok');
+        $totalNg = $historyData->sum('qty_ng');
+        $grandTotal = $totalOk + $totalNg;
+        $avgYield = $grandTotal > 0 ? ($totalOk / $grandTotal) * 100 : 0;
+    @endphp
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Total Inspections</div>
+                <div class="stat-value text-primary">{{ $totalBatch }}</div>
             </div>
-            <div class="col-md-3 mb-3 mb-md-0">
-                <label class="small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Date From</label>
-                <input type="date" name="start_date" class="form-control-history w-100" value="{{ $startDate }}">
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card border-left-success" style="border-left: 5px solid #10b981 !important;">
+                <div class="stat-label">Average Yield</div>
+                <div class="stat-value text-success">{{ number_format($avgYield, 1) }}%</div>
             </div>
-            <div class="col-md-3 mb-3 mb-md-0">
-                <label class="small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Date To</label>
-                <input type="date" name="end_date" class="form-control-history w-100" value="{{ $endDate }}">
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-label">Total OK PCS</div>
+                <div class="stat-value">{{ number_format($totalOk) }}</div>
             </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-primary btn-block rounded-pill font-weight-extrabold shadow-lg" style="height: 48px; background: var(--brand-indigo); border:none;">
-                    <i class="fas fa-search-dollar mr-2"></i> GENERATE AUDIT rill!
-                </button>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card border-left-danger" style="border-left: 5px solid #ef4444 !important;">
+                <div class="stat-label">Total NG PCS</div>
+                <div class="stat-value text-danger">{{ number_format($totalNg) }}</div>
             </div>
-        </form>
+        </div>
     </div>
 
-    {{-- LEDGER TABLE --}}
-    <div class="card-history shadow-sm">
+    {{-- 3. CHART --}}
+    <div class="chart-box shadow-sm">
+        <h6 class="font-weight-bold mb-4 text-uppercase small tracking-widest text-muted">Quality Performance Trend (Yield %)</h6>
+        <div id="yieldChart"></div>
+    </div>
+
+    {{-- 4. TABLE (DENGAN KOLOM REMARK) --}}
+    <div class="ledger-container shadow-sm">
         <div class="table-responsive">
-            <table class="table table-ledger mb-0 text-center">
+            <table class="table table-history mb-0 text-center">
                 <thead>
                     <tr>
-                        <th rowspan="2" class="text-left pl-4" style="width: 25%;">Part Identification</th>
-                        <th colspan="4" class="header-mutation-label">Inventory Mutation Ledger (PCS)</th>
-                        <th rowspan="2" style="width: 15%;">Status</th>
-                    </tr>
-                    <tr>
-                        <th class="col-init">Balance Awal</th>
-                        <th class="col-in">IN (Mutation)</th>
-                        <th class="col-out">OUT (Usage)</th>
-                        <th class="col-final">Ending Stock</th>
-                    </tr>
+                        <th class="text-left pl-4">Time_Stamp</th>
+                        <th>Batch_Identifier</th>
+                        <th class="text-left">Part_No</th>
+                        <th class="text-success">OK</th>
+                        <th class="text-danger">NG</th>
+                        <th>Yield</th>
+                        <th>Inspector</th>
+                        <th class="text-left">Reason/Remark</th> </tr>
                 </thead>
-                <tbody>
-                    @forelse($history as $h)
-                    <tr>
-                        <td class="text-left pl-4 py-4">
-                            <div class="id-code">{{ $h->part_no }}</div>
-                            <small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">{{ $h->part_name }}</small>
-                            <div class="mt-1"><span class="badge badge-light border text-muted px-2 py-0" style="font-size: 8px;">{{ $h->customer }}</span></div>
+                <tbody class="bg-white">
+                    @forelse($historyData as $h)
+                    @php
+                        $batchTotal = (float)$h->qty_ok + (float)$h->qty_ng;
+                        $yield = $batchTotal > 0 ? ($h->qty_ok / $batchTotal) * 100 : 0;
+                    @endphp
+                    <tr onclick="showDetail({{ json_encode($h) }})">
+                        <td class="text-left pl-4 text-muted small">
+                            {{ \Carbon\Carbon::parse($h->qc_at)->format('d/m/Y H:i') }}
                         </td>
-                        <td class="col-init">{{ number_format($h->stock_awal) }}</td>
-                        <td class="col-in text-success">+{{ number_format($h->total_in) }}</td>
-                        <td class="col-out text-danger">-{{ number_format($h->total_out) }}</td>
-                        <td class="col-final">{{ number_format($h->stock_akhir) }}</td>
+                        <td class="font-weight-bold text-primary font-mono">
+                            {{ $h->no_produksi_stamping }}
+                        </td>
+                        <td class="text-dark font-weight-bold text-left text-uppercase">
+                            {{ $h->part_no }}
+                        </td>
+                        <td class="text-success font-weight-bolder">{{ number_format($h->qty_ok) }}</td>
+                        <td class="text-danger font-weight-bolder">{{ number_format($h->qty_ng) }}</td>
                         <td>
-                            @if($h->stock_akhir <= 0)
-                                <span class="badge badge-secondary rounded-pill px-3 py-1 font-weight-bold" style="font-size: 9px;">DEPLETED</span>
-                            @else
-                                <span class="badge badge-success rounded-pill px-3 py-1 font-weight-bold" style="font-size: 9px;">STOCKED</span>
-                            @endif
+                            <span class="yield-badge {{ $yield < 100 ? 'bg-light text-warning border' : 'bg-light text-success border' }}">
+                                {{ number_format($yield, 1) }}%
+                            </span>
                         </td>
+                        <td class="text-uppercase small font-weight-bold text-muted">
+                            {{ $h->qc_by ?: 'ADMIN' }}
+                        </td>
+                        <td class="text-left">
+                            <div class="remark-text">{{ $h->keterangan ?: '-' }}</div> </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="py-5 text-muted font-weight-bold">-- NO AUDIT LOGS FOUND FOR THIS CRITERIA RILL --</td></tr>
+                    <tr>
+                        <td colspan="8" class="py-5 text-muted italic">No historical data available.</td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+{{-- 5. MODAL DETAIL --}}
+<div class="modal fade" id="detailModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header bg-dark text-white px-4 py-3 border-0">
+                <h6 class="modal-title font-weight-bold text-uppercase tracking-wider">Production Batch Details</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-4" id="modalBody"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Grafik
+    const rawData = @json($historyData->take(10)->reverse()->values());
+    const yieldSeries = rawData.map(item => {
+        const total = parseFloat(item.qty_ok) + parseFloat(item.qty_ng);
+        return total > 0 ? ((item.qty_ok / total) * 100).toFixed(1) : 0;
+    });
+    const categoryLabels = rawData.map(item => item.no_produksi_stamping.substr(-6));
+
+    const options = {
+        series: [{ name: 'Yield', data: yieldSeries }],
+        chart: { height: 300, type: 'area', toolbar: { show: false } },
+        colors: ['#4361ee'],
+        stroke: { curve: 'smooth', width: 3 },
+        xaxis: { categories: categoryLabels },
+        yaxis: { max: 100, min: 0 }
+    };
+
+    new ApexCharts(document.querySelector("#yieldChart"), options).render();
+
+    // Show Detail
+    function showDetail(data) {
+        let content = `
+            <div class="row">
+                <div class="col-6 mb-3"><small class="text-muted d-block">BATCH NO</small><b>${data.no_produksi_stamping}</b></div>
+                <div class="col-6 mb-3"><small class="text-muted d-block">INSPECTION DATE</small><b>${data.qc_at}</b></div>
+                <div class="col-12 mb-3"><small class="text-muted d-block">PART IDENTIFICATION</small><b>${data.part_no}</b></div>
+                <div class="col-4"><small class="text-muted d-block">QTY OK</small><h4 class="text-success font-weight-bold">${data.qty_ok}</h4></div>
+                <div class="col-4"><small class="text-muted d-block">QTY NG</small><h4 class="text-danger font-weight-bold">${data.qty_ng}</h4></div>
+                <div class="col-4"><small class="text-muted d-block">INSPECTOR</small><b>${data.qc_by || 'ADMIN'}</b></div>
+                <div class="col-12 mt-3"><small class="text-muted d-block">REMARK / DEFECT LOG</small><div class="p-3 bg-light rounded">${data.keterangan || 'No remarks provided.'}</div></div>
+            </div>`;
+        document.getElementById('modalBody').innerHTML = content;
+        $('#detailModal').modal('show');
+    }
+</script>
 @endsection
