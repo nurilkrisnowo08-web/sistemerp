@@ -91,15 +91,19 @@ class ProduksiController extends Controller
     }
 
     /**
-     * ✨ FIX ROUTING LOGIC: Biar IN di Welding Terminal Gak Nol rill!
+     * ✨ UPDATE RESULT: Sekarang simpan Keterangan rill!
      */
-   public function updateResult(Request $request, $id) 
+    public function updateResult(Request $request, $id) 
     {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
         if (!$p) return redirect()->back()->with('error', 'Batch tidak ditemukan!');
 
         $qty_return = (int)$request->qty_return_warehouse;
         $qty_ok = (int)$request->qty_hasil_ok; 
+        $qty_ng_mat = (int)($request->qty_ng_material ?? 0);
+        $qty_ng_proc = (int)($request->qty_ng_process ?? 0);
+        $keterangan = $request->keterangan; // Ambil input deskripsi rill
+
         $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
 
         DB::beginTransaction();
@@ -126,47 +130,47 @@ class ProduksiController extends Controller
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
 
                 if ($target == 'WELDING') {
-                    // Update Stok WIP Welding
                     $affected = DB::table('finished_goods')
                         ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                         ->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
                     
                     if ($affected === 0) { throw new \Exception("Gagal! Part [ $cleanPart ] tidak terdaftar di database FG rill!"); }
 
-                    // ✨ FIX: Tambahin Label 'WELDING' biar gak kebaca di FG rill!
                     DB::table('production_logs')->insert([
-                        'part_no'    => $p->material_code,
-                        'qty'        => $qty_ok,
-                        'process_type' => 'WELDING', // <--- INI KUNCINYA
-                        'created_at' => now(),
+                        'part_no'      => $p->material_code,
+                        'qty'          => $qty_ok,
+                        'process_type' => 'WELDING', 
+                        'keterangan'   => $keterangan, // Simpan keterangan di log rill
+                        'created_at'   => now(),
                     ]);
                     
                     $routeMsg = "Barang ditransfer ke GUDANG WELDING.";
                 } else {
-                    // Update Stok FG Final
                     $affected = DB::table('finished_goods')
                         ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                         ->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
                     
                     if ($affected > 0) {
-                        // ✨ FIX: Tambahin Label 'FG' buat barang yang masuk ke Finish Goods
                         DB::table('production_logs')->insert([
-                            'part_no'    => $p->material_code,
-                            'qty'        => $qty_ok,
-                            'process_type' => 'FG', // <--- INI KUNCINYA
-                            'created_at' => now(),
+                            'part_no'      => $p->material_code,
+                            'qty'          => $qty_ok,
+                            'process_type' => 'FG',
+                            'keterangan'   => $keterangan, // Simpan keterangan di log rill
+                            'created_at'   => now(),
                         ]);
                         $routeMsg = "Stok FG berhasil bertambah.";
                     } else { throw new \Exception("Gagal! Part [ $cleanPart ] tidak ditemukan di Master FG."); }
                 }
             }
 
-            // 3. Selesaikan status batch
+            // 3. ✨ UPDATE PRODUKSI BATCHES: Simpan data NG dan Keterangan rill!
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->update([
                 'qty_hasil_ok'         => $qty_ok, 
-                'qty_ng_material'      => $request->qty_ng_material ?? 0,
-                'qty_ng_process'       => $request->qty_ng_process ?? 0,
+                'qty_ng_material'      => $qty_ng_mat,
+                'qty_ng_process'       => $qty_ng_proc,
+                'qty_hasil_ng'         => $qty_ng_mat + $qty_ng_proc,
                 'qty_return_warehouse' => $qty_return,
+                'keterangan'           => $keterangan, // ✨ MASUK KE KOLOM BARIS 17 TADI RILL!
                 'status'               => 'COMPLETED', 
                 'updated_at'           => now()
             ]);
@@ -222,6 +226,9 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
+    /**
+     * ✨ HISTORY: Sekarang ambil kolom Keterangan rill!
+     */
     public function history() 
     {
         $history = DB::table('produksi_batches')
@@ -235,6 +242,7 @@ class ProduksiController extends Controller
                 'produksi_batches.qty_ng_material',
                 'produksi_batches.qty_ng_process',
                 'produksi_batches.qty_return_warehouse',
+                'produksi_batches.keterangan', // ✨ SELECT KOLOM INI RILL!
                 'produksi_batches.status',
                 DB::raw('MIN(produksi_batches.id) as id'),
                 DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
@@ -243,7 +251,7 @@ class ProduksiController extends Controller
             ->where('produksi_batches.status', 'COMPLETED')
             ->groupBy(
                 'no_produksi', 'material_code', 'shift', 'updated_at', 
-                'qty_hasil_ok', 'qty_ng_material', 'qty_ng_process', 'qty_return_warehouse', 'status'
+                'qty_hasil_ok', 'qty_ng_material', 'qty_ng_process', 'qty_return_warehouse', 'keterangan', 'status'
             )
             ->orderBy('updated_at', 'desc')
             ->get();

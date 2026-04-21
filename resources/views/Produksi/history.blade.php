@@ -51,7 +51,7 @@
     <div class="d-flex justify-content-between align-items-end mb-4">
         <div>
             <h3 class="font-weight-bold" style="letter-spacing: -1.5px; color: var(--ind-steel); font-size: 26px;">PRODUCTION_HISTORY</h3>
-            <p class="text-muted small font-weight-bold mb-0">PT. ASALTA MANDIRI AGUNG // SHEET_LEVEL_AUDIT</p>
+            <p class="text-muted small font-weight-bold mb-0">PT. ASALTA MANDIRI AGUNG // SHEET_LEVEL_AUDIT rill</p>
         </div>
         <div class="hud-actions">
             <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 font-weight-bold shadow-sm mr-2">
@@ -74,6 +74,8 @@
                         <th>OK (PCS)</th>
                         <th>NG (PCS)</th>
                         <th>YIELD</th>
+                        {{-- ✨ TAMBAHAN KOLOM KETERANGAN rill --}}
+                        <th class="text-left">REASON/REMARK rill</th>
                     </tr>
                 </thead>
                 <tbody id="historyLogBody">
@@ -89,6 +91,10 @@
                         <td class="text-success font-weight-bold">{{ number_format($h->qty_hasil_ok) }}</td>
                         <td class="text-danger font-weight-bold">{{ number_format($h->qty_ng_material + $h->qty_ng_process) }}</td>
                         <td><b style="color: {{ $color }}; font-size: 15px;">{{ number_format($yield, 1) }}%</b></td>
+                        {{-- ✨ TAMPILKAN KETERANGAN rill --}}
+                        <td class="text-left small italic text-muted" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ $h->keterangan ?? '-' }}
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -115,7 +121,7 @@
                     <div class="donut-container" style="--p: {{ $yield }}%; --c: {{ $chartColor }};">
                         <div class="donut-text">{{ number_format($yield, 0) }}%</div>
                     </div>
-                    <small class="font-weight-bold text-muted d-block mt-3 uppercase">Production Accuracy</small>
+                    <small class="font-weight-bold text-muted d-block mt-3 uppercase">Production Accuracy rill</small>
                 </div>
 
                 <div class="row mb-3 text-center small font-weight-bold">
@@ -124,7 +130,7 @@
                 </div>
 
                 {{-- NG Breakdown Detail --}}
-                <div class="p-4 border rounded bg-white shadow-sm">
+                <div class="p-4 border rounded bg-white shadow-sm mb-3">
                     <h6 class="font-weight-bold text-danger small mb-3 uppercase border-bottom pb-2">Reject Breakdown Details</h6>
                     <div class="d-flex justify-content-between mb-2">
                         <span class="small font-weight-bold text-muted">1. NG Material (Defect Bahan)</span>
@@ -134,6 +140,12 @@
                         <span class="small font-weight-bold text-muted">2. NG Process (Kesalahan Mesin)</span>
                         <b class="text-dark font-family-mono">{{ $h->qty_ng_process }} Pcs</b>
                     </div>
+                </div>
+
+                {{-- ✨ TAMBAHAN: CATATAN PRODUKSI DI MODAL rill --}}
+                <div class="p-3 bg-light rounded border">
+                    <small class="label-title text-uppercase font-weight-bold" style="font-size: 9px; color: #94a3b8;">Production Notes rill:</small>
+                    <p class="mb-0 font-weight-bold text-dark small">{{ $h->keterangan ?? 'No specific notes recorded rill.' }}</p>
                 </div>
             </div>
         </div>
@@ -153,10 +165,10 @@
         <thead>
             <tr>
                 <th rowspan="2" style="width: 15%">BATCH NO</th>
-                <th rowspan="2" style="width: 25%">PART NUMBER</th>
+                <th rowspan="2" style="width: 20%">PART NUMBER</th>
                 <th colspan="3">MUTASI PRODUKSI (PCS)</th>
                 <th rowspan="2">YIELD</th>
-                <th colspan="2">DETIL REJECT/NG</th>
+                <th colspan="3">DETIL REJECT & CATATAN rill</th>
             </tr>
             <tr>
                 <th>AMBIL</th>
@@ -164,6 +176,7 @@
                 <th>NG TOT</th>
                 <th>MATERIAL</th>
                 <th>PROCESS</th>
+                <th>REMARK/CATATAN rill</th>
             </tr>
         </thead>
         <tbody>
@@ -175,9 +188,10 @@
                 <td class="font-bold text-success">+{{ number_format($h->qty_hasil_ok) }}</td>
                 <td class="font-bold text-danger">-{{ number_format($h->qty_ng_material + $h->qty_ng_process) }}</td>
                 <td class="font-bold">{{ number_format(($h->qty_ambil_pcs > 0 ? ($h->qty_hasil_ok/$h->qty_ambil_pcs)*100 : 0), 1) }}%</td>
-                {{-- Penjelasan NG detail --}}
                 <td>{{ $h->qty_ng_material }}</td>
                 <td>{{ $h->qty_ng_process }}</td>
+                {{-- ✨ KETERANGAN DI PRINT OUT rill --}}
+                <td class="text-left">{{ $h->keterangan ?? '-' }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -186,7 +200,7 @@
     <div class="ttd-box">
         <p>Bogor, {{ date('d F Y') }}</p>
         <p style="margin-top: 60px;">( ................................. )</p>
-        <p>PIC PRODUKSI</p>
+        <p>PIC PRODUKSI rill</p>
     </div>
 </div>
 
