@@ -397,5 +397,6 @@ Route::prefix('welding')->name('welding.')->group(function () {
    
 // Pastikan namanya quality.index biar simpel rill
 Route::get('/quality-inspections', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.index');
+Route::get('/quality-gate-room', [QualityGateController::class, 'index'])->name('quality.index');
 Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.approve');
 });
