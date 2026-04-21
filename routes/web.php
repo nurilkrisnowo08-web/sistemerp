@@ -395,7 +395,7 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-// DI WEB.PHP CUKUP PAKAI INI SATU AJA RILL!
-Route::get('/quality-gate', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
+// PINDAH KE PALING BAWAH WEB.PHP ! (DI LUAR GROUP APAPUN)
+Route::get('/quality-gate-control', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
 Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.gate.approve');
 });
