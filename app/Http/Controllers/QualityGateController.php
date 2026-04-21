@@ -6,38 +6,51 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class QualityGateController extends Controller {
-   public function index() {
-    $stampingQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
-    $weldingQueue = DB::table('welding_batches')->where('status', 'WAITING_QC')->get();
+    
+    public function index() {
+        $stampingQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
+        $weldingQueue = DB::table('welding_batches')->where('status', 'WAITING_QC')->get();
+        return view('Quality.index', compact('stampingQueue', 'weldingQueue'));
+    }
 
-    // Sesuaiin sama nama folder lu: Quality (Q gede) rill!
-    return view('Quality.index', compact('stampingQueue', 'weldingQueue')); 
-}
+    public function approve(Request $request, $type, $id) {
+        DB::beginTransaction();
+        try {
+            if ($type == 'stamping') {
+                $batch = DB::table('produksi_batches')->where('id', $id)->first();
+                $origin = 'STAMPING'; $batchNo = $batch->no_produksi; $partNo = $batch->material_code; $qty_awal = $batch->qty_hasil_ok;
+                $table = 'produksi_batches';
+            } else {
+                $batch = DB::table('welding_batches')->where('id', $id)->first();
+                $origin = 'WELDING'; $batchNo = $batch->no_produksi_stamping; $partNo = $batch->part_no; $qty_awal = $batch->qty_ok;
+                $table = 'welding_batches';
+            }
 
-   public function approve(Request $request, $type, $id) {
-    DB::beginTransaction();
-    try {
-        // ... (logic ambil data batch tetep sama rill) ...
+            // 1. Simpan ke quality_inspections rill!
+            DB::table('quality_inspections')->insert([
+                'batch_no'      => $batchNo,
+                'origin'        => $origin,
+                'part_no'       => $partNo,
+                'qty_from_prod' => $qty_awal,
+                'qty_ok'        => $request->qty_ok_final,
+                'qty_ng'        => $request->qty_ng_final,
+                'ng_reason'     => $request->ng_reason,
+                'inspector'     => Auth::user()->name ?? 'QC_OFFICER',
+                'status'        => 'APPROVED',
+                'created_at'    => now(), 'updated_at' => now()
+            ]);
 
-        // ✨ SEKARANG TEMBAK TABEL YANG BENER RILL!
-        DB::table('quality_inspections')->insert([
-            'batch_no'      => $batchNo,
-            'origin'        => $origin,
-            'part_no'       => $partNo,
-            'qty_from_prod' => $qty_awal,
-            'qty_ok'        => $request->qty_ok_final,
-            'qty_ng'        => $request->qty_ng_final,
-            'ng_reason'     => $request->ng_reason,
-            'inspector'     => Auth::user()->name ?? 'QC_OFFICER',
-            'status'        => 'APPROVED',
-            'created_at'    => now(), 
-            'updated_at'    => now()
-        ]);
+            // 2. Update Stok FG rill!
+            $cleanPart = str_replace([' ', '-'], '', trim($partNo));
+            DB::table('finished_goods')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->increment('actual_stock', $request->qty_ok_final);
 
-        // ... (logic update stok FG & status batch tetep sama rill) ...
+            // 3. Set Batch Selesai rill!
+            DB::table($table)->where('id', $id)->update(['status' => 'COMPLETED', 'updated_at' => now()]);
 
-        DB::commit();
-        return back()->with('success', 'Barang Lulus QC rill!');
-    } catch (\Exception $e) { DB::rollBack(); return back()->with('error', $e->getMessage()); }
-}
+            DB::commit();
+            return back()->with('success', 'Barang Lulus QC rill!');
+        } catch (\Exception $e) { DB::rollBack(); return back()->with('error', $e->getMessage()); }
+    }
 }

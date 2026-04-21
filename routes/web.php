@@ -395,8 +395,14 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-// Pastikan namanya quality.index biar simpel rill
-Route::get('/quality-inspections', [App\Http\Controllers\QualityGateController::class, 'index'])->name('Quality.index');
-Route::get('/quality-gate-room', [QualityGateController::class, 'index'])->name('Quality.index');
-Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.approve');
+Route::get('/quality-inspections', [QualityGateController::class, 'index'])->name('quality.index');
+Route::post('/quality-gate/approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
+
+// Rute paksa bersihin (WAJIB RILL)
+Route::get('/bersihin-total-rill', function() {
+    \Artisan::call('route:clear');
+    \Artisan::call('config:clear');
+    \Artisan::call('view:clear');
+    return "CACHED CLEARED RILL! SEKARANG REFRESH.";
+});
 });
