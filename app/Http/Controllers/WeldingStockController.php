@@ -9,13 +9,12 @@ use Illuminate\Support\Str;
 class WeldingStockController extends Controller
 {
     /**
-     * 1. TERMINAL HUB LIVE rill
+     * 1. TERMINAL HUB LIVE
      */
     public function index(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
-        // Ambil inventory pusat rill
         $inventoryWelding = DB::table('finished_goods')
             ->select('part_no', 'part_name', 'customer', 'welding_stock as live_stock')
             ->where(function($q) {
@@ -31,14 +30,12 @@ class WeldingStockController extends Controller
             ->map(function($item) use ($date) {
                 $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
-                // Hitung barang MASUK dari Stamping rill
                 $in_stamping = DB::table('production_logs')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->where('process_type', 'WELDING')
                     ->whereDate('created_at', $date)
                     ->sum('qty') ?? 0;
 
-                // Hitung barang KELUAR (di-Take) rill
                 $out_welding = DB::table('welding_batches')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->whereDate('created_at', $date)
@@ -52,7 +49,6 @@ class WeldingStockController extends Controller
                 return $item;
             });
 
-        // ✨ FIX: Nama kolom 'status ENUM' ganti jadi 'status' rill!
         $activeWelding = DB::table('welding_batches')
             ->leftJoin('finished_goods', function($join) {
                 $join->on(DB::raw("REPLACE(welding_batches.part_no, ' ', '')"), '=', DB::raw("REPLACE(finished_goods.part_no, ' ', '')"));
@@ -72,7 +68,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 2. DEPLOY WELDING (Tombol TAKE) rill
+     * 2. DEPLOY WELDING (Tombol TAKE)
      */
     public function deployWelding(Request $request)
     {
@@ -87,14 +83,13 @@ class WeldingStockController extends Controller
                 ->first();
 
             if (!$fg || $fg->welding_stock < $qty_ambil) {
-                throw new \Exception("Stok tidak cukup rill! Tersedia: " . ($fg->welding_stock ?? 0));
+                throw new \Exception("Stok tidak mencukupi! Tersedia: " . ($fg->welding_stock ?? 0));
             }
 
             DB::table('finished_goods')
                 ->where('id', $fg->id)
                 ->decrement('welding_stock', $qty_ambil, ['updated_at' => now()]);
 
-            // ✨ FIX: Pakai kolom 'status' rill
             DB::table('welding_batches')->insert([
                 'no_produksi_stamping' => 'WLD-' . date('Ymd-His'), 
                 'part_no'              => $part_no,
@@ -105,7 +100,7 @@ class WeldingStockController extends Controller
             ]);
 
             DB::commit();
-            return back()->with('success', "Berhasil deploy $qty_ambil Pcs rill!");
+            return back()->with('success', "Berhasil deploy $qty_ambil Pcs ke area Welding.");
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
@@ -113,55 +108,50 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 3. START OPERATION rill
+     * 3. START OPERATION
      */
     public function startWelding($id)
     {
-        // ✨ FIX: Pakai kolom 'status' rill
         DB::table('welding_batches')->where('id', $id)->update([
             'status' => 'PROSES',
             'updated_at' => now()
         ]);
-        return back()->with('success', 'Proses Las Dimulai rill!');
+        return back()->with('success', 'Proses pengelasan telah dimulai.');
     }
 
     /**
-     * 4. ✨ FIX FINISH: Kirim ke Quality Gate rill!
+     * 4. FINISH: Kirim ke Quality Gate dengan Alasan NG
      */
     public function finishWelding(Request $request, $id)
     {
         $batch = DB::table('welding_batches')->where('id', $id)->first();
-        if (!$batch) return back()->with('error', 'Data batch hilang!');
+        if (!$batch) return back()->with('error', 'Data batch tidak ditemukan.');
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $keterangan = $request->keterangan; 
+        $keterangan = $request->keterangan; // Menangkap alasan NG dari input
 
         DB::beginTransaction();
         try {
-            // ❌ JANGAN INCREMENT STOK ACTUAL DI SINI RILL!
-            // ❌ JANGAN INSERT LOG FG DI SINI RILL!
-            // Semuanya dipindah ke QualityGateController pas tombol RELEASE diklik rill.
-
-            // ✅ UPDATE BATCH: Status jadi WAITING_QC rill!
+            // Update data batch dan arahkan status ke Quality Gate
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok'      => $qty_ok, 
                 'qty_ng'      => $qty_ng,
-                'keterangan'  => $keterangan,
-                'status'      => 'WAITING_QC', // Belok ke QC dulu rill!
+                'keterangan'  => $keterangan, // Alasan NG disimpan ke kolom keterangan
+                'status'      => 'WAITING_QC', 
                 'updated_at'  => now()
             ]);
 
             DB::commit();
-            return back()->with('success', 'Proses Las Selesai! Barang dikirim ke Quality Gate rill.');
+            return back()->with('success', 'Proses selesai. Data telah diteruskan ke Quality Gate.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
-            return back()->with('error', 'Gagal: ' . $e->getMessage()); 
+            return back()->with('error', 'Gagal memproses data: ' . $e->getMessage()); 
         }
     }
 
     /**
-     * 5. HISTORY rill
+     * 5. HISTORY
      */
     public function history(Request $request)
     {
@@ -186,7 +176,6 @@ class WeldingStockController extends Controller
                 ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
                 ->sum('qty');
 
-            // ✨ FIX: Pakai kolom 'status' rill
             $out_period = DB::table('welding_batches')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->where('status', 'COMPLETED')
@@ -199,7 +188,6 @@ class WeldingStockController extends Controller
                 ->whereDate('created_at', '>', $endDate)
                 ->sum('qty');
 
-            // ✨ FIX: Pakai kolom 'status' rill
             $future_out = DB::table('welding_batches')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->where('status', 'COMPLETED')
@@ -208,7 +196,6 @@ class WeldingStockController extends Controller
 
             $item->total_in = $in_period;
             $item->total_out = $out_period;
-            
             $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
             $item->stock_awal = $item->stock_akhir - $in_period + $out_period;
 
