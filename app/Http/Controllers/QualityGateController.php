@@ -63,12 +63,12 @@ class QualityGateController extends Controller {
             ->where('id', $fg_exist->id) // Pake ID biar pasti masuk rill!
             ->increment('actual_stock', $request->qty_ok_final, ['updated_at' => now()]);
 
-        // 3. Catat Log rill
+        // 3. Catat Log 
         DB::table('production_logs')->insert([
             'part_no' => $partNo, 'qty' => $request->qty_ok_final, 'process_type' => 'FG', 'created_at' => now()
         ]);
 
-        // 4. Selesaikan Batch rill
+        // 4. Selesaikan Batch 
         DB::table($table)->where('id', $id)->update([
             'status' => 'COMPLETED', 'qc_at' => now(), 'qc_by' => $inspectorName, 'updated_at' => now()
         ]);
