@@ -15,45 +15,87 @@ class QualityGateController extends Controller {
         return view('Quality.index', compact('produksiQueue', 'weldingQueue'));
     }
 
-   public function approve(Request $request, $type, $id) {
-    DB::beginTransaction();
-    try {
-        // ... (logika ambil data batch tetep sama) ...
+    public function approve(Request $request, $type, $id) {
+        DB::beginTransaction();
+        try {
+            // 1. Ambil data batch sesuai asalnya rill!
+            if ($type == 'stamping') {
+                $batch = DB::table('produksi_batches')->where('id', $id)->first();
+                if (!$batch) throw new \Exception("Batch Produksi tidak ditemukan rill!");
+                
+                $origin = 'STAMPING'; 
+                $batchNo = $batch->no_produksi; 
+                $partNo = $batch->material_code; 
+                $qty_awal = $batch->qty_hasil_ok;
+                $table = 'produksi_batches';
+            } else {
+                $batch = DB::table('welding_batches')->where('id', $id)->first();
+                if (!$batch) throw new \Exception("Batch Welding tidak ditemukan rill!");
+                
+                $origin = 'WELDING'; 
+                $batchNo = $batch->no_produksi_stamping; 
+                $partNo = $batch->part_no; 
+                $qty_awal = $batch->qty_ok;
+                $table = 'welding_batches';
+            }
 
-        // ✨ FIX: Ambil nama dari input Form, kalau kosong baru pake Auth User rill!
-        $inspectorName = $request->inspector_name ?? (Auth::user()?->name ?? 'QC_OFFICER');
-        
-        $cleanPart = str_replace([' ', '-'], '', trim($partNo));
+            // 2. Definisi Inspector & Pembersihan Part No rill
+            $inspectorName = $request->inspector_name ?? (Auth::user()?->name ?? 'QC_OFFICER');
+            $cleanPart = str_replace([' ', '-'], '', trim($partNo));
 
-        // 2. Cari Part di Finished Goods
-        $fg = DB::table('finished_goods')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->first();
+            // 3. Cari Part di Finished Goods rill
+            $fg = DB::table('finished_goods')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->first();
 
-        if (!$fg) throw new \Exception("Part No [$partNo] gak ada di Master FG rill!");
+            if (!$fg) {
+                throw new \Exception("Gagal rill! Part No [$partNo] tidak terdaftar di Tabel finished_goods.");
+            }
 
-        // 3. Simpan Laporan QC
-        DB::table('quality_inspections')->insert([
-            'batch_no'      => $batchNo,
-            'origin'        => $origin,
-            'part_no'       => $partNo,
-            'qty_from_prod' => $qty_awal,
-            'qty_ok'        => $request->qty_ok_final,
-            'qty_ng'        => $request->qty_ng_final,
-            'ng_reason'     => $request->ng_reason ?? '',
-            'inspector'     => $inspectorName, // Nama inspector masuk sini rill!
-            'status'        => 'APPROVED',
-            'created_at'    => now(), 'updated_at' => now()
-        ]);
+            // 4. Simpan Laporan QC ke quality_inspections rill
+            DB::table('quality_inspections')->insert([
+                'batch_no'      => $batchNo,
+                'origin'        => $origin,
+                'part_no'       => $partNo,
+                'qty_from_prod' => $qty_awal,
+                'qty_ok'        => $request->qty_ok_final,
+                'qty_ng'        => $request->qty_ng_final,
+                'ng_reason'     => $request->ng_reason ?? '',
+                'inspector'     => $inspectorName,
+                'status'        => 'APPROVED',
+                'created_at'    => now(), 
+                'updated_at'    => now()
+            ]);
 
-        // ... (logika update stok & update batch tetep sama) ...
+            // 5. Update Stok FG (DUA KOLOM SEKALIGUS RILL!)
+            DB::table('finished_goods')->where('id', $fg->id)->update([
+                'actual_stock' => $fg->actual_stock + $request->qty_ok_final,
+                'act_stock'    => ($fg->act_stock ?? 0) + $request->qty_ok_final,
+                'updated_at'   => now()
+            ]);
 
-        DB::commit();
-        return back()->with('success', "Part $partNo berhasil di-verify oleh $inspectorName rill!");
+            // 6. Catat Log Produksi rill
+            DB::table('production_logs')->insert([
+                'part_no'      => $partNo,
+                'qty'          => $request->qty_ok_final,
+                'process_type' => 'FG',
+                'created_at'   => now()
+            ]);
 
-    } catch (\Exception $e) { 
-        DB::rollBack(); 
-        return back()->with('error', $e->getMessage()); 
+            // 7. Selesaikan Batch rill
+            DB::table($table)->where('id', $id)->update([
+                'status'     => 'COMPLETED',
+                'qc_at'      => now(),
+                'qc_by'      => $inspectorName,
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+            return back()->with('success', "Barang $partNo Berhasil Lulus QC rill!");
+
+        } catch (\Exception $e) { 
+            DB::rollBack(); 
+            return back()->with('error', $e->getMessage()); 
+        }
     }
-}
 }
