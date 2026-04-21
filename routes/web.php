@@ -15,6 +15,8 @@ Route::get('/quality-control-room', [QualityGateController::class, 'index'])->na
 Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
 // Tambahin di bawah rute approve lu rill!
 Route::delete('/quality-control-delete/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'destroy'])->name('quality.destroy');
+// Pastikan nama fungsinya historyWelding sesuai dengan yang di Controller
+Route::get('/welding-history', [App\Http\Controllers\WeldingStockController::class, 'historyWelding'])->name('welding.history');
 // Rute Pembersih Cache yang PASTI JALAN rill
 Route::get('/bersihkan-cache-rill', function() {
     \Artisan::call('route:clear');

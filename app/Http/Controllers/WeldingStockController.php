@@ -206,4 +206,18 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
+    /**
+     * 5. RIWAYAT PRODUKSI WELDING (Level Audit)
+     * Menampilkan data batch yang sudah selesai diperiksa QC
+     */
+    public function historyWelding()
+    {
+        // Mengambil data batch yang sudah COMPLETED (Selesai QC)
+        $historyData = DB::table('welding_batches')
+            ->where('status', 'COMPLETED')
+            ->orderBy('qc_at', 'desc') // Urutan dari yang paling baru selesai QC
+            ->get();
+
+        return view('welding.welding_history_weldig', compact('historyData'));
+    }
 }
