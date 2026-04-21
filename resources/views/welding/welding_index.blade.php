@@ -63,9 +63,11 @@
             <a href="{{ route('welding.history') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm">
                 <i class="fas fa-archive mr-2"></i> VAULT
             </a>
+
             <a href="{{ route('welding.history.weldig') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm text-primary">
                 <i class="fas fa-clipboard-list mr-2"></i> HISTORY
             </a>
+
             <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg mr-2" style="background: var(--brand-primary); border:none;" data-toggle="modal" data-target="#modalDeployWelding">
                 <i class="fas fa-plus-circle mr-1"></i> DEPLOY
             </button>
@@ -184,14 +186,14 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0" style="border-radius: 25px;">
             <div class="modal-header bg-success text-white p-4">
-                <h5 class="modal-title font-weight-extrabold text-uppercase">Quality Inspection</h5>
+                <h5 class="modal-title font-weight-bold text-uppercase">Quality Inspection</h5>
             </div>
             <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-4">
                     <div class="text-center mb-4">
-                        <h2 class="font-weight-extrabold text-dark" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }} PCS</h2>
-                        <small class="text-muted font-weight-bold">TOTAL DEPLOYED BATCH</small>
+                        <h2 class="font-weight-bold text-dark" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }} PCS</h2>
+                        <small class="text-muted font-weight-bold">TOTAL BATCH QUANTITY</small>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
@@ -208,8 +210,8 @@
                         <textarea name="keterangan" class="form-control tech-input" rows="3" placeholder="Input defect reason or process notes..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-success btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">TRANSFER TO QUALITY GATE</button>
+                <div class="modal-footer border-0 p-4 text-center">
+                    <button type="submit" class="btn btn-success btn-block py-3 font-weight-bold rounded-pill shadow-lg">TRANSFER TO QUALITY GATE</button>
                 </div>
             </form>
         </div>
@@ -222,7 +224,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0" style="border-radius: 25px;">
             <div class="modal-header bg-dark text-white p-4">
-                <h5 class="modal-title font-weight-extrabold text-uppercase">Batch Deployment</h5>
+                <h5 class="modal-title font-weight-bold text-uppercase">Batch Deployment</h5>
             </div>
             <form action="{{ route('welding.deploy') }}" method="POST">
                 @csrf
@@ -238,7 +240,7 @@
                     <input type="number" name="qty_ambil" class="form-control text-center tech-input" required style="font-size: 32px; height: 80px;" placeholder="0">
                 </div>
                 <div class="modal-footer border-0 p-4">
-                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-extrabold rounded-pill shadow-lg">CONFIRM DEPLOYMENT</button>
+                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-bold rounded-pill shadow-lg">CONFIRM DEPLOYMENT</button>
                 </div>
             </form>
         </div>

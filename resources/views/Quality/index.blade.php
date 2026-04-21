@@ -17,10 +17,8 @@
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
     .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--ind-navy); }
     
-    /* Alert & Notification */
     .alert-custom { border-radius: 12px; border: none; font-weight: 500; padding: 1rem 1.5rem; }
     
-    /* Card System */
     .qc-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -37,12 +35,10 @@
         border-radius: 16px 16px 0 0;
     }
 
-    /* Technical Typography */
     .tech-code { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b; font-weight: 700; letter-spacing: -0.2px; }
     .part-title { font-weight: 800; font-size: 1.25rem; color: var(--ind-navy); margin-top: 2px; }
     .qty-badge { font-family: 'Orbitron', sans-serif; font-size: 1.75rem; font-weight: 800; line-height: 1; }
 
-    /* Form Fields */
     .label-ind { font-family: 'Inter', sans-serif; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem; display: block; }
     .input-ind { 
         background: #ffffff; 
@@ -54,7 +50,6 @@
     }
     .input-ind:focus { border-color: var(--ind-blue); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); outline: none; }
 
-    /* Buttons */
     .btn-action {
         font-family: 'Orbitron', sans-serif;
         font-size: 0.8rem;
@@ -75,6 +70,7 @@
         font-family: 'Inter', sans-serif;
         font-size: 0.7rem;
         padding: 8px;
+        border-radius: 10px;
     }
     .btn-reject:hover { background: #fee2e2; border-color: #fecaca; }
 
@@ -90,6 +86,7 @@
 </style>
 
 <div class="container-fluid py-4">
+    {{-- Main Header --}}
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-xl border shadow-sm">
         <div>
             <h2 class="industrial-header m-0">UNIT_VERIFICATION <span class="text-primary">v4.0</span></h2>
@@ -105,6 +102,7 @@
         </div>
     </div>
 
+    {{-- Notifications --}}
     @if(session('success'))
         <div class="alert alert-success alert-custom mb-4 shadow-sm border-left-success" style="border-left: 6px solid #10b981 !important;">
             <div class="d-flex align-items-center">
@@ -146,7 +144,7 @@
                                 <div class="part-title">{{ $p->material_code }}</div>
                             </div>
                             <div class="text-right">
-                                <label class="label-ind mb-1">Production Qty</label>
+                                <label class="label-ind mb-1">Reported Qty</label>
                                 <div class="qty-badge text-primary">{{ number_format($p->qty_hasil_ok) }}</div>
                             </div>
                         </div>
@@ -185,8 +183,7 @@
                             </form>
                             
                             <form action="{{ route('quality.destroy', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" onsubmit="return confirm('Attention: Permanent deletion of production batch. Proceed?')">
-                                @csrf
-                                @method('DELETE')
+                                @csrf @method('DELETE')
                                 <button type="submit" class="btn btn-block btn-reject font-weight-bold">
                                     <i class="fas fa-trash-alt mr-2"></i> Reject & Purge Batch Data
                                 </button>
@@ -216,7 +213,7 @@
                                 <div class="part-title">{{ $w->part_no }}</div>
                             </div>
                             <div class="text-right">
-                                <label class="label-ind mb-1">Welded Qty</label>
+                                <label class="label-ind mb-1">Welded Qty (Claimed)</label>
                                 <div class="qty-badge text-warning">{{ number_format($w->qty_ok) }}</div>
                             </div>
                         </div>
@@ -225,23 +222,28 @@
                                 @csrf
                                 <div class="row mb-4">
                                     <div class="col-6">
-                                        <label class="label-ind text-emerald">Qty OK (Final)</label>
+                                        <label class="label-ind text-emerald"><i class="fas fa-check-circle mr-1"></i> Qty OK (Final)</label>
                                         <input type="number" name="qty_ok_final" class="form-control input-ind text-emerald" value="{{ $w->qty_ok }}" required>
                                     </div>
                                     <div class="col-6">
-                                        <label class="label-ind text-rose">Qty NG (Verify)</label>
+                                        <label class="label-ind text-rose"><i class="fas fa-times-circle mr-1"></i> Qty NG (Verify)</label>
                                         <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="0" required>
                                     </div>
                                 </div>
 
                                 <div class="form-group mb-4">
                                     <label class="label-ind">Authorized Inspector</label>
-                                    <input type="text" name="inspector_name" class="form-control input-ind" value="{{ Auth::user()?->name }}" required>
+                                    <div class="input-group">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text bg-light border-right-0" style="border: 2px solid #e2e8f0; border-radius: 10px 0 0 10px;"><i class="fas fa-user-check text-muted"></i></span>
+                                        </div>
+                                        <input type="text" name="inspector_name" class="form-control input-ind border-left-0" value="{{ Auth::user()?->name }}" placeholder="Entry Name" required>
+                                    </div>
                                 </div>
 
                                 <div class="form-group mb-4">
-                                    <label class="label-ind">Weld Defect Analysis</label>
-                                    <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record welding anomalies..."></textarea>
+                                    <label class="label-ind">Weld Defect Analysis / Remark</label>
+                                    <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record welding anomalies or verification notes...">{{ $w->keterangan }}</textarea>
                                 </div>
 
                                 <button type="submit" class="btn btn-block btn-action shadow-sm" style="background: var(--ind-amber); color: #fff; border: none;">
@@ -250,8 +252,7 @@
                             </form>
 
                             <form action="{{ route('quality.destroy', ['type' => 'welding', 'id' => $w->id]) }}" method="POST" onsubmit="return confirm('Attention: Permanent deletion of welding batch. Proceed?')">
-                                @csrf
-                                @method('DELETE')
+                                @csrf @method('DELETE')
                                 <button type="submit" class="btn btn-block btn-reject font-weight-bold">
                                     <i class="fas fa-trash-alt mr-2"></i> Purge Welding Batch
                                 </button>

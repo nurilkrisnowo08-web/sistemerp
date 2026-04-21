@@ -120,7 +120,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4. FINISH: Kirim ke Quality Gate dengan Alasan NG
+     * 4. FINISH: Status berubah ke COMPLETED untuk History, namun tetap verifikasi di QC
      */
     public function finishWelding(Request $request, $id)
     {
@@ -129,21 +129,23 @@ class WeldingStockController extends Controller
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $keterangan = $request->keterangan; // Menangkap alasan NG dari input
+        $keterangan = $request->keterangan; 
 
         DB::beginTransaction();
         try {
-            // Update data batch dan arahkan status ke Quality Gate
+            // Update status menjadi COMPLETED (Agar muncul di History)
+            // qc_at dibiarkan NULL sebagai penanda bahwa QC belum melakukan verifikasi akhir (update stok)
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok'      => $qty_ok, 
                 'qty_ng'      => $qty_ng,
-                'keterangan'  => $keterangan, // Alasan NG disimpan ke kolom keterangan
-                'status'      => 'WAITING_QC', 
+                'keterangan'  => $keterangan,
+                'status'      => 'COMPLETED', 
+                'qc_at'       => null, 
                 'updated_at'  => now()
             ]);
 
             DB::commit();
-            return back()->with('success', 'Proses selesai. Data telah diteruskan ke Quality Gate.');
+            return back()->with('success', 'Proses Las Selesai (Status: COMPLETED). Menunggu verifikasi di Quality Gate untuk sinkronisasi stok FG.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return back()->with('error', 'Gagal memproses data: ' . $e->getMessage()); 
@@ -151,7 +153,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 5. HISTORY
+     * 5. HISTORY MUTASI STOK
      */
     public function history(Request $request)
     {
@@ -206,16 +208,16 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history', compact('history', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
+
     /**
-     * 5. RIWAYAT PRODUKSI WELDING (Level Audit)
-     * Menampilkan data batch yang sudah selesai diperiksa QC
+     * 6. RIWAYAT PRODUKSI WELDING (Level Audit)
      */
     public function historyWelding()
     {
-        // Mengambil data batch yang sudah COMPLETED (Selesai QC)
+        // Menampilkan semua yang statusnya COMPLETED (baik yang sudah verifikasi QC maupun belum)
         $historyData = DB::table('welding_batches')
             ->where('status', 'COMPLETED')
-            ->orderBy('qc_at', 'desc') // Urutan dari yang paling baru selesai QC
+            ->orderBy('created_at', 'desc')
             ->get();
 
         return view('welding.welding_history_weldig', compact('historyData'));
