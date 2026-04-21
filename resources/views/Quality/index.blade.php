@@ -91,11 +91,11 @@
         <div class="col-lg-6 mb-4">
             <div class="d-flex align-items-center mb-4">
                 <div class="bg-primary rounded-circle p-2 mr-3" style="width: 10px; height: 10px;"></div>
-                <h5 class="font-weight-bold m-0" style="letter-spacing: 1px;">PRODUKSI_QUEUE rill</h5>
+                <h5 class="font-weight-bold m-0" style="letter-spacing: 1px;">PRODUKSI_QUEUE </h5>
             </div>
 
             <div class="row">
-                {{-- FIX: Sekarang pake $produksiQueue sesuai Controller rill! --}}
+                {{-- FIX: Sekarang pake $produksiQueue sesuai Controller ! --}}
                 @forelse($produksiQueue as $p)
                 <div class="col-md-12 mb-4">
                     <div class="qc-card">
@@ -124,7 +124,7 @@
                                 </div>
                                 <div class="form-group mb-4">
                                     <label class="label-ind">Rejection_Reason_Log</label>
-                                    <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input reason if NG detected rill..."></textarea>
+                                    <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input reason if NG detected ..."></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-block btn-release btn-produksi shadow-sm">
                                     Release_to_Finished_Goods <i class="fas fa-check-double ml-2"></i>
@@ -136,7 +136,7 @@
                 @empty
                 <div class="col-12 text-center empty-state">
                     <i class="fas fa-clipboard-check fa-2x mb-3"></i>
-                    <p class="m-0">PRODUKSI_BAY_IS_CLEAR_RILL</p>
+                    <p class="m-0">PRODUKSI_BAY_IS_CLEAR</p>
                 </div>
                 @endforelse
             </div>
@@ -145,7 +145,7 @@
         <div class="col-lg-6 mb-4">
             <div class="d-flex align-items-center mb-4">
                 <div class="bg-warning rounded-circle p-2 mr-3" style="width: 10px; height: 10px;"></div>
-                <h5 class="font-weight-bold m-0" style="letter-spacing: 1px;">WELDING_QUEUE rill</h5>
+                <h5 class="font-weight-bold m-0" style="letter-spacing: 1px;">WELDING_QUEUE </h5>
             </div>
 
             <div class="row">
@@ -177,7 +177,7 @@
                                 </div>
                                 <div class="form-group mb-4">
                                     <label class="label-ind">Defect_Analysis_Log</label>
-                                    <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Describe welding defects if any rill..."></textarea>
+                                    <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Describe welding defects if any ..."></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-block btn-release btn-welding shadow-sm">
                                     Verify_&_Store_FG <i class="fas fa-shield-alt ml-2"></i>
@@ -189,7 +189,7 @@
                 @empty
                 <div class="col-12 text-center empty-state">
                     <i class="fas fa-fire-extinguisher fa-2x mb-3"></i>
-                    <p class="m-0">WELDING_BAY_IS_CLEAR_RILL</p>
+                    <p class="m-0">WELDING_BAY_IS_CLEAR</p>
                 </div>
                 @endforelse
             </div>
