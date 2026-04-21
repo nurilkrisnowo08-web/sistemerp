@@ -117,9 +117,8 @@
            {{-- ✨ RUANGAN QUALITY GATE ! ✨ --}}
 <div class="sidebar-heading">QUALITY_CONTROL</div>
 <li class="nav-item {{ Request::is('quality-gate*') ? 'active' : '' }}">
-    {{-- FIX: Nama route diganti jadi quality.gate.index  --}}
     <a class="nav-link" href="{{ route('quality.gate.index') }}">
-        <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate</span>
+        <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate </span>
     </a>
 </li>
 

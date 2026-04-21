@@ -395,7 +395,14 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-// PINDAH KE PALING BAWAH WEB.PHP ! (DI LUAR GROUP APAPUN)
-Route::get('/quality-gate-control', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.gate.index');
-Route::post('/quality-gate/approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.gate.approve');
+Route::get('/quality-gate-room', [QualityGateController::class, 'index'])->name('quality.gate.index');
+Route::post('/quality-gate/approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.gate.approve');
+
+// Rute Pembersih (WAJIB RILL!)
+Route::get('/bersihin-rill', function() {
+    \Artisan::call('route:clear');
+    \Artisan::call('view:clear');
+    \Artisan::call('cache:clear');
+    return "SUKSES RILL! Sekarang balik ke Dashboard terus REFRESH.";
+});
 });

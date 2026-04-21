@@ -6,14 +6,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class QualityGateController extends Controller {
-    public function index() {
-        // Ambil data yang nunggu QC dari Stamping 
-        $stampingQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
-        // Ambil data yang nunggu QC dari Welding 
-        $weldingQueue = DB::table('welding_batches')->where('status ENUM', 'WAITING_QC')->get();
+   public function index() {
+    $stampingQueue = DB::table('produksi_batches')->where('status', 'WAITING_QC')->get();
+    $weldingQueue = DB::table('welding_batches')->where('status', 'WAITING_QC')->get();
 
-        return view('Quality.index', compact('stampingQueue', 'weldingQueue'));
-    }
+    // Sesuaiin sama nama folder lu: Quality (Q gede) rill!
+    return view('Quality.index', compact('stampingQueue', 'weldingQueue'));
+}
 
     public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
