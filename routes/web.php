@@ -10,6 +10,18 @@ use App\Http\Controllers\{
     CustomerController, PartController, DailyFgController,ProduksiController,LineController,PPICController,ReportController,QualityGateController
 };
 
+// TARUH DI SINI RILL (PALING ATAS, DI LUAR SEMUA GROUP)
+Route::get('/quality-control-room', [QualityGateController::class, 'index'])->name('quality.gate.index');
+Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.gate.approve');
+
+// Rute Pembersih Cache yang PASTI JALAN rill
+Route::get('/bersihkan-cache-rill', function() {
+    \Artisan::call('route:clear');
+    \Artisan::call('view:clear');
+    \Artisan::call('config:clear');
+    return "CACHED BERSIH TOTAL RILL! Balik ke Dashboard terus Refresh.";
+});
+
 // =============================================================
 // 1. WILAYAH TAMU (GUEST) - Belum Login
 // =============================================================
@@ -395,14 +407,5 @@ Route::prefix('welding')->name('welding.')->group(function () {
 
     Route::get('/rm/mutation', [RmController::class, 'rmMutation'])->name('rm.mutation');
    
-Route::get('/quality-inspections', [QualityGateController::class, 'index'])->name('quality.index');
-Route::post('/quality-gate/approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
 
-// Rute paksa bersihin (WAJIB RILL)
-Route::get('/bersihin-total-rill', function() {
-    \Artisan::call('route:clear');
-    \Artisan::call('config:clear');
-    \Artisan::call('view:clear');
-    return "CACHED CLEARED RILL! SEKARANG REFRESH.";
-});
 });
