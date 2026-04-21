@@ -114,6 +114,14 @@
                 <a class="nav-link" href="{{ route('ppic.index') }}"><i class="fas fa-fw fa-calendar-days"></i><span>Planning PPIC</span></a>
             </li>
 
+            {{-- ✨ RUANGAN QUALITY GATE RILL! ✨ --}}
+            <div class="sidebar-heading">QUALITY_CONTROL</div>
+            <li class="nav-item {{ Request::is('quality-gate*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('quality.gate.index') }}">
+                    <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate rill</span>
+                </a>
+            </li>
+
             <div class="sidebar-heading">LOGISTICS</div>
             <li class="nav-item {{ Request::is('delivery*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('delivery.index') }}"><i class="fas fa-fw fa-truck-ramp-box"></i><span>Dispatch Portal</span></a>
