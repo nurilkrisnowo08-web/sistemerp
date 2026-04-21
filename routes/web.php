@@ -11,6 +11,8 @@ use App\Http\Controllers\{
 };
 
 // TARUH DI SINI RILL (PALING ATAS, DI LUAR SEMUA GROUP)
+Route::get('/quality-control-room', [QualityGateController::class, 'index'])->name('quality.gate.index');
+Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.gate.approve');
 Route::get('/quality-control-room', [App\Http\Controllers\QualityGateController::class, 'index'])->name('quality.index');
 Route::post('/quality-control-approve/{type}/{id}', [App\Http\Controllers\QualityGateController::class, 'approve'])->name('quality.approve');
 
