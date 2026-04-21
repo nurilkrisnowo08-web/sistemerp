@@ -117,7 +117,7 @@
           {{-- ✨ MENU QUALITY GATE rill --}}
 <div class="sidebar-heading">QUALITY_CONTROL</div>
 <li class="nav-item {{ Request::is('quality*') ? 'active' : '' }}">
-    <a class="nav-link" href="{{ route('quality.index') }}">
+    <a class="nav-link" href="{{ route('Quality.index') }}">
         <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate rill</span>
     </a>
 </li>
