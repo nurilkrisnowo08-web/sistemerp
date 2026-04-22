@@ -51,6 +51,7 @@
     .log-time { font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 700; color: #475569; }
 
     .badge-success-premium { background: #ecfdf5; color: #065f46; padding: 8px 15px; border-radius: 10px; font-weight: 800; font-size: 10px; }
+    .badge-partial-premium { background: #fffbeb; color: #92400e; padding: 8px 15px; border-radius: 10px; font-weight: 800; font-size: 10px; }
 </style>
 
 <div class="container-fluid mt-4 animate__animated animate__fadeIn">
@@ -64,10 +65,11 @@
         </a>
     </div>
 
+    {{-- FILTER PANEL --}}
     <div class="history-filter-bar animate__animated animate__fadeInDown">
         <form action="{{ route('rm.po_supplier_history') }}" method="GET" class="row align-items-end">
             <div class="col-md-3">
-                <label class="x-small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Client Entity</label>
+                <label class="small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Client Entity</label>
                 <select name="customer" class="form-control-history w-100">
                     <option value="ALL">-- ALL ENTITIES --</option>
                     @foreach($clients as $c)
@@ -78,16 +80,16 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="x-small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Range Start</label>
+                <label class="small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Range Start</label>
                 <input type="date" name="start_date" class="form-control-history w-100" value="{{ request('start_date') }}">
             </div>
             <div class="col-md-3">
-                <label class="x-small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Range End</label>
+                <label class="small font-weight-bold mb-2 ml-1 text-uppercase opacity-50">Range End</label>
                 <input type="date" name="end_date" class="form-control-history w-100" value="{{ request('end_date') }}">
             </div>
             <div class="col-md-3 text-right">
                 <button type="submit" class="btn btn-primary btn-block rounded-pill font-weight-extrabold shadow-lg" style="height: 48px; background: var(--brand-indigo); border:none;">
-                    <i class="fas fa-search-archive mr-2"></i> EXECUTE SEARCH
+                    <i class="fas fa-search mr-2"></i> EXECUTE SEARCH
                 </button>
             </div>
         </form>
@@ -110,7 +112,7 @@
                     <tr>
                         <td class="pl-4 py-4 expand-trigger" data-toggle="collapse" data-target="#archive-{{ $po->id }}">
                             <div class="id-code">{{ $po->no_po_supplier }}</div>
-                            <small class="text-indigo font-weight-bold" style="font-size: 10px;">
+                            <small class="text-primary font-weight-bold" style="font-size: 10px;">
                                 <i class="fas fa-fingerprint mr-1"></i> CLICK FOR AUDIT
                             </small>
                         </td>
@@ -118,24 +120,30 @@
                             {{ strtoupper($po->supplier_name) }}
                         </td>
                         <td class="text-center expand-trigger" data-toggle="collapse" data-target="#archive-{{ $po->id }}">
-                            <span class="badge-success-premium">
-                                <i class="fas fa-check-circle mr-1"></i> COMPLETED
-                            </span>
+                            @if($po->status == 'COMPLETED')
+                                <span class="badge-success-premium">
+                                    <i class="fas fa-check-circle mr-1"></i> COMPLETED
+                                </span>
+                            @else
+                                <span class="badge-partial-premium">
+                                    <i class="fas fa-clock mr-1"></i> {{ $po->status }}
+                                </span>
+                            @endif
                         </td>
                         <td class="expand-trigger" data-toggle="collapse" data-target="#archive-{{ $po->id }}">
-                            <div class="d-flex gap-4">
+                            <div class="d-flex">
                                 <div class="log-box">
                                     <span class="log-label">Initialized:</span>
                                     <span class="log-time">{{ date('d/m/Y H:i', strtotime($po->created_at)) }}</span>
                                 </div>
                                 <div class="log-box ml-4">
-                                    <span class="log-label">Archived:</span>
-                                    <span class="log-time text-emerald-600">{{ date('d/m/Y H:i', strtotime($po->updated_at)) }}</span>
+                                    <span class="log-label">Last Update:</span>
+                                    <span class="log-time text-success">{{ date('d/m/Y H:i', strtotime($po->updated_at)) }}</span>
                                 </div>
                             </div>
                         </td>
                         <td class="text-right pr-4">
-                            <button class="btn btn-white btn-sm rounded-xl border shadow-sm px-4 font-weight-bold" onclick="window.open('{{ route('rm.print_po', $po->id) }}', '_blank')">
+                            <button class="btn btn-white btn-sm rounded-pill border shadow-sm px-4 font-weight-bold" onclick="window.open('{{ route('rm.print_po', $po->id) }}', '_blank')">
                                 <i class="fas fa-print mr-2 text-muted"></i> REPRINT
                             </button>
                         </td>
@@ -144,26 +152,28 @@
                     <tr id="archive-{{ $po->id }}" class="collapse bg-light">
                         <td colspan="5" class="p-0">
                             <div class="p-4" style="background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%); border-top: 1px solid #f1f5f9;">
-                                <h6 class="font-weight-bold mb-4 ml-2 text-indigo"><i class="fas fa-boxes mr-2"></i>Material Audit Specification</h6>
+                                <h6 class="font-weight-bold mb-4 ml-2 text-primary"><i class="fas fa-boxes mr-2"></i>Material Audit Specification</h6>
                                 <div class="row">
                                     @foreach($po->items as $item)
                                     <div class="col-md-6 mb-3">
-                                        <div class="bg-white border rounded-24 p-4 shadow-sm">
+                                        <div class="bg-white border rounded-lg p-4 shadow-sm">
                                             <div class="d-flex justify-content-between mb-2">
-                                                <h6 class="font-weight-extrabold text-dark mb-0">{{ $item->alias_real ?? $item->material_code }}</h6>
-                                                <span class="badge badge-light border rounded-pill px-3 py-1 font-weight-bold" style="font-size: 10px;">FULL VERIFIED</span>
+                                                <h6 class="font-weight-extrabold text-dark mb-0">{{ $item->material_code }}</h6>
+                                                <span class="badge badge-light border rounded-pill px-3 py-1 font-weight-bold" style="font-size: 10px;">
+                                                    {{ $item->qty_received >= $item->qty_order ? 'FULL VERIFIED' : 'PARTIAL' }}
+                                                </span>
                                             </div>
                                             <div class="text-muted small font-weight-bold mb-3">
-                                                {{ $item->spec_real }} | {{ $item->thickness }} X {{ $item->size }}
+                                                {{ $item->material_type }} | {{ $item->thickness }} X {{ $item->size }}
                                             </div>
                                             
-                                            <div class="row text-center bg-light rounded-xl py-3 mx-0">
+                                            <div class="row text-center bg-light rounded py-3 mx-0">
                                                 <div class="col-6 border-right">
-                                                    <div class="x-small text-muted font-weight-bold text-uppercase">Final Qty</div>
+                                                    <div class="x-small text-muted font-weight-bold text-uppercase" style="font-size: 9px;">Final Qty</div>
                                                     <div class="h6 font-weight-bold mb-0 text-success">{{ number_format($item->qty_received) }}</div>
                                                 </div>
                                                 <div class="col-6">
-                                                    <div class="x-small text-muted font-weight-bold text-uppercase">Quota</div>
+                                                    <div class="x-small text-muted font-weight-bold text-uppercase" style="font-size: 9px;">Quota</div>
                                                     <div class="h6 font-weight-bold mb-0">{{ number_format($item->qty_order) }}</div>
                                                 </div>
                                             </div>
@@ -175,7 +185,14 @@
                         </td>
                     </tr>
                     @empty 
-                    <tr><td colspan="5" class="text-center py-5"><div class="py-5"><i class="fas fa-folder-open fa-3x text-light mb-3"></i><p class="text-muted font-weight-bold">No historical data matches your search criteria.</p></div></td></tr> 
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <div class="py-5">
+                                <i class="fas fa-folder-open fa-3x text-light mb-3"></i>
+                                <p class="text-muted font-weight-bold">No historical data matches your search criteria.</p>
+                            </div>
+                        </td>
+                    </tr> 
                     @endforelse
                 </tbody>
             </table>
