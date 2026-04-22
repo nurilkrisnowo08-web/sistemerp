@@ -100,7 +100,6 @@
                 </a>
                 <div id="collapseRM" class="collapse" data-parent="#accordionSidebar">
                     <div class="py-2 collapse-inner">
-                        <a class="collapse-item" href="{{ route('rm.inbound') }}">Inbound Logic</a>
                         <a class="collapse-item" href="{{ route('rm.store') }}">Stockroom</a>
                     </div>
                 </div>
