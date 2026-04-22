@@ -10,130 +10,101 @@
         --brand-warning: #f59e0b; --dark-surface: #0f172a; --bg-main: #f8fafc;
     }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #334155; }
-    .heading-history { font-family: 'Orbitron'; font-weight: 900; color: var(--dark-surface); letter-spacing: -1px; text-transform: uppercase; }
+    .heading-vault { font-family: 'Orbitron'; font-weight: 900; color: var(--dark-surface); letter-spacing: -1px; text-transform: uppercase; }
     
-    .stat-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+    .stat-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); transition: 0.3s; }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
     .stat-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
     .stat-value { font-family: 'Orbitron'; font-size: 22px; font-weight: 800; color: var(--dark-surface); }
 
     .ledger-container { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
     .table-history thead th { background: #f8fafc; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 18px 15px; border-bottom: 2px solid #edf2f7; font-weight: 800; }
-    .table-history tbody tr { cursor: pointer; transition: 0.2s; }
-    .table-history tbody tr:hover { background-color: #f8faff; }
     .table-history td { padding: 16px 15px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 600; font-size: 13px; }
-
-    .yield-badge { padding: 4px 10px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 12px; }
+    
     .chart-box { background: #fff; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
-    .remark-text { font-size: 11px; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 
 <div class="container-fluid py-4 px-4">
     {{-- 1. HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
-            <h1 class="heading-history mb-1">WELDING_HISTORY <span class="text-primary">AUDIT</span></h1>
-            <p class="text-muted font-weight-bold small uppercase mb-0">PT. ASALTA MANDIRI AGUNG // UNIT_VERIFICATION_LOGS</p>
+            <h1 class="heading-vault mb-1">WELDING_VAULT <span class="text-primary">LEDGER</span></h1>
+            <p class="text-muted font-weight-bold small uppercase mb-0">Rangkuman Mutasi Stok Area Welding</p>
         </div>
-        <div>
-            <button class="btn btn-dark rounded-pill px-4 font-weight-extrabold shadow-sm mr-2" onclick="window.print()">
-                <i class="fas fa-file-pdf mr-2"></i> EXPORT_PDF
-            </button>
+        <div class="d-flex">
+             <form action="" method="GET" class="d-flex mr-3">
+                <input type="date" name="start_date" class="form-control form-control-sm rounded-pill px-3 mr-2" value="{{ $startDate }}">
+                <input type="date" name="end_date" class="form-control form-control-sm rounded-pill px-3 mr-2" value="{{ $endDate }}">
+                <button type="submit" class="btn btn-primary btn-sm rounded-circle"><i class="fas fa-search"></i></button>
+             </form>
             <a href="{{ route('welding.index') }}" class="btn btn-outline-primary rounded-pill px-4 font-weight-extrabold shadow-sm">
                 <i class="fas fa-desktop mr-2"></i> MONITORING
             </a>
         </div>
     </div>
 
-    {{-- 2. STATS --}}
+    {{-- 2. STATS (Mutasi) --}}
     @php
-        $totalBatch = $historyData->count();
-        $totalOk = $historyData->sum('qty_ok');
-        $totalNg = $historyData->sum('qty_ng');
-        $grandTotal = $totalOk + $totalNg;
-        $avgYield = $grandTotal > 0 ? ($totalOk / $grandTotal) * 100 : 0;
+        $totalIn = $historyData->sum('total_in');
+        $totalOut = $historyData->sum('total_out');
+        $totalAkhir = $historyData->sum('stock_akhir');
     @endphp
-    
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-label">Total Inspections</div>
-                <div class="stat-value text-primary">{{ $totalBatch }}</div>
+        <div class="col-md-4">
+            <div class="stat-card border-left-success" style="border-left: 5px solid var(--brand-success) !important;">
+                <div class="stat-label">Total Barang Masuk (IN)</div>
+                <div class="stat-value text-success">+{{ number_format($totalIn) }}</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card border-left-success" style="border-left: 5px solid #10b981 !important;">
-                <div class="stat-label">Average Yield</div>
-                <div class="stat-value text-success">{{ number_format($avgYield, 1) }}%</div>
+        <div class="col-md-4">
+            <div class="stat-card border-left-danger" style="border-left: 5px solid var(--brand-danger) !important;">
+                <div class="stat-label">Total Selesai Las (OUT)</div>
+                <div class="stat-value text-danger">-{{ number_format($totalOut) }}</div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card">
-                <div class="stat-label">Total OK PCS</div>
-                <div class="stat-value">{{ number_format($totalOk) }}</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card border-left-danger" style="border-left: 5px solid #ef4444 !important;">
-                <div class="stat-label">Total NG PCS</div>
-                <div class="stat-value text-danger">{{ number_format($totalNg) }}</div>
+        <div class="col-md-4">
+            <div class="stat-card border-left-primary" style="border-left: 5px solid var(--brand-primary) !important;">
+                <div class="stat-label">Live WIP Stock</div>
+                <div class="stat-value text-primary">{{ number_format($totalAkhir) }}</div>
             </div>
         </div>
     </div>
 
     {{-- 3. CHART --}}
     <div class="chart-box shadow-sm">
-        <h6 class="font-weight-bold mb-4 text-uppercase small tracking-widest text-muted">Quality Performance Trend (Yield %)</h6>
-        <div id="yieldChart"></div>
+        <h6 class="font-weight-bold mb-4 text-uppercase small tracking-widest text-muted">Stock Movement Distribution</h6>
+        <div id="movementChart"></div>
     </div>
 
-    {{-- 4. TABLE (DENGAN KOLOM REMARK) --}}
+    {{-- 4. TABLE MUTASI --}}
     <div class="ledger-container shadow-sm">
         <div class="table-responsive">
             <table class="table table-history mb-0 text-center">
                 <thead>
                     <tr>
-                        <th class="text-left pl-4">Time_Stamp</th>
-                        <th>Batch_Identifier</th>
-                        <th class="text-left">Part_No</th>
-                        <th class="text-success">OK</th>
-                        <th class="text-danger">NG</th>
-                        <th>Yield</th>
-                        <th>Inspector</th>
-                        <th class="text-left">Reason/Remark</th> </tr>
+                        <th class="text-left pl-4">Material Part Identification</th>
+                        <th>Stok Awal</th>
+                        <th class="text-success">Masuk (+)</th>
+                        <th class="text-danger">Keluar (-)</th>
+                        <th class="text-primary border-left bg-light">Stok Akhir</th>
+                    </tr>
                 </thead>
                 <tbody class="bg-white">
                     @forelse($historyData as $h)
-                    @php
-                        $batchTotal = (float)$h->qty_ok + (float)$h->qty_ng;
-                        $yield = $batchTotal > 0 ? ($h->qty_ok / $batchTotal) * 100 : 0;
-                    @endphp
-                    <tr onclick="showDetail({{ json_encode($h) }})">
-                        <td class="text-left pl-4 text-muted small">
-                            {{ \Carbon\Carbon::parse($h->qc_at)->format('d/m/Y H:i') }}
+                    <tr>
+                        <td class="text-left pl-4">
+                            <div class="font-weight-bold text-dark">{{ $h->part_no }}</div>
+                            <small class="text-muted text-uppercase" style="font-size: 10px;">{{ $h->part_name }}</small>
                         </td>
-                        <td class="font-weight-bold text-primary font-mono">
-                            {{ $h->no_produksi_stamping }}
+                        <td class="font-mono text-muted">{{ number_format($h->stock_awal) }}</td>
+                        <td class="text-success font-weight-bold">+{{ number_format($h->total_in) }}</td>
+                        <td class="text-danger font-weight-bold">-{{ number_format($h->total_out) }}</td>
+                        <td class="text-primary font-weight-extrabold border-left bg-light" style="font-size: 16px;">
+                            {{ number_format($h->stock_akhir) }}
                         </td>
-                        <td class="text-dark font-weight-bold text-left text-uppercase">
-                            {{ $h->part_no }}
-                        </td>
-                        <td class="text-success font-weight-bolder">{{ number_format($h->qty_ok) }}</td>
-                        <td class="text-danger font-weight-bolder">{{ number_format($h->qty_ng) }}</td>
-                        <td>
-                            <span class="yield-badge {{ $yield < 100 ? 'bg-light text-warning border' : 'bg-light text-success border' }}">
-                                {{ number_format($yield, 1) }}%
-                            </span>
-                        </td>
-                        <td class="text-uppercase small font-weight-bold text-muted">
-                            {{ $h->qc_by ?: 'ADMIN' }}
-                        </td>
-                        <td class="text-left">
-                            <div class="remark-text">{{ $h->keterangan ?: '-' }}</div> </td>
                     </tr>
                     @empty
-                    <tr>
-                        <td colspan="8" class="py-5 text-muted italic">No historical data available.</td>
-                    </tr>
+                    <tr><td colspan="5" class="py-5 text-muted">Data mutasi tidak ditemukan.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -141,53 +112,22 @@
     </div>
 </div>
 
-{{-- 5. MODAL DETAIL --}}
-<div class="modal fade" id="detailModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content shadow-lg">
-            <div class="modal-header bg-dark text-white px-4 py-3 border-0">
-                <h6 class="modal-title font-weight-bold text-uppercase tracking-wider">Production Batch Details</h6>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-4" id="modalBody"></div>
-        </div>
-    </div>
-</div>
-
 <script>
-    // Grafik
-    const rawData = @json($historyData->take(10)->reverse()->values());
-    const yieldSeries = rawData.map(item => {
-        const total = parseFloat(item.qty_ok) + parseFloat(item.qty_ng);
-        return total > 0 ? ((item.qty_ok / total) * 100).toFixed(1) : 0;
-    });
-    const categoryLabels = rawData.map(item => item.no_produksi_stamping.substr(-6));
-
+    // Grafik Mutasi (Ambil 10 data teratas berdasarkan stok terbanyak)
+    const rawData = @json($historyData->sortByDesc('stock_akhir')->take(10)->values());
+    
     const options = {
-        series: [{ name: 'Yield', data: yieldSeries }],
-        chart: { height: 300, type: 'area', toolbar: { show: false } },
-        colors: ['#4361ee'],
-        stroke: { curve: 'smooth', width: 3 },
-        xaxis: { categories: categoryLabels },
-        yaxis: { max: 100, min: 0 }
+        series: [
+            { name: 'Masuk', data: rawData.map(i => i.total_in) },
+            { name: 'Keluar', data: rawData.map(i => i.total_out) }
+        ],
+        chart: { type: 'bar', height: 300, stacked: false, toolbar: {show:false} },
+        colors: ['#10b981', '#ef4444'],
+        plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+        xaxis: { categories: rawData.map(i => i.part_no) },
+        legend: { position: 'top' }
     };
 
-    new ApexCharts(document.querySelector("#yieldChart"), options).render();
-
-    // Show Detail
-    function showDetail(data) {
-        let content = `
-            <div class="row">
-                <div class="col-6 mb-3"><small class="text-muted d-block">BATCH NO</small><b>${data.no_produksi_stamping}</b></div>
-                <div class="col-6 mb-3"><small class="text-muted d-block">INSPECTION DATE</small><b>${data.qc_at}</b></div>
-                <div class="col-12 mb-3"><small class="text-muted d-block">PART IDENTIFICATION</small><b>${data.part_no}</b></div>
-                <div class="col-4"><small class="text-muted d-block">QTY OK</small><h4 class="text-success font-weight-bold">${data.qty_ok}</h4></div>
-                <div class="col-4"><small class="text-muted d-block">QTY NG</small><h4 class="text-danger font-weight-bold">${data.qty_ng}</h4></div>
-                <div class="col-4"><small class="text-muted d-block">INSPECTOR</small><b>${data.qc_by || 'ADMIN'}</b></div>
-                <div class="col-12 mt-3"><small class="text-muted d-block">REMARK / DEFECT LOG</small><div class="p-3 bg-light rounded">${data.keterangan || 'No remarks provided.'}</div></div>
-            </div>`;
-        document.getElementById('modalBody').innerHTML = content;
-        $('#detailModal').modal('show');
-    }
+    new ApexCharts(document.querySelector("#movementChart"), options).render();
 </script>
 @endsection
