@@ -10,24 +10,19 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Menyesuaikan perhitungan Target vs Actual secara global
      */
     public function index()
     {
-        // Ambil data planning
         $plans = DB::table('production_plans')->get();
 
-        // Hitung Total Plan Global (S1 + S2)
         $totalPlan = DB::table('production_plans')
             ->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))
             ->first()->total ?: 1;
         
-        // Ambil Total Actual Global dari produksi_batches
         $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok') ?: 0; 
         
         $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
 
-        // Perhitungan Status Otomatis untuk Donut Chart
         $statusCount = [
             'waiting'   => 0,
             'running'   => 0,
@@ -35,20 +30,16 @@ class PPICController extends Controller
         ];
 
         foreach($plans as $p) {
-            // Hitung target per baris
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // Hitung actual per baris (Real-time)
             $actualPerPart = DB::table('produksi_batches')
                 ->where('material_code', $p->part_no)
                 ->whereDate('created_at', $p->plan_date)
                 ->sum('qty_hasil_ok');
             
-            // Tempel data ke objek plan untuk digunakan di table ledger view
             $p->actual_qty = $actualPerPart;
             $p->plan_qty = $targetPerPart;
 
-            // Logika Status
             if($actualPerPart <= 0) {
                 $statusCount['waiting']++;
             } elseif ($actualPerPart < $targetPerPart) {
@@ -58,7 +49,6 @@ class PPICController extends Controller
             }
         }
 
-        // Data Grafik (Bulan Juni diambil dari totalActual rill)
         $monthlyData = [
             'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
             'target' => [10000, 12000, 15000, 14000, 16000, $totalPlan],
@@ -71,12 +61,12 @@ class PPICController extends Controller
             'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
         ];
 
-        return view('Gudang.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'stockRisks', 'monthlyData'));
+        // ✨ FIX: Ganti 'Gudang' menjadi 'PPIC' sesuai folder asli Bapak
+        return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'stockRisks', 'monthlyData'));
     }
 
     /**
      * 2. JADWAL PRODUKSI (MPS)
-     * Menggunakan subquery untuk sinkronisasi mesin_id vs line_code
      */
     public function mpsIndex(Request $request)
     {
@@ -111,6 +101,7 @@ class PPICController extends Controller
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
+        // ✨ FIX: Pastikan ini juga mengarah ke folder 'PPIC'
         return view('PPIC.mps_index', compact('plans', 'date', 'availableLines', 'availableCustomers'));
     }
 
@@ -143,7 +134,6 @@ class PPICController extends Controller
 
     /**
      * 4. API DATA UNTUK DASHBOARD
-     * Memastikan respon JSON sinkron dengan data rill produksi
      */
     public function apiData()
     {
@@ -155,7 +145,7 @@ class PPICController extends Controller
         $achievement = round(($totalActual / $totalPlan) * 100, 1);
 
         $statusCount = [
-            'waiting'   => DB::table('production_plans')->count(), // Bisa diperdetail jika perlu
+            'waiting'   => DB::table('production_plans')->count(),
             'running'   => 0,
             'completed' => 0,
         ];
