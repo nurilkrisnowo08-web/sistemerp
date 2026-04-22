@@ -11,43 +11,47 @@ class PPICController extends Controller
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
      */
-    public function index()
+   public function index()
     {
         $plans = DB::table('production_plans')->get();
 
-        $totalPlan = DB::table('production_plans')
-            ->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))
-            ->first()->total ?: 1;
-        
-        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok') ?: 0; 
-        
-        $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
-
-        $statusCount = [
-            'waiting'   => 0,
-            'running'   => 0,
-            'completed' => 0,
-        ];
+        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0];
 
         foreach($plans as $p) {
+            // HITUNG TARGET (Reguler + OT)
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
+            // ✨ FIX SINKRONISASI: Filter berdasarkan Part, Tanggal, DAN MESIN
             $actualPerPart = DB::table('produksi_batches')
                 ->where('material_code', $p->part_no)
                 ->whereDate('created_at', $p->plan_date)
+                // Tambahan filter ini supaya Dashboard tidak "Serakah" ambil data line lain
+                ->where('mesin_id', function($query) use ($p) {
+                    $query->select('id')->from('line')->where('kode_Line', $p->line_code);
+                })
                 ->sum('qty_hasil_ok');
             
             $p->actual_qty = $actualPerPart;
             $p->plan_qty = $targetPerPart;
 
-            if($actualPerPart <= 0) {
-                $statusCount['waiting']++;
-            } elseif ($actualPerPart < $targetPerPart) {
-                $statusCount['running']++;
-            } else {
-                $statusCount['completed']++;
-            }
+            // Update Status Chart
+            if($actualPerPart <= 0) { $statusCount['waiting']++; }
+            elseif ($actualPerPart < $targetPerPart) { $statusCount['running']++; }
+            else { $statusCount['completed']++; }
         }
+
+        // Hitung Total Global untuk Chart Atas
+        $totalPlan = $plans->sum('plan_qty') ?: 1;
+        $totalActual = $plans->sum('actual_qty') ?: 0;
+        $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
+
+        // ... sisa kodingan monthlyData & stockRisks tetap sama ...
+        
+        $stockRisks = [
+            'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
+            'warning'  => DB::table('rm_stocks')->whereRaw('stock_pcs > min_stock AND stock_pcs <= (min_stock * 1.5)')->count(),
+            'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
+        ];
 
         $monthlyData = [
             'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
@@ -55,13 +59,6 @@ class PPICController extends Controller
             'actual' => [9500, 11800, 14200, 14500, 15800, $totalActual]
         ];
 
-        $stockRisks = [
-            'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
-            'warning'  => DB::table('rm_stocks')->whereRaw('stock_pcs > min_stock AND stock_pcs <= (min_stock * 1.5)')->count(),
-            'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
-        ];
-
-        // ✨ FIX: Ganti 'Gudang' menjadi 'PPIC' sesuai folder asli Bapak
         return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'stockRisks', 'monthlyData'));
     }
 
