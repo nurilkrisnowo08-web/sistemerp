@@ -42,7 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     
-    // Jalur Sinkronisasi Part & Spec (Wajib kebuka agar dropdown jalan)
+    // Jalur Sinkronisasi (PENTING: Agar Dropdown PT & Part Lancar)
     Route::get('/get-parts/{customer_code}', [PurchaseOrderController::class, 'getParts'])->name('po.get-parts');
     Route::get('/get-parts-and-specs/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('rm.get_parts_specs');
     Route::get('/get-rm-data/{customer}', [RmController::class, 'getPartsAndSpecs']);
@@ -50,16 +50,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/produksi/get-parts-by-spec', [ProduksiController::class, 'getPartsBySpec']);
     Route::get('/produksi/get-part-detail/{code}', [ProduksiController::class, 'getPartDetail']);
     Route::get('/produksi/get-bundles/{code}', [ProduksiController::class, 'getBundlesByPart']);
+    Route::get('/ppic-api-data', [PPICController::class, 'apiData'])->name('ppic.api');
 });
 
 /*
 |--------------------------------------------------------------------------
 | 4. LEVEL VIEWERS (PRODUKSI, STAFF PPIC, KEPALA PPIC)
 |--------------------------------------------------------------------------
-| Produksi hanya bisa LIHAT. Tidak ada akses POST/PUT/DELETE.
 */
 Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(function () {
-    // Inventory & Monitoring View
+    // Inventory Monitoring
     Route::get('/stock-fg', [FgController::class, 'index'])->name('fg.index');
     Route::get('/inventory-welding', [WeldingStockController::class, 'index'])->name('welding.index');
     Route::get('/rm-inventory', [RmController::class, 'storeIndex'])->name('rm.store');
@@ -83,37 +83,34 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
 |--------------------------------------------------------------------------
 | 5. LEVEL OPERATORS (STAFF PPIC & KEPALA PPIC)
 |--------------------------------------------------------------------------
-| Bisa Create, Store, dan Print. Dilarang Edit/Hapus data yang sudah ada.
 */
 Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
-    // FIX ERROR: [fg.create], [fg.recap], [delivery.history]
+    // FIX ERROR: [rm.store_batch]
+    Route::post('/rm/store-batch', [RmController::class, 'storeBatch'])->name('rm.store_batch');
+
+    // FIX ERROR: [fg.create], [fg.recap]
     Route::get('/stock-fg/create', [FgController::class, 'create'])->name('fg.create');
     Route::get('/finished-goods/recap', [FgController::class, 'monthlyRecap'])->name('fg.recap');
     Route::get('/finished-goods/print', [FgController::class, 'printRecap'])->name('fg.print');
-    Route::get('/delivery/history', [DeliveryController::class, 'history'])->name('delivery.history');
 
-    // FIX ERROR: [rm.po_supplier_index], [rm.log_print], [rm.print_po], [rm.store_master]
-    Route::get('/rm/po-supplier', [RmController::class, 'poSupplierIndex'])->name('rm.po_supplier_index');
-    Route::get('/rm/po-supplier-node', [RmController::class, 'poSupplierIndex'])->name('rm.po_supplier');
-    Route::get('/rm/po-print/{id}', [RmController::class, 'printPO'])->name('rm.print_po');
-    Route::get('/rm-log-print', [RmController::class, 'recapLogPrint'])->name('rm.log_print');
-    Route::get('/rm-recap-print', [RmController::class, 'recapPrint'])->name('rm.recap_print');
-    Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
-
-    // Logistics & Dispatch (FIX Rekap Delivery 404)
+    // Logistics & Dispatch
     Route::get('/delivery', [DeliveryController::class, 'index'])->name('delivery.index');
-    Route::get('/delivery/create/{po_number}', [DeliveryController::class, 'create'])->name('delivery.create')->where('po_number', '.*');
+    Route::get('/delivery/history', [DeliveryController::class, 'history'])->name('delivery.history');
     Route::post('/delivery/store', [DeliveryController::class, 'store'])->name('delivery.store');
+    Route::get('/delivery/create/{po_number}', [DeliveryController::class, 'create'])->name('delivery.create')->where('po_number', '.*');
     Route::get('/delivery/print/{no_sj}', [DeliveryController::class, 'print'])->name('delivery.print')->where('no_sj', '.*');
     Route::get('/delivery/print-rekap-po/{po_number}', [DeliveryController::class, 'printRekapPO'])->name('delivery.print-rekap-po')->where('po_number', '.*');
 
-    // Order Entry
+    // Order Center
     Route::get('/po-customer-index', [PurchaseOrderController::class, 'index'])->name('po-customer.index');
     Route::post('/po-customer/store', [PurchaseOrderController::class, 'store'])->name('po.store');
+    Route::get('/rm/po-supplier', [RmController::class, 'poSupplierIndex'])->name('rm.po_supplier_index');
+    Route::get('/rm/po-supplier-node', [RmController::class, 'poSupplierIndex'])->name('rm.po_supplier');
     Route::post('/rm/po-supplier/store', [RmController::class, 'poSupplierStore'])->name('rm.po_supplier_store');
     Route::post('/rm/po-arrival/{id}', [RmController::class, 'poArrivalStore'])->name('rm.po_arrival_store');
+    Route::get('/rm/po-print/{id}', [RmController::class, 'printPO'])->name('rm.print_po');
 
-    // Production Actions
+    // Input Produksi & Quality
     Route::post('/stock-fg/store', [FgController::class, 'store'])->name('fg.store');
     Route::post('/rm-incoming', [RmController::class, 'incomingStore'])->name('rm.incoming');
     Route::post('/rm-production-out', [RmController::class, 'productionStore'])->name('rm.production_out');
@@ -123,6 +120,8 @@ Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
     Route::put('/welding/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('welding.finish');
     Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
     
+    Route::get('/rm-log-print', [RmController::class, 'recapLogPrint'])->name('rm.log_print');
+    Route::get('/rm-recap-print', [RmController::class, 'recapPrint'])->name('rm.recap_print');
     Route::get('/ppic-planning', [PPICController::class, 'index'])->name('ppic.index');
 });
 
@@ -130,14 +129,10 @@ Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
 |--------------------------------------------------------------------------
 | 6. LEVEL ADMINISTRATOR (HANYA KEPALA PPIC)
 |--------------------------------------------------------------------------
-| Akses MUTLAK: Edit (PUT), Hapus (DELETE), dan Update Master.
 */
 Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
-    // FIX ERROR: [po.update_qty], [rm.remove_part_from_unit], [fg.edit]
+    // FIX ERROR: [po.update_qty]
     Route::put('/po/update-qty', [PurchaseOrderController::class, 'updateQty'])->name('po.update_qty');
-    Route::delete('/rm/remove-part/{id}', [RmController::class, 'removePartFromUnit'])->name('rm.remove_part_from_unit');
-    Route::get('/stock-fg/{id}/edit', [FgController::class, 'edit'])->name('fg.edit');
-    Route::put('/stock-fg/{id}', [FgController::class, 'update'])->name('fg.update');
 
     // Master Resources
     Route::resource('customers', CustomerController::class);
@@ -145,15 +140,14 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::resource('line-master', LineController::class)->names('line');
     Route::resource('fg-daily', DailyFgController::class);
 
-    // Editing PO
+    // Edit PO & Stock
     Route::get('/po/edit/{id}', [PurchaseOrderController::class, 'edit'])->name('po.edit');
     Route::put('/po/update-header/{po_number}', [PurchaseOrderController::class, 'updateHeader'])->name('po.update')->where('po_number', '.*');
-    
-    // Master RM Update
-    Route::put('/rm/unit-update/{id}', [RmController::class, 'updateUnit'])->name('rm.unit_update');
+    Route::get('/stock-fg/{id}/edit', [FgController::class, 'edit'])->name('fg.edit');
+    Route::put('/stock-fg/{id}', [FgController::class, 'update'])->name('fg.update');
+    Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
     Route::put('/rm/store/update/{id}', [RmController::class, 'update'])->name('rm.update');
-    Route::post('/rm/update-alias', [RmController::class, 'updateAlias'])->name('rm.update_alias');
-    Route::post('/rm/assign-part', [RmController::class, 'assignPart'])->name('rm.assign_part');
+    Route::delete('/rm/remove-part/{id}', [RmController::class, 'removePartFromUnit'])->name('rm.remove_part_from_unit');
 
     // Delete Buttons
     Route::delete('/fg/delete/{id}', [FgController::class, 'destroy'])->name('fg.destroy');
@@ -162,6 +156,8 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::delete('/quality-control-delete/{type}/{id}', [QualityGateController::class, 'destroy'])->name('quality.destroy');
     Route::delete('/line-delete/{id}', [LineController::class, 'destroy'])->name('line.destroy');
 
-    // Advanced Operations
+    // Advanced
+    Route::post('/rm/update-alias', [RmController::class, 'updateAlias'])->name('rm.update_alias');
+    Route::post('/rm/assign-part', [RmController::class, 'assignPart'])->name('rm.assign_part');
     Route::post('/produksi/resolve/{id}', [ProduksiController::class, 'resolveInterruption'])->name('produksi.resolve_interruption');
 });
