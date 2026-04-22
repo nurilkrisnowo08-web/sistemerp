@@ -180,4 +180,9 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::post('/produksi/resolve/{id}', [ProduksiController::class, 'resolveInterruption'])->name('produksi.resolve_interruption');
     Route::post('/produksi/return/{id}', [ProduksiController::class, 'returnToRM'])->name('produksi.return');
     Route::put('/inventory-welding/update-master', [WeldingStockController::class, 'updateMaster'])->name('welding.update_master');
+    //planning
+    Route::prefix('planning')->group(function () {
+    Route::get('/mps', [PPICController::class, 'mpsIndex'])->name('ppic.mps.index');
+    Route::post('/mps/store', [PPICController::class, 'mpsStore'])->name('ppic.mps.store');
+});
 });

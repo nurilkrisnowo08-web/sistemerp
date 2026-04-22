@@ -10,30 +10,64 @@
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
 
     <style>
-        :root { --ind-navy: #0f172a; --ind-blue: #4361ee; --ind-bg: #f1f5f9; --ind-border: #e2e8f0; }
+        :root { 
+            --ind-navy: #0f172a; 
+            --ind-blue: #4361ee; 
+            --ind-bg: #f1f5f9; 
+            --ind-border: #e2e8f0; 
+            --glass-white: rgba(255, 255, 255, 0.9);
+        }
+        
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; overflow-x: hidden; }
 
-        /* ✨ SIDEBAR SULTAN */
-        #accordionSidebar { background: var(--ind-navy) !important; transition: all 0.4s; z-index: 1060; }
+        /* ✨ SIDEBAR UPGRADE */
+        #accordionSidebar { background: var(--ind-navy) !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1060; }
         .sidebar-brand-text { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; font-size: 0.9rem; color: #fff; }
-        .nav-item .nav-link { padding: 0.8rem 1.3rem !important; margin: 2px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.5) !important; transition: 0.3s; }
-        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 15px rgba(67, 97, 238, 0.3); }
-        .sidebar-heading { color: rgba(255,255,255,0.25) !important; font-size: 0.6rem !important; font-weight: 800; letter-spacing: 2px; margin-top: 1.2rem; margin-left: 20px; }
+        
+        .nav-item .nav-link { 
+            padding: 0.8rem 1.3rem !important; margin: 4px 12px; border-radius: 12px; 
+            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6) !important; 
+            transition: 0.2s; 
+        }
+        .nav-item .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.05); }
+        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 20px rgba(67, 97, 238, 0.35); }
+        
+        .sidebar-heading { color: rgba(255,255,255,0.3) !important; font-size: 0.65rem !important; font-weight: 800; letter-spacing: 2.5px; margin-top: 1.5rem; margin-left: 22px; }
 
-        /* ✨ TOPBAR GLASS */
-        .topbar { background: rgba(255,255,255,0.9) !important; backdrop-filter: blur(12px); border-bottom: 1px solid var(--ind-border); height: 4.5rem; }
-        #clock-wrapper { background: var(--ind-navy); padding: 5px 15px; border-radius: 10px; border: 1px solid var(--ind-blue); display: flex; align-items: center; }
-        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.9rem; }
+        /* Dropdown Sidebar */
+        .collapse-inner { background: #ffffff !important; border-radius: 14px !important; margin: 5px 12px; padding: 0.5rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .collapse-item { font-weight: 700 !important; font-size: 0.7rem !important; color: var(--ind-navy) !important; padding: 0.6rem 1.2rem !important; border-radius: 8px; margin: 2px 8px; }
+        .collapse-item:hover { background: var(--ind-bg) !important; color: var(--ind-blue) !important; text-decoration: none; }
 
+        /* ✨ TOPBAR GLASSMORPHISM */
+        .topbar { 
+            background: var(--glass-white) !important; backdrop-filter: blur(15px); 
+            border-bottom: 1px solid var(--ind-border); height: 4.5rem; 
+            position: sticky; top: 0; z-index: 1000;
+        }
+        
+        #clock-wrapper { 
+            background: var(--ind-navy); padding: 6px 16px; border-radius: 12px; 
+            border: 1.5px solid var(--ind-blue); display: flex; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; }
+
+        /* ✨ RESPONSIVE FIXES */
         @media (max-width: 768px) {
             #accordionSidebar { position: fixed; height: 100vh; left: -250px; }
             #accordionSidebar.toggled { left: 0; width: 260px !important; }
             .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
             .sidebar-overlay.active { display: block; }
             #content-wrapper { margin-left: 0 !important; width: 100%; }
+            .hide-mobile { display: none !important; }
+            .topbar { padding: 0 1rem; }
+            .operational-shift-text { font-size: 0.9rem !important; }
         }
-        .collapse-inner { background: #fff !important; border-radius: 12px !important; border: 1px solid var(--ind-border); }
-        .collapse-item { font-weight: 700 !important; font-size: 0.75rem !important; color: var(--ind-navy) !important; }
+
+        .main-content-area { padding-bottom: 5rem; }
+        footer { background: #fff; border-top: 1px solid var(--ind-border); }
+        .tracking-widest { letter-spacing: 0.1em; }
     </style>
 </head>
 
@@ -42,7 +76,7 @@
     <div id="wrapper">
 
         <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
-            <a class="sidebar-brand d-flex align-items-center justify-content-center my-4" href="#">
+            <a class="sidebar-brand d-flex align-items-center justify-content-center my-4" href="{{ route('dashboard') }}">
                 <div class="sidebar-brand-icon"><i class="fas fa-microchip text-primary"></i></div>
                 <div class="sidebar-brand-text mx-2">ASALTA <span class="text-xs opacity-50">v2</span></div>
             </a>
@@ -110,7 +144,15 @@
             
             @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
             <li class="nav-item {{ Request::is('ppic*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('ppic.index') }}"><i class="fas fa-fw fa-calendar-days"></i><span>Planning PPIC</span></a>
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePlanning">
+                    <i class="fas fa-fw fa-calendar-days"></i><span>Production Planning</span>
+                </a>
+                <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner">
+                        <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">Intelligence Hub</a>
+                        <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">Master Schedule (MPS)</a>
+                    </div>
+                </div>
             </li>
             @endif
 
@@ -134,22 +176,35 @@
 
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <nav class="navbar navbar-expand navbar-light topbar mb-4 static-top px-4">
+                <nav class="navbar navbar-expand navbar-light topbar mb-4 static-top px-lg-4">
                     <button id="sidebarToggleTop" class="btn btn-link rounded-circle mr-3"><i class="fa fa-bars text-dark"></i></button>
-                    <div class="hide-mobile"><h6 class="font-weight-extrabold text-dark m-0 uppercase tracking-widest" style="font-size: 0.7rem;">ASALTA MANDIRI AGUNG // INDUSTRIAL CORE</h6></div>
+                    
+                    <div class="hide-mobile">
+                        <h6 class="font-weight-extrabold text-dark m-0 uppercase tracking-widest" style="font-size: 0.65rem;">
+                            ASALTA MANDIRI AGUNG // INDUSTRIAL CORE
+                        </h6>
+                    </div>
+
                     <ul class="navbar-nav ml-auto">
                         <li class="nav-item d-flex align-items-center">
                             <div class="mr-3 text-right hide-mobile">
                                 <div class="text-gray-800 font-weight-bold small">{{ Auth::user()->name }}</div>
-                                <div class="text-primary font-weight-bold" style="font-size: 0.6rem; text-transform: uppercase;">Role: {{ Auth::user()->role }}</div>
+                                <div class="text-primary font-weight-bold" style="font-size: 0.6rem; text-transform: uppercase;">{{ Auth::user()->role }}</div>
                             </div>
                             <div id="clock-wrapper"><div id="clock">00:00:00</div></div>
+                            
+                            <form action="{{ route('logout') }}" method="POST" class="ml-3 hide-mobile">
+                                @csrf
+                                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold" style="font-size: 0.6rem;">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
+                            </form>
                         </li>
                     </ul>
                 </nav>
 
                 <div class="container-fluid main-content-area">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="mb-4 d-md-flex align-items-center justify-content-between">
                         <h5 class="font-weight-bold text-dark mb-0 operational-shift-text">
                             <i class="far fa-calendar-check mr-2 text-primary"></i>
                             <span class="text-primary font-weight-extrabold">{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</span>
@@ -158,7 +213,12 @@
                     @yield('content')
                 </div>
             </div>
-            <footer class="bg-white py-4 border-top"><div class="container my-auto text-center font-weight-bold uppercase" style="font-size: 0.7rem;">&copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem .</div></footer>
+            
+            <footer class="sticky-footer bg-white py-4 border-top">
+                <div class="container my-auto text-center font-weight-bold uppercase" style="font-size: 0.65rem; color: #94a3b8;">
+                    &copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem Engine.
+                </div>
+            </footer>
         </div>
     </div>
 
@@ -167,8 +227,12 @@
     <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
 
     <script>
-        function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString('id-ID', { hour12: false }); }
-        setInterval(updateClock, 1000); updateClock();
+        function updateClock() { 
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }); 
+        }
+        setInterval(updateClock, 1000); 
+        updateClock();
 
         $("#sidebarToggleTop, #overlay").click(function() { 
             $("#accordionSidebar").toggleClass("toggled"); 
