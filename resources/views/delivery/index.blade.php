@@ -14,7 +14,7 @@
 
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--sultan-bg); color: var(--sultan-navy); }
 
-    /* ✨ UI ELEMENTS RILL */
+    /* ✨ UI ELEMENTS */
     .sultan-card { 
         background: #fff; border: none; border-radius: 28px; 
         box-shadow: 0 10px 30px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 2.5rem;
@@ -26,7 +26,7 @@
         justify-content: space-between; align-items: center;
     }
 
-    /* 🚚 HIGH-WAY TRUCK ANIMATION rill */
+    /* 🚚 HIGH-WAY TRUCK ANIMATION */
     @keyframes driveTruck { 0% { transform: translateX(-150px); } 100% { transform: translateX(calc(100vw)); } }
     .highway-container {
         width: 100%; height: 50px; background: #1e293b; border-radius: 50px;
@@ -37,7 +37,7 @@
     .road-line { position: absolute; width: 100%; height: 2px; border-top: 2px dashed rgba(255,255,255,0.1); top: 50%; transform: translateY(-50%); }
     .truck-sultan { position: absolute; font-size: 24px; color: var(--sultan-cyan); animation: driveTruck 15s linear infinite; text-shadow: 0 0 15px var(--sultan-blue); }
 
-    /* 📊 TABLE ELITE rill */
+    /* 📊 TABLE ELITE */
     .table-sultan { width: 100%; border-collapse: separate; border-spacing: 0; }
     .table-sultan thead th { 
         background: #f8fafc; color: #94a3b8; font-size: 10px; 
@@ -46,7 +46,7 @@
     .table-sultan tbody td { padding: 25px 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; }
     .po-id { font-family: 'JetBrains Mono'; color: var(--sultan-blue); font-size: 15px; }
 
-    /* 📈 PROGRESS BAR rill */
+    /* 📈 PROGRESS BAR */
     .progress-elite { height: 12px; background: #f1f5f9; border-radius: 50px; overflow: hidden; border: 1px solid #e2e8f0; }
     .bar-glow { background: linear-gradient(90deg, var(--sultan-blue), var(--sultan-cyan)); box-shadow: 0 0 10px rgba(67, 97, 238, 0.4); }
 
@@ -62,22 +62,24 @@
 
 <div class="container-fluid main-terminal animate__animated animate__fadeIn">
     
-    {{-- 🛰️ 1. TOP HEADER CENTER rill --}}
+    {{-- 🛰️ 1. TOP HEADER CENTER --}}
     <div class="d-sm-flex align-items-center justify-content-between mb-5">
         <div>
             <h1 class="h2 mb-0 font-weight-extrabold uppercase" style="letter-spacing: -2px;">
                 SHIPMENT <span class="text-primary">DISPATCH HUB</span>
             </h1>
             <p class="text-muted font-weight-bold mb-0 uppercase small tracking-widest">
-                <i class="fas fa-satellite mr-2 text-primary"></i> Core Logistics System // Titanium v2.3 rill
+                <i class="fas fa-satellite mr-2 text-primary"></i> Core Logistics System // Titanium v2.3
             </p>
         </div>
-        <a href="{{ route('delivery.history') }}" class="btn btn-white rounded-pill px-4 border font-weight-bold shadow-sm">
-            <i class="fas fa-history mr-2"></i> ARCHIVE_VAULT
-        </a>
+        <div class="d-flex">
+            <a href="{{ route('delivery.history') }}" class="btn btn-white rounded-pill px-4 border font-weight-bold shadow-sm mr-2">
+                <i class="fas fa-history mr-2"></i> ARCHIVE_VAULT
+            </a>
+        </div>
     </div>
 
-    {{-- 🚚 HIGHWAY ANIMATION rill --}}
+    {{-- 🚚 HIGHWAY ANIMATION --}}
     <div class="highway-container shadow-sm no-print">
         <div class="road-line"></div>
         <i class="fas fa-truck-moving truck-sultan"></i>
@@ -117,7 +119,7 @@
                                 $badgeColor = $isReguler ? 'bg-success' : 'bg-primary';
                             @endphp
                             <span class="badge {{ $badgeColor }} text-white badge-sultan shadow-sm">
-                                {{ $po->keterangan ?? 'URGENT' }} rill
+                                {{ $po->keterangan ?? 'URGENT' }}
                             </span>
                         </td>
                         <td>
@@ -137,7 +139,7 @@
                             </div>
                         </td>
                         <td>
-                            <a href="{{ route('delivery.create', $po->po_number) }}" class="btn-sultan-dispatch">
+                            <a href="{{ route('delivery.create', urlencode($po->po_number)) }}" class="btn-sultan-dispatch">
                                 <i class="fas fa-file-signature mr-1"></i> Issue Surat Jalan
                             </a>
                         </td>
@@ -150,7 +152,7 @@
     @empty
     <div class="sultan-card p-5 text-center">
         <i class="fas fa-boxes fa-4x mb-4 text-light"></i>
-        <h4 class="font-weight-bold text-muted uppercase tracking-widest">Logistic Clear: No Pending Manifests rill</h4>
+        <h4 class="font-weight-bold text-muted uppercase tracking-widest">Logistic Clear: No Pending Manifests</h4>
     </div>
     @endforelse
 </div>

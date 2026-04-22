@@ -10,11 +10,10 @@ use Carbon\Carbon;
 class DeliveryController extends Controller
 {
     /**
-     * 1. DAFTAR PO AKTIF - FIX: PAKAI 'keterangan' KARENA 'jenis_po' SUDAH DI-REMOVE
+     * 1. DAFTAR PO AKTIF
      */
     public function index()
     {
-        // SAKTI: Mengambil 'keterangan' sebagai pengganti 'jenis_po' agar tidak error 1054
         $pos = DB::table('purchase_orders')
             ->where('status', 'READY') 
             ->select('po_number', 'customer_code', 'due_date', 'keterangan') 
@@ -25,36 +24,33 @@ class DeliveryController extends Controller
         $activePOs = [];
 
         foreach ($pos as $po) {
+            // Ambil semua ID yang berhubungan dengan nomor PO ini
             $poIds = DB::table('purchase_orders')
                 ->where('po_number', $po->po_number)
                 ->where('customer_code', $po->customer_code)
-                ->where('status', 'READY')
                 ->pluck('id');
 
             $po->total_qty_po = DB::table('purchase_orders')
-                ->where('po_number', $po->po_number)
-                ->where('customer_code', $po->customer_code)
-                ->where('status', 'READY')
+                ->whereIn('id', $poIds)
                 ->sum('quantity');
 
+            // Hitung total terkirim berdasarkan kumpulan ID PO tersebut
             $po->total_terkirim = DB::table('deliveries')
                 ->whereIn('po_id', $poIds) 
                 ->sum('qty_delivery');
 
-            // Hanya tampilkan yang belum lunas (Outstanding > 0)
             if ($po->total_terkirim < $po->total_qty_po) {
                 $activePOs[] = $po;
             }
         }
 
-        // SAKTI: Mengelompokkan berdasarkan customer agar tabel di View terpisah
         $groupedPOs = collect($activePOs)->groupBy('customer_code');
 
         return view('delivery.index', compact('groupedPOs'));
     }
 
     /**
-     * 2. FORM PENERBITAN SJ (TETAP)
+     * 2. FORM PENERBITAN SJ
      */
     public function create($po_number)
     {
@@ -69,7 +65,12 @@ class DeliveryController extends Controller
         if (!$po) return redirect()->route('delivery.index')->with('error', 'PO Gak Ada atau Sudah Close!');
 
         foreach ($items as $item) {
-            $terkirim = DB::table('deliveries')->where('po_id', $item->id)->sum('qty_delivery');
+            // ✨ FIX: Tambahkan filter part_no agar tidak menjumlahkan part lain dalam PO yang sama
+            $terkirim = DB::table('deliveries')
+                ->where('po_id', $item->id)
+                ->where('part_no', $item->part_no)
+                ->sum('qty_delivery');
+                
             $item->total_sent = $terkirim;
             $item->sisa_pesanan = $item->quantity - $terkirim;
         }
@@ -84,15 +85,7 @@ class DeliveryController extends Controller
     {
         $items = $request->items; 
         $no_sj = $request->no_sj;
-        $po_id = $request->po_id;
-
-        $po_data = DB::table('purchase_orders')->where('id', $po_id)->first();
-        
-        if (!$po_data) {
-            return redirect()->back()->with('error', 'Data Purchase Order tidak ditemukan!');
-        }
-
-        $customer_code = $po_data->customer_code;
+        $po_number = $request->po_header_number;
 
         DB::beginTransaction();
         try {
@@ -100,35 +93,42 @@ class DeliveryController extends Controller
                 $qty_kirim = $data['qty_kirim'];
 
                 if ($qty_kirim > 0) {
+                    // Cari ID spesifik untuk part ini di tabel PO
+                    $po_item = DB::table('purchase_orders')
+                        ->where('po_number', $po_number)
+                        ->where('part_no', $part_no)
+                        ->first();
+
+                    if (!$po_item) continue;
+
+                    // Cek Stok FG
                     $fg = DB::table('finished_goods')->where('part_no', $part_no)->first();
 
                     if (!$fg || $fg->actual_stock < $qty_kirim) {
-                        return redirect()->back()->with('error', "Gagal! Stok Part $part_no tidak mencukupi (Tersedia: $fg->actual_stock)");
+                        throw new \Exception("Gagal! Stok Part $part_no tidak mencukupi (Tersedia: " . ($fg->actual_stock ?? 0) . ")");
                     }
 
+                    // 1. Potong Stok FG
                     DB::table('finished_goods')->where('part_no', $part_no)->decrement('actual_stock', $qty_kirim);
 
+                    // 2. Simpan ke Deliveries menggunakan ID PO yang spesifik per Part
                     DB::table('deliveries')->insert([
-                        'po_id' => $po_id,
+                        'po_id' => $po_item->id,
                         'no_sj' => $no_sj,
                         'part_no' => $part_no,
-                        'customer_code' => $customer_code,
+                        'customer_code' => $po_item->customer_code,
                         'qty_delivery' => $qty_kirim,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
 
-                    DB::table('purchase_orders')->where('po_number', $request->po_header_number)
-                        ->where('part_no', $part_no)
-                        ->increment('total_sent', $qty_kirim);
+                    // 3. Update total_sent di tabel purchase_orders untuk baris part tersebut
+                    DB::table('purchase_orders')->where('id', $po_item->id)->increment('total_sent', $qty_kirim);
 
-                    $status_check = DB::table('purchase_orders')
-                        ->where('po_number', $request->po_header_number)
-                        ->where('part_no', $part_no)
-                        ->first();
-
-                    if ($status_check && $status_check->total_sent >= $status_check->quantity) {
-                        DB::table('purchase_orders')->where('id', $status_check->id)->update([
+                    // 4. Cek status lunas per Part
+                    $updated_po = DB::table('purchase_orders')->where('id', $po_item->id)->first();
+                    if ($updated_po && $updated_po->total_sent >= $updated_po->quantity) {
+                        DB::table('purchase_orders')->where('id', $po_item->id)->update([
                             'status' => 'CLOSED', 
                             'updated_at' => now()
                         ]);
@@ -137,19 +137,17 @@ class DeliveryController extends Controller
             }
 
             DB::commit();
-            
-            // SAKTI: Setelah simpan, langsung lempar ke halaman PRINT biar otomatis cetak
             return redirect()->route('delivery.print', $no_sj)
-                ->with('success', 'Surat Jalan ' . $no_sj . ' Berhasil Terbit! Siap Dicetak.');
+                ->with('success', 'Surat Jalan ' . $no_sj . ' Berhasil Terbit!');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
     /**
-     * 4. HISTORY SURAT JALAN (TETAP)
+     * 4. HISTORY SURAT JALAN
      */
     public function history(Request $request)
     {
@@ -173,38 +171,28 @@ class DeliveryController extends Controller
     }
 
     /**
-     * 5. PRINT SURAT JALAN (MENYAMBUNGKAN DATA CUSTOMER)
+     * 5. PRINT SURAT JALAN
      */
     public function print($no_sj)
-{
-    // 1. Ambil semua item di SJ tersebut rill
-    $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
+    {
+        $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
 
-    if ($items->isEmpty()) {
-        return redirect()->route('delivery.index')->with('error', 'Data SJ tidak ditemukan rill!');
+        if ($items->isEmpty()) {
+            return redirect()->route('delivery.index')->with('error', 'Data SJ tidak ditemukan!');
+        }
+
+        $sj = $items->first();
+
+        // Cari data PO berdasarkan po_id yang tersimpan di baris delivery
+        $po = DB::table('purchase_orders')->where('id', $sj->po_id)->first();
+
+        $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
+
+        return view('delivery.print', compact('items', 'sj', 'po', 'no_sj', 'customer'));
     }
 
-    // 2. Ambil sampel 1 baris buat data Header
-    $sj = $items->first();
-
-    // 3. ✨ FIX ERROR po_number & po_id rill
-    // Kita cari data PO berdasarkan ID atau Nomor PO yang ada di baris SJ
-    $po = DB::table('purchase_orders')
-            ->where('id', $sj->po_id ?? 0) // Pake null coalescing biar gak crash rill
-            ->orWhere('po_number', $sj->po_number ?? ($sj->no_po ?? '')) // Cek po_number atau no_po rill
-            ->first();
-
-    // 4. Ambil data Nama PT dan Alamat lengkap
-    $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
-
-    // 5. ✨ FIX VIEW PATH (Sesuai gambar folder lu rill!)
-    // Lu punya folder: resources/views/delivery/print.blade.php
-    // Maka manggilnya: 'delivery.print'
-    return view('delivery.print', compact('items', 'sj', 'po', 'no_sj', 'customer'));
-}
-
     /**
-     * 6. PRINT REKAP PO (TETAP)
+     * 6. PRINT REKAP PO
      */
     public function printRekapPO($po_number)
     {
