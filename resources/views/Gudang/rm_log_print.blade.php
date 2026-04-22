@@ -15,7 +15,7 @@
     
     body { background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dark); }
 
-    /* Navigation UI rill */
+    /* Navigation UI */
     .btn-back-pill { 
         background: #ffffff; color: var(--dark) !important; border-radius: 50px; padding: 10px 24px; 
         font-weight: 700; border: 1.5px solid var(--border); transition: 0.3s; display: inline-flex; 
@@ -23,15 +23,15 @@
     }
     .btn-back-pill:hover { transform: translateX(-5px); border-color: var(--primary); color: var(--primary) !important; }
 
-    /* Report Container rill */
+    /* Report Container */
     .print-container { 
         background: white; padding: 60px; border-radius: 0; box-shadow: 0 20px 50px rgba(0,0,0,0.05); 
-        max-width: 1300px; margin: 20px auto; position: relative; min-height: 297mm; /* A4 Ratio */
+        max-width: 1300px; margin: 20px auto; position: relative; min-height: 297mm;
     }
     
     .header-doc { border-bottom: 5px solid var(--dark); padding-bottom: 25px; margin-bottom: 40px; }
     
-    /* ✨ PREMIUM LEDGER TABLE RILL ✨ */
+    /* PREMIUM LEDGER TABLE */
     .table-ledger { width: 100%; border-collapse: collapse; margin-bottom: 50px; }
     .table-ledger thead th { vertical-align: middle; border: 1px solid #cbd5e1; }
     
@@ -50,7 +50,7 @@
         font-weight: 700; color: #1e293b; vertical-align: middle;
     }
 
-    /* Column Theming rill */
+    /* Column Theming */
     .col-init { background: rgba(241, 245, 249, 0.5); color: #64748b; font-family: 'JetBrains Mono'; }
     .col-in { background: rgba(16, 185, 129, 0.04); color: #10b981; font-family: 'JetBrains Mono'; }
     .col-out { background: rgba(239, 68, 68, 0.04); color: #ef4444; font-family: 'JetBrains Mono'; }
@@ -59,7 +59,7 @@
         font-family: 'Orbitron'; font-weight: 900 !important; font-size: 18px; 
     }
 
-    /* Detailed Logs Section rill */
+    /* Detailed Logs Section */
     .section-title { 
         background: #f1f5f9; padding: 12px 25px; border-radius: 8px; 
         font-size: 12px; font-weight: 800; color: #334155; 
@@ -77,7 +77,7 @@
         text-align: left; font-family: 'JetBrains Mono'; font-size: 11px; 
     }
 
-    /* Logistics Stamp rill */
+    /* Logistics Stamp */
     .logistics-stamp {
         width: 150px; height: 150px; border: 5px double var(--stamp-ink); border-radius: 50%;
         color: var(--stamp-ink); display: flex; flex-direction: column; align-items: center;
@@ -95,6 +95,7 @@
         .print-container { box-shadow: none !important; margin: 0 !important; width: 100% !important; padding: 0 !important; }
         .header-mutation-label { background: #000 !important; color: #fff !important; -webkit-print-color-adjust: exact; }
         .table-ledger th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+        .col-init, .col-in, .col-out, .col-final { background: transparent !important; -webkit-print-color-adjust: exact; }
     }
 </style>
 
@@ -107,7 +108,7 @@
         </a>
         <div class="d-flex align-items-center">
              <div class="bg-white px-4 py-2 rounded-pill border shadow-sm mr-3">
-                <small class="text-muted font-weight-bold uppercase" style="font-size: 10px;">Operational Shift: </small>
+                <small class="text-muted font-weight-bold uppercase" style="font-size: 10px;">Operational Date: </small>
                 <small class="font-weight-extrabold text-primary">{{ date('d F Y') }}</small>
             </div>
             <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 font-weight-bold shadow-sm">
@@ -155,7 +156,7 @@
         </div>
     </div>
 
-    {{-- ✨ REPORT DOCUMENT rill ✨ --}}
+    {{-- REPORT DOCUMENT --}}
     <div class="print-container animate__animated animate__fadeIn">
         <div class="header-doc d-flex justify-content-between align-items-end">
             <div>
@@ -170,7 +171,7 @@
             </div>
         </div>
 
-        {{-- 🏆 MAIN MUTATION TABLE rill 🏆 --}}
+        {{-- MAIN MUTATION TABLE --}}
         <table class="table-ledger text-center">
             <thead>
                 <tr>
@@ -212,7 +213,7 @@
             </tbody>
         </table>
 
-        {{-- 📝 TRANSACTION LIST (SECTION DETAIL) rill --}}
+        {{-- TRANSACTION LIST (SECTION DETAIL) --}}
         <div class="section-title uppercase">Section III: Detailed Transaction Audit Trail</div>
         <table class="table-mini">
             <thead>
@@ -239,7 +240,7 @@
                                 <span class="text-success font-weight-bold">SUPPLY_IN</span> 
                             @endif
                         </td>
-                        <td class="text-uppercase">{{ $log->no_produksi ?? ($log->po_identitas ?? 'MANUAL_ENTRY') }}</td>
+                        <td class="text-uppercase">{{ $log->no_produksi ?? 'MANUAL_ENTRY' }}</td>
                         <td class="font-weight-bold text-right {{ isset($log->pcs_used) ? 'text-danger' : 'text-primary' }}" style="font-size: 13px;">
                             {{ isset($log->pcs_used) ? '-' : '+' }}{{ number_format($log->pcs_used ?? $log->pcs_in) }}
                         </td>
@@ -273,7 +274,7 @@
         </div>
 
         <div class="mt-5 text-center no-print">
-            <p class="text-muted small">Generated via MRP System - Industrial Intelligence rill</p>
+            <p class="text-muted small">Generated via MRP System - Industrial Intelligence</p>
         </div>
     </div>
 </div>
@@ -281,7 +282,6 @@
 <script>
     document.querySelectorAll('#autoFilterForm select, #autoFilterForm input').forEach(el => {
         el.addEventListener('change', () => { 
-            // Tambahkan loading sederhana rill
             document.body.style.opacity = '0.6';
             document.getElementById('autoFilterForm').submit(); 
         });
