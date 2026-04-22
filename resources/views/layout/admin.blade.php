@@ -13,7 +13,7 @@
         :root { --ind-navy: #0f172a; --ind-blue: #4361ee; --ind-bg: #f1f5f9; --ind-border: #e2e8f0; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; overflow-x: hidden; }
 
-        /* ✨ SIDEBAR SULTAN FULL MENU */
+        /* ✨ SIDEBAR SULTAN */
         #accordionSidebar { background: var(--ind-navy) !important; transition: all 0.4s; z-index: 1060; }
         .sidebar-brand-text { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; font-size: 0.9rem; color: #fff; }
         .nav-item .nav-link { padding: 0.8rem 1.3rem !important; margin: 2px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.5) !important; transition: 0.3s; }
@@ -25,18 +25,14 @@
         #clock-wrapper { background: var(--ind-navy); padding: 5px 15px; border-radius: 10px; border: 1px solid var(--ind-blue); display: flex; align-items: center; }
         #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.9rem; }
 
-        /* 📱 MOBILE ARCHITECTURE */
         @media (max-width: 768px) {
             #accordionSidebar { position: fixed; height: 100vh; left: -250px; }
             #accordionSidebar.toggled { left: 0; width: 260px !important; }
             .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
             .sidebar-overlay.active { display: block; }
             #content-wrapper { margin-left: 0 !important; width: 100%; }
-            .main-content-area { padding: 15px !important; }
-            .hide-mobile { display: none !important; }
-            .topbar { padding: 0 10px !important; }
         }
-        .collapse-inner { background: #fff !important; border-radius: 12px !important; border: 1px solid var(--ind-border); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .collapse-inner { background: #fff !important; border-radius: 12px !important; border: 1px solid var(--ind-border); }
         .collapse-item { font-weight: 700 !important; font-size: 0.75rem !important; color: var(--ind-navy) !important; }
     </style>
 </head>
@@ -55,6 +51,7 @@
                 <a class="nav-link" href="{{ route('dashboard') }}"><i class="fas fa-fw fa-gauge-high"></i><span>Dashboard Hub</span></a>
             </li>
 
+            @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
             <div class="sidebar-heading">DATA_REGISTRY</div>
             <li class="nav-item {{ Request::is('customers*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('customers.index') }}"><i class="fas fa-fw fa-users"></i><span>Customers</span></a>
@@ -78,6 +75,7 @@
                     </div>
                 </div>
             </li>
+            @endif
 
             <div class="sidebar-heading">INVENTORY_SYNC</div>
             <li class="nav-item">
@@ -109,23 +107,26 @@
             <li class="nav-item {{ Request::is('produksi*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('produksi.index') }}"><i class="fas fa-fw fa-desktop"></i><span>Live Monitor</span></a>
             </li>
+            
+            @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
             <li class="nav-item {{ Request::is('ppic*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('ppic.index') }}"><i class="fas fa-fw fa-calendar-days"></i><span>Planning PPIC</span></a>
             </li>
+            @endif
 
-        {{-- ✨ MENU QUALITY GATE  --}}
-        <div class="sidebar-heading">QUALITY_CONTROL</div>
-       <li class="nav-item {{ Request::is('quality*') ? 'active' : '' }}">
-    {{-- FIX: Panggil quality.index ! --}}
-    <a class="nav-link" href="{{ route('quality.index') }}">
-        <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate </span>
-    </a>
-</li>
+            <div class="sidebar-heading">QUALITY_CONTROL</div>
+            <li class="nav-item {{ Request::is('quality*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('quality.index') }}">
+                    <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate</span>
+                </a>
+            </li>
 
+            @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
             <div class="sidebar-heading">LOGISTICS</div>
             <li class="nav-item {{ Request::is('delivery*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('delivery.index') }}"><i class="fas fa-fw fa-truck-ramp-box"></i><span>Dispatch Portal</span></a>
             </li>
+            @endif
 
             <hr class="sidebar-divider d-none d-md-block opacity-25">
             <div class="text-center d-none d-md-inline"><button class="rounded-circle border-0" id="sidebarToggle"></button></div>
@@ -138,7 +139,10 @@
                     <div class="hide-mobile"><h6 class="font-weight-extrabold text-dark m-0 uppercase tracking-widest" style="font-size: 0.7rem;">ASALTA MANDIRI AGUNG // INDUSTRIAL CORE</h6></div>
                     <ul class="navbar-nav ml-auto">
                         <li class="nav-item d-flex align-items-center">
-                            <span class="mr-3 text-gray-800 font-weight-bold small hide-mobile">{{ Auth::user()->name ?? 'Administrator' }}</span>
+                            <div class="mr-3 text-right hide-mobile">
+                                <div class="text-gray-800 font-weight-bold small">{{ Auth::user()->name }}</div>
+                                <div class="text-primary font-weight-bold" style="font-size: 0.6rem; text-transform: uppercase;">Role: {{ Auth::user()->role }}</div>
+                            </div>
                             <div id="clock-wrapper"><div id="clock">00:00:00</div></div>
                         </li>
                     </ul>
