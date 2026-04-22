@@ -10,25 +10,60 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
+     * Menyesuaikan perhitungan Target vs Actual secara global
      */
     public function index()
     {
+        // Ambil data planning
         $plans = DB::table('production_plans')->get();
 
-        $statusCount = [
-            'waiting'   => DB::table('production_plans')->count(),
-            'running'   => 0, 
-            'completed' => 0, 
-        ];
-
-        // Hitung Total Plan (S1 + S2)
+        // Hitung Total Plan Global (S1 + S2)
         $totalPlan = DB::table('production_plans')
             ->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))
             ->first()->total ?: 1;
         
-        // FIX: Kolom rill di DB Bapak adalah 'qty_hasil_ok'
-        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok'); 
+        // Ambil Total Actual Global dari produksi_batches
+        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok') ?: 0; 
+        
         $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
+
+        // Perhitungan Status Otomatis untuk Donut Chart
+        $statusCount = [
+            'waiting'   => 0,
+            'running'   => 0,
+            'completed' => 0,
+        ];
+
+        foreach($plans as $p) {
+            // Hitung target per baris
+            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+            
+            // Hitung actual per baris (Real-time)
+            $actualPerPart = DB::table('produksi_batches')
+                ->where('material_code', $p->part_no)
+                ->whereDate('created_at', $p->plan_date)
+                ->sum('qty_hasil_ok');
+            
+            // Tempel data ke objek plan untuk digunakan di table ledger view
+            $p->actual_qty = $actualPerPart;
+            $p->plan_qty = $targetPerPart;
+
+            // Logika Status
+            if($actualPerPart <= 0) {
+                $statusCount['waiting']++;
+            } elseif ($actualPerPart < $targetPerPart) {
+                $statusCount['running']++;
+            } else {
+                $statusCount['completed']++;
+            }
+        }
+
+        // Data Grafik (Bulan Juni diambil dari totalActual rill)
+        $monthlyData = [
+            'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+            'target' => [10000, 12000, 15000, 14000, 16000, $totalPlan],
+            'actual' => [9500, 11800, 14200, 14500, 15800, $totalActual]
+        ];
 
         $stockRisks = [
             'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
@@ -36,17 +71,12 @@ class PPICController extends Controller
             'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
         ];
 
-        $monthlyData = [
-            'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-            'target' => [10000, 12000, 15000, 14000, 16000, 18000],
-            'actual' => [9500, 11800, 14200, 14500, 15800, 17500]
-        ];
-
         return view('Gudang.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'stockRisks', 'monthlyData'));
     }
 
     /**
      * 2. JADWAL PRODUKSI (MPS)
+     * Menggunakan subquery untuk sinkronisasi mesin_id vs line_code
      */
     public function mpsIndex(Request $request)
     {
@@ -54,21 +84,13 @@ class PPICController extends Controller
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
 
         foreach($plans as $plan) {
-            // FIX LOGIKA: Menghubungkan Rencana ke Laporan Produksi
             $actualData = DB::table('produksi_batches')
-                // 1. Di produksi_batches kolomnya 'material_code', bukan 'part_no'
                 ->where('material_code', $plan->part_no) 
-                
-                // 2. Di produksi_batches kolomnya 'mesin_id' (ID), bukan 'line_code' (Teks)
-                // Kita cari ID mesin di tabel 'line' berdasarkan kode line (Contoh: LINE A)
                 ->where('mesin_id', function($query) use ($plan) {
-                    $query->select('id')
-                          ->from('line')
-                          ->where('kode_Line', $plan->line_code);
+                    $query->select('id')->from('line')->where('kode_Line', $plan->line_code);
                 })
                 ->whereDate('created_at', $date)
                 ->select(
-                    // 3. Shift Bapak isinya 'Pagi', bukan angka 1
                     DB::raw("SUM(CASE WHEN shift = 'Pagi' THEN qty_hasil_ok ELSE 0 END) as s1_act"),
                     DB::raw("SUM(CASE WHEN shift != 'Pagi' THEN qty_hasil_ok ELSE 0 END) as s2_act")
                 )->first();
@@ -86,7 +108,6 @@ class PPICController extends Controller
             $plan->s2_balance = $plan->s2_total_target - $plan->s2_actual;
         }
 
-        // Ambil data pendukung dengan kolom yang benar (kode_Line)
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
@@ -122,21 +143,22 @@ class PPICController extends Controller
 
     /**
      * 4. API DATA UNTUK DASHBOARD
+     * Memastikan respon JSON sinkron dengan data rill produksi
      */
     public function apiData()
     {
-        $statusCount = [
-            'waiting'   => DB::table('production_plans')->count(),
-            'running'   => 0,
-            'completed' => 0,
-        ];
-
         $totalPlan = DB::table('production_plans')
             ->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))
             ->first()->total ?: 1;
         
-        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok');
+        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok') ?: 0;
         $achievement = round(($totalActual / $totalPlan) * 100, 1);
+
+        $statusCount = [
+            'waiting'   => DB::table('production_plans')->count(), // Bisa diperdetail jika perlu
+            'running'   => 0,
+            'completed' => 0,
+        ];
 
         $stockRisks = [
             'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
