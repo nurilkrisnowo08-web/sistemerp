@@ -16,15 +16,17 @@ class PPICController extends Controller
         $plans = DB::table('production_plans')->get();
 
         $statusCount = [
-            'waiting'   => DB::table('production_plans')->whereRaw('(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) > 0')->count(),
+            'waiting'   => DB::table('production_plans')->count(),
             'running'   => 0, 
             'completed' => 0, 
         ];
 
         // Hitung Total Plan (S1 + S2)
-        $totalPlan = DB::table('production_plans')->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))->first()->total ?: 1;
+        $totalPlan = DB::table('production_plans')
+            ->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))
+            ->first()->total ?: 1;
         
-        // FIX: Ganti 'qty_ok' jadi 'qty_hasil_ok' sesuai database Bapak
+        // FIX: Kolom rill di DB Bapak adalah 'qty_hasil_ok'
         $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok'); 
         $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
 
@@ -52,12 +54,21 @@ class PPICController extends Controller
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
 
         foreach($plans as $plan) {
-            // FIX: Sesuaikan nama kolom 'qty_hasil_ok' dan value shift 'Pagi'/'Malam'
+            // FIX LOGIKA: Menghubungkan Rencana ke Laporan Produksi
             $actualData = DB::table('produksi_batches')
-                ->where('part_no', $plan->part_no)
-                ->where('line_code', $plan->line_code)
+                // 1. Di produksi_batches kolomnya 'material_code', bukan 'part_no'
+                ->where('material_code', $plan->part_no) 
+                
+                // 2. Di produksi_batches kolomnya 'mesin_id' (ID), bukan 'line_code' (Teks)
+                // Kita cari ID mesin di tabel 'line' berdasarkan kode line (Contoh: LINE A)
+                ->where('mesin_id', function($query) use ($plan) {
+                    $query->select('id')
+                          ->from('line')
+                          ->where('kode_Line', $plan->line_code);
+                })
                 ->whereDate('created_at', $date)
                 ->select(
+                    // 3. Shift Bapak isinya 'Pagi', bukan angka 1
                     DB::raw("SUM(CASE WHEN shift = 'Pagi' THEN qty_hasil_ok ELSE 0 END) as s1_act"),
                     DB::raw("SUM(CASE WHEN shift != 'Pagi' THEN qty_hasil_ok ELSE 0 END) as s2_act")
                 )->first();
@@ -71,12 +82,11 @@ class PPICController extends Controller
             $plan->s1_hour = ($plan->cap_per_hour > 0) ? round($plan->s1_total_target / $plan->cap_per_hour, 1) : 0;
             $plan->s2_hour = ($plan->cap_per_hour > 0) ? round($plan->s2_total_target / $plan->cap_per_hour, 1) : 0;
 
-            // Hitung sisa (Balance)
             $plan->s1_balance = $plan->s1_total_target - $plan->s1_actual;
             $plan->s2_balance = $plan->s2_total_target - $plan->s2_actual;
         }
 
-        // Gunakan nama kolom 'kode_Line' sesuai foto DB sebelumnya
+        // Ambil data pendukung dengan kolom yang benar (kode_Line)
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
@@ -121,9 +131,10 @@ class PPICController extends Controller
             'completed' => 0,
         ];
 
-        $totalPlan = DB::table('production_plans')->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))->first()->total ?: 1;
+        $totalPlan = DB::table('production_plans')
+            ->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))
+            ->first()->total ?: 1;
         
-        // FIX: Ganti 'qty_ok' jadi 'qty_hasil_ok'
         $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok');
         $achievement = round(($totalActual / $totalPlan) * 100, 1);
 
