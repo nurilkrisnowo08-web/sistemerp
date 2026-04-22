@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\ProductionPlan; // Pastikan Model ini sudah Bapak buat
+use App\Models\ProductionPlan; 
 
 class PPICController extends Controller
 {
@@ -13,33 +13,27 @@ class PPICController extends Controller
      */
     public function index()
     {
-        // Ambil Semua Data Planning
         $plans = DB::table('production_plans')->get();
 
-        // 2. Summary Status (Logic berdasarkan pencapaian target)
-        // Karena kolom 'status' di tabel baru tidak ada, kita hitung manual
         $statusCount = [
             'waiting'   => DB::table('production_plans')->whereRaw('(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) > 0')->count(),
-            'running'   => 0, // Bisa diisi logic jika ada mesin yang sedang 'Start'
+            'running'   => 0, 
             'completed' => 0, 
         ];
 
-        // 3. Overall Achievement (Actual vs Target)
-        // Rumus Baru: (S1 + S2)
+        // Hitung Total Plan (S1 + S2)
         $totalPlan = DB::table('production_plans')->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))->first()->total ?: 1;
         
-        // Actual ditarik dari log produksi rill
-        $totalActual = DB::table('produksi_batches')->sum('qty_ok'); 
+        // FIX: Ganti 'qty_ok' jadi 'qty_hasil_ok' sesuai database Bapak
+        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok'); 
         $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
 
-        // 4. Stock Risk Analysis (RM yang di bawah Min Stock)
         $stockRisks = [
             'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
             'warning'  => DB::table('rm_stocks')->whereRaw('stock_pcs > min_stock AND stock_pcs <= (min_stock * 1.5)')->count(),
             'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
         ];
 
-        // 5. Data Grafik Bulanan
         $monthlyData = [
             'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
             'target' => [10000, 12000, 15000, 14000, 16000, 18000],
@@ -50,38 +44,39 @@ class PPICController extends Controller
     }
 
     /**
-     * 2. JADWAL PRODUKSI (MPS - Tampilan ala Excel)
-     * Ini fungsi baru untuk menampilkan tabel Shift 1 & Shift 2
+     * 2. JADWAL PRODUKSI (MPS)
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        
-        // Ambil data rencana
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
 
         foreach($plans as $plan) {
-            // Tarik data ACTUAL dari laporan produksi lapangan secara Real-time
+            // FIX: Sesuaikan nama kolom 'qty_hasil_ok' dan value shift 'Pagi'/'Malam'
             $actualData = DB::table('produksi_batches')
                 ->where('part_no', $plan->part_no)
                 ->where('line_code', $plan->line_code)
                 ->whereDate('created_at', $date)
                 ->select(
-                    DB::raw("SUM(CASE WHEN shift = 1 THEN qty_ok ELSE 0 END) as s1_act"),
-                    DB::raw("SUM(CASE WHEN shift = 2 THEN qty_ok ELSE 0 END) as s2_act")
+                    DB::raw("SUM(CASE WHEN shift = 'Pagi' THEN qty_hasil_ok ELSE 0 END) as s1_act"),
+                    DB::raw("SUM(CASE WHEN shift != 'Pagi' THEN qty_hasil_ok ELSE 0 END) as s2_act")
                 )->first();
 
             $plan->s1_actual = $actualData->s1_act ?? 0;
             $plan->s2_actual = $actualData->s2_act ?? 0;
             
-            // Hitung jam kerja (Logic: Plan / Capacity)
             $plan->s1_total_target = $plan->s1_plan_reg + $plan->s1_plan_ot;
             $plan->s2_total_target = $plan->s2_plan_reg + $plan->s2_plan_ot;
             
             $plan->s1_hour = ($plan->cap_per_hour > 0) ? round($plan->s1_total_target / $plan->cap_per_hour, 1) : 0;
             $plan->s2_hour = ($plan->cap_per_hour > 0) ? round($plan->s2_total_target / $plan->cap_per_hour, 1) : 0;
+
+            // Hitung sisa (Balance)
+            $plan->s1_balance = $plan->s1_total_target - $plan->s1_actual;
+            $plan->s2_balance = $plan->s2_total_target - $plan->s2_actual;
         }
 
+        // Gunakan nama kolom 'kode_Line' sesuai foto DB sebelumnya
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
@@ -116,7 +111,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. API DATA UNTUK DASHBOARD (Donut Chart & Progress)
+     * 4. API DATA UNTUK DASHBOARD
      */
     public function apiData()
     {
@@ -126,9 +121,10 @@ class PPICController extends Controller
             'completed' => 0,
         ];
 
-        // Achievement Rate (Total S1+S2 Plan vs Total Actual)
         $totalPlan = DB::table('production_plans')->select(DB::raw('SUM(s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot) as total'))->first()->total ?: 1;
-        $totalActual = DB::table('produksi_batches')->sum('qty_ok');
+        
+        // FIX: Ganti 'qty_ok' jadi 'qty_hasil_ok'
+        $totalActual = DB::table('produksi_batches')->sum('qty_hasil_ok');
         $achievement = round(($totalActual / $totalPlan) * 100, 1);
 
         $stockRisks = [
