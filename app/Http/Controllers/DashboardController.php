@@ -13,18 +13,27 @@ class DashboardController extends Controller
         $mode = $request->query('mode', 'summary'); 
         $selectedCustomer = $request->query('customer');
 
-        // 1. DATA SUMMARY (Tetap enteng rill)
+        // 1. DATA SUMMARY
         $totalParts = DB::table('finished_goods')->count();
-        $critCount = DB::table('finished_goods')->whereRaw('actual_stock <= min_stock_pcs')->count();
+        
+        // ✨ PERBAIKAN: Ambil data baris part yang stoknya kritis (Shortage)
+        $shortageParts = DB::table('finished_goods')
+            ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
+            ->select('finished_goods.*', 'parts.part_name', 'parts.customer_code')
+            ->whereRaw('finished_goods.actual_stock <= finished_goods.min_stock_pcs')
+            ->get();
+
+        // Ambil hitungan dari data yang sudah diambil
+        $critCount = $shortageParts->count(); 
+        
         $todayProd = DB::table('production_logs')->whereDate('created_at', $today)->where('qty', '>', 0)->sum('qty') ?? 0;
         $todayDelv = DB::table('deliveries')->whereDate('created_at', $today)->sum('qty_delivery') ?? 0;
 
-        // 2. LOGIC MODE: DELIVERY rill
+        // 2. LOGIC MODE: DELIVERY
         $deliveryPerformance = 0; $deliveryTrend = collect(); $customerShipments = collect();
         if ($mode == 'delivery') {
             $totalOrdered = DB::table('purchase_order_items')->sum('qty') ?: 1;
             $totalSent = DB::table('deliveries')->sum('qty_delivery') ?: 0;
-            // Rumus: $$ \text{Performance} = \left( \frac{\text{Total Sent}}{\text{Total Ordered}} \right) \times 100 $$
             $deliveryPerformance = round(($totalSent / $totalOrdered) * 100, 1);
 
             $deliveryTrend = DB::table('deliveries')
@@ -37,11 +46,14 @@ class DashboardController extends Controller
         $labels = []; $actStockData = []; $minStockData = []; $permintaanStok = [];
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
         if ($mode == 'summary') {
-            $queryChart = DB::table('finished_goods')->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')->select('finished_goods.part_no', 'finished_goods.actual_stock', 'finished_goods.min_stock_pcs');
+            $queryChart = DB::table('finished_goods')
+                ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
+                ->select('finished_goods.part_no', 'finished_goods.actual_stock', 'finished_goods.min_stock_pcs');
+            
             if ($selectedCustomer) {
                 $queryChart->where('parts.customer_code', $selectedCustomer);
             } else {
-                $queryChart->limit(8); // Di HP jangan kebanyakan bar rill biar gak pusing
+                $queryChart->limit(8); 
             }
             $chartData = $queryChart->get();
             $labels = $chartData->map(fn($item) => $item->part_no)->toArray();
@@ -49,6 +61,21 @@ class DashboardController extends Controller
             $minStockData = $chartData->pluck('min_stock_pcs')->toArray();
         }
 
-        return view('dashboard', compact('totalParts', 'critCount', 'todayProd', 'todayDelv', 'mode', 'deliveryPerformance', 'deliveryTrend', 'labels', 'actStockData', 'minStockData', 'customersList', 'selectedCustomer'));
+        // ✨ PASTIKAN 'shortageParts' dimasukkan ke dalam compact
+        return view('dashboard', compact(
+            'totalParts', 
+            'critCount', 
+            'todayProd', 
+            'todayDelv', 
+            'mode', 
+            'deliveryPerformance', 
+            'deliveryTrend', 
+            'labels', 
+            'actStockData', 
+            'minStockData', 
+            'customersList', 
+            'selectedCustomer',
+            'shortageParts' 
+        ));
     }
 }

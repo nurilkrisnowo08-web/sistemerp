@@ -13,7 +13,7 @@
     
     body { background-color: var(--ind-bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ind-navy); overflow-x: hidden; }
 
-    /* ✨ RESPONSIVE ARCHITECTURE rill */
+    /* ✨ RESPONSIVE ARCHITECTURE */
     @media (max-width: 768px) {
         .stat-value { font-size: 22px !important; }
         .flow-path { flex-direction: column !important; padding: 20px !important; gap: 15px; }
@@ -22,7 +22,7 @@
         .hide-mobile { display: none !important; }
     }
 
-    /* ✨ TACTICAL CARD GLASS rill */
+    /* ✨ TACTICAL CARD GLASS */
     .tactical-card { 
         background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; 
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
@@ -33,18 +33,18 @@
     .stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 1.5px; }
     .stat-value { font-family: 'Orbitron', sans-serif; font-size: 30px; font-weight: 900; letter-spacing: -1px; }
 
-    /* ✨ LASER STREAM rill */
+    /* ✨ LASER STREAM */
     .laser-line { height: 2px; background: linear-gradient(90deg, transparent, var(--ind-blue), transparent); width: 100%; position: absolute; top: 0; animation: laserSweep 3s linear infinite; }
     @keyframes laserSweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
 
-    /* ✨ FLOW SYSTEM rill */
+    /* ✨ FLOW SYSTEM */
     .flow-path { background: var(--ind-navy); border-radius: 30px; padding: 30px; display: flex; align-items: center; justify-content: space-between; position: relative; }
     .flow-step { flex: 1; text-align: center; z-index: 2; transition: 0.3s; color: #fff !important; text-decoration: none !important; }
     .flow-step:hover { transform: scale(1.1); }
     .flow-pulse { width: 40px; height: 2px; background: var(--ind-blue); box-shadow: 0 0 15px var(--ind-blue); animation: pulse 2s infinite; opacity: 0.4; }
     @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; } 100% { opacity: 0.2; } }
 
-    /* ✨ TICKER rill */
+    /* ✨ TICKER */
     .ticker-wrap { background: #fff; border-radius: 50px; border: 1px solid #fee2e2; padding: 10px 0; overflow: hidden; }
     .ticker-move { display: flex; width: max-content; animation: ticker 45s linear infinite; }
     .ticker-item { padding: 0 40px; font-weight: 800; font-size: 11px; color: var(--ind-danger); font-family: 'JetBrains Mono'; text-transform: uppercase; }
@@ -56,7 +56,7 @@
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
     
-    {{-- 🛸 1. HEADER CENTER rill --}}
+    {{-- 🛸 1. HEADER CENTER --}}
     <div class="tactical-card p-4 mb-4 shadow-sm">
         <div class="laser-line"></div>
         <div class="d-flex justify-content-between align-items-center">
@@ -67,7 +67,7 @@
                 <p class="text-muted small font-weight-bold mb-0">
                     <i class="fas fa-microchip mr-1 text-primary"></i> 
                     MODE: <span class="badge badge-primary px-3">{{ strtoupper($mode ?? 'Summary') }}</span> 
-                    // L-TIME: <span id="real-clock">{{ date('H:i') }}</span> rill
+                    // L-TIME: <span id="real-clock">{{ date('H:i') }}</span>
                 </p>
             </div>
             <div class="dropdown">
@@ -80,11 +80,11 @@
         </div>
     </div>
 
-    {{-- 🚨 2. CRITICAL TICKER (FIX ERROR rill) --}}
-    @if(isset($permintaanStok) && count($permintaanStok) > 0)
+    {{-- 🚨 2. CRITICAL TICKER --}}
+    @if(isset($shortageParts) && count($shortageParts) > 0)
     <div class="ticker-wrap mb-4 shadow-sm">
         <div class="ticker-move">
-            @foreach($permintaanStok->merge($permintaanStok) as $p)
+            @foreach($shortageParts->merge($shortageParts) as $p)
             <div class="ticker-item">
                 <i class="fas fa-bolt mr-2"></i> CRITICAL: [{{ $p->part_no }}] IS BELOW MINIMUM (ACTUAL: {{ $p->actual_stock }}) // ACTION_REQUIRED
             </div>
@@ -93,7 +93,7 @@
     </div>
     @endif
 
-    {{-- 🚀 3. TACTICAL CARDS (Grid 2 Kolom di HP rill!) --}}
+    {{-- 🚀 3. TACTICAL CARDS --}}
     <div class="row mb-4 g-3">
         <div class="col-6 col-md-3 mb-3">
             <div class="tactical-card p-4 text-center" style="border-bottom: 5px solid var(--ind-blue);">
@@ -121,7 +121,7 @@
         </div>
     </div>
 
-    {{-- 🌊 4. PO LOGISTICS FLOW (Responsive rill) --}}
+    {{-- 🌊 4. PO LOGISTICS FLOW --}}
     <div class="tactical-card p-4 mb-4 bg-dark">
         <div class="flow-path">
             <a href="{{ route('po-customer.index') }}" class="flow-step">
@@ -150,31 +150,42 @@
         </div>
     </div>
 
-    {{-- 📊 5. DATA GRID rill --}}
+    {{-- 📊 5. DATA GRID --}}
     <div class="row">
         <div class="col-lg-6 mb-4">
             <div class="tactical-card overflow-hidden">
                 <div class="p-4 bg-danger text-white d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold uppercase small tracking-widest"><i class="fas fa-bolt mr-2"></i> Shortage Ledger</h6>
-                    <span class="badge bg-white text-danger">{{ isset($permintaanStok) ? count($permintaanStok) : 0 }} PARTS</span>
+                    <span class="badge bg-white text-danger">{{ $critCount }} PARTS</span>
                 </div>
                 <div class="table-responsive" style="max-height: 400px;">
                     <table class="table table-modern mb-0">
+                        <thead>
+                            <tr>
+                                <th>Part Identity</th>
+                                <th class="text-right">Actual Stock</th>
+                            </tr>
+                        </thead>
                         <tbody>
-                            @if(isset($permintaanStok))
-                                @foreach($permintaanStok as $p)
-                                <tr>
-                                    <td>
-                                        <div class="font-weight-bold" style="font-family: 'JetBrains Mono';">{{ $p->part_no }}</div>
-                                        <small class="text-muted">{{ $p->customer_code ?? 'AMK' }}</small>
-                                    </td>
-                                    <td class="text-right">
-                                        <div class="text-danger font-weight-bold">{{ $p->actual_stock }}</div>
-                                        <div class="text-muted" style="font-size: 9px;">MIN: {{ $p->min_stock_pcs }}</div>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            @endif
+                            @forelse($shortageParts as $p)
+                            <tr>
+                                <td>
+                                    <div class="font-weight-bold" style="font-family: 'JetBrains Mono';">{{ $p->part_no }}</div>
+                                    <small class="text-muted text-uppercase">{{ $p->customer_code ?? 'PT. AMK' }}</small>
+                                </td>
+                                <td class="text-right">
+                                    <div class="text-danger font-weight-bold h5 mb-0">{{ number_format($p->actual_stock) }}</div>
+                                    <div class="text-muted" style="font-size: 9px;">MINIMUM: {{ number_format($p->min_stock_pcs) }}</div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="2" class="py-5 text-center text-muted">
+                                    <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                                    <div class="small font-weight-bold">All Inventory Above Safety Stock</div>
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -184,7 +195,7 @@
         <div class="col-lg-6 mb-4">
             <div class="tactical-card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h6 class="font-weight-bold m-0 uppercase text-primary">Live Inventory Focus rill</h6>
+                    <h6 class="font-weight-bold m-0 uppercase text-primary">Live Inventory Focus</h6>
                     <form action="{{ route('dashboard') }}" method="GET" class="hide-mobile">
                         <select name="customer" class="btn btn-light btn-sm rounded-pill border px-3" onchange="this.form.submit()">
                             <option value="">-- ALL_CLIENTS --</option>
@@ -205,15 +216,16 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // --- 🕒 Clock rill ---
+        // --- 🕒 Clock ---
         setInterval(() => {
             document.getElementById('real-clock').innerText = new Date().toLocaleTimeString('id-ID', { hour12: false });
         }, 1000);
 
-        // --- 🔢 Numbers rill ---
+        // --- 🔢 Numbers ---
         const rollNumbers = document.querySelectorAll('.roll-number');
         rollNumbers.forEach(el => {
             let target = parseFloat(el.getAttribute('data-target'));
+            if(target === 0) return;
             let count = 0;
             let timer = setInterval(() => {
                 count += target / 30;
@@ -222,7 +234,7 @@
             }, 30);
         });
 
-        // --- 📊 Chart rill ---
+        // --- 📊 Chart ---
         const ctx = document.getElementById('mainDashboardChart').getContext('2d');
         new Chart(ctx, {
             type: 'bar',
