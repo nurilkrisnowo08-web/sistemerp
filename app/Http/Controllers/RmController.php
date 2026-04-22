@@ -357,4 +357,33 @@ class RmController extends Controller
         DB::table('master_materials')->insert(['customer_code' => trim($request->customer_code), 'material_type' => trim($request->material_type), 'thickness' => trim($request->thickness), 'size' => trim($request->size), 'alias_code' => trim($request->alias_code), 'full_spec' => trim($request->material_type) . ' ' . trim($request->thickness) . ' X ' . trim($request->size), 'created_at' => now(), 'updated_at' => now()]); 
         return back()->with('success', 'Specification registered.'); 
     }
+    /**
+     * FUNGSI YANG HILANG: Menampilkan Riwayat PO Supplier
+     */
+    public function poSupplierHistory(Request $request)
+    {
+        $selectedCustomer = $request->customer;
+        
+        // Ambil PO yang statusnya sudah COMPLETED atau masih PARTIAL untuk dilihat historynya
+        $posQuery = DB::table('supplier_pos');
+
+        if ($selectedCustomer && $selectedCustomer != 'ALL') {
+            $posQuery->where('customer_code', trim($selectedCustomer));
+        }
+
+        $pos = $posQuery->orderBy('updated_at', 'desc')->get();
+
+        foreach ($pos as $po) {
+            $po->items = DB::table('supplier_po_items')
+                ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
+                ->select('supplier_po_items.*', 'mm.material_type', 'mm.thickness', 'mm.size')
+                ->where('supplier_po_id', $po->id)
+                ->get();
+        }
+
+        $clients = DB::table('customers')->get();
+        
+        // Pastikan nama view ini sesuai dengan file di folder resources/views/Gudang/
+        return view('Gudang.po_supplier_history', compact('pos', 'clients', 'selectedCustomer'));
+    }
 }
