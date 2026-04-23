@@ -9,64 +9,66 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Sekarang membaca Actual dari tabel production_actuals agar performa lebih ringan.
+     * Membaca Actual dari tabel production_actuals agar performa lebih ringan.
      */
-  public function index(Request $request)
-{
-    $date = $request->date ?? date('Y-m-d');
-    $today = date('Y-m-d');
-    
-    $plans = DB::table('production_plans')->where('plan_date', $date)->get();
-    $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-    $chartLabels = []; $chartTargets = []; $chartActuals = [];
-
-    foreach($plans as $p) {
-        $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-        $actualPerPart = DB::table('production_actuals')
-            ->where('part_no', $p->part_no)
-            ->where('line_code', $p->line_code)
-            ->whereDate('created_at', $date)
-            ->sum('qty_ok');
+    public function index(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+        $today = date('Y-m-d');
         
-        $p->actual_qty = (int)$actualPerPart;
-        $p->plan_qty = (int)$targetPerPart;
-        $chartLabels[] = $p->part_no;
-        $chartTargets[] = (int)$targetPerPart;
-        $chartActuals[] = (int)$actualPerPart;
+        $plans = DB::table('production_plans')->where('plan_date', $date)->get();
+        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
+        $chartLabels = []; $chartTargets = []; $chartActuals = [];
 
-        if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { $statusCount['completed']++; }
-        elseif ($date < $today && $actualPerPart < $targetPerPart) { $statusCount['shortage']++; }
-        elseif ($actualPerPart > 0) { $statusCount['running']++; }
-        else { $statusCount['waiting']++; }
+        foreach($plans as $p) {
+            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+            
+            // Mengambil Actual Qty OK dari tabel ringkasan
+            $actualPerPart = DB::table('production_actuals')
+                ->where('part_no', $p->part_no)
+                ->where('line_code', $p->line_code)
+                ->whereDate('created_at', $date)
+                ->sum('qty_ok');
+            
+            $p->actual_qty = (int)$actualPerPart;
+            $p->plan_qty = (int)$targetPerPart;
+            $chartLabels[] = $p->part_no;
+            $chartTargets[] = (int)$targetPerPart;
+            $chartActuals[] = (int)$actualPerPart;
+
+            if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { $statusCount['completed']++; }
+            elseif ($date < $today && $actualPerPart < $targetPerPart) { $statusCount['shortage']++; }
+            elseif ($actualPerPart > 0) { $statusCount['running']++; }
+            else { $statusCount['waiting']++; }
+        }
+
+        $totalPlan = $plans->sum('plan_qty') ?: 0;
+        $totalActual = $plans->sum('actual_qty') ?: 0;
+        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+        // Data untuk Chart Daily & Monthly OK vs NG
+        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = date('Y-m-d', strtotime("-$i days"));
+            $dailyLabels[] = date('d M', strtotime($d));
+            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->sum('qty_ok');
+            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->sum('qty_ng');
+        }
+
+        $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $mDate = date('Y-m', strtotime("-$i months"));
+            $monthlyLabels[] = date('M', strtotime("-$i months"));
+            $monthlyOk[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->sum('qty_ok');
+            $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->sum('qty_ng');
+        }
+
+        return view('PPIC.ppic_planning', compact(
+            'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
+            'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
+            'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg'
+        ));
     }
-
-    $totalPlan = $plans->sum('plan_qty') ?: 0;
-    $totalActual = $plans->sum('actual_qty') ?: 0;
-    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
-
-    // ✨ DATA UNTUK CHART BARU (DAILY & MONTHLY OK VS NG) ✨
-    $dailyLabels = []; $dailyOk = []; $dailyNg = [];
-    for ($i = 6; $i >= 0; $i--) {
-        $d = date('Y-m-d', strtotime("-$i days"));
-        $dailyLabels[] = date('d M', strtotime($d));
-        $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->sum('qty_ok');
-        $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->sum('qty_ng');
-    }
-
-    $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
-    for ($i = 5; $i >= 0; $i--) {
-        $mDate = date('Y-m', strtotime("-$i months"));
-        $monthlyLabels[] = date('M', strtotime("-$i months"));
-        $monthlyOk[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->sum('qty_ok');
-        $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->sum('qty_ng');
-    }
-
-    return view('PPIC.ppic_planning', compact(
-        'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
-        'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
-        'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg'
-    ));
-}
 
     /**
      * 2. DAILY MPS (Penerima Data dari Monthly Matrix)
@@ -85,7 +87,6 @@ class PPICController extends Controller
         $lineFinishTime = []; 
 
         foreach($plans as $plan) {
-            // Ambil rincian Actual OK & NG dari tabel ringkasan
             $actualData = DB::table('production_actuals')
                 ->where('part_no', $plan->part_no) 
                 ->where('line_code', $plan->line_code)
@@ -111,7 +112,6 @@ class PPICController extends Controller
             $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
 
             $plan->balance = $plan->total_target - $plan->total_actual;
-
             $totalDandory += $plan->dandory_time;
             $totalPlanQty += $plan->total_target;
             $totalWorkingHours += $duration;
@@ -152,14 +152,12 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. ✨ QUALITY CONTROL HUB (Monitoring Actual & NG)
-     * Fungsi baru untuk mengumpulkan data NG dan hasil OK.
+     * 4. ✨ QUALITY CONTROL HUB
      */
     public function qualityHub(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
-        // 1. Ambil Summary Total Hasil & NG hari ini
         $summary = DB::table('production_actuals')
             ->whereDate('created_at', $date)
             ->select(
@@ -167,7 +165,6 @@ class PPICController extends Controller
                 DB::raw('SUM(qty_ng) as total_ng')
             )->first();
 
-        // 2. Ambil Peringkat "Penyakit" NG Terbanyak
         $ngRanking = DB::table('production_ng_logs')
             ->select('ng_type', DB::raw('SUM(qty) as total'))
             ->whereDate('created_at', $date)
@@ -175,7 +172,6 @@ class PPICController extends Controller
             ->orderBy('total', 'DESC')
             ->get();
 
-        // 3. Ambil Log Detail per Part & Line
         $details = DB::table('production_actuals')
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'DESC')
@@ -185,7 +181,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 5. MONTHLY MASTER MATRIX (KAMAR UTAMA INPUT)
+     * 5. MONTHLY MASTER MATRIX
      */
     public function monthlyMatrix(Request $request)
     {
@@ -193,9 +189,17 @@ class PPICController extends Controller
         $year = $request->year ?? date('Y');
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
+        // ✅ FIX PERMANEN: Map line_code ke dalam objek part agar Blade tidak Crash
         $parts = DB::table('parts')
             ->select('part_no', 'customer_code', 'part_name')
-            ->get();
+            ->get()
+            ->map(function($p) {
+                $p->line_code = DB::table('production_plans')
+                    ->where('part_no', $p->part_no)
+                    ->orderBy('id', 'desc')
+                    ->value('line_code') ?? 'LINE A';
+                return $p;
+            });
 
         $planData = DB::table('production_plans')
             ->whereMonth('plan_date', $month)
@@ -207,7 +211,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. ✨ AJAX AUTO-SAVE (Mesin Registrasi)
+     * 6. ✨ AJAX AUTO-SAVE
      */
     public function saveMatrixAjax(Request $request)
     {
@@ -237,14 +241,12 @@ class PPICController extends Controller
     }
 
     /**
-     * 7. API DATA (Dashboard Visual)
+     * 7. API DATA
      */
     public function apiData()
     {
         $today = date('Y-m-d');
         $totalPlan = DB::table('production_plans')->where('plan_date', $today)->sum(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot')) ?: 1;
-        
-        // Membaca actual dari tabel ringkasan
         $totalActual = DB::table('production_actuals')->whereDate('created_at', $today)->sum('qty_ok') ?: 0;
         
         return response()->json([
