@@ -184,5 +184,7 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::prefix('planning')->group(function () {
     Route::get('/mps', [PPICController::class, 'mpsIndex'])->name('ppic.mps.index');
     Route::post('/mps/store', [PPICController::class, 'mpsStore'])->name('ppic.mps.store');
+    Route::get('/ppic/monthly-matrix', [PPICController::class, 'monthlyMatrix'])->name('ppic.monthly.matrix');
+    Route::post('/ppic/monthly-matrix/save', [PPICController::class, 'saveMatrixAjax'])->name('ppic.monthly.ajax_save');
 });
 });

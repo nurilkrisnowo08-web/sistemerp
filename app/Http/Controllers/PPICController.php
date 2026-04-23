@@ -9,7 +9,7 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Memberikan data visualisasi per-part dan trend 6 bulan rill.
+     * Tetap seperti semula untuk visualisasi data.
      */
     public function index(Request $request)
     {
@@ -24,7 +24,6 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // AMBIL ACTUAL: Sinkronisasi material_code (Part) dan mesin_id (Line)
             $actualPerPart = DB::table('produksi_batches')
                 ->where('material_code', $p->part_no)
                 ->whereDate('created_at', $date)
@@ -40,7 +39,6 @@ class PPICController extends Controller
             $chartTargets[] = (int)$targetPerPart;
             $chartActuals[] = (int)$actualPerPart;
 
-            // Logika Status Otomatis
             if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { 
                 $statusCount['completed']++; 
             } elseif ($date < $today && $actualPerPart < $targetPerPart) { 
@@ -56,7 +54,6 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        // DATA TREND 6 BULAN (RILL DARI DATABASE)
         $monthlyLabels = []; $monthlyActuals = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
@@ -73,17 +70,20 @@ class PPICController extends Controller
     }
 
     /**
-     * 2. JADWAL PRODUKSI (MPS - Sequence Scheduler)
-     * Menghitung jam START & AHIR otomatis berdasarkan urutan pendaftaran part.
+     * 2. JADWAL PRODUKSI (MPS - Daily Control)
+     * Otomatis narik data dari Monthly Master berdasarkan tanggal terpilih.
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        $plans = DB::table('production_plans')->where('plan_date', $date)->orderBy('id', 'asc')->get();
+        // Hanya ambil data yang memiliki target > 0 untuk hari ini
+        $plans = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')
+            ->get();
 
-        // Tracker Waktu Terakhir per Line (Asumsi Shift Mulai 07:30 dan 19:30)
-        $lineFinishS1 = []; 
-        $lineFinishS2 = [];
+        $lineFinishS1 = []; $lineFinishS2 = [];
 
         foreach($plans as $plan) {
             $actualData = DB::table('produksi_batches')
@@ -102,19 +102,16 @@ class PPICController extends Controller
             
             $s1_target = $plan->s1_plan_reg + $plan->s1_plan_ot;
             $s2_target = $plan->s2_plan_reg + $plan->s2_plan_ot;
-            $dandoryH = $plan->dandory_time / 60;
+            $dandoryH = ($plan->dandory_time ?? 0) / 60;
 
-            // Hitung Durasi (M/C HOURS)
             $plan->s1_hour = ($plan->cap_per_hour > 0 && $s1_target > 0) ? round(($s1_target / $plan->cap_per_hour) + $dandoryH, 1) : 0;
             $plan->s2_hour = ($plan->cap_per_hour > 0 && $s2_target > 0) ? round(($s2_target / $plan->cap_per_hour) + $dandoryH, 1) : 0;
 
-            // Logika START & AHIR otomatis per Line (Shift 1)
             $startS1 = $lineFinishS1[$plan->line_code] ?? "07:30";
             $plan->s1_start = $startS1;
             $plan->s1_ahir = date('H:i', strtotime($startS1 . " + " . ($plan->s1_hour * 60) . " minutes"));
             $lineFinishS1[$plan->line_code] = $plan->s1_ahir;
 
-            // Logika START & AHIR otomatis per Line (Shift 2)
             $startS2 = $lineFinishS2[$plan->line_code] ?? "19:30";
             $plan->s2_start = $startS2;
             $plan->s2_ahir = date('H:i', strtotime($startS2 . " + " . ($plan->s2_hour * 60) . " minutes"));
@@ -131,7 +128,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. SIMPAN RENCANA PRODUKSI
+     * 3. SIMPAN RENCANA PRODUKSI (Registration Form)
      */
     public function mpsStore(Request $request)
     {
@@ -170,5 +167,53 @@ class PPICController extends Controller
             'totalPlan'   => $totalPlan,
             'totalActual' => $totalActual
         ]);
+    }
+
+    /**
+     * ✨ 5. KAMAR BARU: MONTHLY MASTER MATRIX (Perencanaan Bulanan)
+     * Fungsi ini untuk menampilkan grid planning 1-31 hari (seperti image_c43499.png)
+     */
+    public function monthlyMatrix(Request $request)
+    {
+        $month = $request->month ?? date('m');
+        $year = $request->year ?? date('Y');
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+
+        // Ambil list part yang terdaftar di library (Master Data)
+        // Note: Silakan ganti nama tabel 'master_parts' jika berbeda di DB Bapak
+        $parts = DB::table('production_plans')
+            ->select('part_no', 'customer_code', 'line_code', 'process_qty', 'cap_per_hour')
+            ->distinct()
+            ->get();
+
+        // Ambil data planning yang sudah ada
+        $planData = DB::table('production_plans')
+            ->whereMonth('plan_date', $month)
+            ->whereYear('plan_date', $year)
+            ->get()
+            ->groupBy('part_no');
+
+        return view('PPIC.monthly_matrix', compact('parts', 'planData', 'month', 'year', 'daysInMonth'));
+    }
+
+    /**
+     * ✨ 6. AJAX AUTO-SAVE MATRIX
+     * Simpan saat Bapak ngetik angka di kotak Matrix tanpa reload.
+     */
+    public function saveMatrixAjax(Request $request)
+    {
+        $date = $request->year .'-'. str_pad($request->month, 2, '0', STR_PAD_LEFT) .'-'. str_pad($request->day, 2, '0', STR_PAD_LEFT);
+        
+        DB::table('production_plans')->updateOrInsert(
+            ['plan_date' => $date, 'part_no' => $request->part_no],
+            [
+                'customer_code' => $request->customer_code,
+                'line_code'     => $request->line_code,
+                's1_plan_reg'   => $request->qty, // Default ke Shift 1
+                'updated_at'    => now()
+            ]
+        );
+
+        return response()->json(['status' => 'success']);
     }
 }

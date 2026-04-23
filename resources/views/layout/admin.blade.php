@@ -150,6 +150,12 @@
                 <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
                     <div class="py-2 collapse-inner">
                         <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">Intelligence Hub</a>
+                        
+                        {{-- ✨ KAMAR MASTER MATRIX BARU ✨ --}}
+                        <a class="collapse-item {{ Request::is('ppic/monthly-matrix*') ? 'text-primary' : '' }}" href="{{ route('ppic.monthly.matrix') }}">
+                            <i class="fas fa-table-cells mr-1"></i> Monthly Master Plan
+                        </a>
+
                         <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">Master Schedule (MPS)</a>
                     </div>
                 </div>
