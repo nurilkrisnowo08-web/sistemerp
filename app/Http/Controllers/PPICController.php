@@ -10,7 +10,6 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Mengambil data performa rill per Part dan Sejarah Produksi 6 Bulan
      */
     public function index(Request $request)
     {
@@ -21,8 +20,6 @@ class PPICController extends Controller
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
 
         $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-        
-        // Variabel untuk Grafik Statistik Per-Part
         $chartLabels = [];
         $chartTargets = [];
         $chartActuals = [];
@@ -30,24 +27,23 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // AMBIL ACTUAL: Filter Part, Tanggal, dan Mesin (Sinkron dengan Log Lapangan)
+            // AMBIL ACTUAL: Filter material_code (Part) dan mesin_id (Line)
             $actualPerPart = DB::table('produksi_batches')
-                ->where('material_code', $p->part_no)
+                ->where('material_code', $p->part_no) // Mapping ke material_code
                 ->whereDate('created_at', $date)
                 ->where('mesin_id', function($query) use ($p) {
                     $query->select('id')->from('line')->where('kode_Line', $p->line_code);
                 })
-                ->sum('qty_hasil_ok');
+                ->sum('qty_hasil_ok'); // Menggunakan qty_hasil_ok
             
-            $p->actual_qty = $actualPerPart;
-            $p->plan_qty = $targetPerPart;
+            $p->actual_qty = (int)$actualPerPart;
+            $p->plan_qty = (int)$targetPerPart;
 
-            // Masukkan data ke array untuk dikirim ke Grafik Bar di View
             $chartLabels[] = $p->part_no;
-            $chartTargets[] = $targetPerPart;
-            $chartActuals[] = $actualPerPart;
+            $chartTargets[] = (int)$targetPerPart;
+            $chartActuals[] = (int)$actualPerPart;
 
-            // ✨ LOGIKA STATUS CERDAS (Audit Per-Item)
+            // Logika Status Berdasarkan Tanggal dan Achievement
             if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { 
                 $statusCount['completed']++; 
             } elseif ($date < $today && $actualPerPart < $targetPerPart) { 
@@ -63,47 +59,26 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        // ✨ AMBIL DATA 6 BULAN TERAKHIR (RILL DARI DATABASE UNTUK GRAFIK GARIS)
+        // DATA TREND 6 BULAN (RILL DARI DATABASE)
         $monthlyLabels = [];
         $monthlyActuals = [];
         for ($i = 5; $i >= 0; $i--) {
             $monthDate = date('Y-m', strtotime("-$i months"));
             $monthName = date('M', strtotime("-$i months"));
-            
-            $totalMonth = DB::table('produksi_batches')
-                ->where('created_at', 'LIKE', "$monthDate%")
-                ->sum('qty_hasil_ok');
-                
-            $monthlyLabels[] = $monthName;
+            $totalMonth = DB::table('produksi_batches')->where('created_at', 'LIKE', "$monthDate%")->sum('qty_hasil_ok');
             $monthlyActuals[] = (int)$totalMonth;
+            $monthlyLabels[] = $monthName;
         }
 
-        $monthlyData = [
-            'labels' => $monthlyLabels,
-            'actual' => $monthlyActuals
-        ];
-
-        $availableLines = DB::table('line')->get();
-        $availableCustomers = DB::table('customers')->get();
-
-        // Mengirimkan variabel tambahan: chartLabels, chartTargets, chartActuals, totalActual
-       return view('PPIC.ppic_planning', compact(
-    'plans', 
-    'statusCount', 
-    'achievementRate', 
-    'date', 
-    'totalPlan', 
-    'totalActual',
-    'chartLabels', 
-    'chartTargets', 
-    'chartActuals', 
-    'monthlyLabels',   // Tambahkan ini jika belum ada
-    'monthlyActuals'   // Tambahkan ini jika belum ada
-));
+        return view('PPIC.ppic_planning', compact(
+            'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
+            'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
+            'monthlyLabels', 'monthlyActuals'
+        ));
     }
 
     /**
-     * 2. JADWAL PRODUKSI (MPS)
+     * 2. JADWAL PRODUKSI (MPS - Industrial Style)
      */
     public function mpsIndex(Request $request)
     {
@@ -128,6 +103,7 @@ class PPICController extends Controller
             $plan->s1_total_target = $plan->s1_plan_reg + $plan->s1_plan_ot;
             $plan->s2_total_target = $plan->s2_plan_reg + $plan->s2_plan_ot;
             
+            // Rumus M/C Hours: (Target / Capacity)
             $plan->s1_hour = ($plan->cap_per_hour > 0) ? round($plan->s1_total_target / $plan->cap_per_hour, 1) : 0;
             $plan->s2_hour = ($plan->cap_per_hour > 0) ? round($plan->s2_total_target / $plan->cap_per_hour, 1) : 0;
 
@@ -160,6 +136,7 @@ class PPICController extends Controller
                 's1_plan_ot'    => $request->s1_plan_ot ?? 0,
                 's2_plan_reg'   => $request->s2_plan_reg ?? 0,
                 's2_plan_ot'    => $request->s2_plan_ot ?? 0,
+                'dandory_time'  => $request->dandory_time ?? 0,
                 'remark'        => $request->remark,
                 'updated_at'    => now()
             ]
@@ -181,24 +158,9 @@ class PPICController extends Controller
             ->first()->total ?: 1;
         
         $totalActual = DB::table('produksi_batches')->whereDate('created_at', $today)->sum('qty_hasil_ok') ?: 0;
-        $achievement = round(($totalActual / $totalPlan) * 100, 1);
-
-        $statusCount = [
-            'waiting'   => DB::table('production_plans')->where('plan_date', $today)->count(),
-            'running'   => 0,
-            'completed' => 0,
-        ];
-
-        $stockRisks = [
-            'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
-            'warning'  => DB::table('rm_stocks')->whereRaw('stock_pcs > min_stock AND stock_pcs <= (min_stock * 1.5)')->count(),
-            'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
-        ];
-
+        
         return response()->json([
-            'statusCount' => $statusCount,
-            'achievement' => $achievement,
-            'stockRisks'  => $stockRisks,
+            'achievement' => round(($totalActual / $totalPlan) * 100, 1),
             'totalPlan'   => $totalPlan,
             'totalActual' => $totalActual
         ]);
