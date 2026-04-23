@@ -16,12 +16,10 @@
 
     /* Footer Hijau ala Excel Bapak */
     .tfoot-total { background-color: #92d050 !important; color: black !important; font-weight: 900; }
-    
-    .hour-indicator { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-family: 'JetBrains Mono', monospace; }
-    .hour-safe { background: #dcfce7; color: #15803d; } 
-    .hour-danger { background: #fee2e2; color: #b91c1c; } 
-    
-    .input-industrial { border: 2px solid #cbd5e1; border-radius: 8px; font-weight: 700; height: 40px; font-size: 13px; }
+    .tfoot-total td { border: 1px solid var(--excel-border); }
+
+    .input-industrial { border: 2px solid #cbd5e1; border-radius: 8px; font-weight: 700; height: 40px; }
+    .bg-yellow-light { background-color: #fff9c4 !important; }
 </style>
 
 <div class="container-fluid mt-4">
@@ -51,11 +49,11 @@
                         <th rowspan="2">CUST</th>
                         <th rowspan="2">MENPO WER</th>
                         <th rowspan="2">PRO CESS</th>
-                        <th rowspan="2">QTY/LOT PRODUKSI</th>
+                        <th rowspan="2">QTY/LOT PROD</th>
                         <th rowspan="2">CAP/ HOUR</th>
                         <th rowspan="2">DANDORY</th>
-                        <th colspan="2" class="bg-warning text-dark">PLAN HOURS</th>
-                        <th colspan="3" class="bg-primary text-white">SHIFT 1 (OPERATIONAL)</th>
+                        <th colspan="2" class="bg-warning text-dark border-dark">PLAN HOURS</th>
+                        <th colspan="3" class="bg-primary text-white border-dark">PRODUCTION TARGETS</th>
                         <th rowspan="2">REMARK</th>
                     </tr>
                     <tr>
@@ -68,54 +66,54 @@
                 </thead>
                 <tbody>
                     @php 
-                        $totalHoursS1 = 0;
-                        $runningFinishTime = "07:30"; // Waktu mulai shift 1
+                        $totalDandory = 0;
+                        $totalPlanQty = 0;
+                        $totalWorkingHours = 0;
+                        $finishTimeS1 = "07:30"; // Mulai shift pagi
                     @endphp
                     @forelse($plans as $index => $p)
                     @php
-                        $s1_target = $p->s1_plan_reg + $p->s1_plan_ot;
-                        $dandoryHour = ($p->dandory_time ?? 0) / 60;
-                        $s1_hour = ($p->cap_per_hour > 0 && $s1_target > 0) ? round(($s1_target / $p->cap_per_hour) + $dandoryHour, 1) : 0;
+                        $target = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+                        $dandoryMin = $p->dandory_time ?? 0;
+                        $hours = ($p->cap_per_hour > 0 && $target > 0) ? ($target / $p->cap_per_hour) + ($dandoryMin / 60) : 0;
                         
-                        $totalHoursS1 += $s1_hour;
+                        $totalDandory += $dandoryMin;
+                        $totalPlanQty += $target;
+                        $totalWorkingHours += $hours;
 
-                        // Logika Jam START & AHIR
-                        $startTime = $runningFinishTime;
-                        $durationMinutes = $s1_hour * 60;
-                        $finishTime = date('H:i', strtotime($startTime . " + " . round($durationMinutes) . " minutes"));
-                        $runningFinishTime = $finishTime;
+                        // Jam START & AHIR
+                        $startTime = $finishTimeS1;
+                        $finishTime = date('H:i', strtotime($startTime . " + " . round($hours * 60) . " minutes"));
+                        $finishTimeS1 = $finishTime;
                     @endphp
                     <tr>
                         <td class="bg-light small">{{ $index + 1 }}</td>
                         <td class="text-left pl-3 font-weight-bold">{{ $p->part_no }}</td>
                         <td>{{ $p->customer_code }}</td>
                         <td>{{ $p->manpower }}</td>
-                        <td>{{ $p->process_qty ?? 4 }}</td>
-                        <td>{{ $p->qty_lot ?? 200 }}</td>
+                        <td>{{ $p->process_qty ?? '-' }}</td>
+                        <td>{{ $p->qty_lot ?? '-' }}</td>
                         <td class="bg-light font-mono">{{ $p->cap_per_hour }}</td>
-                        <td class="text-muted">{{ $p->dandory_time }}m</td>
+                        <td>{{ $dandoryMin }}m</td>
 
-                        {{-- PLAN HOURS --}}
                         <td class="bg-yellow-light">{{ $startTime }}</td>
                         <td class="bg-yellow-light">{{ $finishTime }}</td>
 
-                        {{-- SHIFT 1 --}}
-                        <td class="bg-light font-weight-bold">{{ number_format($s1_target) }}</td>
-                        <td class="text-primary font-weight-bold">{{ number_format($p->s1_actual) }}</td>
-                        <td class="text-danger font-weight-bold">{{ number_format($s1_target - $p->s1_actual) }}</td>
+                        <td class="bg-light font-weight-bold">{{ number_format($target) }}</td>
+                        <td class="text-primary font-weight-bold">{{ number_format($p->s1_actual + $p->s2_actual) }}</td>
+                        <td class="text-danger font-weight-bold">{{ number_format($target - ($p->s1_actual + $p->s2_actual)) }}</td>
 
                         <td class="small text-muted">{{ $p->remark ?? '-' }}</td>
                     </tr>
                     @empty
-                        <tr><td colspan="15" class="py-5 text-muted bg-white font-weight-bold">NO PLAN REGISTERED FOR THIS DATE</td></tr>
+                        <tr><td colspan="15" class="py-5 text-muted bg-white font-weight-bold">NO PLAN REGISTERED</td></tr>
                     @endforelse
                 </tbody>
                 @if(count($plans) > 0)
                 <tfoot>
                     <tr class="tfoot-total">
-                        <td colspan="8" class="text-right px-4">TOTAL WORKING HOURS / SHIFT 1</td>
-                        <td colspan="2" class="text-center">{{ $totalHoursS1 }} HOURS</td>
-                        <td colspan="4"></td>
+                        <td colspan="7" class="text-right px-4">TOTAL WORKING HOURS / DAILY SUMMARY</td>
+                        <td>{{ $totalDandory }}m</td> <td colspan="2" class="text-center">{{ round($totalWorkingHours, 1) }} HOURS</td> <td>{{ number_format($totalPlanQty) }}</td> <td colspan="3"></td>
                     </tr>
                 </tfoot>
                 @endif
@@ -124,18 +122,17 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER - DENGAN KOLOM LENGKAP EXCEL --}}
+{{-- MODAL REGISTER - DENGAN PILIHAN SHIFT --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content rounded-24 shadow-lg border-0">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i> REGISTER PRODUCTION TARGET</h5>
+            <div class="modal-header bg-dark text-white p-4">
+                <h5 class="modal-title font-weight-bold"><i class="fas fa-edit mr-2"></i> MASTER SCHEDULE REGISTRY</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form action="{{ route('ppic.mps.store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4">
-                    {{-- Row 1: Registry --}}
                     <div class="row mb-4">
                         <div class="col-md-3">
                             <label class="small font-weight-bold">LINE SELECTION</label>
@@ -146,7 +143,14 @@
                             </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="small font-weight-bold">CLIENT/CUSTOMER</label>
+                            <label class="small font-weight-bold text-primary">SELECT OPERATIONAL SHIFT</label>
+                            <select id="shift_selector" class="form-control input-industrial bg-primary text-white font-weight-bold">
+                                <option value="1">SHIFT 1 (DAY)</option>
+                                <option value="2">SHIFT 2 (NIGHT)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="small font-weight-bold">CUSTOMER</label>
                             <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
                                 <option value="">-- SELECT --</option>
                                 @foreach($availableCustomers as $c)
@@ -154,19 +158,14 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="small font-weight-bold">PART NUMBER</label>
                             <select name="part_no" id="select_part" class="form-control input-industrial" required>
-                                <option value="">-- SELECT CUSTOMER FIRST --</option>
+                                <option value="">-- SELECT CUSTOMER --</option>
                             </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="small font-weight-bold text-primary">CAP/ HOUR</label>
-                            <input type="number" name="cap_per_hour" id="input_cap" class="form-control input-industrial text-center" placeholder="0" required>
                         </div>
                     </div>
 
-                    {{-- Row 2: Excel Specific Details --}}
                     <div class="row mb-4">
                         <div class="col-md-2">
                             <label class="small font-weight-bold">MENPOWER</label>
@@ -181,40 +180,43 @@
                             <input type="number" name="qty_lot" class="form-control input-industrial text-center" value="200">
                         </div>
                         <div class="col-md-2">
+                            <label class="small font-weight-bold">CAP/ HOUR</label>
+                            <input type="number" name="cap_per_hour" id="input_cap" class="form-control input-industrial text-center" required>
+                        </div>
+                        <div class="col-md-2">
                             <label class="small font-weight-bold">DANDORY (MIN)</label>
                             <input type="number" name="dandory_time" id="input_dandory" class="form-control input-industrial text-center" value="15">
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
-                            <div id="live_status_box" class="alert alert-info w-100 mb-0 py-2 text-center font-weight-bold" style="border-radius: 8px;">
-                                ESTIMATED LOAD: <span id="s1_live_hour">0.0</span> HOURS
-                            </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="badge badge-info w-100 py-2" id="live_load_label">LOAD: 0.0H</div>
                         </div>
                     </div>
 
-                    {{-- Row 3: Target --}}
-                    <div class="card p-4 border-primary" style="border-width: 2px; border-radius: 15px;">
+                    <div class="card p-4 border-primary bg-light" style="border-width: 2px; border-radius: 15px;">
                         <h6 class="font-weight-bold text-primary mb-3">PLAN PRODUKSI (QTY)</h6>
                         <div class="row">
-                            <div class="col-md-6">
-                                <small class="font-weight-bold text-muted">SHIFT 1 - REGULER</small>
+                            <div class="col-md-6" id="box_shift_1">
+                                <small class="font-weight-bold">SHIFT 1 - REGULER</small>
                                 <input type="number" name="s1_plan_reg" id="s1_reg" class="form-control input-industrial calc-trigger" value="0">
-                            </div>
-                            <div class="col-md-6">
-                                <small class="font-weight-bold text-muted">SHIFT 1 - OVERTIME</small>
+                                <small class="font-weight-bold mt-2 d-block">SHIFT 1 - OVERTIME</small>
                                 <input type="number" name="s1_plan_ot" id="s1_ot" class="form-control input-industrial calc-trigger" value="0">
+                            </div>
+                            <div class="col-md-6" id="box_shift_2" style="opacity: 0.5;">
+                                <small class="font-weight-bold">SHIFT 2 - REGULER</small>
+                                <input type="number" name="s2_plan_reg" id="s2_reg" class="form-control input-industrial calc-trigger" value="0" disabled>
+                                <small class="font-weight-bold mt-2 d-block">SHIFT 2 - OVERTIME</small>
+                                <input type="number" name="s2_plan_ot" id="s2_ot" class="form-control input-industrial calc-trigger" value="0" disabled>
                             </div>
                         </div>
                     </div>
-
-                    <div class="mt-4">
-                        <textarea name="remark" class="form-control input-industrial" rows="2" placeholder="Remark..."></textarea>
+                    
+                    <div class="mt-3">
                         <input type="hidden" name="plan_date" value="{{ $date }}">
+                        <textarea name="remark" class="form-control input-industrial" placeholder="Remark..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-bold shadow-lg" style="border-radius: 12px;">
-                        <i class="fas fa-check-circle mr-2"></i> AUTHORIZE & SAVE MASTER SCHEDULE
-                    </button>
+                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-bold shadow">AUTHORIZE PRODUCTION PLAN</button>
                 </div>
             </form>
         </div>
@@ -222,44 +224,45 @@
 </div>
 
 <script>
-    // FUNGSI HITUNG JAM LIVE SAAT INPUT
+    // FUNGSI GANTI SHIFT DI MODAL
+    document.getElementById('shift_selector').addEventListener('change', function() {
+        const isShift1 = this.value === "1";
+        document.getElementById('box_shift_1').style.opacity = isShift1 ? "1" : "0.5";
+        document.getElementById('box_shift_2').style.opacity = isShift1 ? "0.5" : "1";
+        
+        document.getElementById('s1_reg').disabled = !isShift1;
+        document.getElementById('s1_ot').disabled = !isShift1;
+        document.getElementById('s2_reg').disabled = isShift1;
+        document.getElementById('s2_ot').disabled = isShift1;
+        
+        // Reset yang di-disable jadi 0
+        if(isShift1) { document.getElementById('s2_reg').value = 0; document.getElementById('s2_ot').value = 0; }
+        else { document.getElementById('s1_reg').value = 0; document.getElementById('s1_ot').value = 0; }
+        calculateLiveHours();
+    });
+
     function calculateLiveHours() {
         const cap = parseFloat(document.getElementById('input_cap').value) || 0;
         const dandory = parseFloat(document.getElementById('input_dandory').value) || 0;
+        const s1 = (parseFloat(document.getElementById('s1_reg').value) || 0) + (parseFloat(document.getElementById('s1_ot').value) || 0);
+        const s2 = (parseFloat(document.getElementById('s2_reg').value) || 0) + (parseFloat(document.getElementById('s2_ot').value) || 0);
         
-        const s1Total = (parseFloat(document.getElementById('s1_reg').value) || 0) + (parseFloat(document.getElementById('s1_ot').value) || 0);
-        let s1Hours = cap > 0 ? (s1Total / cap) + (dandory / 60) : 0;
-        if(s1Total === 0) s1Hours = 0;
+        const totalQty = s1 + s2;
+        let hours = cap > 0 ? (totalQty / cap) + (dandory / 60) : 0;
+        if(totalQty === 0) hours = 0;
         
-        const display = document.getElementById('s1_live_hour');
-        const box = document.getElementById('live_status_box');
-        display.innerText = s1Hours.toFixed(1);
-
-        // Warnai box kalau overload > 8 jam
-        if(s1Hours > 8) {
-            box.className = "alert alert-danger w-100 mb-0 py-2 text-center font-weight-bold";
-        } else {
-            box.className = "alert alert-info w-100 mb-0 py-2 text-center font-weight-bold";
-        }
+        document.getElementById('live_load_label').innerText = "LOAD: " + hours.toFixed(1) + "H";
+        document.getElementById('live_load_label').className = hours > 8 ? "badge badge-danger w-100 py-2" : "badge badge-info w-100 py-2";
     }
 
-    document.querySelectorAll('.calc-trigger, #input_cap, #input_dandory').forEach(input => {
-        input.addEventListener('input', calculateLiveHours);
-    });
+    document.querySelectorAll('.calc-trigger, #input_cap, #input_dandory').forEach(i => i.addEventListener('input', calculateLiveHours));
 
-    // AJAX SYNC PART
     document.getElementById('select_customer').addEventListener('change', function() {
-        const customer = this.value;
-        const partSelect = document.getElementById('select_part');
-        partSelect.innerHTML = '<option>SYNCING...</option>';
-        fetch(`/get-parts-and-specs/${customer}`)
-            .then(res => res.json())
-            .then(data => {
-                partSelect.innerHTML = '<option value="">-- SELECT PART --</option>';
-                data.parts.forEach(p => {
-                    partSelect.innerHTML += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
-                });
-            });
+        fetch(`/get-parts-and-specs/${this.value}`).then(r => r.json()).then(data => {
+            let html = '<option value="">-- SELECT PART --</option>';
+            data.parts.forEach(p => html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`);
+            document.getElementById('select_part').innerHTML = html;
+        });
     });
 </script>
 @endsection
