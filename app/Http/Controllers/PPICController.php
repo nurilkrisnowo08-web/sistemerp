@@ -69,8 +69,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 2. JADWAL PRODUKSI (MPS - Daily Control)
-     * MENERIMA DATA DARI MONTHLY MASTER.
+     * 2. DAILY MPS (Penerima Data dari Monthly Matrix)
      */
     public function mpsIndex(Request $request)
     {
@@ -128,24 +127,24 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. SIMPAN RENCANA PRODUKSI (Emergency/Manual)
+     * 3. EMERGENCY STORE (Manual Entry)
      */
     public function mpsStore(Request $request)
     {
         DB::table('production_plans')->updateOrInsert(
-            ['plan_date' => $request->plan_date, 'part_no' => $request->part_no, 'line_code' => $request->line_code],
+            ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
             [
                 'customer_code' => $request->customer_code,
-                'manpower'      => $request->manpower ?? 1,
-                'process_qty'   => $request->process_qty ?? 1,
-                'qty_lot'       => $request->qty_lot ?? 0,
-                'cap_per_hour'  => $request->cap_per_hour ?? 0,
+                'line_code'     => $request->line_code,
+                'manpower'      => $request->manpower ?? 8,
+                'process_qty'   => $request->process_qty ?? 4,
+                'qty_lot'       => $request->qty_lot ?? 200,
+                'cap_per_hour'  => $request->cap_per_hour ?? 320,
                 's1_plan_reg'   => $request->s1_plan_reg ?? 0,
                 's1_plan_ot'    => $request->s1_plan_ot ?? 0,
                 's2_plan_reg'   => $request->s2_plan_reg ?? 0,
                 's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-                'dandory_time'  => $request->dandory_time ?? 0,
-                'remark'        => $request->remark,
+                'dandory_time'  => $request->dandory_time ?? 15,
                 'updated_at'    => now()
             ]
         );
@@ -153,18 +152,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. API DATA
-     */
-    public function apiData()
-    {
-        $today = date('Y-m-d');
-        $totalPlan = DB::table('production_plans')->where('plan_date', $today)->sum(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot')) ?: 1;
-        $totalActual = DB::table('produksi_batches')->whereDate('created_at', $today)->sum('qty_hasil_ok') ?: 0;
-        return response()->json(['achievement' => round(($totalActual / $totalPlan) * 100, 1), 'totalPlan' => $totalPlan, 'totalActual' => $totalActual]);
-    }
-
-    /**
-     * 5. KAMAR MASTER: MONTHLY MASTER MATRIX (Pusat Input)
+     * 5. MONTHLY MASTER MATRIX (KAMAR UTAMA INPUT)
      */
     public function monthlyMatrix(Request $request)
     {
@@ -172,9 +160,9 @@ class PPICController extends Controller
         $year = $request->year ?? date('Y');
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        // ✅ PERBAIKAN: Mengambil data dari tabel 'parts' dengan nama kolom yang benar
+        // ✅ FIX: Ambil kolom yang benar-benar ada di tabel 'parts' Bapak
         $parts = DB::table('parts')
-            ->select('part_no', 'customer_code', 'line_code', 'process_qty', 'cap_per_hour')
+            ->select('part_no', 'customer_code', 'part_name')
             ->get();
 
         $planData = DB::table('production_plans')
@@ -187,7 +175,8 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. ✨ MESIN PENDAFTARAN OTOMATIS DARI MATRIX
+     * 6. ✨ AJAX AUTO-SAVE (Mesin Registrasi)
+     * Saat Bapak ngetik di Matrix, data harian otomatis terbuat.
      */
     public function saveMatrixAjax(Request $request)
     {
@@ -195,29 +184,22 @@ class PPICController extends Controller
         $shift = $request->shift; 
         $column = ($shift == 's2') ? 's2_plan_reg' : 's1_plan_reg';
 
-        // 1. Cari data spek dari Master Part
-        $masterPart = DB::table('parts')->where('part_no', $request->part_no)->first();
-
-        if (!$masterPart) {
-            return response()->json(['status' => 'error', 'message' => 'Part not found in Master'], 404);
-        }
-
-        // 2. Langsung Register ke Planning Harian
+        // Update database Planning Harian berdasar input Matrix Bulanan
         DB::table('production_plans')->updateOrInsert(
             [
                 'plan_date' => $date, 
                 'part_no'   => $request->part_no
             ],
             [
-                'customer_code' => $masterPart->customer_code,
-                'line_code'     => $masterPart->line_code,
+                'customer_code' => $request->customer_code,
+                'line_code'     => $request->line_code ?? 'LINE A',
                 $column         => $request->qty, 
                 
-                // DATA SPEK DARI MASTER (Agar Daily MPS bisa hitung Jam)
-                'cap_per_hour'  => $masterPart->cap_per_hour ?? 320, 
+                // Standar data (Karena di tabel parts Bapak kolom ini tidak ada)
+                'cap_per_hour'  => 320, 
                 'dandory_time'  => 15, 
                 'manpower'      => 8, 
-                'process_qty'   => $masterPart->process_qty ?? 4,
+                'process_qty'   => 4,
                 'qty_lot'       => 200,
                 
                 'updated_at'    => now()
@@ -225,5 +207,13 @@ class PPICController extends Controller
         );
 
         return response()->json(['status' => 'success']);
+    }
+
+    public function apiData()
+    {
+        $today = date('Y-m-d');
+        $totalPlan = DB::table('production_plans')->where('plan_date', $today)->sum(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot')) ?: 1;
+        $totalActual = DB::table('produksi_batches')->whereDate('created_at', $today)->sum('qty_hasil_ok') ?: 0;
+        return response()->json(['achievement' => round(($totalActual / $totalPlan) * 100, 1), 'totalPlan' => $totalPlan, 'totalActual' => $totalActual]);
     }
 }
