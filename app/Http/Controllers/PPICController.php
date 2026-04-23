@@ -9,7 +9,6 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Membaca Actual dari tabel production_actuals agar performa lebih ringan.
      */
     public function index(Request $request)
     {
@@ -23,7 +22,6 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // Mengambil Actual Qty OK dari tabel ringkasan
             $actualPerPart = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->where('line_code', $p->line_code)
@@ -46,7 +44,6 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        // Data untuk Chart Daily & Monthly OK vs NG
         $dailyLabels = []; $dailyOk = []; $dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
@@ -71,7 +68,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 2. DAILY MPS (Penerima Data dari Monthly Matrix)
+     * 2. DAILY MPS
      */
     public function mpsIndex(Request $request)
     {
@@ -189,7 +186,6 @@ class PPICController extends Controller
         $year = $request->year ?? date('Y');
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        // ✅ FIX PERMANEN: Map line_code ke dalam objek part agar Blade tidak Crash
         $parts = DB::table('parts')
             ->select('part_no', 'customer_code', 'part_name')
             ->get()
@@ -211,7 +207,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. ✨ AJAX AUTO-SAVE
+     * 6. AJAX AUTO-SAVE
      */
     public function saveMatrixAjax(Request $request)
     {
@@ -254,5 +250,67 @@ class PPICController extends Controller
             'totalPlan' => $totalPlan, 
             'totalActual' => $totalActual
         ]);
+    }
+
+    /**
+     * ✨ 8. ROBOT SINKRONISASI (Manual PHP Sync)
+     * Tambahkan fungsi ini untuk dipanggil setelah simpan produksi_batches
+     */
+    public function syncToActual($batchId)
+    {
+        $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
+        if (!$batch) return;
+
+        $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+        $dateOnly = date('Y-m-d', strtotime($batch->created_at));
+
+        // Cari row di actuals
+        $actual = DB::table('production_actuals')
+            ->where('part_no', $batch->material_code)
+            ->where('line_code', $lineCode)
+            ->where('shift', $batch->shift)
+            ->whereDate('created_at', $dateOnly)
+            ->first();
+
+        $ngSum = ($batch->qty_ng_material + $batch->qty_ng_process);
+
+        if ($actual) {
+            // Update jika sudah ada
+            DB::table('production_actuals')->where('id', $actual->id)->update([
+                'qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok,
+                'qty_ng' => $actual->qty_ng + $ngSum,
+                'updated_at' => now()
+            ]);
+            $actualId = $actual->id;
+        } else {
+            // Insert baru jika belum ada
+            $actualId = DB::table('production_actuals')->insertGetId([
+                'part_no'    => $batch->material_code,
+                'line_code'  => $lineCode,
+                'shift'      => $batch->shift,
+                'qty_ok'     => $batch->qty_hasil_ok,
+                'qty_ng'     => $ngSum,
+                'created_at' => $batch->created_at,
+                'updated_at' => now()
+            ]);
+        }
+
+        // Catat rincian NG ke logs
+        if ($batch->qty_ng_material > 0) {
+            DB::table('production_ng_logs')->insert([
+                'actual_id'  => $actualId,
+                'ng_type'    => 'NG Material',
+                'qty'        => $batch->qty_ng_material,
+                'created_at' => $batch->created_at
+            ]);
+        }
+        if ($batch->qty_ng_process > 0) {
+            DB::table('production_ng_logs')->insert([
+                'actual_id'  => $actualId,
+                'ng_type'    => 'NG Process',
+                'qty'        => $batch->qty_ng_process,
+                'created_at' => $batch->created_at
+            ]);
+        }
     }
 }
