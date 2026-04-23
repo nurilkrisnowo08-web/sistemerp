@@ -27,10 +27,12 @@
     .bg-today { background-color: #dcfce7 !important; outline: 2px solid #22c55e; }
     .tfoot-total { font-weight: 900; color: black; }
     
-    /* Tombol Shift Switcher */
-    .shift-btn { border-radius: 20px; font-weight: 800; padding: 5px 20px; transition: 0.3s; font-size: 12px; }
-    .active-s1 { background: #4361ee !important; color: white; border: none; box-shadow: 0 4px 10px rgba(67, 97, 238, 0.4); }
-    .active-s2 { background: #1e293b !important; color: white; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    /* ✨ SHIFT SWITCHER STYLE (Persis image_d1c079) ✨ */
+    .shift-master-pill { background: white; padding: 4px; border-radius: 50px; border: 1px solid #cbd5e1; display: flex; gap: 4px; }
+    .shift-btn { border-radius: 50px; border: none; padding: 6px 20px; font-weight: 800; font-size: 11px; transition: 0.3s; cursor: pointer; }
+    .active-s1 { background: #4361ee !important; color: white !important; box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4); }
+    .active-s2 { background: #1e293b !important; color: white !important; }
+    .btn-off { background: transparent; color: #94a3b8; }
 </style>
 
 <div class="container-fluid mt-4 mb-5">
@@ -41,9 +43,9 @@
         </div>
 
         <div class="d-flex align-items-center gap-3">
-            <div class="bg-white p-1 rounded-pill border shadow-sm d-flex">
-                <button type="button" id="btn-s1" class="btn btn-sm shift-btn active-s1" onclick="switchShift('s1')">SHIFT 1</button>
-                <button type="button" id="btn-s2" class="btn btn-sm shift-btn text-muted" onclick="switchShift('s2')">SHIFT 2</button>
+            <div class="shift-master-pill shadow-sm">
+                <button type="button" id="btn-s1" class="shift-btn active-s1" onclick="switchShift('s1')">SHIFT 1</button>
+                <button type="button" id="btn-s2" class="shift-btn btn-off" onclick="switchShift('s2')">SHIFT 2</button>
             </div>
 
             <form action="" method="GET" class="d-flex mr-2">
@@ -60,28 +62,32 @@
     </div>
 
     <div id="status-notif" class="alert alert-dark shadow-lg py-2 px-4 rounded-pill text-white" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: none;">
-        <i class="fas fa-sync fa-spin mr-2"></i> Syncing to Database...
+        <i class="fas fa-sync fa-spin mr-2"></i> Syncing...
     </div>
 
     <div class="matrix-wrapper overflow-auto" style="max-height: 70vh;">
         <table class="table-matrix">
             <thead>
                 <tr>
-                    <th rowspan="2" class="sticky-col">PART NUMBER / IDENTIFICATION</th>
-                    <th rowspan="2" style="width: 50px;">CUST</th>
-                    <th rowspan="2" style="width: 40px;">PROC</th>
-                    <th rowspan="2" style="width: 50px;">CAP/H</th>
+                    <th rowspan="2" class="sticky-col" style="top:0; z-index:30;">PART NUMBER / IDENTIFICATION</th>
+                    <th rowspan="2" style="width: 50px; top:0; position:sticky; background:var(--header-bg); z-index:20;">CUST</th>
+                    <th rowspan="2" style="width: 40px; top:0; position:sticky; background:var(--header-bg); z-index:20;">PROC</th>
+                    <th rowspan="2" style="width: 50px; top:0; position:sticky; background:var(--header-bg); z-index:20;">CAP/H</th>
                     @for($d=1; $d<=$daysInMonth; $d++)
                         @php 
                             $isWeekend = (date('N', strtotime("$year-$month-$d")) >= 6);
                         @endphp
-                        <th class="header-day {{ $isWeekend ? 'bg-weekend text-danger' : '' }}">{{ $d }}</th>
+                        <th class="header-day {{ $isWeekend ? 'bg-weekend text-danger' : '' }} {{ date('Y-m-j') == $year.'-'.$month.'-'.$d ? 'bg-today' : '' }}">
+                            {{ $d }}
+                        </th>
                     @endfor
-                    <th rowspan="2" style="width: 80px; background: #1e293b; color: white;">TOTAL</th>
+                    <th rowspan="2" style="width: 80px; background: #1e293b; color: white; top:0; position:sticky; z-index:20;">TOTAL</th>
                 </tr>
                 <tr>
                     @for($d=1; $d<=$daysInMonth; $d++)
-                        <th class="day-name">{{ date('D', strtotime("$year-$month-$d")) }}</th>
+                        <th class="day-name {{ date('N', strtotime("$year-$month-$d")) >= 6 ? 'text-danger' : '' }}">
+                            {{ date('D', strtotime("$year-$month-$d")) }}
+                        </th>
                     @endfor
                 </tr>
             </thead>
@@ -91,50 +97,40 @@
                     <td class="sticky-col pl-2">{{ $part->part_no }}</td>
                     <td class="small">{{ $part->customer_code }}</td>
                     <td>{{ $part->process_qty ?? 1 }}</td>
-                    <td class="bg-light font-weight-bold text-primary">{{ $part->cap_per_hour ?? 0 }}</td>
+                    <td class="bg-light font-weight-bold text-primary">{{ $part->cap_per_hour ?? 320 }}</td>
                     
                     @for($d=1; $d<=$daysInMonth; $d++)
                         @php
                             $dStr = "$year-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-" . str_pad($d, 2, '0', STR_PAD_LEFT);
-                            $currentPlan = $planData->get($part->part_no)?->firstWhere('plan_date', $dStr);
-                            
-                            $s1_val = $currentPlan ? $currentPlan->s1_plan_reg : '';
-                            $s2_val = $currentPlan ? $currentPlan->s2_plan_reg : '';
-                            
-                            $isWeekend = (date('N', strtotime($dStr)) >= 6);
+                            $plan = $planData->get($part->part_no)?->firstWhere('plan_date', $dStr);
+                            $s1 = $plan ? $plan->s1_plan_reg : '';
+                            $s2 = $plan ? $plan->s2_plan_reg : '';
+                            $isWknd = (date('N', strtotime($dStr)) >= 6);
                         @endphp
-                        <td class="{{ $isWeekend ? 'bg-weekend' : '' }}">
-                            <input type="number" 
-                                   class="input-grid qty-input" 
-                                   value="{{ $s1_val }}" 
-                                   data-s1="{{ $s1_val }}"
-                                   data-s2="{{ $s2_val }}"
-                                   data-part="{{ $part->part_no }}"
-                                   data-day="{{ $d }}"
-                                   data-cap="{{ $part->cap_per_hour ?? 0 }}"
+                        <td class="{{ $isWknd ? 'bg-weekend' : '' }}">
+                            <input type="number" class="input-grid qty-input" 
+                                   value="{{ $s1 }}" 
+                                   data-s1="{{ $s1 }}" data-s2="{{ $s2 }}"
+                                   data-part="{{ $part->part_no }}" data-day="{{ $d }}"
+                                   data-cap="{{ $part->cap_per_hour ?? 320 }}" 
                                    data-cust="{{ $part->customer_code }}"
                                    data-line="{{ $part->line_code }}"
                                    onchange="autoSave(this)">
                         </td>
                     @endfor
-                    <td class="bg-dark text-warning font-weight-bold row-total" data-part-total="{{ $part->part_no }}">0</td>
+                    <td class="bg-dark text-warning font-weight-bold row-total">0</td>
                 </tr>
                 @endforeach
             </tbody>
-            
             <tfoot>
                 <tr class="tfoot-total" style="background: var(--footer-qty) !important;">
                     <td colspan="4" class="sticky-col text-right pr-3">TOTAL QTY PRODUKSI / DAY</td>
-                    @for($d=1; $d<=$daysInMonth; $d++)
-                        <td id="day-qty-{{ $d }}">0</td>
-                    @endfor
+                    @for($d=1; $d<=$daysInMonth; $d++) <td id="day-qty-{{ $d }}">0</td> @endfor
                     <td id="grand-total-qty">0</td>
                 </tr>
                 <tr class="tfoot-total" style="background: var(--footer-load) !important;">
                     <td colspan="4" class="sticky-col text-right pr-3 text-dark">EST. M/C LOAD (HOURS)</td>
-                    @for($d=1; $d<=$daysInMonth; $d++)
-                        <td id="day-load-{{ $d }}" class="text-dark">0.0</td>
-                    @endfor
+                    @for($d=1; $d<=$daysInMonth; $d++) <td id="day-load-{{ $d }}" class="text-dark">0.0</td> @endfor
                     <td id="grand-total-load" class="text-dark">0.0</td>
                 </tr>
             </tfoot>
@@ -145,14 +141,12 @@
 <script>
     let activeShift = 's1';
 
-    document.addEventListener("DOMContentLoaded", function() {
-        calculateAllTotals();
-    });
+    document.addEventListener("DOMContentLoaded", calculateAllTotals);
 
     function switchShift(shift) {
         activeShift = shift;
-        document.getElementById('btn-s1').className = shift === 's1' ? 'btn btn-sm shift-btn active-s1' : 'btn btn-sm shift-btn text-muted';
-        document.getElementById('btn-s2').className = shift === 's2' ? 'btn btn-sm shift-btn active-s2' : 'btn btn-sm shift-btn text-muted';
+        document.getElementById('btn-s1').className = shift === 's1' ? 'shift-btn active-s1' : 'shift-btn btn-off';
+        document.getElementById('btn-s2').className = shift === 's2' ? 'shift-btn active-s2' : 'shift-btn btn-off';
 
         document.querySelectorAll('.qty-input').forEach(inp => {
             inp.value = inp.getAttribute(`data-${shift}`);
@@ -163,28 +157,23 @@
     function autoSave(input) {
         const statusBox = document.getElementById('status-notif');
         statusBox.style.display = "block";
-        
-        // Update local data attributes
         input.setAttribute(`data-${activeShift}`, input.value);
-
-        const payload = {
-            _token: '{{ csrf_token() }}',
-            shift: activeShift,
-            part_no: input.dataset.part,
-            customer_code: input.dataset.cust,
-            line_code: input.dataset.line,
-            day: input.dataset.day,
-            month: '{{ $month }}',
-            year: '{{ $year }}',
-            qty: input.value
-        };
 
         fetch('{{ route("ppic.monthly.ajax_save") }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(() => {
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({
+                shift: activeShift,
+                part_no: input.dataset.part,
+                customer_code: input.dataset.cust,
+                line_code: input.dataset.line,
+                day: input.dataset.day,
+                month: '{{ $month }}',
+                year: '{{ $year }}',
+                qty: input.value,
+                cap_per_hour: input.dataset.cap // Kirim CAP agar Daily MPS bisa hitung jam
+            })
+        }).then(() => {
             setTimeout(() => { statusBox.style.display = "none"; }, 500);
             calculateAllTotals();
         });
@@ -192,38 +181,27 @@
 
     function calculateAllTotals() {
         const days = {{ $daysInMonth }};
-        let grandQty = 0;
-        let grandLoad = 0;
+        let grandQty = 0; let grandLoad = 0;
 
         for (let d = 1; d <= days; d++) {
-            let dayQty = 0;
-            let dayLoad = 0;
-            
+            let dayQty = 0; let dayLoad = 0;
             document.querySelectorAll(`.qty-input[data-day="${d}"]`).forEach(inp => {
                 const qty = parseInt(inp.value) || 0;
-                const cap = parseInt(inp.dataset.cap) || 0;
+                const cap = parseInt(inp.dataset.cap) || 320;
                 dayQty += qty;
-                if(qty > 0 && cap > 0) {
-                    dayLoad += (qty / cap) + 0.25; // 0.25 = Dandory 15m
-                }
+                if(qty > 0) dayLoad += (qty / cap) + 0.25; // Dandory 15m
             });
-
-            document.getElementById(`day-qty-${d}`).innerText = dayQty.toLocaleString();
+            document.getElementById(`day-qty-${d}`).innerText = dayQty || '0';
             document.getElementById(`day-load-${d}`).innerText = dayLoad.toFixed(1);
             document.getElementById(`day-load-${d}`).style.color = dayLoad > 8 ? 'red' : 'black';
-
-            grandQty += dayQty;
-            grandLoad += dayLoad;
+            grandQty += dayQty; grandLoad += dayLoad;
         }
 
-        // Row totals
-        document.querySelectorAll('tr').forEach(row => {
-            let rowSum = 0;
-            row.querySelectorAll('.qty-input').forEach(inp => rowSum += parseInt(inp.value) || 0);
-            const totalCell = row.querySelector('.row-total');
-            if(totalCell) totalCell.innerText = rowSum.toLocaleString();
+        document.querySelectorAll('tbody tr').forEach(row => {
+            let rSum = 0;
+            row.querySelectorAll('.qty-input').forEach(inp => rSum += parseInt(inp.value) || 0);
+            row.querySelector('.row-total').innerText = rSum.toLocaleString();
         });
-
         document.getElementById('grand-total-qty').innerText = grandQty.toLocaleString();
         document.getElementById('grand-total-load').innerText = grandLoad.toFixed(1);
     }

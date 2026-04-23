@@ -24,7 +24,6 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // AMBIL ACTUAL: Sinkron material_code (Part) & mesin_id (Line)
             $actualPerPart = DB::table('produksi_batches')
                 ->where('material_code', $p->part_no)
                 ->whereDate('created_at', $date)
@@ -73,13 +72,13 @@ class PPICController extends Controller
     /**
      * 2. JADWAL PRODUKSI (MPS - Daily Control)
      * MENERIMA DATA DARI MONTHLY MASTER.
-     * Menghitung urutan jam (Sequence) & Summary Baris Hijau.
+     * Menghitung urutan jam (Sequence) & Summary Baris Hijau (Dandory, Jam, Qty).
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
         
-        // Ambil data yang sudah di-input di Monthly Matrix (Target > 0)
+        // Ambil data yang sudah di-input di Monthly Matrix (Hanya yang targetnya > 0)
         $plans = DB::table('production_plans')
             ->where('plan_date', $date)
             ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
@@ -89,10 +88,10 @@ class PPICController extends Controller
         $totalDandory = 0;
         $totalPlanQty = 0;
         $totalWorkingHours = 0;
-        $lineFinishTime = []; // Tracker waktu per Line
+        $lineFinishTime = []; // Tracker waktu per Line (Shift Pagi mulai 07:30)
 
         foreach($plans as $plan) {
-            // Ambil Actual dari log produksi
+            // Ambil data ACTUAL dari log produksi
             $actualData = DB::table('produksi_batches')
                 ->where('material_code', $plan->part_no) 
                 ->where('mesin_id', function($query) use ($plan) {
@@ -110,19 +109,19 @@ class PPICController extends Controller
             $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot);
             $plan->total_actual = ($plan->s1_actual + $plan->s2_actual);
             
-            // Hitung Durasi (M/C HOURS)
+            // Hitung M/C HOURS (Target / Cap + Dandory)
             $dandoryH = ($plan->dandory_time ?? 0) / 60;
             $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
             
-            // Logika START & AHIR Otomatis (Sequence)
+            // Logika START & AHIR Otomatis (Sequence per Line)
             $startTime = $lineFinishTime[$plan->line_code] ?? "07:30";
             $plan->start_time = $startTime;
             $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
-            $lineFinishTime[$plan->line_code] = $plan->ahir_time; // Update waktu selesai line ini
+            $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
 
             $plan->balance = $plan->total_target - $plan->total_actual;
 
-            // Summary untuk Footer Hijau
+            // Akumulasi Summary Footer Hijau (Sesuai image_c50334.png)
             $totalDandory += $plan->dandory_time;
             $totalPlanQty += $plan->total_target;
             $totalWorkingHours += $duration;
@@ -139,6 +138,7 @@ class PPICController extends Controller
 
     /**
      * 3. SIMPAN RENCANA PRODUKSI (Registration Form)
+     * Tetap dipertahankan untuk input manual atau penyesuaian detail per-part.
      */
     public function mpsStore(Request $request)
     {
@@ -181,7 +181,7 @@ class PPICController extends Controller
 
     /**
      * 5. KAMAR MASTER: MONTHLY MASTER MATRIX (Grid 1-31)
-     * Tempat Bapak input angka target sebulan penuh.
+     * Tempat Utama Input Target Bulanan (Sesuai image_d1c079.png)
      */
     public function monthlyMatrix(Request $request)
     {
@@ -206,24 +206,42 @@ class PPICController extends Controller
 
     /**
      * 6. AJAX AUTO-SAVE MATRIX
-     * Simpan saat Bapak mengetik di grid Matrix. Mendukung Shift 1 & Shift 2.
+     * Simpan saat Bapak mengetik di grid Matrix. Mendukung Shift 1 & Shift 2 (image_d1c079.png).
+     */
+   /**
+     * ✨ AJAX AUTO-SAVE: Input dari Matrix ke Database
+     * Ini yang bikin Matrix bisa buat data harian otomatis
      */
     public function saveMatrixAjax(Request $request)
     {
         $date = $request->year .'-'. str_pad($request->month, 2, '0', STR_PAD_LEFT) .'-'. str_pad($request->day, 2, '0', STR_PAD_LEFT);
-        $shift = $request->shift; // 's1' atau 's2'
+        $shift = $request->shift; 
+        
+        // Tentukan kolom target berdasarkan tombol shift yang Bapak klik di Matrix
         $column = ($shift == 's2') ? 's2_plan_reg' : 's1_plan_reg';
 
+        // Kita simpan datanya. Kalau sudah ada, dia UPDATE. Kalau belum ada, dia CREATE baru.
         DB::table('production_plans')->updateOrInsert(
-            ['plan_date' => $date, 'part_no' => $request->part_no],
+            [
+                'plan_date' => $date, 
+                'part_no'   => $request->part_no
+            ],
             [
                 'customer_code' => $request->customer_code,
-                'line_code'     => $request->line_code,
-                $column         => $request->qty, 
+                'line_code'     => $request->line_code ?? 'LINE A',
+                $column         => $request->qty, // Target Qty masuk sini
+                
+                // PENTING: Kita sertakan data teknis agar Daily MPS bisa hitung Jam START/AHIR
+                'cap_per_hour'  => $request->cap_per_hour ?? 320, 
+                'dandory_time'  => 15, // Default 15 menit
+                'manpower'      => 8,  // Default standar Bapak
+                'process_qty'   => 4,  // Default standar Bapak
+                'qty_lot'       => 200, // Default standar Bapak
+                
                 'updated_at'    => now()
             ]
         );
 
-        return response()->json(['status' => 'success']);
+        return response()->json(['status' => 'success', 'message' => 'Data harian otomatis terbentuk!']);
     }
 }
