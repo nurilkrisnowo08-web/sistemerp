@@ -147,18 +147,27 @@
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePlanning">
                     <i class="fas fa-fw fa-calendar-days"></i><span>Production Planning</span>
                 </a>
-                <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
-                    <div class="py-2 collapse-inner">
-                        <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">Intelligence Hub</a>
-                        
-                        {{-- ✨ KAMAR MASTER MATRIX BARU ✨ --}}
-                        <a class="collapse-item {{ Request::is('ppic/monthly-matrix*') ? 'text-primary' : '' }}" href="{{ route('ppic.monthly.matrix') }}">
-                            <i class="fas fa-table-cells mr-1"></i> Monthly Master Plan
-                        </a>
+              <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+    <div class="py-2 collapse-inner">
+        <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">
+            Intelligence Hub
+        </a>
+        
+        {{-- ✨ KAMAR MASTER MATRIX ✨ --}}
+        <a class="collapse-item {{ Request::is('ppic/monthly-matrix*') ? 'text-primary' : '' }}" href="{{ route('ppic.monthly.matrix') }}">
+            <i class="fas fa-table-cells mr-1"></i> Monthly Master Plan
+        </a>
 
-                        <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">Master Schedule (MPS)</a>
-                    </div>
-                </div>
+        <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">
+            Master Schedule (MPS)
+        </a>
+
+        {{-- ✨ KAMAR BARU: QUALITY CONTROL HUB (Satu grup dengan Planning) ✨ --}}
+        <a class="collapse-item {{ Request::is('ppic/quality-hub*') ? 'text-primary' : '' }}" href="{{ route('ppic.quality.hub') }}">
+            <i class="fas fa-microscope mr-1"></i> Quality Hub (OK vs NG)
+        </a>
+    </div>
+</div>
             </li>
             @endif
 

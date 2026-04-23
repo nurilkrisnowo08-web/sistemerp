@@ -20,14 +20,12 @@
         font-family: 'Inter', sans-serif;
     }
 
-    /* ✨ ANIMASI FADE IN ✨ */
     .anim-slide-up { animation: slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
     @keyframes slideUp {
         from { opacity: 0; transform: translateY(40px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ✨ GLASS CARD DESIGN ✨ */
     .cyber-card {
         background: white;
         border-radius: 24px;
@@ -38,11 +36,9 @@
     }
     .cyber-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(56, 189, 248, 0.2); }
 
-    /* ✨ METRIC BOX ✨ */
     .metric-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2.2rem; line-height: 1; letter-spacing: -1px; }
     .metric-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; }
 
-    /* ✨ LIVE TICKER NOTIFICATION ✨ */
     .ticker-wrap {
         background: var(--bg-cyber);
         color: white;
@@ -56,13 +52,10 @@
     .ticker-label { background: var(--accent-red); padding: 2px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; margin-right: 15px; animation: pulse 1.5s infinite; }
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-    /* Custom Progress Bar for Part List */
     .part-progress-container { margin-bottom: 15px; }
     .part-name-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #1e293b; display: flex; justify-content: space-between; }
     .custom-progress { height: 10px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-top: 5px; }
     .custom-bar { height: 100%; transition: width 1.5s ease-in-out; border-radius: 10px; }
-
-    /* Hide scrollbar but keep functionality */
     .scroll-no-bar::-webkit-scrollbar { display: none; }
 </style>
 
@@ -90,7 +83,7 @@
     </div>
 
     <div class="ticker-wrap anim-slide-up" style="animation-delay: 0.1s;">
-        <span class="ticker-label">LERT</span>
+        <span class="ticker-label">ALERT</span>
         <marquee class="small font-weight-bold" scrollamount="5">
             @forelse($plans->where('actual_qty', '<', 'plan_qty') as $p)
                 • ATTENTION: Part [{{ $p->part_no }}] is UNDER TARGET by {{ $p->plan_qty - $p->actual_qty }} Pcs &nbsp;&nbsp;&nbsp;
@@ -137,8 +130,28 @@
         </div>
     </div>
 
+    {{-- ✨ ROW BARU: QUALITY TRENDS (OK VS NG) ✨ --}}
     <div class="row">
         <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.4s;">
+            <div class="cyber-card p-4 h-100">
+                <h6 class="metric-label mb-4 text-danger"><i class="fas fa-shield-virus mr-2"></i> Daily Quality Stability (OK vs NG)</h6>
+                <div style="height: 300px;">
+                    <canvas id="dailyQualityChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.5s;">
+            <div class="cyber-card p-4 h-100">
+                <h6 class="metric-label mb-4 text-warning"><i class="fas fa-chart-line mr-2"></i> Monthly Quality Stability (OK vs NG)</h6>
+                <div style="height: 300px;">
+                    <canvas id="monthlyQualityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.6s;">
             <div class="cyber-card p-4 h-100">
                 <h6 class="metric-label mb-4">Active Production Items</h6>
                 <div class="scroll-no-bar" style="max-height: 400px; overflow-y: auto;">
@@ -162,9 +175,9 @@
             </div>
         </div>
 
-        <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.5s;">
+        <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.7s;">
             <div class="cyber-card p-4 h-100">
-                <h6 class="metric-label mb-4">Monthly Output Stability Trend</h6>
+                <h6 class="metric-label mb-4">Production Output Stability Trend</h6>
                 <div style="height: 350px;">
                     <canvas id="trendChart"></canvas>
                 </div>
@@ -176,31 +189,18 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Global Config
     Chart.defaults.font.family = "'JetBrains Mono', monospace";
     Chart.defaults.color = '#64748b';
 
-    // 1. Main Compare Chart (Target vs Actual)
+    // 1. Main Compare Chart
     const ctxCompare = document.getElementById('mainCompareChart').getContext('2d');
     new Chart(ctxCompare, {
         type: 'bar',
         data: {
             labels: {!! json_encode($chartLabels) !!},
             datasets: [
-                {
-                    label: 'ACTUAL',
-                    data: {!! json_encode($chartActuals) !!},
-                    backgroundColor: '#38bdf8',
-                    borderRadius: 8,
-                    barThickness: 15
-                },
-                {
-                    label: 'TARGET',
-                    data: {!! json_encode($chartTargets) !!},
-                    backgroundColor: '#f1f5f9',
-                    borderRadius: 8,
-                    barThickness: 15
-                }
+                { label: 'ACTUAL', data: {!! json_encode($chartActuals) !!}, backgroundColor: '#38bdf8', borderRadius: 8, barThickness: 15 },
+                { label: 'TARGET', data: {!! json_encode($chartTargets) !!}, backgroundColor: '#f1f5f9', borderRadius: 8, barThickness: 15 }
             ]
         },
         options: {
@@ -221,47 +221,56 @@
             datasets: [{
                 data: [{{ $statusCount['waiting'] }}, {{ $statusCount['running'] }}, {{ $statusCount['completed'] }}],
                 backgroundColor: ['#f1f5f9', '#38bdf8', '#22c55e'],
-                hoverOffset: 20,
-                borderWidth: 0,
-                cutout: '85%'
+                hoverOffset: 20, borderWidth: 0, cutout: '85%'
             }]
         },
-        options: {
-            maintainAspectRatio: false,
-            animation: { animateScale: true, duration: 2000 },
-            plugins: { legend: { display: false } }
-        }
+        options: { maintainAspectRatio: false, animation: { animateScale: true, duration: 2000 }, plugins: { legend: { display: false } } }
     });
 
-    // 3. Stability Trend
+    // 3. ✨ DAILY QUALITY CHART (OK VS NG) ✨
+    const ctxDailyQ = document.getElementById('dailyQualityChart').getContext('2d');
+    new Chart(ctxDailyQ, {
+        type: 'line',
+        data: {
+            labels: {!! json_encode($dailyLabels) !!},
+            datasets: [
+                { label: 'PASSED GOOD (OK)', data: {!! json_encode($dailyOk) !!}, borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 },
+                { label: 'REJECT (NG)', data: {!! json_encode($dailyNg) !!}, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4 }
+            ]
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // 4. ✨ MONTHLY QUALITY CHART (OK VS NG) ✨
+    const ctxMonthlyQ = document.getElementById('monthlyQualityChart').getContext('2d');
+    new Chart(ctxMonthlyQ, {
+        type: 'line',
+        data: {
+            labels: {!! json_encode($monthlyLabels) !!},
+            datasets: [
+                { label: 'PASSED GOOD (OK)', data: {!! json_encode($monthlyOk) !!}, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, borderWidth: 4 },
+                { label: 'REJECT (NG)', data: {!! json_encode($monthlyNg) !!}, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)', fill: true, tension: 0.4, borderWidth: 4 }
+            ]
+        },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    // 5. Stability Trend
     const ctxTrend = document.getElementById('trendChart').getContext('2d');
     const gradient = ctxTrend.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(56, 189, 248, 0.2)');
     gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
-
     new Chart(ctxTrend, {
         type: 'line',
         data: {
             labels: {!! json_encode($monthlyLabels) !!},
             datasets: [{
                 label: 'Monthly Output',
-                data: {!! json_encode($monthlyActuals) !!},
-                borderColor: '#38bdf8',
-                borderWidth: 4,
-                fill: true,
-                backgroundColor: gradient,
-                tension: 0.4,
-                pointRadius: 6,
-                pointBackgroundColor: '#fff',
-                pointBorderWidth: 3
+                data: {!! json_encode($monthlyOk) !!},
+                borderColor: '#38bdf8', borderWidth: 4, fill: true, backgroundColor: gradient, tension: 0.4, pointRadius: 6, pointBackgroundColor: '#fff', pointBorderWidth: 3
             }]
         },
-        options: {
-            maintainAspectRatio: false,
-            animation: { duration: 3000 },
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } } }
-        }
+        options: { maintainAspectRatio: false, animation: { duration: 3000 }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } } } }
     });
 </script>
 @endsection

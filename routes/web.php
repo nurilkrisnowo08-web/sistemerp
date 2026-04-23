@@ -186,5 +186,11 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::post('/mps/store', [PPICController::class, 'mpsStore'])->name('ppic.mps.store');
     Route::get('/ppic/monthly-matrix', [PPICController::class, 'monthlyMatrix'])->name('ppic.monthly.matrix');
     Route::post('/ppic/monthly-matrix/save', [PPICController::class, 'saveMatrixAjax'])->name('ppic.monthly.ajax_save');
+
+    // Halaman Dashboard Utama (Intelligence Hub) dengan Grafik OK vs NG
+Route::get('/ppic-planning', [App\Http\Controllers\PPICController::class, 'index'])->name('ppic.index');
+
+// Halaman Detail Quality (OK vs NG Breakdown)
+Route::get('/ppic/quality-hub', [App\Http\Controllers\PPICController::class, 'qualityHub'])->name('ppic.quality.hub');
 });
 });
