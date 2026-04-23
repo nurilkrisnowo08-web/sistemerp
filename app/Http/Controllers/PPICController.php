@@ -12,69 +12,60 @@ class PPICController extends Controller
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
      * Menyesuaikan agar sadar tanggal (Hari ini vs Kemarin)
      */
-    public function index(Request $request)
-    {
-        // 1. Ambil tanggal dari filter, jika kosong default ke HARI INI
-        $date = $request->date ?? date('Y-m-d');
-        $today = date('Y-m-d');
+   public function index(Request $request)
+{
+    $date = $request->date ?? date('Y-m-d');
+    $plans = DB::table('production_plans')->where('plan_date', $date)->get();
 
-        // 2. Ambil data planning HANYA untuk tanggal yang dipilih
-        $plans = DB::table('production_plans')->where('plan_date', $date)->get();
+    $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
+    
+    foreach($plans as $p) {
+        $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+        $actualPerPart = DB::table('produksi_batches')
+            ->where('material_code', $p->part_no)
+            ->whereDate('created_at', $date)
+            ->where('mesin_id', function($query) use ($p) {
+                $query->select('id')->from('line')->where('kode_Line', $p->line_code);
+            })->sum('qty_hasil_ok');
+        
+        $p->actual_qty = $actualPerPart;
+        $p->plan_qty = $targetPerPart;
 
-        // 3. Hitung status (Termasuk kategori Shortage)
-        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-
-        foreach($plans as $p) {
-            // HITUNG TARGET (Reguler + OT)
-            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            
-            // AMBIL ACTUAL (Filter: Part, Tanggal Plan, dan Mesin)
-            $actualPerPart = DB::table('produksi_batches')
-                ->where('material_code', $p->part_no)
-                ->whereDate('created_at', $date)
-                ->where('mesin_id', function($query) use ($p) {
-                    $query->select('id')->from('line')->where('kode_Line', $p->line_code);
-                })
-                ->sum('qty_hasil_ok');
-            
-            $p->actual_qty = $actualPerPart;
-            $p->plan_qty = $targetPerPart;
-
-            // ✨ LOGIKA STATUS OTOMATIS ✨
-            if($actualPerPart >= $targetPerPart) {
-                $statusCount['completed']++;
-            } elseif ($date < $today) {
-                // Jika tanggal rencana sudah lewat tapi target belum tercapai
-                $statusCount['shortage']++; 
-            } elseif ($actualPerPart > 0) {
-                $statusCount['running']++;
-            } else {
-                $statusCount['waiting']++;
-            }
-        }
-
-        // 4. Hitung Total Global untuk Chart Atas
-        $totalPlan = $plans->sum('plan_qty') ?: 1;
-        $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate = round(($totalActual / $totalPlan) * 100, 1);
-
-        // 5. Stock Risk Analysis (RM)
-        $stockRisks = [
-            'critical' => DB::table('rm_stocks')->whereColumn('stock_pcs', '<=', 'min_stock')->count(),
-            'warning'  => DB::table('rm_stocks')->whereRaw('stock_pcs > min_stock AND stock_pcs <= (min_stock * 1.5)')->count(),
-            'safe'     => DB::table('rm_stocks')->whereColumn('stock_pcs', '>', DB::raw('min_stock * 1.5'))->count(),
-        ];
-
-        // 6. Data Grafik Bulanan
-        $monthlyData = [
-            'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
-            'target' => [10000, 12000, 15000, 14000, 16000, $totalPlan],
-            'actual' => [9500, 11800, 14200, 14500, 15800, $totalActual]
-        ];
-
-        // ✨ FIX: Mengarah ke folder PPIC dan menyertakan variabel $date
-        return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'stockRisks', 'monthlyData', 'date', 'today'));
+        if($actualPerPart >= $targetPerPart && $targetPerPart > 0) { $statusCount['completed']++; }
+        elseif ($date < date('Y-m-d')) { $statusCount['shortage']++; }
+        elseif ($actualPerPart > 0) { $statusCount['running']++; }
+        else { $statusCount['waiting']++; }
     }
+
+    $totalPlan = $plans->sum('plan_qty') ?: 0;
+    $totalActual = $plans->sum('actual_qty') ?: 0;
+    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+    // ✨ AMBIL DATA 6 BULAN TERAKHIR (RILL DARI DATABASE)
+    $monthlyLabels = [];
+    $monthlyActuals = [];
+    for ($i = 5; $i >= 0; $i--) {
+        $monthDate = date('Y-m', strtotime("-$i months"));
+        $monthName = date('M', strtotime("-$i months"));
+        
+        $totalMonth = DB::table('produksi_batches')
+            ->where('created_at', 'LIKE', "$monthDate%")
+            ->sum('qty_hasil_ok');
+            
+        $monthlyLabels[] = $monthName;
+        $monthlyActuals[] = (int)$totalMonth;
+    }
+
+    $monthlyData = [
+        'labels' => $monthlyLabels,
+        'actual' => $monthlyActuals
+    ];
+
+    $availableLines = DB::table('line')->get();
+    $availableCustomers = DB::table('customers')->get();
+
+    return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'monthlyData', 'date', 'totalPlan'));
+}
 
     /**
      * 2. JADWAL PRODUKSI (MPS)
