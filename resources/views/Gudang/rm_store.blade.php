@@ -12,7 +12,7 @@
     .btn-historical { background: #4b4d5a; color: #ffffff !important; border-radius: 50px; padding: 8px 25px; font-weight: 700; border: none; transition: 0.3s; display: inline-flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); font-size: 13px; text-decoration: none !important; }
     .btn-historical:hover { background: #343a40; transform: translateY(-2px); }
 
-    /* ✨ LEDGER TABLE STYLE RILL */
+    /* ✨ LEDGER TABLE STYLE  */
     .table-ledger thead th { vertical-align: middle; border: none; }
     .header-mutation-label { background: #1e293b; color: #f8fafc; font-size: 9px; text-transform: uppercase; letter-spacing: 2px; font-weight: 800; padding: 10px !important; }
     .table-ledger th { background-color: #fdfdfd; text-transform: uppercase; font-size: 10px; font-weight: 800; color: #94a3b8; letter-spacing: 0.8px; padding: 15px; border-bottom: 2px solid #f1f5f9 !important; }
@@ -65,7 +65,7 @@
     {{-- Title & Actions --}}
     <div class="d-flex justify-content-between align-items-center mb-4 no-print">
         <div>
-            <h4 class="font-weight-extrabold m-0">RM_HUB <span class="text-primary text-sm">Industrial Portal v2.0 rill</span></h4>
+            <h4 class="font-weight-extrabold m-0">RM_HUB <span class="text-primary text-sm">Industrial Portal v2.0 </span></h4>
             <p class="text-muted small font-weight-bold mb-0">Raw Material Mutation Ledger System</p>
         </div>
         <div class="d-flex align-items-center">
@@ -227,7 +227,7 @@
     </div>
 </div>
 
-{{-- --- SEMUA MODAL & SCRIPTS TETAP UTUH RILL --- --}}
+{{-- --- SEMUA MODAL & SCRIPTS TETAP UTUH  --- --}}
 
 {{-- MODAL UNIT PROFILE --}}
 <div class="modal fade" id="modalUnitProfile" tabindex="-1">
@@ -307,7 +307,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4 pt-0">
-                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-bold rounded-pill shadow-lg">CONFIRM_DEPLOYMENT rill!</button>
+                    <button type="submit" class="btn btn-primary btn-block py-3 font-weight-bold rounded-pill shadow-lg">CONFIRM_DEPLOYMENT!</button>
                 </div>
             </form>
         </div>
@@ -350,7 +350,7 @@
     <div class="form-group mb-2"><label class="small font-weight-bold">ALIAS_CODE</label><input type="text" name="alias_code" class="form-control" required></div>
     <div class="form-group mb-2"><label class="small font-weight-bold">REAL_SPEC</label><input type="text" name="material_type" class="form-control" required></div>
     <div class="row"><div class="col-6"><label class="small font-weight-bold">THICK</label><input type="text" name="thickness" class="form-control"></div><div class="col-6"><label class="small font-weight-bold">SIZE</label><input type="text" name="size" class="form-control"></div></div>
-</div><div class="modal-footer border-0 p-4 pt-0"><button type="submit" class="btn btn-dark btn-block py-3 font-weight-bold rounded-pill">COMMIT_TO_MASTER rill!</button></div></form></div></div></div>
+</div><div class="modal-footer border-0 p-4 pt-0"><button type="submit" class="btn btn-dark btn-block py-3 font-weight-bold rounded-pill">COMMIT_TO_MASTER !</button></div></form></div></div></div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>

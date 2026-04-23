@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>RM_RECAP_{{ date('Ymd') }} rill</title>
+    <title>RM_RECAP_{{ date('Ymd') }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root { 
@@ -64,7 +64,7 @@
         .item-spec { font-size: 9px; color: #1e293b; font-weight: 700; display: block; }
         .item-dim { font-size: 8px; color: #64748b; display: block; margin-top: 1px; }
 
-        /* Section Styling rill */
+        /* Section Styling  */
         .bg-monthly { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
         .bg-balance { background-color: #e2e8f0 !important; font-weight: 800; font-size: 13px; border-left: 2px solid var(--border-thick) !important; -webkit-print-color-adjust: exact; }
         
@@ -79,7 +79,7 @@
         .sig-box p { margin: 0; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
         .sig-box small { color: #64748b; font-weight: 600; }
 
-        /* 🏆 THE LOGISTICS STAMP rill */
+        /* 🏆 THE LOGISTICS STAMP  */
         .official-stamp {
             width: 140px;
             height: 140px;
@@ -125,7 +125,7 @@
             <div class="meta-info">
                 <p>SCOPE: <b>{{ $customer ?? 'ALL CLIENT ENTITIES' }}</b></p>
                 <p>DATE: <b>{{ date('d F Y', strtotime($targetDate)) }}</b></p>
-                <p>REF_ID: <b>RM/RCP/{{ date('YmdHi') }} rill</b></p>
+                <p>REF_ID: <b>RM/RCP/{{ date('YmdHi') }} </b></p>
             </div>
         </div>
 
@@ -156,18 +156,18 @@
                         <span class="item-dim">DIMENSION: {{ $rm->size }}</span>
                     </td>
                     
-                    {{-- Daily Column rill --}}
+                    {{-- Daily Column  --}}
                     <td class="val-init">{{ number_format($rm->stok_awal) }}</td>
                     <td class="val-in">+{{ number_format($rm->daily_in_s) }}</td>
                     <td class="val-in" style="color:#0ea5e9">+{{ number_format($rm->daily_in_r) }}</td>
                     <td class="val-out">-{{ number_format($rm->daily_out) }}</td>
                     
-                    {{-- Monthly Column rill --}}
+                    {{-- Monthly Column  --}}
                     <td class="bg-monthly">{{ number_format($rm->monthly_in_s) }}</td>
                     <td class="bg-monthly">{{ number_format($rm->monthly_in_r) }}</td>
                     <td class="bg-monthly" style="color:#991b1b">{{ number_format($rm->monthly_out) }}</td>
                     
-                    {{-- Final Result rill --}}
+                    {{-- Final Result --}}
                     <td class="bg-balance">{{ number_format($rm->stok_akhir_hari_ini) }}</td>
                 </tr>
                 @empty
@@ -207,7 +207,7 @@
 
         <div style="margin-top: 50px; text-align: center;" class="no-print">
             <p style="color: #64748b; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
-                End of Inventory Recap Registry - PT. Asalta Mandiri Agung rill.
+                End of Inventory Recap Registry - PT. Asalta Mandiri Agung .
             </p>
         </div>
     </div>

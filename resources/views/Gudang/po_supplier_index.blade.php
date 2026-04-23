@@ -119,7 +119,7 @@
                         $st = ($isFulfilled || $po->status == 'COMPLETED') ? 'COMPLETED' : $po->status;
                     @endphp
                     <tr>
-                        {{-- ✨ FIX: Pindahkan collapse trigger ke TD tertentu saja rill! --}}
+                        {{-- ✨ FIX: Pindahkan collapse trigger ke TD tertentu saja ! --}}
                         <td class="pl-4 py-4 expand-trigger" data-toggle="collapse" data-target="#po-detail-{{ $po->id }}">
                             <div class="id-code text-indigo">{{ $po->no_po_supplier }}</div>
                             <span class="text-muted small font-weight-bold">{{ date('M d, Y', strtotime($po->created_at)) }}</span>
@@ -138,14 +138,14 @@
                                 <i class="fas {{ strtolower($st) == 'completed' ? 'fa-check-double' : 'fa-spinner fa-spin' }} mr-2"></i> {{ $st }}
                             </span>
                         </td>
-                        {{-- ✨ FIX: Kolom Operations jangan dikasih collapse rill! --}}
+                        {{-- ✨ FIX: Kolom Operations jangan dikasih collapse! --}}
                         <td class="text-right pr-4">
                             <div class="btn-group">
                                 <button type="button" class="btn btn-white btn-sm rounded-xl border shadow-sm px-3" onclick="window.open('{{ route('rm.print_po', $po->id) }}', '_blank')">
                                     <i class="fas fa-print text-muted"></i>
                                 </button>
                                 @if(!$isFulfilled)
-                                    {{-- ✨ FIX: Tombol murni buat Modal rill! --}}
+                                    {{-- ✨ FIX: Tombol murni buat Modal! --}}
                                     <button type="button" 
                                             class="btn btn-dark btn-sm rounded-xl shadow-sm px-4 ml-2 font-weight-extrabold" 
                                             data-toggle="modal" 
@@ -197,7 +197,7 @@
     </div>
 </div>
 
-{{-- MODALS TETEP LENGKAP RILL --}}
+{{-- MODALS TETEP LENGKAP  --}}
 <div class="modal fade" id="modalCreatePO" tabindex="-1" style="z-index: 1055;">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius:32px;">

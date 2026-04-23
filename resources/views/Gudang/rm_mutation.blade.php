@@ -18,7 +18,7 @@
     <div class="d-flex justify-content-between align-items-end mb-4">
         <div>
             <h3 class="font-weight-bold mb-0">RM Mutation <span class="text-primary">Ledger</span></h3>
-            <p class="text-muted small mb-0 font-weight-bold">RAW MATERIAL INVENTORY FLOW CONTROL rill</p>
+            <p class="text-muted small mb-0 font-weight-bold">RAW MATERIAL INVENTORY FLOW CONTROL</p>
         </div>
         
         <form action="{{ route('rm.mutation') }}" method="GET" class="d-flex gap-2">
