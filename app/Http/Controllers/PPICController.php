@@ -87,10 +87,19 @@ class PPICController extends Controller
         $availableCustomers = DB::table('customers')->get();
 
         // Mengirimkan variabel tambahan: chartLabels, chartTargets, chartActuals, totalActual
-        return view('PPIC.ppic_planning', compact(
-            'plans', 'statusCount', 'achievementRate', 'monthlyData', 'date', 
-            'totalPlan', 'totalActual', 'chartLabels', 'chartTargets', 'chartActuals'
-        ));
+       return view('PPIC.ppic_planning', compact(
+    'plans', 
+    'statusCount', 
+    'achievementRate', 
+    'date', 
+    'totalPlan', 
+    'totalActual',
+    'chartLabels', 
+    'chartTargets', 
+    'chartActuals', 
+    'monthlyLabels',   // Tambahkan ini jika belum ada
+    'monthlyActuals'   // Tambahkan ini jika belum ada
+));
     }
 
     /**
