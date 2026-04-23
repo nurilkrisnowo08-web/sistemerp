@@ -14,7 +14,7 @@
     }
     .table-mps td { border: 1px solid var(--excel-border); padding: 6px; font-size: 11px; font-weight: 700; vertical-align: middle; }
 
-    /* Footer Hijau ala Excel Bapak */
+    /* ✨ BARIS SUMMARY HIJAU (Sesuai image_c50334.png) */
     .tfoot-total { background-color: #92d050 !important; color: black !important; font-weight: 900; }
     .tfoot-total td { border: 1px solid var(--excel-border); }
 
@@ -67,20 +67,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @php 
-                        $runningFinishTime = "07:30"; // Waktu mulai shift
-                    @endphp
                     @forelse($plans as $index => $p)
-                    @php
-                        // Logika Jam dihitung per Baris
-                        $startTime = $runningFinishTime;
-                        $durationMinutes = ($p->s1_hour + $p->s2_hour) * 60;
-                        $finishTime = date('H:i', strtotime($startTime . " + " . round($durationMinutes) . " minutes"));
-                        $runningFinishTime = $finishTime;
-
-                        $totalTarget = $p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot;
-                        $totalActual = $p->s1_actual + $p->s2_actual;
-                    @endphp
                     <tr>
                         <td class="bg-light small">{{ $index + 1 }}</td>
                         <td class="text-left pl-3 font-weight-bold">{{ $p->part_no }}</td>
@@ -91,27 +78,29 @@
                         <td class="bg-light font-mono">{{ $p->cap_per_hour }}</td>
                         <td>{{ $p->dandory_time }}m</td>
 
-                        {{-- PLAN HOURS --}}
-                        <td class="bg-yellow-light">{{ $startTime }}</td>
-                        <td class="bg-yellow-light">{{ $finishTime }}</td>
+                        {{-- PLAN HOURS (Otomatis dari Controller) --}}
+                        <td class="bg-yellow-light">{{ $p->start_time }}</td>
+                        <td class="bg-yellow-light">{{ $p->ahir_time }}</td>
 
-                        {{-- TARGETS --}}
-                        <td class="bg-light font-weight-bold">{{ number_format($totalTarget) }}</td>
-                        <td class="text-primary font-weight-bold">{{ number_format($totalActual) }}</td>
-                        <td class="text-danger font-weight-bold">{{ number_format($totalTarget - $totalActual) }}</td>
+                        {{-- TARGETS (Total S1 + S2) --}}
+                        <td class="bg-light font-weight-bold">{{ number_format($p->total_target) }}</td>
+                        <td class="text-primary font-weight-bold">{{ number_format($p->total_actual) }}</td>
+                        <td class="{{ ($p->total_target - $p->total_actual) > 0 ? 'text-danger' : 'text-success' }} font-weight-bold">
+                            {{ number_format($p->total_target - $p->total_actual) }}
+                        </td>
 
                         <td class="small text-muted">{{ $p->remark ?? '-' }}</td>
                     </tr>
                     @empty
-                        <tr><td colspan="15" class="py-5 text-muted bg-white font-weight-bold uppercase">No data pull from monthly master matrix</td></tr>
+                        <tr><td colspan="15" class="py-5 text-muted bg-white font-weight-bold uppercase text-center">No data found. Please set targets in Monthly Master Matrix.</td></tr>
                     @endforelse
                 </tbody>
                 
-                {{-- ✨ FOOTER SUMMARY (BARIS HIJAU) ✨ --}}
+                {{-- ✨ FOOTER SUMMARY HIJAU (Summary Real-Time) ✨ --}}
                 @if(count($plans) > 0)
                 <tfoot>
                     <tr class="tfoot-total">
-                        <td colspan="7" class="text-right px-4">TOTAL WORKING HOURS / DAILY SUMMARY</td>
+                        <td colspan="7" class="text-right px-4 uppercase">TOTAL WORKING HOURS / DAILY SUMMARY</td>
                         <td>{{ $totalDandory }}m</td>
                         <td colspan="2" class="text-center">{{ round($totalWorkingHours, 1) }} HOURS</td>
                         <td>{{ number_format($totalPlanQty) }}</td>
@@ -124,7 +113,7 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER - DENGAN PILIHAN SHIFT --}}
+{{-- MODAL REGISTER --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content rounded-24 shadow-lg border-0">
@@ -183,7 +172,7 @@
                         </div>
                         <div class="col-md-2">
                             <label class="small font-weight-bold uppercase">Cap/ Hour</label>
-                            <input type="number" name="cap_per_hour" id="input_cap" class="form-control input-industrial text-center" required>
+                            <input type="number" name="cap_per_hour" id="input_cap" class="form-control input-industrial text-center" value="320" required>
                         </div>
                         <div class="col-md-2">
                             <label class="small font-weight-bold uppercase">Dandory (Min)</label>
@@ -226,7 +215,7 @@
 </div>
 
 <script>
-    // LOGIKA PILIH SHIFT
+    // FUNGSI GANTI SHIFT DI MODAL
     document.getElementById('shift_selector').addEventListener('change', function() {
         const isShift1 = this.value === "1";
         document.getElementById('box_shift_1').style.opacity = isShift1 ? "1" : "0.5";
@@ -242,7 +231,6 @@
         calculateLiveHours();
     });
 
-    // KALKULATOR LIVE
     function calculateLiveHours() {
         const cap = parseFloat(document.getElementById('input_cap').value) || 0;
         const dandory = parseFloat(document.getElementById('input_dandory').value) || 0;
@@ -253,27 +241,18 @@
         let hours = cap > 0 ? (totalQty / cap) + (dandory / 60) : 0;
         if(totalQty === 0) hours = 0;
         
-        const label = document.getElementById('live_load_label');
-        label.innerText = "LOAD: " + hours.toFixed(1) + "H";
-        label.className = hours > 8 ? "badge badge-danger w-100 py-2 font-weight-bold" : "badge badge-info w-100 py-2 font-weight-bold";
+        document.getElementById('live_load_label').innerText = "LOAD: " + hours.toFixed(1) + "H";
+        document.getElementById('live_load_label').className = hours > 8 ? "badge badge-danger w-100 py-2" : "badge badge-info w-100 py-2";
     }
 
     document.querySelectorAll('.calc-trigger, #input_cap, #input_dandory').forEach(i => i.addEventListener('input', calculateLiveHours));
 
-    // SYNC PART BERDASARKAN CUSTOMER
     document.getElementById('select_customer').addEventListener('change', function() {
-        const customer = this.value;
-        const partSelect = document.getElementById('select_part');
-        partSelect.innerHTML = '<option>SYNCING...</option>';
-        fetch(`/get-parts-and-specs/${customer}`)
-            .then(res => res.json())
-            .then(data => {
-                let html = '<option value="">-- SELECT PART --</option>';
-                data.parts.forEach(p => {
-                    html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
-                });
-                partSelect.innerHTML = html;
-            });
+        fetch(`/get-parts-and-specs/${this.value}`).then(r => r.json()).then(data => {
+            let html = '<option value="">-- SELECT PART --</option>';
+            data.parts.forEach(p => html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`);
+            document.getElementById('select_part').innerHTML = html;
+        });
     });
 </script>
 @endsection
