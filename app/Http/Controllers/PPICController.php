@@ -9,7 +9,7 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Tetap seperti semula untuk visualisasi data.
+     * Tetap untuk visualisasi data performa.
      */
     public function index(Request $request)
     {
@@ -71,21 +71,27 @@ class PPICController extends Controller
 
     /**
      * 2. JADWAL PRODUKSI (MPS - Daily Control)
-     * Otomatis narik data dari Monthly Master berdasarkan tanggal terpilih.
+     * MENERIMA DATA DARI MONTHLY MASTER.
+     * Menghitung sequence jam kerja & Summary Footer (Baris Hijau).
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        // Hanya ambil data yang memiliki target > 0 untuk hari ini
+        
+        // Ambil data yang sudah di-set targetnya dari Monthly Matrix
         $plans = DB::table('production_plans')
             ->where('plan_date', $date)
             ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
             ->orderBy('id', 'asc')
             ->get();
 
-        $lineFinishS1 = []; $lineFinishS2 = [];
+        $totalDandory = 0;
+        $totalPlanQty = 0;
+        $totalWorkingHours = 0;
+        $runningTime = "07:30"; // Mulai Shift Pagi
 
         foreach($plans as $plan) {
+            // Ambil data ACTUAL dari log produksi
             $actualData = DB::table('produksi_batches')
                 ->where('material_code', $plan->part_no) 
                 ->where('mesin_id', function($query) use ($plan) {
@@ -100,35 +106,38 @@ class PPICController extends Controller
             $plan->s1_actual = $actualData->s1_act ?? 0;
             $plan->s2_actual = $actualData->s2_act ?? 0;
             
-            $s1_target = $plan->s1_plan_reg + $plan->s1_plan_ot;
-            $s2_target = $plan->s2_plan_reg + $plan->s2_plan_ot;
+            $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot);
+            $plan->total_actual = ($plan->s1_actual + $plan->s2_actual);
+            
+            // Hitung M/C HOURS (Target / Cap + Dandory)
             $dandoryH = ($plan->dandory_time ?? 0) / 60;
+            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
+            
+            // Logika Sequence START - AHIR
+            $plan->start_time = $runningTime;
+            $plan->ahir_time = date('H:i', strtotime($runningTime . " + " . round($duration * 60) . " minutes"));
+            $runningTime = $plan->ahir_time;
 
-            $plan->s1_hour = ($plan->cap_per_hour > 0 && $s1_target > 0) ? round(($s1_target / $plan->cap_per_hour) + $dandoryH, 1) : 0;
-            $plan->s2_hour = ($plan->cap_per_hour > 0 && $s2_target > 0) ? round(($s2_target / $plan->cap_per_hour) + $dandoryH, 1) : 0;
+            $plan->balance = $plan->total_target - $plan->total_actual;
 
-            $startS1 = $lineFinishS1[$plan->line_code] ?? "07:30";
-            $plan->s1_start = $startS1;
-            $plan->s1_ahir = date('H:i', strtotime($startS1 . " + " . ($plan->s1_hour * 60) . " minutes"));
-            $lineFinishS1[$plan->line_code] = $plan->s1_ahir;
-
-            $startS2 = $lineFinishS2[$plan->line_code] ?? "19:30";
-            $plan->s2_start = $startS2;
-            $plan->s2_ahir = date('H:i', strtotime($startS2 . " + " . ($plan->s2_hour * 60) . " minutes"));
-            $lineFinishS2[$plan->line_code] = $plan->s2_ahir;
-
-            $plan->s1_balance = $s1_target - $plan->s1_actual;
-            $plan->s2_balance = $s2_target - $plan->s2_actual;
+            // Akumulasi Summary Footer (Baris Hijau)
+            $totalDandory += $plan->dandory_time;
+            $totalPlanQty += $plan->total_target;
+            $totalWorkingHours += $duration;
         }
 
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
-        return view('PPIC.mps_index', compact('plans', 'date', 'availableLines', 'availableCustomers'));
+        return view('PPIC.mps_index', compact(
+            'plans', 'date', 'availableLines', 'availableCustomers', 
+            'totalDandory', 'totalPlanQty', 'totalWorkingHours'
+        ));
     }
 
     /**
      * 3. SIMPAN RENCANA PRODUKSI (Registration Form)
+     * Tetap ada jika ingin input manual per-item.
      */
     public function mpsStore(Request $request)
     {
@@ -170,8 +179,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 5. KAMAR BARU: MONTHLY MASTER MATRIX (Perencanaan Bulanan)
-     * Fungsi ini untuk menampilkan grid planning 1-31 hari (seperti image_c43499.png)
+     * 5. KAMAR MASTER: MONTHLY MASTER MATRIX (Grid 1-31)
      */
     public function monthlyMatrix(Request $request)
     {
@@ -179,14 +187,12 @@ class PPICController extends Controller
         $year = $request->year ?? date('Y');
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        // Ambil list part yang terdaftar di library (Master Data)
-        // Note: Silakan ganti nama tabel 'master_parts' jika berbeda di DB Bapak
+        // Ambil list part unik dari log perencanaan untuk mengisi baris Matrix
         $parts = DB::table('production_plans')
             ->select('part_no', 'customer_code', 'line_code', 'process_qty', 'cap_per_hour')
             ->distinct()
             ->get();
 
-        // Ambil data planning yang sudah ada
         $planData = DB::table('production_plans')
             ->whereMonth('plan_date', $month)
             ->whereYear('plan_date', $year)
@@ -197,19 +203,19 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 6. AJAX AUTO-SAVE MATRIX
-     * Simpan saat Bapak ngetik angka di kotak Matrix tanpa reload.
+     * 6. AJAX AUTO-SAVE MATRIX (Simpan dari Grid)
      */
     public function saveMatrixAjax(Request $request)
     {
         $date = $request->year .'-'. str_pad($request->month, 2, '0', STR_PAD_LEFT) .'-'. str_pad($request->day, 2, '0', STR_PAD_LEFT);
         
+        // Simpan ke S1 Reguler sebagai default booking dari matrix
         DB::table('production_plans')->updateOrInsert(
             ['plan_date' => $date, 'part_no' => $request->part_no],
             [
                 'customer_code' => $request->customer_code,
                 'line_code'     => $request->line_code,
-                's1_plan_reg'   => $request->qty, // Default ke Shift 1
+                's1_plan_reg'   => $request->qty, 
                 'updated_at'    => now()
             ]
         );

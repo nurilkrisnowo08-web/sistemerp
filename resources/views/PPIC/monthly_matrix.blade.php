@@ -4,44 +4,54 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
 <style>
-    :root { --excel-border: #000000; --header-bg: #d1d5db; }
+    :root { --excel-border: #000000; --header-bg: #d1d5db; --footer-sum: #92d050; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
 
-    /* Container Matrix */
-    .matrix-wrapper { background: white; border: 2px solid var(--excel-border); border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    /* Matrix Container */
+    .matrix-wrapper { background: white; border: 2px solid var(--excel-border); position: relative; }
     
-    /* Excel Style Table */
+    /* Table Core */
     .table-matrix { border-collapse: collapse; font-size: 10px; width: 100%; table-layout: fixed; }
     .table-matrix th, .table-matrix td { border: 1px solid var(--excel-border); padding: 4px; text-align: center; vertical-align: middle; }
     
-    /* Sticky Header & Column */
-    .sticky-col { position: sticky; left: 0; background: #f3f4f6 !important; z-index: 10; width: 180px; text-align: left !important; font-weight: 800; border-right: 2px solid var(--excel-border) !important; }
-    .header-master { background: var(--header-bg); font-weight: 800; text-transform: uppercase; }
-    .header-day { background: #334155 !important; color: white; width: 35px; cursor: default; }
+    /* Sticky Parts (Left Column) */
+    .sticky-col { 
+        position: sticky; left: 0; background: #f8fafc !important; z-index: 10; 
+        width: 180px; text-align: left !important; font-weight: 800; 
+        border-right: 2px solid var(--excel-border) !important; 
+    }
     
-    /* Input Grid Style */
-    .input-grid { width: 100%; border: none; background: transparent; text-align: center; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 2px 0; }
-    .input-grid:focus { background: #fffde7; outline: 1px solid #2563eb; }
+    /* Sticky Header (Dates) */
+    .header-master { background: var(--header-bg); font-weight: 800; }
+    .header-day { background: #334155 !important; color: white; width: 40px; position: sticky; top: 0; z-index: 15; }
+    .day-name { font-size: 8px; position: sticky; top: 24px; background: var(--header-bg); z-index: 15; }
+
+    /* Input Cells */
+    .input-grid { 
+        width: 100%; border: none; background: transparent; text-align: center; 
+        font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 11px; 
+    }
+    .input-grid:focus { background: #fffde7; outline: 1.5px solid #2563eb; border-radius: 2px; }
     .input-grid::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-    /* Weekend Highlighting */
+    /* Colors */
     .bg-weekend { background-color: #fee2e2 !important; }
-    .bg-today { background-color: #dcfce7 !important; border: 2px solid #22c55e !important; }
-
-    /* Status Indicator */
+    .bg-today { background-color: #dcfce7 !important; outline: 2px solid #22c55e; }
+    .tfoot-total { background-color: var(--footer-sum) !important; color: black; font-weight: 900; }
+    
+    /* Notif */
     #status-notif { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: none; }
-    .total-row { background: #92d050; font-weight: 900; }
 </style>
 
 <div class="container-fluid mt-4 mb-5">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h2 class="font-weight-black mb-0" style="letter-spacing: -1.5px; color: #0f172a;">PRODUCTION_MONTHLY_MASTER</h2>
-            <p class="text-muted small font-weight-bold uppercase mb-0">Master Scheduler Matrix - {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
+            <p class="text-muted small font-weight-bold uppercase mb-0">Master Input Matrix - Period: {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
         </div>
 
-        <div class="d-flex align-items-center gap-3">
-            <form action="" method="GET" class="d-flex mr-3">
+        <div class="d-flex align-items-center gap-2">
+            <form action="" method="GET" class="d-flex mr-2">
                 <select name="month" class="form-control form-control-sm rounded-pill border-dark px-4 mr-2" onchange="this.form.submit()">
                     @foreach(range(1, 12) as $m)
                         <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
@@ -51,43 +61,39 @@
                     <option value="2026" selected>2026</option>
                 </select>
             </form>
-            <a href="{{ route('ppic.mps.index') }}" class="btn btn-dark shadow font-weight-bold rounded-pill px-4">
-                <i class="fas fa-eye mr-2"></i> GO TO DAILY MPS
+            <a href="{{ route('ppic.mps.index') }}" class="btn btn-primary shadow font-weight-bold rounded-pill px-4">
+                <i class="fas fa-desktop mr-2"></i> OPEN DAILY MPS
             </a>
         </div>
     </div>
 
-    <div id="status-notif" class="alert alert-success shadow-lg py-2 px-4 rounded-pill">
-        <i class="fas fa-check-circle mr-2"></i> <span id="status-text">Data Synchronized</span>
+    <div id="status-notif" class="alert alert-dark shadow-lg py-2 px-4 rounded-pill text-white">
+        <i class="fas fa-sync fa-spin mr-2"></i> <span id="status-text">Saving changes...</span>
     </div>
 
-    <div class="matrix-wrapper overflow-auto" style="max-height: 75vh;">
+    <div class="matrix-wrapper overflow-auto" style="max-height: 70vh;">
         <table class="table-matrix">
             <thead>
                 <tr class="header-master">
-                    <th rowspan="2" class="sticky-col" style="top: 0; z-index: 20;">PART NUMBER / IDENTIFICATION</th>
-                    <th rowspan="2" style="width: 50px; top: 0; position: sticky; background: var(--header-bg); z-index: 15;">CUST</th>
-                    <th rowspan="2" style="width: 50px; top: 0; position: sticky; background: var(--header-bg); z-index: 15;">PROCESS</th>
-                    <th rowspan="2" style="width: 50px; top: 0; position: sticky; background: var(--header-bg); z-index: 15;">CAP/H</th>
+                    <th rowspan="2" class="sticky-col">PART NUMBER / IDENTIFICATION</th>
+                    <th rowspan="2" style="width: 50px;">CUST</th>
+                    <th rowspan="2" style="width: 40px;">PROC</th>
+                    <th rowspan="2" style="width: 50px;">CAP/H</th>
                     @for($d=1; $d<=$daysInMonth; $d++)
                         @php 
                             $dateStr = "$year-$month-$d";
                             $isWeekend = (date('N', strtotime($dateStr)) >= 6);
                         @endphp
-                        <th class="header-day {{ $isWeekend ? 'bg-weekend text-danger' : '' }} {{ date('Y-m-j') == $year.'-'.$month.'-'.$d ? 'bg-today' : '' }}" 
-                            style="top: 0; position: sticky; z-index: 15;">
+                        <th class="header-day {{ $isWeekend ? 'bg-weekend text-danger' : '' }} {{ date('Y-m-j') == $year.'-'.$month.'-'.$d ? 'bg-today' : '' }}">
                             {{ $d }}
                         </th>
                     @endfor
-                    <th rowspan="2" style="width: 80px; top: 0; position: sticky; background: #1e293b; color: white; z-index: 15;">TOTAL</th>
+                    <th rowspan="2" style="width: 80px; background: #1e293b; color: white;">TOTAL</th>
                 </tr>
                 <tr class="header-master">
                     @for($d=1; $d<=$daysInMonth; $d++)
-                        @php 
-                            $dayName = date('D', strtotime("$year-$month-$d"));
-                        @endphp
-                        <th class="small py-0 {{ $dayName == 'Sun' || $dayName == 'Sat' ? 'text-danger' : '' }}" style="top: 25px; position: sticky; background: var(--header-bg); z-index: 15; font-size: 8px;">
-                            {{ $dayName }}
+                        <th class="day-name {{ date('D', strtotime($year.'-'.$month.'-'.$d)) == 'Sun' ? 'text-danger' : '' }}">
+                            {{ date('D', strtotime("$year-$month-$d")) }}
                         </th>
                     @endfor
                 </tr>
@@ -95,7 +101,7 @@
             <tbody>
                 @foreach($parts as $part)
                 <tr>
-                    <td class="sticky-col pl-2 font-weight-bold">{{ $part->part_no }}</td>
+                    <td class="sticky-col pl-2">{{ $part->part_no }}</td>
                     <td class="small">{{ $part->customer_code }}</td>
                     <td>{{ $part->process_qty ?? 1 }}</td>
                     <td class="bg-light font-weight-bold text-primary">{{ $part->cap_per_hour ?? 0 }}</td>
@@ -107,51 +113,55 @@
                             $currentPlan = $planData->get($part->part_no)?->firstWhere('plan_date', $dStr);
                             $qtyValue = $currentPlan ? ($currentPlan->s1_plan_reg + $currentPlan->s1_plan_ot) : '';
                             if($qtyValue) $rowTotal += $qtyValue;
-
-                            $dayName = date('N', strtotime($dStr));
+                            $isWeekend = (date('N', strtotime($dStr)) >= 6);
                         @endphp
-                        <td class="{{ $dayName >= 6 ? 'bg-weekend' : '' }}">
+                        <td class="{{ $isWeekend ? 'bg-weekend' : '' }}">
                             <input type="number" 
                                    class="input-grid qty-input" 
                                    value="{{ $qtyValue }}" 
                                    data-part="{{ $part->part_no }}"
+                                   data-day="{{ $d }}"
+                                   data-cap="{{ $part->cap_per_hour ?? 0 }}"
                                    data-cust="{{ $part->customer_code }}"
                                    data-line="{{ $part->line_code }}"
-                                   data-day="{{ $d }}"
                                    onchange="autoSave(this)">
                         </td>
                     @endfor
-                    <td class="bg-dark text-warning font-weight-bold" id="total-{{ Str::slug($part->part_no) }}">
+                    <td class="bg-dark text-warning font-weight-bold row-total" data-part-total="{{ $part->part_no }}">
                         {{ number_format($rowTotal) }}
                     </td>
                 </tr>
                 @endforeach
             </tbody>
+            
+            <tfoot>
+                <tr class="tfoot-total">
+                    <td colspan="4" class="sticky-col text-right pr-3">TOTAL QTY PRODUKSI / DAY</td>
+                    @for($d=1; $d<=$daysInMonth; $d++)
+                        <td id="day-qty-{{ $d }}">0</td>
+                    @endfor
+                    <td id="grand-total-qty">0</td>
+                </tr>
+                <tr class="tfoot-total" style="background: #fbbf24 !important;">
+                    <td colspan="4" class="sticky-col text-right pr-3 text-dark">EST. M/C LOAD (HOURS)</td>
+                    @for($d=1; $d<=$daysInMonth; $d++)
+                        <td id="day-load-{{ $d }}" class="text-dark">0.0</td>
+                    @endfor
+                    <td id="grand-total-load" class="text-dark">0.0</td>
+                </tr>
+            </tfoot>
         </table>
-    </div>
-
-    <div class="mt-4 p-3 bg-white border border-dark rounded">
-        <h6 class="font-weight-bold small uppercase"><i class="fas fa-info-circle mr-2"></i> How to use:</h6>
-        <ul class="mb-0 small font-weight-bold">
-            <li>Type any number in the date columns to set production target.</li>
-            <li>System saves automatically when you move to the next cell.</li>
-            <li>Dates marked in <span class="text-danger">Red</span> are weekends.</li>
-            <li>These targets will automatically appear in the <strong>Daily MPS</strong> on the respective date.</li>
-        </ul>
     </div>
 </div>
 
 <script>
-    /**
-     * ✨ AUTO SAVE LOGIC (AJAX)
-     * Langsung simpan ke Database pas Bapak selesai ngetik
-     */
+    document.addEventListener("DOMContentLoaded", function() {
+        calculateVerticalTotals(); // Hitung total pas pertama kali buka
+    });
+
     function autoSave(input) {
         const statusBox = document.getElementById('status-notif');
-        const statusText = document.getElementById('status-text');
-        
-        // Visual feedback saat mulai save
-        input.style.backgroundColor = "#e0f2fe";
+        statusBox.style.display = "block";
         
         const payload = {
             _token: '{{ csrf_token() }}',
@@ -171,43 +181,53 @@
         })
         .then(response => response.json())
         .then(data => {
-            // Sukses
-            input.style.backgroundColor = "transparent";
-            input.style.color = "#059669"; // Hijau kalau sukses
-            
-            // Munculkan notif sebentar
-            statusBox.style.display = "block";
-            statusText.innerText = "Target Updated: " + input.dataset.part;
-            
-            setTimeout(() => { 
-                statusBox.style.fadeOut; 
-                statusBox.style.display = "none";
-                input.style.color = "";
-            }, 2000);
-
-            recalculateTotal(input.dataset.part);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            input.style.backgroundColor = "#fee2e2"; // Merah kalau error
-            alert('Fails to sync database. Please check connection!');
+            setTimeout(() => { statusBox.style.display = "none"; }, 1000);
+            updateRowTotal(input.dataset.part);
+            calculateVerticalTotals();
         });
     }
 
-    /**
-     * Update Kolom Total (Samping) Tanpa Refresh
-     */
-    function recalculateTotal(partNo) {
+    function updateRowTotal(partNo) {
         let total = 0;
-        document.querySelectorAll(`.qty-input[data-part="${partNo}"]`).forEach(input => {
-            total += parseInt(input.value) || 0;
+        document.querySelectorAll(`.qty-input[data-part="${partNo}"]`).forEach(inp => {
+            total += parseInt(inp.value) || 0;
         });
-        
-        // Update di kolom total
-        // Slug digunakan agar ID valid jika part_no mengandung spasi/karakter aneh
-        const safeId = "total-" + partNo.replace(/[^a-z0-9]/gi, '-').toLowerCase();
-        const totalCell = document.getElementById(safeId);
-        if(totalCell) totalCell.innerText = total.toLocaleString();
+        document.querySelector(`.row-total[data-part-total="${partNo}"]`).innerText = total.toLocaleString();
+    }
+
+    function calculateVerticalTotals() {
+        const daysInMonth = {{ $daysInMonth }};
+        let grandQty = 0;
+        let grandLoad = 0;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            let dayQty = 0;
+            let dayLoad = 0;
+            
+            document.querySelectorAll(`.qty-input[data-day="${d}"]`).forEach(inp => {
+                const qty = parseInt(inp.value) || 0;
+                const cap = parseInt(inp.dataset.cap) || 0;
+                
+                dayQty += qty;
+                if(qty > 0 && cap > 0) {
+                    // Load = (Qty / Cap) + (Dandory 15min / 60)
+                    dayLoad += (qty / cap) + 0.25;
+                }
+            });
+
+            document.getElementById(`day-qty-${d}`).innerText = dayQty.toLocaleString();
+            document.getElementById(`day-load-${d}`).innerText = dayLoad.toFixed(1);
+            
+            // Warnai kalau overload > 8 jam
+            const loadCell = document.getElementById(`day-load-${d}`);
+            loadCell.style.color = dayLoad > 8 ? 'red' : 'black';
+
+            grandQty += dayQty;
+            grandLoad += dayLoad;
+        }
+
+        document.getElementById('grand-total-qty').innerText = grandQty.toLocaleString();
+        document.getElementById('grand-total-load').innerText = grandLoad.toFixed(1);
     }
 </script>
 @endsection
