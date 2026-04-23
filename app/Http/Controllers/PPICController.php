@@ -80,7 +80,7 @@ class PPICController extends Controller
     /**
      * 2. JADWAL PRODUKSI (MPS - Industrial Style)
      */
-    public function mpsIndex(Request $request)
+   public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
@@ -100,21 +100,26 @@ class PPICController extends Controller
             $plan->s1_actual = $actualData->s1_act ?? 0;
             $plan->s2_actual = $actualData->s2_act ?? 0;
             
-            $plan->s1_total_target = $plan->s1_plan_reg + $plan->s1_plan_ot;
-            $plan->s2_total_target = $plan->s2_plan_reg + $plan->s2_plan_ot;
+            // Rumus Excel: (Plan / Cap Hour) + (Dandory / 60)
+            $plan->s1_target = $plan->s1_plan_reg + $plan->s1_plan_ot;
+            $plan->s2_target = $plan->s2_plan_reg + $plan->s2_plan_ot;
             
-            // Rumus M/C Hours: (Target / Capacity)
-            $plan->s1_hour = ($plan->cap_per_hour > 0) ? round($plan->s1_total_target / $plan->cap_per_hour, 1) : 0;
-            $plan->s2_hour = ($plan->cap_per_hour > 0) ? round($plan->s2_total_target / $plan->cap_per_hour, 1) : 0;
+            $dandoryHour = $plan->dandory_time / 60;
+            $plan->s1_mc_hour = ($plan->cap_per_hour > 0) ? round(($plan->s1_target / $plan->cap_per_hour) + $dandoryHour, 1) : 0;
+            $plan->s2_mc_hour = ($plan->cap_per_hour > 0) ? round(($plan->s2_target / $plan->cap_per_hour) + $dandoryHour, 1) : 0;
 
-            $plan->s1_balance = $plan->s1_total_target - $plan->s1_actual;
-            $plan->s2_balance = $plan->s2_total_target - $plan->s2_actual;
+            $plan->s1_balance = $plan->s1_target - $plan->s1_actual;
+            $plan->s2_balance = $plan->s2_target - $plan->s2_actual;
         }
+
+        // Hitung Total Jam Per Line untuk Footer (Baris Hijau Excel)
+        $totalHoursS1 = $plans->sum('s1_mc_hour');
+        $totalHoursS2 = $plans->sum('s2_mc_hour');
 
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
-        return view('PPIC.mps_index', compact('plans', 'date', 'availableLines', 'availableCustomers'));
+        return view('PPIC.mps_index', compact('plans', 'date', 'availableLines', 'availableCustomers', 'totalHoursS1', 'totalHoursS2'));
     }
 
     /**
