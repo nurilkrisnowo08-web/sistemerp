@@ -36,7 +36,7 @@
     <div class="px-4 pt-3">
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" style="border-radius:15px; border-left: 6px solid var(--ind-success) !important;">
-                <div class="d-flex align-items-center"><i class="fas fa-check-circle mr-3 fa-lg"></i><div><strong class="text-uppercase">Success rill</strong><br><small>{{ session('success') }}</small></div></div>
+                <div class="d-flex align-items-center"><i class="fas fa-check-circle mr-3 fa-lg"></i><div><strong class="text-uppercase">Success </strong><br><small>{{ session('success') }}</small></div></div>
                 <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
             </div>
         @endif
@@ -86,7 +86,7 @@
                     <td class="text-center">{{ number_format($p->total_qty_batch) }}</td>
                     <td class="text-center"><span class="badge badge-warning">{{ $p->status }}</span></td>
                     <td class="text-right">
-                        <button class="btn btn-blueprint btn-sm px-4" style="background: var(--ind-success); color: #fff; border-radius: 10px;" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">INPUT RESULT rill</button>
+                        <button class="btn btn-blueprint btn-sm px-4" style="background: var(--ind-success); color: #fff; border-radius: 10px;" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">INPUT RESULT</button>
                     </td>
                 </tr>
                 @empty 
@@ -97,7 +97,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL INPUT HASIL (TETEP ADA DESKRIPSINYA RILL!) --}}
+{{-- 🛡️ MODAL INPUT HASIL (TETEP ADA DESKRIPSINYA!) --}}
 @foreach($activeProductions as $p)
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -123,10 +123,10 @@
                             <input type="number" name="qty_ng_process" id="ng_proc_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" value="0">
                         </div>
                     </div>
-                    {{-- Kotak Deskripsi rill --}}
+                    {{-- Kotak Deskripsi --}}
                     <div class="form-group mt-3">
-                        <label class="small font-weight-bold text-muted uppercase">Deskripsi Produksi / Alasan NG rill</label>
-                        <textarea name="keterangan" class="form-control" rows="3" style="border-radius: 15px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Ketik alasan NG di sini rill..."></textarea>
+                        <label class="small font-weight-bold text-muted uppercase">Deskripsi Produksi / Alasan NG</label>
+                        <textarea name="keterangan" class="form-control" rows="3" style="border-radius: 15px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Ketik alasan NG di sini..."></textarea>
                     </div>
                     <div class="p-3 bg-light mt-4 rounded-xl border text-center">
                         <small class="text-muted font-weight-bold uppercase">Gap Status:</small>
@@ -136,7 +136,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-5 bg-light">
-                    <button type="submit" id="btn_{{ $p->batch_id }}" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-success); color: #fff;" disabled>COMMIT & TRANSMIT DATA rill</button>
+                    <button type="submit" id="btn_{{ $p->batch_id }}" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-success); color: #fff;" disabled>COMMIT & TRANSMIT DATA</button>
                 </div>
             </form>
         </div>
@@ -170,7 +170,7 @@
                     <input type="number" id="qty_ambil_pcs" name="qty_ambil_pcs" class="input-tactical text-center border-primary shadow-sm" required placeholder="0">
                 </div>
                 <div class="modal-footer border-0 p-4">
-                    <button type="submit" id="btn_submit_ambil" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-blue); color: #fff;" disabled>DEPLOY BATCH rill</button>
+                    <button type="submit" id="btn_submit_ambil" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-blue); color: #fff;" disabled>DEPLOY BATCH</button>
                 </div>
             </form>
         </div>
@@ -180,7 +180,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
 $(document).ready(function() {
-    // SCRIPT CALCULATION rill
+    // SCRIPT CALCULATION 
     $(document).on('input', '.calc-input', function() {
         let id = $(this).data('id');
         let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
@@ -193,7 +193,7 @@ $(document).ready(function() {
         else { msg.removeClass('alert-success').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); btn.prop('disabled', true); }
     });
 
-    // SCRIPT CASCADING DROPDOWN rill
+    // SCRIPT CASCADING DROPDOWN 
     $('#sel_customer').change(function() {
         $.get('/produksi/get-specs/' + $(this).val(), function(data) {
             let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
