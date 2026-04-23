@@ -10,62 +10,88 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * Menyesuaikan agar sadar tanggal (Hari ini vs Kemarin)
+     * Mengambil data performa rill per Part dan Sejarah Produksi 6 Bulan
      */
-   public function index(Request $request)
-{
-    $date = $request->date ?? date('Y-m-d');
-    $plans = DB::table('production_plans')->where('plan_date', $date)->get();
-
-    $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-    
-    foreach($plans as $p) {
-        $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-        $actualPerPart = DB::table('produksi_batches')
-            ->where('material_code', $p->part_no)
-            ->whereDate('created_at', $date)
-            ->where('mesin_id', function($query) use ($p) {
-                $query->select('id')->from('line')->where('kode_Line', $p->line_code);
-            })->sum('qty_hasil_ok');
+    public function index(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+        $today = date('Y-m-d');
         
-        $p->actual_qty = $actualPerPart;
-        $p->plan_qty = $targetPerPart;
+        // Ambil data planning sesuai tanggal filter
+        $plans = DB::table('production_plans')->where('plan_date', $date)->get();
 
-        if($actualPerPart >= $targetPerPart && $targetPerPart > 0) { $statusCount['completed']++; }
-        elseif ($date < date('Y-m-d')) { $statusCount['shortage']++; }
-        elseif ($actualPerPart > 0) { $statusCount['running']++; }
-        else { $statusCount['waiting']++; }
-    }
-
-    $totalPlan = $plans->sum('plan_qty') ?: 0;
-    $totalActual = $plans->sum('actual_qty') ?: 0;
-    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
-
-    // ✨ AMBIL DATA 6 BULAN TERAKHIR (RILL DARI DATABASE)
-    $monthlyLabels = [];
-    $monthlyActuals = [];
-    for ($i = 5; $i >= 0; $i--) {
-        $monthDate = date('Y-m', strtotime("-$i months"));
-        $monthName = date('M', strtotime("-$i months"));
+        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
         
-        $totalMonth = DB::table('produksi_batches')
-            ->where('created_at', 'LIKE', "$monthDate%")
-            ->sum('qty_hasil_ok');
+        // Variabel untuk Grafik Statistik Per-Part
+        $chartLabels = [];
+        $chartTargets = [];
+        $chartActuals = [];
+
+        foreach($plans as $p) {
+            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-        $monthlyLabels[] = $monthName;
-        $monthlyActuals[] = (int)$totalMonth;
+            // AMBIL ACTUAL: Filter Part, Tanggal, dan Mesin (Sinkron dengan Log Lapangan)
+            $actualPerPart = DB::table('produksi_batches')
+                ->where('material_code', $p->part_no)
+                ->whereDate('created_at', $date)
+                ->where('mesin_id', function($query) use ($p) {
+                    $query->select('id')->from('line')->where('kode_Line', $p->line_code);
+                })
+                ->sum('qty_hasil_ok');
+            
+            $p->actual_qty = $actualPerPart;
+            $p->plan_qty = $targetPerPart;
+
+            // Masukkan data ke array untuk dikirim ke Grafik Bar di View
+            $chartLabels[] = $p->part_no;
+            $chartTargets[] = $targetPerPart;
+            $chartActuals[] = $actualPerPart;
+
+            // ✨ LOGIKA STATUS CERDAS (Audit Per-Item)
+            if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { 
+                $statusCount['completed']++; 
+            } elseif ($date < $today && $actualPerPart < $targetPerPart) { 
+                $statusCount['shortage']++; 
+            } elseif ($actualPerPart > 0) { 
+                $statusCount['running']++; 
+            } else { 
+                $statusCount['waiting']++; 
+            }
+        }
+
+        $totalPlan = $plans->sum('plan_qty') ?: 0;
+        $totalActual = $plans->sum('actual_qty') ?: 0;
+        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+        // ✨ AMBIL DATA 6 BULAN TERAKHIR (RILL DARI DATABASE UNTUK GRAFIK GARIS)
+        $monthlyLabels = [];
+        $monthlyActuals = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $monthDate = date('Y-m', strtotime("-$i months"));
+            $monthName = date('M', strtotime("-$i months"));
+            
+            $totalMonth = DB::table('produksi_batches')
+                ->where('created_at', 'LIKE', "$monthDate%")
+                ->sum('qty_hasil_ok');
+                
+            $monthlyLabels[] = $monthName;
+            $monthlyActuals[] = (int)$totalMonth;
+        }
+
+        $monthlyData = [
+            'labels' => $monthlyLabels,
+            'actual' => $monthlyActuals
+        ];
+
+        $availableLines = DB::table('line')->get();
+        $availableCustomers = DB::table('customers')->get();
+
+        // Mengirimkan variabel tambahan: chartLabels, chartTargets, chartActuals, totalActual
+        return view('PPIC.ppic_planning', compact(
+            'plans', 'statusCount', 'achievementRate', 'monthlyData', 'date', 
+            'totalPlan', 'totalActual', 'chartLabels', 'chartTargets', 'chartActuals'
+        ));
     }
-
-    $monthlyData = [
-        'labels' => $monthlyLabels,
-        'actual' => $monthlyActuals
-    ];
-
-    $availableLines = DB::table('line')->get();
-    $availableCustomers = DB::table('customers')->get();
-
-    return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'monthlyData', 'date', 'totalPlan'));
-}
 
     /**
      * 2. JADWAL PRODUKSI (MPS)

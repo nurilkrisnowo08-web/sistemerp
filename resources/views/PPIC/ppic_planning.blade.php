@@ -1,96 +1,173 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
 
 <style>
-    :root { --ppic-steel: #4e73df; --ppic-bg: #f8fafc; --ppic-dark: #0f172a; }
-    .main-terminal { background-color: var(--ppic-bg); min-height: 100vh; padding: 1.5rem; font-family: 'Inter', sans-serif; }
-    .card-kpi { background: #fff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.01); transition: 0.3s; }
-    
-    /* Audit Box Dynamic */
-    .audit-box { padding: 15px 25px; border-radius: 15px; display: flex; align-items: center; gap: 15px; font-weight: 800; text-transform: uppercase; }
-    .audit-good { background: rgba(28, 200, 138, 0.1); color: #1cc88a; border: 2px solid #1cc88a; }
-    .audit-bad { background: rgba(231, 74, 59, 0.1); color: #e74a3b; border: 2px solid #e74a3b; }
-    .audit-none { background: #f1f5f9; color: #94a3b8; border: 2px solid #cbd5e1; }
+    :root {
+        --bg-cyber: #0f172a;
+        --card-bg: #1e293b;
+        --accent-blue: #38bdf8;
+        --accent-green: #22c55e;
+        --accent-red: #ef4444;
+        --text-dim: #94a3b8;
+    }
 
-    .btn-filter { border-radius: 10px; font-weight: 700; background: white; border: 2px solid var(--ppic-steel); color: var(--ppic-steel); }
+    .main-terminal { 
+        background-color: #f1f5f9; 
+        min-height: 100vh; 
+        padding: 1.5rem; 
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ✨ ANIMASI FADE IN ✨ */
+    .anim-slide-up { animation: slideUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ✨ GLASS CARD DESIGN ✨ */
+    .cyber-card {
+        background: white;
+        border-radius: 24px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+        transition: all 0.4s ease;
+        overflow: hidden;
+    }
+    .cyber-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(56, 189, 248, 0.2); }
+
+    /* ✨ METRIC BOX ✨ */
+    .metric-value { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 2.2rem; line-height: 1; letter-spacing: -1px; }
+    .metric-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; }
+
+    /* ✨ LIVE TICKER NOTIFICATION ✨ */
+    .ticker-wrap {
+        background: var(--bg-cyber);
+        color: white;
+        padding: 10px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+    }
+    .ticker-label { background: var(--accent-red); padding: 2px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; margin-right: 15px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+    /* Custom Progress Bar for Part List */
+    .part-progress-container { margin-bottom: 15px; }
+    .part-name-tag { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #1e293b; display: flex; justify-content: space-between; }
+    .custom-progress { height: 10px; background: #e2e8f0; border-radius: 10px; overflow: hidden; margin-top: 5px; }
+    .custom-bar { height: 100%; transition: width 1.5s ease-in-out; border-radius: 10px; }
+
+    /* Hide scrollbar but keep functionality */
+    .scroll-no-bar::-webkit-scrollbar { display: none; }
 </style>
 
 <div class="main-terminal">
-    <div class="d-md-flex justify-content-between align-items-center mb-5">
+    <div class="d-md-flex justify-content-between align-items-center mb-4 anim-slide-up">
         <div>
-            <h3 class="font-weight-extrabold text-dark mb-1" style="letter-spacing: -1.5px;">PRODUCTION_CORE_MONITOR</h3>
-            <form action="{{ route('ppic.index') }}" method="GET" class="d-flex align-items-center">
-                <input type="date" name="date" class="form-control form-control-sm mr-2 shadow-sm" value="{{ $date }}" onchange="this.form.submit()" style="width: 200px; border-radius: 8px;">
-                <span class="badge badge-dark py-1 px-3 rounded-pill">SYNC_ACTIVE</span>
-            </form>
+            <h1 class="font-weight-black text-dark mb-0" style="letter-spacing: -2px;">CORE_PRODUCTION_AI</h1>
+            <div class="d-flex align-items-center">
+                <span class="status-dot bg-success mr-2"></span>
+                <span class="text-muted small font-weight-bold uppercase">System Status: Optimal / Last Sync: {{ date('H:i:s') }}</span>
+            </div>
         </div>
 
-        {{-- ✨ DAILY AUDIT TER-OPTIMASI ✨ --}}
-        @php
-            $auditClass = 'audit-none';
-            $auditText = 'RESULT: NO PLAN';
-            $auditIcon = 'fa-info-circle';
+        <div class="d-flex align-items-center mt-3 mt-md-0">
+            <form action="{{ route('ppic.index') }}" method="GET" class="mr-3">
+                <input type="date" name="date" class="form-control border-0 shadow-sm px-4 py-4" 
+                       value="{{ $date }}" onchange="this.form.submit()" style="border-radius: 15px; font-weight: 800;">
+            </form>
             
-            if($totalPlan > 0) {
-                if($achievementRate >= 85) {
-                    $auditClass = 'audit-good';
-                    $auditText = 'RESULT: BAGUS';
-                    $auditIcon = 'fa-check-circle';
-                } else {
-                    $auditClass = 'audit-bad';
-                    $auditText = 'RESULT: JELEK';
-                    $auditIcon = 'fa-exclamation-triangle';
-                }
-            }
-        @endphp
-
-        <div class="audit-box {{ $auditClass }} mt-3 mt-md-0">
-            <i class="fas {{ $auditIcon }} fa-2x"></i>
-            <div>
-                <div style="font-size: 10px; opacity: 0.8;">DAILY PERFORMANCE AUDIT ({{ $date }})</div>
-                <div style="font-size: 18px;">{{ $auditText }}</div>
+            <div class="cyber-card px-4 py-3 text-center bg-primary text-white border-0">
+                <div class="metric-label text-white-50">Global Efficiency</div>
+                <div class="metric-value" style="font-size: 1.5rem;">{{ $achievementRate }}%</div>
             </div>
         </div>
     </div>
 
+    <div class="ticker-wrap anim-slide-up" style="animation-delay: 0.1s;">
+        <span class="ticker-label">LERT</span>
+        <marquee class="small font-weight-bold" scrollamount="5">
+            @forelse($plans->where('actual_qty', '<', 'plan_qty') as $p)
+                • ATTENTION: Part [{{ $p->part_no }}] is UNDER TARGET by {{ $p->plan_qty - $p->actual_qty }} Pcs &nbsp;&nbsp;&nbsp;
+            @empty
+                • ALL SYSTEMS CLEAR: Production following plan targets perfectly.
+            @endforelse
+        </marquee>
+    </div>
+
     <div class="row">
-        {{-- Kiri: Target vs Actual --}}
-        <div class="col-lg-8 mb-4 text-center">
-            <div class="card-kpi p-4">
-                <h6 class="text-left font-weight-bold mb-4">PRODUCTION VOLUME ACHIEVEMENT</h6>
-                @if($totalPlan > 0)
-                    <div style="height: 300px;"><canvas id="compareBar"></canvas></div>
-                @else
-                    <div class="py-5">
-                        <i class="fas fa-folder-open fa-4x text-light mb-3"></i>
-                        <h5 class="text-muted">No Data Plan for this date</h5>
-                    </div>
-                @endif
+        <div class="col-lg-7 mb-4 anim-slide-up" style="animation-delay: 0.2s;">
+            <div class="cyber-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h6 class="metric-label"><i class="fas fa-chart-bar mr-2"></i> Production Performance (Target vs Actual)</h6>
+                    <span class="badge badge-light px-3 font-mono">LIVE_FEED</span>
+                </div>
+                <div style="height: 350px;">
+                    <canvas id="mainCompareChart"></canvas>
+                </div>
             </div>
         </div>
 
-        {{-- Kanan: Donut --}}
-        <div class="col-lg-4 mb-4">
-            <div class="card-kpi p-4">
-                <h6 class="text-left font-weight-bold mb-4">JOB STATUS</h6>
-                <div style="height: 220px;"><canvas id="statusDonut"></canvas></div>
-                <hr>
-                <div class="row text-center font-weight-bold">
-                    <div class="col-4"><small>WAIT</small><br>{{ $statusCount['waiting'] }}</div>
-                    <div class="col-4 text-primary"><small>RUN</small><br>{{ $statusCount['running'] }}</div>
-                    <div class="col-4 text-success"><small>DONE</small><br>{{ $statusCount['completed'] }}</div>
+        <div class="col-lg-5 mb-4 anim-slide-up" style="animation-delay: 0.3s;">
+            <div class="cyber-card p-4 h-100">
+                <h6 class="metric-label text-center mb-4">Job Execution Distribution</h6>
+                <div style="height: 250px;">
+                    <canvas id="jobStatusChart"></canvas>
+                </div>
+                <div class="row mt-4 text-center">
+                    <div class="col-4">
+                        <div class="metric-label">Wait</div>
+                        <div class="h4 font-weight-bold text-dark">{{ $statusCount['waiting'] }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="metric-label text-primary">Running</div>
+                        <div class="h4 font-weight-bold text-primary">{{ $statusCount['running'] }}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="metric-label text-success">Done</div>
+                        <div class="h4 font-weight-bold text-success">{{ $statusCount['completed'] }}</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-lg-12 mb-4">
-            <div class="card-kpi p-4">
-                <h6 class="font-weight-bold"><i class="fas fa-chart-line mr-2"></i> PRODUCTION STABILITY TREND (ACTUAL OUTPUT)</h6>
-                <div style="height: 280px;"><canvas id="stabilityLineChart"></canvas></div>
+        <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.4s;">
+            <div class="cyber-card p-4 h-100">
+                <h6 class="metric-label mb-4">Active Production Items</h6>
+                <div class="scroll-no-bar" style="max-height: 400px; overflow-y: auto;">
+                    @foreach($plans as $p)
+                        @php $percent = ($p->actual_qty / ($p->plan_qty ?: 1)) * 100; @endphp
+                        <div class="part-progress-container">
+                            <div class="part-name-tag">
+                                <span>{{ $p->part_no }}</span>
+                                <span class="{{ $percent >= 100 ? 'text-success' : 'text-primary' }} font-mono">
+                                    {{ number_format($p->actual_qty) }} / {{ number_format($p->plan_qty) }} Pcs
+                                </span>
+                            </div>
+                            <div class="custom-progress">
+                                <div class="custom-bar {{ $percent >= 100 ? 'bg-success' : 'bg-primary shadow-blue' }}" 
+                                     style="width: {{ min($percent, 100) }}%; box-shadow: 0 0 10px {{ $percent >= 100 ? 'rgba(34, 197, 94, 0.4)' : 'rgba(56, 189, 248, 0.4)' }}">
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4 anim-slide-up" style="animation-delay: 0.5s;">
+            <div class="cyber-card p-4 h-100">
+                <h6 class="metric-label mb-4">Monthly Output Stability Trend</h6>
+                <div style="height: 350px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -99,58 +176,93 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-$(document).ready(function() {
-    Chart.defaults.font.family = "'Roboto Mono', monospace";
-    
-    // 1. Donut
-    new Chart(document.getElementById('statusDonut'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Waiting', 'Running', 'Completed'],
-            datasets: [{
-                data: [{{ $statusCount['waiting'] }}, {{ $statusCount['running'] }}, {{ $statusCount['completed'] }}],
-                backgroundColor: ['#e2e8f0', '#4e73df', '#1cc88a'],
-                borderWidth: 0
-            }]
-        },
-        options: { cutout: '80%', maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
+    // Global Config
+    Chart.defaults.font.family = "'JetBrains Mono', monospace";
+    Chart.defaults.color = '#64748b';
 
-    // 2. Bar Compare
-    new Chart(document.getElementById('compareBar'), {
+    // 1. Main Compare Chart (Target vs Actual)
+    const ctxCompare = document.getElementById('mainCompareChart').getContext('2d');
+    new Chart(ctxCompare, {
         type: 'bar',
         data: {
-            labels: ['DAILY TARGET', 'DAILY ACTUAL'],
-            datasets: [{
-                data: [{{ $totalPlan }}, {{ $plans->sum('actual_qty') }}],
-                backgroundColor: ['#f1f5f9', '#4e73df'],
-                borderRadius: 10
-            }]
+            labels: {!! json_encode($chartLabels) !!},
+            datasets: [
+                {
+                    label: 'ACTUAL',
+                    data: {!! json_encode($chartActuals) !!},
+                    backgroundColor: '#38bdf8',
+                    borderRadius: 8,
+                    barThickness: 15
+                },
+                {
+                    label: 'TARGET',
+                    data: {!! json_encode($chartTargets) !!},
+                    backgroundColor: '#f1f5f9',
+                    borderRadius: 8,
+                    barThickness: 15
+                }
+            ]
         },
-        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-
-    // 3. ✨ REAL HISTORY TREND CHART ✨
-    new Chart(document.getElementById('stabilityLineChart'), {
-        type: 'line',
-        data: {
-            labels: {!! json_encode($monthlyData['labels']) !!},
-            datasets: [{
-                label: 'Actual Pcs',
-                data: {!! json_encode($monthlyData['actual']) !!},
-                borderColor: '#4e73df',
-                backgroundColor: 'rgba(78, 115, 223, 0.1)',
-                borderWidth: 4, fill: true, tension: 0.3,
-                pointRadius: 5, pointBackgroundColor: '#fff'
-            }]
-        },
-        options: { 
-            maintainAspectRatio: false, 
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } } }
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            animation: { duration: 2000, easing: 'easeOutQuart' },
+            plugins: { legend: { position: 'top', align: 'end' } },
+            scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
         }
     });
-});
+
+    // 2. Job Status Donut
+    const ctxStatus = document.getElementById('jobStatusChart').getContext('2d');
+    new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: ['Wait', 'Run', 'Done'],
+            datasets: [{
+                data: [{{ $statusCount['waiting'] }}, {{ $statusCount['running'] }}, {{ $statusCount['completed'] }}],
+                backgroundColor: ['#f1f5f9', '#38bdf8', '#22c55e'],
+                hoverOffset: 20,
+                borderWidth: 0,
+                cutout: '85%'
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            animation: { animateScale: true, duration: 2000 },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // 3. Stability Trend
+    const ctxTrend = document.getElementById('trendChart').getContext('2d');
+    const gradient = ctxTrend.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(56, 189, 248, 0.2)');
+    gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
+
+    new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+            labels: {!! json_encode($monthlyLabels) !!},
+            datasets: [{
+                label: 'Monthly Output',
+                data: {!! json_encode($monthlyActuals) !!},
+                borderColor: '#38bdf8',
+                borderWidth: 4,
+                fill: true,
+                backgroundColor: gradient,
+                tension: 0.4,
+                pointRadius: 6,
+                pointBackgroundColor: '#fff',
+                pointBorderWidth: 3
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            animation: { duration: 3000 },
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } } }
+        }
+    });
 </script>
 @endsection
 @endsection
