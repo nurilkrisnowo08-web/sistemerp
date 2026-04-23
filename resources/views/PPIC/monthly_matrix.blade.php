@@ -27,7 +27,6 @@
     .bg-today { background-color: #dcfce7 !important; outline: 2px solid #22c55e; }
     .tfoot-total { font-weight: 900; color: black; }
     
-    /* ✨ SHIFT PILL STYLE ✨ */
     .shift-master-pill { background: white; padding: 4px; border-radius: 50px; border: 1px solid #cbd5e1; display: flex; gap: 4px; }
     .shift-btn { border-radius: 50px; border: none; padding: 6px 20px; font-weight: 800; font-size: 11px; transition: 0.3s; cursor: pointer; }
     .active-s1 { background: #4361ee !important; color: white !important; box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4); }
@@ -39,13 +38,13 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h2 class="font-weight-black mb-0" style="letter-spacing: -1.5px; color: #0f172a;">PRODUCTION_MONTHLY_MASTER</h2>
-            <p class="text-muted small font-weight-bold uppercase mb-0">Master Registry Matrix - Period: {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
+            <p class="text-muted small font-weight-bold uppercase mb-0">Period: {{ date('F Y', mktime(0, 0, 0, $month, 1, $year)) }}</p>
         </div>
 
         <div class="d-flex align-items-center gap-3">
             <div class="shift-master-pill shadow-sm">
-                <button type="button" id="btn-s1" class="shift-btn active-s1" onclick="switchShift('s1')">SHIFT 1 (DAY)</button>
-                <button type="button" id="btn-s2" class="shift-btn btn-off" onclick="switchShift('s2')">SHIFT 2 (NIGHT)</button>
+                <button type="button" id="btn-s1" class="shift-btn active-s1" onclick="switchShift('s1')">SHIFT 1</button>
+                <button type="button" id="btn-s2" class="shift-btn btn-off" onclick="switchShift('s2')">SHIFT 2</button>
             </div>
 
             <form action="" method="GET" class="d-flex mr-2">
@@ -56,39 +55,32 @@
                 </select>
             </form>
             <a href="{{ route('ppic.mps.index', ['date' => date('Y-m-d')]) }}" class="btn btn-primary shadow font-weight-bold rounded-pill px-4">
-                <i class="fas fa-desktop mr-2"></i> VIEW DAILY MPS
+                <i class="fas fa-desktop mr-2"></i> OPEN DAILY MPS
             </a>
         </div>
     </div>
 
     <div id="status-notif" class="alert alert-dark shadow-lg py-2 px-4 rounded-pill text-white" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: none;">
-        <i class="fas fa-sync fa-spin mr-2"></i> <span id="status-text">Registering Daily Plan...</span>
+        <i class="fas fa-sync fa-spin mr-2"></i> Syncing to Harian...
     </div>
 
     <div class="matrix-wrapper overflow-auto" style="max-height: 70vh;">
         <table class="table-matrix">
             <thead>
                 <tr>
-                    <th rowspan="2" class="sticky-col" style="top:0; z-index:30;">PART NUMBER / IDENTIFICATION</th>
-                    <th rowspan="2" style="width: 50px; top:0; position:sticky; background:var(--header-bg); z-index:20;">CUST</th>
-                    <th rowspan="2" style="width: 40px; top:0; position:sticky; background:var(--header-bg); z-index:20;">PROC</th>
-                    <th rowspan="2" style="width: 50px; top:0; position:sticky; background:var(--header-bg); z-index:20;">CAP/H</th>
+                    <th rowspan="2" class="sticky-col">PART NUMBER / IDENTIFICATION</th>
+                    <th rowspan="2" style="width: 50px;">CUST</th>
+                    <th rowspan="2" style="width: 40px;">PROC</th>
+                    <th rowspan="2" style="width: 50px;">CAP/H</th>
                     @for($d=1; $d<=$daysInMonth; $d++)
-                        @php 
-                            $dateStr = "$year-$month-$d";
-                            $isWeekend = (date('N', strtotime($dateStr)) >= 6);
-                        @endphp
-                        <th class="header-day {{ $isWeekend ? 'bg-weekend text-danger' : '' }} {{ date('Y-m-j') == $year.'-'.$month.'-'.$d ? 'bg-today' : '' }}">
-                            {{ $d }}
-                        </th>
+                        @php $isWknd = (date('N', strtotime("$year-$month-$d")) >= 6); @endphp
+                        <th class="header-day {{ $isWknd ? 'bg-weekend text-danger' : '' }}">{{ $d }}</th>
                     @endfor
-                    <th rowspan="2" style="width: 80px; background: #1e293b; color: white; top:0; position:sticky; z-index:20;">TOTAL</th>
+                    <th rowspan="2" style="width: 80px; background: #1e293b; color: white;">TOTAL</th>
                 </tr>
                 <tr>
                     @for($d=1; $d<=$daysInMonth; $d++)
-                        <th class="day-name {{ date('N', strtotime("$year-$month-$d")) >= 6 ? 'text-danger' : '' }}">
-                            {{ date('D', strtotime("$year-$month-$d")) }}
-                        </th>
+                        <th class="day-name">{{ date('D', strtotime("$year-$month-$d")) }}</th>
                     @endfor
                 </tr>
             </thead>
@@ -104,23 +96,19 @@
                         @php
                             $dStr = "$year-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-" . str_pad($d, 2, '0', STR_PAD_LEFT);
                             $plan = $planData->get($part->part_no)?->firstWhere('plan_date', $dStr);
-                            
                             $s1_val = $plan ? $plan->s1_plan_reg : '';
                             $s2_val = $plan ? $plan->s2_plan_reg : '';
-                            
-                            $isWeekend = (date('N', strtotime($dStr)) >= 6);
+                            $isWknd = (date('N', strtotime($dStr)) >= 6);
                         @endphp
-                        <td class="{{ $isWeekend ? 'bg-weekend' : '' }}">
-                            <input type="number" 
-                                   class="input-grid qty-input" 
+                        <td class="{{ $isWknd ? 'bg-weekend' : '' }}">
+                            <input type="number" class="input-grid qty-input" 
                                    value="{{ $s1_val }}" 
-                                   data-s1="{{ $s1_val }}"
-                                   data-s2="{{ $s2_val }}"
-                                   data-part="{{ $part->part_no }}"
-                                   data-day="{{ $d }}"
-                                   data-cap="{{ $part->cap_per_hour ?? 320 }}"
-                                   data-cust="{{ $part->customer_code }}"
-                                   data-line="{{ $part->line_code }}"
+                                   data-s1="{{ $s1_val }}" data-s2="{{ $s2_val }}"
+                                   data-part="{{ $part->part_no }}" data-day="{{ $d }}"
+                                   {{-- ✅ FALLBACK DITAMBAHKAN DI SINI (PENCEGAH ERROR) ✅ --}}
+                                   data-cap="{{ $part->cap_per_hour ?? 320 }}" 
+                                   data-cust="{{ $part->customer_code ?? 'AMA' }}"
+                                   data-line="{{ $part->line_code ?? 'LINE A' }}"
                                    onchange="autoSave(this)">
                         </td>
                     @endfor
@@ -146,18 +134,13 @@
 
 <script>
     let activeShift = 's1';
-
-    document.addEventListener("DOMContentLoaded", function() {
-        calculateAllTotals();
-    });
+    document.addEventListener("DOMContentLoaded", calculateAllTotals);
 
     function switchShift(shift) {
         activeShift = shift;
         document.getElementById('btn-s1').className = shift === 's1' ? 'shift-btn active-s1' : 'shift-btn btn-off';
         document.getElementById('btn-s2').className = shift === 's2' ? 'shift-btn active-s2' : 'shift-btn btn-off';
-
         document.querySelectorAll('.qty-input').forEach(inp => {
-            // Tampilkan value berdasarkan shift yang dipilih
             inp.value = inp.getAttribute(`data-${shift}`);
         });
         calculateAllTotals();
@@ -165,74 +148,49 @@
 
     function autoSave(input) {
         const statusBox = document.getElementById('status-notif');
-        const statusText = document.getElementById('status-text');
         statusBox.style.display = "block";
-        statusText.innerText = "Registering Plan...";
-        
-        // Simpan sementara ke attribute agar toggle shift tidak reset data
         input.setAttribute(`data-${activeShift}`, input.value);
-
-        // DATA PAYLOAD LENGKAP (Sama dengan logic Controller mpsStore)
-        const payload = {
-            _token: '{{ csrf_token() }}',
-            shift: activeShift,
-            part_no: input.dataset.part,
-            customer_code: input.dataset.cust,
-            line_code: input.dataset.line,
-            day: input.dataset.day,
-            month: '{{ $month }}',
-            year: '{{ $year }}',
-            qty: input.value,
-            cap_per_hour: input.dataset.cap
-        };
 
         fetch('{{ route("ppic.monthly.ajax_save") }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        })
-        .then(res => res.json())
-        .then(data => {
-            statusText.innerText = "Daily Schedule Synchronized!";
-            setTimeout(() => { statusBox.style.display = "none"; }, 800);
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({
+                shift: activeShift,
+                part_no: input.dataset.part,
+                customer_code: input.dataset.cust,
+                line_code: input.dataset.line,
+                day: input.dataset.day,
+                month: '{{ $month }}',
+                year: '{{ $year }}',
+                qty: input.value,
+                cap_per_hour: input.dataset.cap
+            })
+        }).then(() => {
+            setTimeout(() => { statusBox.style.display = "none"; }, 500);
             calculateAllTotals();
-        })
-        .catch(err => {
-            alert("Connection Error! Plan not registered.");
-            statusBox.style.display = "none";
         });
     }
 
     function calculateAllTotals() {
         const days = {{ $daysInMonth }};
         let grandQty = 0; let grandLoad = 0;
-
         for (let d = 1; d <= days; d++) {
-            let dayQty = 0; let dayLoad = 0;
+            let dQty = 0; let dLoad = 0;
             document.querySelectorAll(`.qty-input[data-day="${d}"]`).forEach(inp => {
-                const qty = parseInt(inp.value) || 0;
-                const cap = parseInt(inp.dataset.cap) || 320;
-                dayQty += qty;
-                if(qty > 0) {
-                    // Logic: Qty / Cap + 15m Dandory
-                    dayLoad += (qty / cap) + 0.25; 
-                }
+                let v = parseInt(inp.value) || 0;
+                dQty += v;
+                if(v > 0) dLoad += (v / (parseInt(inp.dataset.cap) || 320)) + 0.25;
             });
-
-            document.getElementById(`day-qty-${d}`).innerText = dayQty.toLocaleString();
-            document.getElementById(`day-load-${d}`).innerText = dayLoad.toFixed(1);
-            document.getElementById(`day-load-${d}`).style.color = dayLoad > 8 ? 'red' : 'black';
-            grandQty += dayQty; grandLoad += dayLoad;
+            document.getElementById(`day-qty-${d}`).innerText = dQty || '0';
+            document.getElementById(`day-load-${d}`).innerText = dLoad.toFixed(1);
+            document.getElementById(`day-load-${d}`).style.color = dLoad > 8 ? 'red' : 'black';
+            grandQty += dQty; grandLoad += dLoad;
         }
-
-        // Row totals
         document.querySelectorAll('tbody tr').forEach(row => {
-            let rowSum = 0;
-            row.querySelectorAll('.qty-input').forEach(inp => rowSum += parseInt(inp.value) || 0);
-            const totalCell = row.querySelector('.row-total');
-            if(totalCell) totalCell.innerText = rowSum.toLocaleString();
+            let rSum = 0;
+            row.querySelectorAll('.qty-input').forEach(inp => rSum += (parseInt(inp.value) || 0));
+            row.querySelector('.row-total').innerText = rSum.toLocaleString();
         });
-
         document.getElementById('grand-total-qty').innerText = grandQty.toLocaleString();
         document.getElementById('grand-total-load').innerText = grandLoad.toFixed(1);
     }
