@@ -277,31 +277,45 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
-    public function history() 
+   public function history() 
 {
     $history = DB::table('produksi_batches')
         ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
         ->select(
-            // ... kolom lainnya ...
-            'produksi_batches.qty_hasil_ok',
-            'produksi_batches.qty_hasil_ng', // <--- PASTIKAN ADA BARIS INI
-            'produksi_batches.keterangan',
-            'produksi_batches.status',
-            'produksi_batches.updated_at',
             'produksi_batches.no_produksi',
             'produksi_batches.material_code',
-            'produksi_batches.qty_ambil_pcs',
-            DB::raw('MIN(produksi_batches.id) as id')
+            'produksi_batches.shift',
+            'produksi_batches.updated_at',
+            'produksi_batches.qty_hasil_ok',
+            'produksi_batches.qty_hasil_ng',      // Tampilkan di SELECT
+            'produksi_batches.qty_ng_material',
+            'produksi_batches.qty_ng_process',
+            'produksi_batches.qty_return_warehouse',
+            'produksi_batches.keterangan', 
+            'produksi_batches.status',
+            DB::raw('MIN(produksi_batches.id) as id'),
+            DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
+            DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs') 
         )
-        // ... sisa kodingan bapak ...
+        ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+        ->groupBy(
+            'produksi_batches.no_produksi', 
+            'produksi_batches.material_code', 
+            'produksi_batches.shift', 
+            'produksi_batches.updated_at', 
+            'produksi_batches.qty_hasil_ok',
+            'produksi_batches.qty_hasil_ng',      // ✨ TAMBAHKAN INI DI GROUP BY
+            'produksi_batches.qty_ng_material',   // ✨ TAMBAHKAN INI JUGA
+            'produksi_batches.qty_ng_process',    // ✨ TAMBAHKAN INI JUGA
+            'produksi_batches.qty_return_warehouse', 
+            'produksi_batches.keterangan', 
+            'produksi_batches.status'
+        )
+        ->orderBy('updated_at', 'desc')
+        ->get();
 
-            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-            ->groupBy('no_produksi', 'material_code', 'shift', 'updated_at', 'qty_hasil_ok', 'qty_ng_material', 'qty_ng_process', 'qty_return_warehouse', 'keterangan', 'status')
-            ->orderBy('updated_at', 'desc')
-            ->get();
-
-        return view('Produksi.history', compact('history'));
-    }
+    return view('Produksi.history', compact('history'));
+}
 
     public function returnToRM($id) {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
