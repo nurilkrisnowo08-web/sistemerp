@@ -13,7 +13,7 @@
     body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
     .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--ind-navy); }
     .qc-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; transition: 0.3s; box-shadow: var(--card-shadow); }
-    .qc-card:hover { transform: translateY(-5px); border-color: var(--ind-blue); }
+    .qc-card:hover { border-color: var(--ind-blue); }
     .card-header-ind { background: #fcfcfd; padding: 1.25rem; border-bottom: 1px solid #f1f5f9; border-radius: 16px 16px 0 0; }
     .tech-code { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #64748b; font-weight: 700; }
     .part-title { font-weight: 800; font-size: 1.25rem; color: var(--ind-navy); }
@@ -23,17 +23,14 @@
     .input-ind:focus { border-color: var(--ind-blue); outline: none; }
     .btn-action { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; padding: 14px; border-radius: 10px; text-transform: uppercase; font-weight: 800; border: none; }
     .empty-placeholder { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 4rem; color: #94a3b8; font-weight: 600; text-align: center; }
-    
-    /* Style tambahan untuk rincian NG */
-    .ng-analysis-box { background: #fff1f2; border: 1px dashed #fda4af; border-radius: 12px; padding: 12px; margin-bottom: 20px; }
-    .ng-item { display: flex; justify-content: space-between; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 700; color: var(--ind-rose); border-bottom: 1px solid #fecdd3; padding: 4px 0; }
 </style>
 
 <div class="container-fluid py-4">
+    {{-- 🛸 Header Section --}}
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-xl border shadow-sm">
         <div>
             <h2 class="industrial-header m-0">UNIT_VERIFICATION <span class="text-primary">v4.0</span></h2>
-            <small class="text-muted font-weight-bold uppercase">Operational Mode: Active Inspection</small>
+            <small class="text-muted font-weight-bold uppercase">Operational Mode: Final Inspection Gate</small>
         </div>
         <div class="text-right d-flex align-items-center">
             <a href="{{ route('quality.history') }}" class="btn btn-outline-dark rounded-pill px-4 font-weight-bold mr-3 shadow-sm">
@@ -45,6 +42,7 @@
         </div>
     </div>
 
+    {{-- Alerts --}}
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm mb-4" style="border-left: 6px solid #10b981 !important;">
             <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
@@ -58,82 +56,57 @@
     @endif
 
     <div class="row">
+        {{-- 🚛 STAMPING/PRODUCTION QUEUE --}}
         <div class="col-lg-6 mb-4">
             <div class="d-flex align-items-center mb-4 px-2">
                 <div style="width: 5px; height: 25px; background: var(--ind-blue); border-radius: 10px;" class="mr-3"></div>
-                <h5 class="font-weight-bold m-0 text-uppercase">Production Queue</h5>
+                <h5 class="font-weight-bold m-0 text-uppercase">Stamping Incoming (OK Goods)</h5>
             </div>
 
             @forelse($produksiQueue as $p)
             <div class="qc-card mb-4">
                 <div class="card-header-ind d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="tech-code">BATCH_SERIAL: {{ $p->no_produksi }}</div>
-                        <div class="part-title">{{ $p->material_code }}</div>
+                        <div class="tech-code">BATCH_NO: {{ $p->no_produksi }}</div>
+                        <div class="part-title text-primary">{{ $p->material_code }}</div>
                     </div>
                     <div class="text-right">
-                        <label class="label-ind">Reported Qty</label>
-                        <div class="qty-badge text-primary">{{ number_format($p->qty_hasil_ok) }}</div>
+                        <label class="label-ind">Incoming OK</label>
+                        <div class="qty-badge text-emerald">{{ number_format($p->qty_hasil_ok) }}</div>
                     </div>
                 </div>
                 <div class="card-body p-4">
-                    {{-- ✨ RINCIAN NG SPESIFIK DARI PRODUKSI ✨ --}}
-                    @php
-                        $ngLogs = DB::table('production_ng_logs')
-                            ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
-                            ->where('production_actuals.part_no', $p->material_code)
-                            ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($p->created_at)))
-                            ->select('production_ng_logs.ng_type', 'production_ng_logs.qty')
-                            ->get();
-                    @endphp
-
-                    @if($ngLogs->count() > 0)
-                    <div class="ng-analysis-box">
-                        <label class="label-ind text-danger"><i class="fas fa-microscope mr-1"></i> Reject Breakdown (Operator Report)</label>
-                        @foreach($ngLogs as $log)
-                            <div class="ng-item">
-                                <span>• {{ strtoupper($log->ng_type) }}</span>
-                                <span>{{ $log->qty }} PCS</span>
-                            </div>
-                        @endforeach
-                    </div>
-                    @endif
+                    {{-- ❌ BOX REJECT BREAKDOWN SUDAH DIHAPUS ❌ --}}
 
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST">
                         @csrf
                         <div class="row mb-4">
                             <div class="col-6">
-                                <label class="label-ind text-emerald">Qty OK (Final)</label>
+                                <label class="label-ind text-emerald">Verified OK (To FG)</label>
                                 <input type="number" name="qty_ok_final" class="form-control input-ind text-emerald" value="{{ $p->qty_hasil_ok }}" required>
                             </div>
                             <div class="col-6">
-                                <label class="label-ind text-rose">Qty NG (Verify)</label>
-                                <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="{{ $p->qty_hasil_ng }}" required>
+                                <label class="label-ind text-rose">New NG found by QC</label>
+                                <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="0" required>
                             </div>
                         </div>
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
-                            <div class="input-group">
-                                <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light border-right-0" style="border: 2px solid #e2e8f0; border-radius: 10px 0 0 10px;">
-                                        <i class="fas fa-user-check text-muted"></i>
-                                    </span>
-                                </div>
-                                <input type="text" name="inspector_name" class="form-control input-ind border-left-0" placeholder="Type Inspector Name..." required>
-                            </div>
+                            <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Input QC Name..." required>
                         </div>
 
                         <div class="form-group mb-4">
-                            <label class="label-ind">Anomaly / Reject Reason (Optional)</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record defects...">{{ $p->keterangan }}</textarea>
+                            <label class="label-ind">Inspector Remark / Defect Note</label>
+                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Describe defects if any...">{{ $p->keterangan }}</textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-sm mb-3">COMMIT RELEASE TO INVENTORY</button>
+                        <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-sm mb-3">COMMIT RELEASE TO FG</button>
                     </form>
+                    
                     <form action="{{ route('quality.destroy', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" onsubmit="return confirm('Attention: Permanent deletion of batch. Proceed?')">
                         @csrf @method('DELETE')
-                        <button type="submit" class="btn btn-block bg-light text-danger font-weight-bold border-0" style="font-size: 11px;">REJECT & PURGE DATA</button>
+                        <button type="submit" class="btn btn-block bg-white text-muted font-weight-bold border-0" style="font-size: 11px;">PURGE BATCH DATA</button>
                     </form>
                 </div>
             </div>
@@ -142,10 +115,11 @@
             @endforelse
         </div>
 
+        {{-- 👨‍🏭 WELDING VERIFICATION --}}
         <div class="col-lg-6 mb-4">
             <div class="d-flex align-items-center mb-4 px-2 text-warning">
                 <div style="width: 5px; height: 25px; background: var(--ind-amber); border-radius: 10px;" class="mr-3"></div>
-                <h5 class="font-weight-bold m-0 text-uppercase">Welding Verification</h5>
+                <h5 class="font-weight-bold m-0 text-uppercase">Welding Verification (OK Goods)</h5>
             </div>
 
             @forelse($weldingQueue as $w)
@@ -156,7 +130,7 @@
                         <div class="part-title">{{ $w->part_no }}</div>
                     </div>
                     <div class="text-right">
-                        <label class="label-ind">Incoming WIP</label>
+                        <label class="label-ind">Incoming OK</label>
                         <div class="qty-badge text-warning" id="total-wip-{{ $w->id }}">{{ $w->qty_ok }}</div>
                     </div>
                 </div>
@@ -166,22 +140,22 @@
                         <div class="row mb-4">
                             <div class="col-6">
                                 <label class="label-ind text-emerald">Actual OK (Final)</label>
-                                <input type="number" id="ok-{{ $w->id }}" name="qty_ok_final" class="form-control input-ind text-emerald" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ok')" required>
+                                <input type="number" id="ok-{{ $w->id }}" name="qty_ok_final" class="form-control input-ind text-emerald" value="{{ $w->qty_ok }}" oninput="syncWeldingQty('{{ $w->id }}', 'ok')" required>
                             </div>
                             <div class="col-6">
                                 <label class="label-ind text-rose">Actual NG (Verify)</label>
-                                <input type="number" id="ng-{{ $w->id }}" name="qty_ng_final" class="form-control input-ind text-rose" placeholder="0" oninput="syncWeldingQty('{{ $w->id }}', 'ng')" required>
+                                <input type="number" id="ng-{{ $w->id }}" name="qty_ng_final" class="form-control input-ind text-rose" value="0" oninput="syncWeldingQty('{{ $w->id }}', 'ng')" required>
                             </div>
                         </div>
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
-                            <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Type Inspector Name..." required>
+                            <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Type Name..." required>
                         </div>
 
                         <div class="form-group mb-4">
-                            <label class="label-ind">Analysis / Notes (Optional)</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input QC analysis here...">{{ $w->keterangan }}</textarea>
+                            <label class="label-ind">Analysis Notes</label>
+                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record analysis...">{{ $w->keterangan }}</textarea>
                         </div>
 
                         <button type="submit" id="btn-{{ $w->id }}" class="btn btn-block btn-action shadow-sm" style="background: var(--ind-amber); color: #fff;">
