@@ -32,7 +32,6 @@
 </style>
 
 <div class="container-fluid main-terminal anim-fade-up">
-
     <div class="px-4 pt-3">
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" style="border-radius:15px; border-left: 6px solid var(--ind-success) !important;">
@@ -46,7 +45,6 @@
         <div><h1 class="hud-title">Terminal <span style="color: var(--ind-blue)">Line Control</span></h1></div>
         <div class="d-flex align-items-center">
             <a href="{{ route('produksi.history') }}" class="btn btn-light rounded-pill px-4 font-weight-bold btn-sm border mr-3 shadow-sm"><i class="fas fa-archive mr-2"></i> ARCHIVE</a>
-            {{-- Tombol Start --}}
             <button class="btn btn-blueprint shadow-sm" style="background: var(--ind-blue); color: #fff;" data-toggle="modal" data-target="#modalAmbilMaterial">
                 <i class="fas fa-bolt mr-2"></i> START NEW BATCH
             </button>
@@ -97,7 +95,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL INPUT HASIL (TETEP ADA DESKRIPSINYA!) --}}
+{{-- 🛡️ MODAL INPUT HASIL --}}
 @foreach($activeProductions as $p)
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -117,17 +115,28 @@
                             <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" value="0">
                         </div>
                         <div class="col-md-6">
-                            <label class="small font-weight-bold text-warning uppercase">NG Material</label>
+                            <label class="small font-weight-bold text-warning uppercase">NG Material (Global)</label>
                             <input type="number" name="qty_ng_material" id="ng_mat_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
-                            <label class="small font-weight-bold text-warning uppercase">NG Process</label>
+                            <label class="small font-weight-bold text-warning uppercase">NG Process (Global)</label>
                             <input type="number" name="qty_ng_process" id="ng_proc_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" value="0">
                         </div>
                     </div>
-                    {{-- Kotak Deskripsi --}}
-                    <div class="form-group mt-3">
+
+                    {{-- ✨ BAGIAN RINCIAN NG SPESIFIK (REQUEST BOS) ✨ --}}
+                    <div class="mt-4 border-top pt-3">
+                        <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
+                        <div id="ng_container_{{ $p->batch_id }}">
+                            </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" onclick="addNgRow({{ $p->batch_id }})">
+                            <i class="fas fa-plus mr-1"></i> TAMBAH JENIS NG
+                        </button>
+                    </div>
+
+                    <div class="form-group mt-4">
                         <label class="small font-weight-bold text-muted uppercase">Deskripsi Produksi / Alasan NG</label>
                         <textarea name="keterangan" class="form-control" rows="3" style="border-radius: 15px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Ketik alasan NG di sini..."></textarea>
                     </div>
+
                     <div class="p-3 bg-light mt-4 rounded-xl border text-center">
                         <small class="text-muted font-weight-bold uppercase">Gap Status:</small>
                         <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ $p->total_qty_batch }}</h4>
@@ -144,7 +153,7 @@
 </div>
 @endforeach
 
-{{-- 🚀 FIX: MODAL INITIALIZE BATCH (START NEW BATCH) 🚀 --}}
+{{-- MODAL INITIALIZE BATCH --}}
 <div class="modal fade" id="modalAmbilMaterial" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius:24px;">
@@ -179,18 +188,75 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // LIST PENYAKIT (NG) SESUAI FOTO
+    const listPenyakit = ["Burry", "Dented", "Deform", "Oil Maru", "Spring Back", "Nobi", "Crack", "Scratch", "Pull Up", "Pull Down", "NG Thickness", "Wrinkle", "Missing Hole"];
+
+    // FUNGSI TAMBAH BARIS NG
+    function addNgRow(batchId) {
+        const id = Date.now();
+        let options = listPenyakit.map(p => `<option value="${p}">${p}</option>`).join('');
+        const html = `
+            <div class="row no-gutters mb-2 animate__animated animate__fadeInDown" id="row-${id}">
+                <div class="col-7 pr-1">
+                    <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold">
+                        ${options}
+                    </select>
+                </div>
+                <div class="col-3 pr-1">
+                    <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" 
+                    placeholder="Qty" min="1" required data-id="${batchId}" oninput="triggerCalc(${batchId})">
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        $(`#ng_container_${batchId}`).append(html);
+        triggerCalc(batchId);
+    }
+
+    function removeNgRow(id, batchId) {
+        $(`#row-${id}`).remove();
+        triggerCalc(batchId);
+    }
+
+    function triggerCalc(batchId) {
+        // Trigger manual input event on existing calc-input to reuse the logic
+        $(`#ok_${batchId}`).trigger('input');
+    }
+
 $(document).ready(function() {
-    // SCRIPT CALCULATION 
-    $(document).on('input', '.calc-input', function() {
+    // SCRIPT CALCULATION (SUDAH DISESUAIKAN DENGAN NG DINAMIS)
+    $(document).on('input', '.calc-input, .ng-qty-input', function() {
         let id = $(this).data('id');
         let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
-        let accounted = (parseInt($(`#ok_${id}`).val()) || 0) + (parseInt($(`#return_${id}`).val()) || 0) + (parseInt($(`#ng_mat_${id}`).val()) || 0) + (parseInt($(`#ng_proc_${id}`).val()) || 0);
+        
+        // Hitung rincian NG dinamis
+        let dynamicNgSum = 0;
+        $(`#ng_container_${id} .ng-qty-input`).each(function() {
+            dynamicNgSum += parseInt($(this).val()) || 0;
+        });
+
+        let accounted = (parseInt($(`#ok_${id}`).val()) || 0) + 
+                        (parseInt($(`#return_${id}`).val()) || 0) + 
+                        (parseInt($(`#ng_mat_${id}`).val()) || 0) + 
+                        (parseInt($(`#ng_proc_${id}`).val()) || 0) + 
+                        dynamicNgSum;
+
         let gap = target - accounted;
         $(`#gap_${id}`).text(gap.toLocaleString());
         $(`#bar_${id}`).css('width', ((accounted / target) * 100) + '%');
+        
         let btn = $(`#btn_${id}`), msg = $(`#police_msg_${id}`);
-        if (accounted == target) { msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC!'); btn.prop('disabled', false); }
-        else { msg.removeClass('alert-success').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); btn.prop('disabled', true); }
+        if (accounted == target) { 
+            msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC!'); 
+            btn.prop('disabled', false); 
+        } else { 
+            msg.removeClass('alert-success').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); 
+            btn.prop('disabled', true); 
+        }
     });
 
     // SCRIPT CASCADING DROPDOWN 
