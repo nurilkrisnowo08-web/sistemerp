@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class ProduksiController extends Controller
 {
@@ -91,7 +92,7 @@ class ProduksiController extends Controller
     }
 
     /**
-     * ✨ FIX UPDATE RESULT: Belok ke Quality Gate rill!
+     * ✨ UPDATE RESULT: Sekarang memicu robot Dashboard
      */
     public function updateResult(Request $request, $id) 
     {
@@ -108,7 +109,7 @@ class ProduksiController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Logic Return Material (Tetap rill)
+            // 1. Logic Return Material
             if ($qty_return > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -130,7 +131,6 @@ class ProduksiController extends Controller
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
 
                 if ($target == 'WELDING') {
-                    // ✅ JIKA KE WELDING: Tetap logic lama rill (Langsung Masuk)
                     DB::table('finished_goods')
                         ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                         ->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
@@ -142,19 +142,17 @@ class ProduksiController extends Controller
                         'created_at'   => now(),
                     ]);
                     
-                    $status_akhir = 'COMPLETED'; // Langsung selesai rill
+                    $status_akhir = 'COMPLETED'; 
                     $routeMsg = "Barang ditransfer ke GUDANG WELDING.";
                 } else {
-                    // ✅ JIKA KE FG: Masuk ke Quality Gate rill!
-                    // Note: Stok TIDAK di-increment di sini rill, nanti di QualityGateController
                     $status_akhir = 'WAITING_QC'; 
-                    $routeMsg = "Barang dikirim ke QUALITY GATE untuk verifikasi rill.";
+                    $routeMsg = "Barang dikirim ke QUALITY GATE untuk verifikasi.";
                 }
             } else {
-                $status_akhir = 'COMPLETED'; // Kalau gak ada barang OK rill
+                $status_akhir = 'COMPLETED'; 
             }
 
-            // 3. ✨ UPDATE PRODUKSI BATCHES: Status disesuaikan rill!
+            // 3. UPDATE PRODUKSI BATCHES
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->update([
                 'qty_hasil_ok'         => $qty_ok, 
                 'qty_ng_material'      => $qty_ng_mat,
@@ -162,16 +160,72 @@ class ProduksiController extends Controller
                 'qty_hasil_ng'         => $qty_ng_mat + $qty_ng_proc,
                 'qty_return_warehouse' => $qty_return,
                 'keterangan'           => $keterangan,
-                'status'               => $status_akhir, // Dinamis rill (WAITING_QC atau COMPLETED)
+                'status'               => $status_akhir, 
                 'updated_at'           => now()
             ]);
 
+            // ✨ 4. PANGGIL ROBOT SINKRONISASI DASHBOARD ✨
+            // Kita sinkronkan ID yang baru saja di-update
+            $this->syncToActual($id);
+
             DB::commit();
-            return redirect()->route('produksi.index')->with('success', 'Batch diproses rill. ' . ($routeMsg ?? ''));
+            return redirect()->route('produksi.index')->with('success', 'Batch diproses. ' . ($routeMsg ?? ''));
 
         } catch (\Exception $e) { 
             DB::rollback(); 
-            return back()->with('error', 'Gagal rill! Pesan: ' . $e->getMessage()); 
+            return back()->with('error', 'Gagal! Pesan: ' . $e->getMessage()); 
+        }
+    }
+
+    /**
+     * ✨ FUNGSI BARU: ROBOT SINKRONISASI (Manual PHP Sync)
+     * Agar Dashboard Hub terupdate otomatis
+     */
+    private function syncToActual($batchId)
+    {
+        $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
+        if (!$batch) return;
+
+        $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+        $dateOnly = date('Y-m-d', strtotime($batch->created_at));
+
+        $actual = DB::table('production_actuals')
+            ->where('part_no', $batch->material_code)
+            ->where('line_code', $lineCode)
+            ->where('shift', $batch->shift)
+            ->whereDate('created_at', $dateOnly)
+            ->first();
+
+        $ngSum = ($batch->qty_ng_material + $batch->qty_ng_process);
+
+        if ($actual) {
+            DB::table('production_actuals')->where('id', $actual->id)->update([
+                'qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok,
+                'qty_ng' => $actual->qty_ng + $ngSum,
+                'updated_at' => now()
+            ]);
+            $actualId = $actual->id;
+        } else {
+            $actualId = DB::table('production_actuals')->insertGetId([
+                'part_no'    => $batch->material_code,
+                'line_code'  => $lineCode,
+                'shift'      => $batch->shift,
+                'qty_ok'     => $batch->qty_hasil_ok,
+                'qty_ng'     => $ngSum,
+                'created_at' => $batch->created_at,
+                'updated_at' => now()
+            ]);
+        }
+
+        if ($batch->qty_ng_material > 0) {
+            DB::table('production_ng_logs')->insert([
+                'actual_id' => $actualId, 'ng_type' => 'NG Material', 'qty' => $batch->qty_ng_material, 'created_at' => $batch->created_at
+            ]);
+        }
+        if ($batch->qty_ng_process > 0) {
+            DB::table('production_ng_logs')->insert([
+                'actual_id' => $actualId, 'ng_type' => 'NG Process', 'qty' => $batch->qty_ng_process, 'created_at' => $batch->created_at
+            ]);
         }
     }
 
@@ -217,6 +271,9 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
+    /**
+     * ✨ HISTORY: Sekarang menampilkan WAITING_QC juga!
+     */
     public function history() 
     {
         $history = DB::table('produksi_batches')
@@ -236,7 +293,9 @@ class ProduksiController extends Controller
                 DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
                 DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs') 
             )
-            ->where('produksi_batches.status', 'COMPLETED')
+            // ✨ PERUBAHAN DISINI: Izinkan status WAITING_QC muncul di History
+            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+            
             ->groupBy(
                 'no_produksi', 'material_code', 'shift', 'updated_at', 
                 'qty_hasil_ok', 'qty_ng_material', 'qty_ng_process', 'qty_return_warehouse', 'keterangan', 'status'
