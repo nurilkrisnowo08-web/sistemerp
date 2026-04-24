@@ -92,7 +92,7 @@ class ProduksiController extends Controller
     }
 
     /**
-     * ✨ FIX UPDATE RESULT: Sekarang Full Menggunakan NG Spesifik (Tanpa NG Global)
+     * ✨ FIX UPDATE RESULT: Mengunci rincian NG berdasarkan NO_PRODUKSI
      */
     public function updateResult(Request $request, $id) 
     {
@@ -102,7 +102,7 @@ class ProduksiController extends Controller
         $qty_return = (int)$request->qty_return_warehouse;
         $qty_ok = (int)$request->qty_hasil_ok; 
         
-        // 1. Logic Hitung Rincian NG Spesifik dari Modal Baru
+        // 1. Hitung Rincian NG Spesifik
         $total_ng_spesifik = 0;
         $ng_details = [];
         if ($request->has('ng_detail_type')) {
@@ -115,15 +115,13 @@ class ProduksiController extends Controller
             }
         }
 
-        // Karena NG Global dihapus di view, maka total NG adalah murni dari rincian spesifik
         $qty_ng_total = $total_ng_spesifik;
-
         $keterangan = $request->keterangan; 
         $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
 
         DB::beginTransaction();
         try {
-            // Logic Return Material (Gudang RM)
+            // Logic Return Material
             if ($qty_return > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -136,7 +134,7 @@ class ProduksiController extends Controller
                 }
             }
 
-            // Routing Logic (Transfer ke Gudang Welding atau Quality Gate)
+            // Routing Logic
             if ($qty_ok > 0) {
                 $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
@@ -156,8 +154,8 @@ class ProduksiController extends Controller
             // 2. UPDATE PRODUKSI BATCHES
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->update([
                 'qty_hasil_ok'         => $qty_ok, 
-                'qty_ng_material'      => 0, // Kita set 0 karena sudah spesifik
-                'qty_ng_process'       => $qty_ng_total, // Simpan total rincian ke sini
+                'qty_ng_material'      => 0, 
+                'qty_ng_process'       => $qty_ng_total, 
                 'qty_hasil_ng'         => $qty_ng_total,
                 'qty_return_warehouse' => $qty_return,
                 'keterangan'           => $keterangan,
@@ -168,7 +166,7 @@ class ProduksiController extends Controller
             // ✨ 3. JALANKAN ROBOT SYNC UNTUK DASHBOARD
             $this->syncToActual($id);
 
-            // ✨ 4. SIMPAN RINCIAN NG KE TABEL LOGS (Untuk Grafik Detail)
+            // ✨ 4. SIMPAN RINCIAN NG KE TABEL LOGS (DITAMBAHKAN no_produksi)
             if (!empty($ng_details)) {
                 $actual = DB::table('production_actuals')
                     ->where('part_no', $p->material_code)
@@ -178,10 +176,11 @@ class ProduksiController extends Controller
                 if ($actual) {
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert([
-                            'actual_id'  => $actual->id,
-                            'ng_type'    => $detail['type'],
-                            'qty'        => $detail['qty'],
-                            'created_at' => now()
+                            'actual_id'   => $actual->id,
+                            'ng_type'     => $detail['type'],
+                            'qty'         => $detail['qty'],
+                            'no_produksi' => $p->no_produksi, // ✨ Kunci rincian ke batch ini
+                            'created_at'  => now()
                         ]);
                     }
                 }
@@ -196,9 +195,6 @@ class ProduksiController extends Controller
         }
     }
 
-    /**
-     * 🤖 ROBOT SINKRONISASI (Manual PHP Sync)
-     */
     private function syncToActual($batchId)
     {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
@@ -277,45 +273,45 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
-   public function history() 
-{
-    $history = DB::table('produksi_batches')
-        ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-        ->select(
-            'produksi_batches.no_produksi',
-            'produksi_batches.material_code',
-            'produksi_batches.shift',
-            'produksi_batches.updated_at',
-            'produksi_batches.qty_hasil_ok',
-            'produksi_batches.qty_hasil_ng',      // Tampilkan di SELECT
-            'produksi_batches.qty_ng_material',
-            'produksi_batches.qty_ng_process',
-            'produksi_batches.qty_return_warehouse',
-            'produksi_batches.keterangan', 
-            'produksi_batches.status',
-            DB::raw('MIN(produksi_batches.id) as id'),
-            DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
-            DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs') 
-        )
-        ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-        ->groupBy(
-            'produksi_batches.no_produksi', 
-            'produksi_batches.material_code', 
-            'produksi_batches.shift', 
-            'produksi_batches.updated_at', 
-            'produksi_batches.qty_hasil_ok',
-            'produksi_batches.qty_hasil_ng',      // ✨ TAMBAHKAN INI DI GROUP BY
-            'produksi_batches.qty_ng_material',   // ✨ TAMBAHKAN INI JUGA
-            'produksi_batches.qty_ng_process',    // ✨ TAMBAHKAN INI JUGA
-            'produksi_batches.qty_return_warehouse', 
-            'produksi_batches.keterangan', 
-            'produksi_batches.status'
-        )
-        ->orderBy('updated_at', 'desc')
-        ->get();
+    public function history() 
+    {
+        $history = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->select(
+                'produksi_batches.no_produksi',
+                'produksi_batches.material_code',
+                'produksi_batches.shift',
+                'produksi_batches.updated_at',
+                'produksi_batches.qty_hasil_ok',
+                'produksi_batches.qty_hasil_ng',      
+                'produksi_batches.qty_ng_material',
+                'produksi_batches.qty_ng_process',
+                'produksi_batches.qty_return_warehouse',
+                'produksi_batches.keterangan', 
+                'produksi_batches.status',
+                DB::raw('MIN(produksi_batches.id) as id'),
+                DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
+                DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs') 
+            )
+            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+            ->groupBy(
+                'produksi_batches.no_produksi', 
+                'produksi_batches.material_code', 
+                'produksi_batches.shift', 
+                'produksi_batches.updated_at', 
+                'produksi_batches.qty_hasil_ok',
+                'produksi_batches.qty_hasil_ng',      
+                'produksi_batches.qty_ng_material',   
+                'produksi_batches.qty_ng_process',    
+                'produksi_batches.qty_return_warehouse', 
+                'produksi_batches.keterangan', 
+                'produksi_batches.status'
+            )
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
-    return view('Produksi.history', compact('history'));
-}
+        return view('Produksi.history', compact('history'));
+    }
 
     public function returnToRM($id) {
         $p = DB::table('produksi_batches')->where('id', $id)->first();

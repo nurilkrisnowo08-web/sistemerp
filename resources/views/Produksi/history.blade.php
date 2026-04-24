@@ -33,6 +33,7 @@
 
     .ng-mini-list { font-size: 10px; color: var(--ind-danger); font-family: 'JetBrains Mono'; margin-top: 5px; font-weight: 700; }
     .ng-detail-box { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 10px; padding: 12px; }
+    .ng-detail-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #feb2b2; padding: 5px 0; font-size: 12px; font-family: 'JetBrains Mono'; font-weight: 700; }
 </style>
 
 <div class="container-fluid py-4">
@@ -94,15 +95,13 @@
                         $yield = $batchTotal > 0 ? ($h->qty_hasil_ok / $batchTotal) * 100 : 0;
                         $color = ($yield >= 95) ? 'var(--ind-success)' : (($yield >= 85) ? 'var(--ind-warning)' : 'var(--ind-danger)');
 
-                        // Ambil rincian NG spesifik (Burry, Dented, dll)
+                        // ✨ FIX: AMBIL DATA MURNI BERDASARKAN NO_PRODUKSI (AGAR TIDAK NGACO)
                         $rincian = DB::table('production_ng_logs')
-                            ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
-                            ->where('production_actuals.part_no', $h->material_code)
-                            ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($h->updated_at)))
+                            ->where('no_produksi', $h->no_produksi)
                             ->select('ng_type', 'qty')
                             ->get();
                         
-                        $h->specific_ng = $rincian; // Sisipkan ke objek untuk Modal
+                        $h->specific_ng = $rincian; 
                     @endphp
                     <tr class="row-clickable" onclick="showDetail({{ json_encode($h) }})">
                         <td class="text-muted small">{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
@@ -208,7 +207,7 @@
         if (h.specific_ng && h.specific_ng.length > 0) {
             h.specific_ng.forEach(item => {
                 listDiv.innerHTML += `
-                    <div class="d-flex justify-content-between mb-1 small font-weight-bold" style="font-family:'JetBrains Mono'">
+                    <div class="ng-detail-item">
                         <span class="text-danger">• ${item.ng_type.toUpperCase()}</span>
                         <span>${item.qty} PCS</span>
                     </div>
