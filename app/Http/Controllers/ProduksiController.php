@@ -168,8 +168,11 @@ class ProduksiController extends Controller
 
             // ✨ 4. SIMPAN RINCIAN NG KE TABEL LOGS (DITAMBAHKAN no_produksi)
             if (!empty($ng_details)) {
+                // Cari actual_id untuk referensi Dashboard
+                $lineCode = DB::table('line')->where('id', $p->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
                 $actual = DB::table('production_actuals')
                     ->where('part_no', $p->material_code)
+                    ->where('line_code', $lineCode)
                     ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))
                     ->first();
 
@@ -177,9 +180,9 @@ class ProduksiController extends Controller
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert([
                             'actual_id'   => $actual->id,
+                            'no_produksi' => $p->no_produksi, // ✨ Kunci rincian ke batch ini
                             'ng_type'     => $detail['type'],
                             'qty'         => $detail['qty'],
-                            'no_produksi' => $p->no_produksi, // ✨ Kunci rincian ke batch ini
                             'created_at'  => now()
                         ]);
                     }
