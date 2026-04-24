@@ -92,7 +92,7 @@ class ProduksiController extends Controller
     }
 
     /**
-     * ✨ UPDATE RESULT: Sekarang Mendukung Rincian NG Spesifik
+     * ✨ FIX UPDATE RESULT: Sekarang Full Menggunakan NG Spesifik (Tanpa NG Global)
      */
     public function updateResult(Request $request, $id) 
     {
@@ -102,7 +102,7 @@ class ProduksiController extends Controller
         $qty_return = (int)$request->qty_return_warehouse;
         $qty_ok = (int)$request->qty_hasil_ok; 
         
-        // 1. Logic Hitung Rincian NG Spesifik
+        // 1. Logic Hitung Rincian NG Spesifik dari Modal Baru
         $total_ng_spesifik = 0;
         $ng_details = [];
         if ($request->has('ng_detail_type')) {
@@ -115,17 +115,15 @@ class ProduksiController extends Controller
             }
         }
 
-        // Gunakan total spesifik jika ada, jika tidak pakai inputan global lama
-        $qty_ng_mat = (int)($request->qty_ng_material ?? 0);
-        $qty_ng_proc = (int)($request->qty_ng_process ?? 0);
-        $qty_ng_total = ($total_ng_spesifik > 0) ? $total_ng_spesifik : ($qty_ng_mat + $qty_ng_proc);
+        // Karena NG Global dihapus di view, maka total NG adalah murni dari rincian spesifik
+        $qty_ng_total = $total_ng_spesifik;
 
         $keterangan = $request->keterangan; 
         $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
 
         DB::beginTransaction();
         try {
-            // Logic Return Material
+            // Logic Return Material (Gudang RM)
             if ($qty_return > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -138,7 +136,7 @@ class ProduksiController extends Controller
                 }
             }
 
-            // Routing Logic
+            // Routing Logic (Transfer ke Gudang Welding atau Quality Gate)
             if ($qty_ok > 0) {
                 $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
@@ -148,10 +146,8 @@ class ProduksiController extends Controller
                         ->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
                     DB::table('production_logs')->insert(['part_no' => $p->material_code, 'qty' => $qty_ok, 'process_type' => 'WELDING', 'created_at' => now()]);
                     $status_akhir = 'COMPLETED'; 
-                    $routeMsg = "Barang ditransfer ke GUDANG WELDING.";
                 } else {
                     $status_akhir = 'WAITING_QC'; 
-                    $routeMsg = "Barang dikirim ke QUALITY GATE.";
                 }
             } else {
                 $status_akhir = 'COMPLETED'; 
@@ -160,8 +156,8 @@ class ProduksiController extends Controller
             // 2. UPDATE PRODUKSI BATCHES
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->update([
                 'qty_hasil_ok'         => $qty_ok, 
-                'qty_ng_material'      => $qty_ng_mat,
-                'qty_ng_process'       => $qty_ng_total - $qty_ng_mat, // Penyesuaian sisa
+                'qty_ng_material'      => 0, // Kita set 0 karena sudah spesifik
+                'qty_ng_process'       => $qty_ng_total, // Simpan total rincian ke sini
                 'qty_hasil_ng'         => $qty_ng_total,
                 'qty_return_warehouse' => $qty_return,
                 'keterangan'           => $keterangan,
@@ -169,10 +165,10 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
-            // ✨ 3. PANGGIL ROBOT SINKRONISASI DASHBOARD
+            // ✨ 3. JALANKAN ROBOT SYNC UNTUK DASHBOARD
             $this->syncToActual($id);
 
-            // ✨ 4. SIMPAN RINCIAN NG SPESIFIK KE DATABASE
+            // ✨ 4. SIMPAN RINCIAN NG KE TABEL LOGS (Untuk Grafik Detail)
             if (!empty($ng_details)) {
                 $actual = DB::table('production_actuals')
                     ->where('part_no', $p->material_code)
@@ -192,7 +188,7 @@ class ProduksiController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('produksi.index')->with('success', 'Batch diproses & Rincian NG tersimpan. ' . ($routeMsg ?? ''));
+            return redirect()->route('produksi.index')->with('success', 'Data Sync Berhasil dengan Rincian NG!');
 
         } catch (\Exception $e) { 
             DB::rollback(); 
@@ -201,7 +197,7 @@ class ProduksiController extends Controller
     }
 
     /**
-     * 🤖 ROBOT SINKRONISASI
+     * 🤖 ROBOT SINKRONISASI (Manual PHP Sync)
      */
     private function syncToActual($batchId)
     {
@@ -226,9 +222,8 @@ class ProduksiController extends Controller
                 'qty_ng' => $actual->qty_ng + $ngSum,
                 'updated_at' => now()
             ]);
-            $actualId = $actual->id;
         } else {
-            $actualId = DB::table('production_actuals')->insertGetId([
+            DB::table('production_actuals')->insert([
                 'part_no'    => $batch->material_code,
                 'line_code'  => $lineCode,
                 'shift'      => $batch->shift,

@@ -95,7 +95,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL INPUT HASIL --}}
+{{-- 🛡️ MODAL INPUT HASIL (CLEAN VERSION: NO GLOBAL NG) --}}
 @foreach($activeProductions as $p)
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -111,19 +111,15 @@
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
                             <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
-                            <label class="small font-weight-bold text-danger uppercase">Return (Sisa Material)</label>
-                            <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" value="0">
                         </div>
                         <div class="col-md-6">
-                            <label class="small font-weight-bold text-warning uppercase">NG Material (Global)</label>
-                            <input type="number" name="qty_ng_material" id="ng_mat_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
-                            <label class="small font-weight-bold text-warning uppercase">NG Process (Global)</label>
-                            <input type="number" name="qty_ng_process" id="ng_proc_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" value="0">
+                            <label class="small font-weight-bold text-danger uppercase">Return (Sisa Material)</label>
+                            <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
                         </div>
                     </div>
 
-                    {{-- ✨ BAGIAN RINCIAN NG SPESIFIK (REQUEST BOS) ✨ --}}
-                    <div class="mt-4 border-top pt-3">
+                    {{-- 🛠️ RINCIAN NG SPESIFIK (REPLACING GLOBAL NG) --}}
+                    <div class="mt-2 border-top pt-3">
                         <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
                         <div id="ng_container_{{ $p->batch_id }}">
                             </div>
@@ -133,8 +129,8 @@
                     </div>
 
                     <div class="form-group mt-4">
-                        <label class="small font-weight-bold text-muted uppercase">Deskripsi Produksi / Alasan NG</label>
-                        <textarea name="keterangan" class="form-control" rows="3" style="border-radius: 15px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Ketik alasan NG di sini..."></textarea>
+                        <label class="small font-weight-bold text-muted uppercase">Keterangan Produksi</label>
+                        <textarea name="keterangan" class="form-control" rows="2" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Catatan tambahan jika diperlukan..."></textarea>
                     </div>
 
                     <div class="p-3 bg-light mt-4 rounded-xl border text-center">
@@ -188,10 +184,8 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // LIST PENYAKIT (NG) SESUAI FOTO
     const listPenyakit = ["Burry", "Dented", "Deform", "Oil Maru", "Spring Back", "Nobi", "Crack", "Scratch", "Pull Up", "Pull Down", "NG Thickness", "Wrinkle", "Missing Hole"];
 
-    // FUNGSI TAMBAH BARIS NG
     function addNgRow(batchId) {
         const id = Date.now();
         let options = listPenyakit.map(p => `<option value="${p}">${p}</option>`).join('');
@@ -223,26 +217,24 @@
     }
 
     function triggerCalc(batchId) {
-        // Trigger manual input event on existing calc-input to reuse the logic
         $(`#ok_${batchId}`).trigger('input');
     }
 
 $(document).ready(function() {
-    // SCRIPT CALCULATION (SUDAH DISESUAIKAN DENGAN NG DINAMIS)
+    // ✨ UPDATE: LOGIKA KALKULASI GAP (NG GLOBAL DIHAPUS)
     $(document).on('input', '.calc-input, .ng-qty-input', function() {
         let id = $(this).data('id');
         let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
         
-        // Hitung rincian NG dinamis
+        // Hitung akumulasi dari rincian NG spesifik
         let dynamicNgSum = 0;
         $(`#ng_container_${id} .ng-qty-input`).each(function() {
             dynamicNgSum += parseInt($(this).val()) || 0;
         });
 
+        // Akuntansi: OK + Return + NG Spesifik
         let accounted = (parseInt($(`#ok_${id}`).val()) || 0) + 
                         (parseInt($(`#return_${id}`).val()) || 0) + 
-                        (parseInt($(`#ng_mat_${id}`).val()) || 0) + 
-                        (parseInt($(`#ng_proc_${id}`).val()) || 0) + 
                         dynamicNgSum;
 
         let gap = target - accounted;
@@ -259,7 +251,7 @@ $(document).ready(function() {
         }
     });
 
-    // SCRIPT CASCADING DROPDOWN 
+    // CASCADING DROPDOWN 
     $('#sel_customer').change(function() {
         $.get('/produksi/get-specs/' + $(this).val(), function(data) {
             let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
