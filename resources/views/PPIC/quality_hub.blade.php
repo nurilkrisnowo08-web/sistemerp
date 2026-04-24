@@ -78,18 +78,19 @@
     </div>
 
     <div class="row">
+        {{-- SEKSI REJECT BREAKDOWN (SUDAH OTOMATIS SPESIFIK) --}}
         <div class="col-md-5">
-            <div class="card card-custom shadow-sm p-4 bg-white">
+            <div class="card card-custom shadow-sm p-4 bg-white" style="min-height: 450px;">
                 <h5 class="font-black mb-4"><i class="fas fa-search-minus mr-2 text-danger"></i> REJECT_BREAKDOWN</h5>
                 <div class="ng-list">
                     @forelse($ngRanking as $ng)
                     <div class="mb-4">
+                        @php $pct = ($summary->total_ng > 0) ? ($ng->total / $summary->total_ng) * 100 : 0; @endphp
                         <div class="d-flex justify-content-between mb-1">
-                            <span class="font-weight-bold small text-dark">{{ $ng->ng_type }}</span>
-                            <span class="font-weight-bold small text-danger">{{ $ng->total }} Pcs</span>
+                            <span class="font-weight-bold small text-dark">{{ strtoupper($ng->ng_type) }}</span>
+                            <span class="font-weight-bold small text-danger">{{ number_format($ng->total) }} Pcs ({{ round($pct, 1) }}%)</span>
                         </div>
                         <div class="progress progress-ng">
-                            @php $pct = ($ng->total / ($summary->total_ng ?: 1)) * 100; @endphp
                             <div class="progress-bar bg-danger shadow-sm" style="width: {{ $pct }}%"></div>
                         </div>
                     </div>

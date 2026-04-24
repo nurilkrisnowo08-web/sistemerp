@@ -23,28 +23,28 @@
     .input-ind:focus { border-color: var(--ind-blue); outline: none; }
     .btn-action { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; padding: 14px; border-radius: 10px; text-transform: uppercase; font-weight: 800; border: none; }
     .empty-placeholder { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 4rem; color: #94a3b8; font-weight: 600; text-align: center; }
+    
+    /* Style tambahan untuk rincian NG */
+    .ng-analysis-box { background: #fff1f2; border: 1px dashed #fda4af; border-radius: 12px; padding: 12px; margin-bottom: 20px; }
+    .ng-item { display: flex; justify-content: space-between; font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 700; color: var(--ind-rose); border-bottom: 1px solid #fecdd3; padding: 4px 0; }
 </style>
 
 <div class="container-fluid py-4">
-    {{-- 🛸 Header Section --}}
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-xl border shadow-sm">
         <div>
             <h2 class="industrial-header m-0">UNIT_VERIFICATION <span class="text-primary">v4.0</span></h2>
             <small class="text-muted font-weight-bold uppercase">Operational Mode: Active Inspection</small>
         </div>
         <div class="text-right d-flex align-items-center">
-            {{-- ✨ Tombol History QC Baru --}}
             <a href="{{ route('quality.history') }}" class="btn btn-outline-dark rounded-pill px-4 font-weight-bold mr-3 shadow-sm">
                 <i class="fas fa-history mr-2"></i> QC_HISTORY_AUDIT
             </a>
-
             <span class="badge badge-outline-primary border-primary px-3 py-2 text-primary font-weight-bold" style="border: 2px solid; border-radius: 12px;">
                 <i class="fas fa-sync-alt fa-spin mr-2"></i> DATA FEED ACTIVE
             </span>
         </div>
     </div>
 
-    {{-- Alerts --}}
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm mb-4" style="border-left: 6px solid #10b981 !important;">
             <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
@@ -77,6 +77,28 @@
                     </div>
                 </div>
                 <div class="card-body p-4">
+                    {{-- ✨ RINCIAN NG SPESIFIK DARI PRODUKSI ✨ --}}
+                    @php
+                        $ngLogs = DB::table('production_ng_logs')
+                            ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
+                            ->where('production_actuals.part_no', $p->material_code)
+                            ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($p->created_at)))
+                            ->select('production_ng_logs.ng_type', 'production_ng_logs.qty')
+                            ->get();
+                    @endphp
+
+                    @if($ngLogs->count() > 0)
+                    <div class="ng-analysis-box">
+                        <label class="label-ind text-danger"><i class="fas fa-microscope mr-1"></i> Reject Breakdown (Operator Report)</label>
+                        @foreach($ngLogs as $log)
+                            <div class="ng-item">
+                                <span>• {{ strtoupper($log->ng_type) }}</span>
+                                <span>{{ $log->qty }} PCS</span>
+                            </div>
+                        @endforeach
+                    </div>
+                    @endif
+
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST">
                         @csrf
                         <div class="row mb-4">
@@ -86,7 +108,7 @@
                             </div>
                             <div class="col-6">
                                 <label class="label-ind text-rose">Qty NG (Verify)</label>
-                                <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="0" required>
+                                <input type="number" name="qty_ng_final" class="form-control input-ind text-rose" value="{{ $p->qty_hasil_ng }}" required>
                             </div>
                         </div>
 
@@ -104,7 +126,7 @@
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Anomaly / Reject Reason (Optional)</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record defects..."></textarea>
+                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record defects...">{{ $p->keterangan }}</textarea>
                         </div>
 
                         <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-sm mb-3">COMMIT RELEASE TO INVENTORY</button>
@@ -159,7 +181,7 @@
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Analysis / Notes (Optional)</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input QC analysis here..."></textarea>
+                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Input QC analysis here...">{{ $w->keterangan }}</textarea>
                         </div>
 
                         <button type="submit" id="btn-{{ $w->id }}" class="btn btn-block btn-action shadow-sm" style="background: var(--ind-amber); color: #fff;">

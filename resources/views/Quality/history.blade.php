@@ -35,12 +35,14 @@
     .chart-box { background: #fff; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
     
     /* ✨ Remark Style */
-    .remark-text { font-size: 11px; color: #64748b; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .remark-text { font-size: 11px; color: #64748b; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+    .ng-mini-list { font-size: 10px; color: var(--ind-rose); font-family: 'JetBrains Mono'; margin-top: 4px; line-height: 1.2; }
 
     /* Modal Detail */
     .modal-content { border-radius: 24px; border: none; }
     .detail-label { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
     .detail-value { font-weight: 700; color: var(--ind-navy); font-size: 15px; }
+    .ng-detail-box { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 15px; }
 </style>
 
 <div class="container-fluid py-4">
@@ -91,7 +93,7 @@
                         <th class="text-danger">NG</th>
                         <th>Yield</th>
                         <th>Inspector</th>
-                        <th class="text-left">Analysis / Remark</th> {{-- ✨ HEADER BARU --}}
+                        <th class="text-left">Analysis / NG Breakdown</th> {{-- ✨ HEADER DISESUAIKAN --}}
                     </tr>
                 </thead>
                 <tbody class="bg-white">
@@ -99,6 +101,17 @@
                     @php
                         $total = (float)$h->qty_ok + (float)$h->qty_ng;
                         $yield = $total > 0 ? ($h->qty_ok / $total) * 100 : 0;
+
+                        // ✨ QUERY RINCIAN NG SPESIFIK UNTUK BARIS INI
+                        $logs = DB::table('production_ng_logs')
+                            ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
+                            ->where('production_actuals.part_no', $h->part_no)
+                            ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($h->created_at)))
+                            ->select('ng_type', 'qty')
+                            ->get();
+                        
+                        // Sisipkan logs ke dalam objek agar terbaca di Modal JS
+                        $h->specific_ng = $logs;
                     @endphp
                     <tr onclick="showDetail({{ json_encode($h) }})">
                         <td class="text-left pl-4 text-muted small">{{ \Carbon\Carbon::parse($h->created_at)->format('d/m/Y H:i') }}</td>
@@ -118,7 +131,15 @@
                         </td>
                         <td class="text-uppercase small font-weight-bold">{{ $h->inspector }}</td>
                         <td class="text-left">
-                            <div class="remark-text">{{ $h->ng_reason ?: '-' }}</div> {{-- ✨ DATA BARU --}}
+                            <div class="remark-text">{{ $h->ng_reason ?: 'Regular Inspection' }}</div>
+                            {{-- ✨ TAMPILKAN RINCIAN NG KECIL DI TABEL --}}
+                            @if($logs->count() > 0)
+                                <div class="ng-mini-list">
+                                    @foreach($logs as $l)
+                                        • {{ $l->ng_type }} ({{ $l->qty }}) 
+                                    @endforeach
+                                </div>
+                            @endif
                         </td>
                     </tr>
                     @empty
@@ -143,17 +164,25 @@
                     <div class="detail-label">Batch Identifier</div>
                     <div class="h4 font-weight-bold text-primary mt-1" id="det-batch" style="font-family: 'Orbitron';"></div>
                 </div>
-                <div class="row">
+                <div class="row mb-4">
                     <div class="col-6 mb-3 border-right"><div class="detail-label">Part No</div><div class="detail-value" id="det-part"></div></div>
                     <div class="col-6 mb-3"><div class="detail-label">Origin</div><div class="detail-value" id="det-origin"></div></div>
                     <div class="col-4 mb-3 border-right"><div class="detail-label">Qty OK</div><div class="detail-value text-success h5" id="det-ok"></div></div>
                     <div class="col-4 mb-3 border-right"><div class="detail-label">Qty NG</div><div class="detail-value text-danger h5" id="det-ng"></div></div>
                     <div class="col-4 mb-3"><div class="detail-label">Yield</div><div class="detail-value" id="det-yield"></div></div>
                     <div class="col-12 mb-3"><div class="detail-label">Inspector Name</div><div class="detail-value" id="det-inspector"></div></div>
-                    <div class="col-12">
-                        <div class="detail-label">Analysis / Defect Remark</div>
-                        <div class="p-3 bg-light rounded-xl border mt-1 text-muted small" id="det-reason" style="min-height: 80px;"></div>
-                    </div>
+                </div>
+
+                {{-- ✨ BOX RINCIAN NG SPESIFIK DI MODAL --}}
+                <div class="mb-4">
+                    <div class="detail-label mb-2">Specific Reject Breakdown (NG)</div>
+                    <div id="det-ng-list" class="ng-detail-box">
+                        </div>
+                </div>
+
+                <div class="col-12 p-0">
+                    <div class="detail-label">QC Analysis Notes</div>
+                    <div class="p-3 bg-light rounded-xl border mt-1 text-muted small" id="det-reason" style="min-height: 60px;"></div>
                 </div>
             </div>
         </div>
@@ -183,7 +212,7 @@
     };
     new ApexCharts(document.querySelector("#qualityChart"), options).render();
 
-    // 2. MODAL DETAIL
+    // 2. MODAL DETAIL (Disesuaikan untuk NG Spesifik)
     function showDetail(data) {
         const total = parseFloat(data.qty_ok) + parseFloat(data.qty_ng);
         const yieldVal = total > 0 ? ((data.qty_ok / total) * 100).toFixed(1) : 0;
@@ -195,7 +224,24 @@
         document.getElementById('det-ng').innerText = data.qty_ng + " PCS";
         document.getElementById('det-yield').innerText = yieldVal + "%";
         document.getElementById('det-inspector').innerText = data.inspector;
-        document.getElementById('det-reason').innerText = data.ng_reason || 'No specific defects recorded.';
+        document.getElementById('det-reason').innerText = data.ng_reason || 'No specific QC analysis recorded.';
+
+        // ✨ HANDLE RINCIAN NG DI MODAL
+        const ngListDiv = document.getElementById('det-ng-list');
+        ngListDiv.innerHTML = ''; // Kosongkan dulu
+
+        if (data.specific_ng && data.specific_ng.length > 0) {
+            data.specific_ng.forEach(item => {
+                ngListDiv.innerHTML += `
+                    <div class="d-flex justify-content-between mb-1" style="font-family: 'JetBrains Mono'; font-size: 12px; font-weight:700;">
+                        <span class="text-danger">• ${item.ng_type.toUpperCase()}</span>
+                        <span class="badge badge-danger">${item.qty} PCS</span>
+                    </div>
+                `;
+            });
+        } else {
+            ngListDiv.innerHTML = '<small class="text-muted italic">No specific defect breakdown found.</small>';
+        }
         
         $('#detailModal').modal('show');
     }

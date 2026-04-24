@@ -1,7 +1,8 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <style>
     /* ============================================================
@@ -17,6 +18,11 @@
     .table-hud thead th { background: #f8f9fc; color: var(--ind-steel); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 18px; border-bottom: 2px solid #eaecf4; }
     .row-clickable { cursor: pointer; transition: all 0.2s; border-bottom: 1px solid #f1f2f6; }
     .row-clickable:hover { background-color: #f1f4ff !important; transform: scale(1.002); }
+
+    /* ✨ Specific NG Style */
+    .ng-mini-summary { font-size: 10px; color: var(--ind-danger); font-family: 'JetBrains Mono'; margin-top: 3px; font-weight: 700; }
+    .ng-detail-list-box { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 12px; padding: 15px; }
+    .ng-detail-item { display: flex; justify-content: space-between; border-bottom: 1px dashed #feb2b2; padding: 5px 0; font-size: 12px; font-family: 'JetBrains Mono'; font-weight: 700; }
 
     /* 🍩 DONUT CHART KPI ANIMATED */
     .donut-container {
@@ -70,12 +76,11 @@
                     <tr>
                         <th>WAKTU</th>
                         <th>BATCH_NO</th>
-                        <th>PART_IDENTIFIER</th>
+                        <th class="text-left">PART_IDENTIFIER</th>
                         <th>OK (PCS)</th>
                         <th>NG (PCS)</th>
                         <th>YIELD</th>
-                        {{-- ✨ TAMBAHAN KOLOM KETERANGAN  --}}
-                        <th class="text-left">REASON/REMARK </th>
+                        <th class="text-left">REASON & REJECT DETAILS</th>
                     </tr>
                 </thead>
                 <tbody id="historyLogBody">
@@ -83,17 +88,32 @@
                     @php 
                         $yield = ($h->qty_ambil_pcs > 0) ? ($h->qty_hasil_ok / $h->qty_ambil_pcs) * 100 : 0;
                         $color = ($yield >= 95) ? 'var(--ind-success)' : (($yield >= 85) ? 'var(--ind-warning)' : 'var(--ind-danger)');
+
+                        // ✨ Fetch Rincian NG Spesifik
+                        $rincianLogs = DB::table('production_ng_logs')
+                            ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
+                            ->where('production_actuals.part_no', $h->material_code)
+                            ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($h->updated_at)))
+                            ->select('ng_type', 'qty')
+                            ->get();
+                        
+                        // Masukkan ke objek agar modal bisa baca
+                        $h->specific_ng = $rincianLogs;
                     @endphp
-                    <tr class="row-clickable" data-toggle="modal" data-target="#modalDetail{{ $h->id }}">
+                    <tr class="row-clickable" onclick="showDetail({{ json_encode($h) }})">
                         <td class="text-muted small">{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
-                        <td class="font-weight-bold text-primary">{{ $h->no_production ?? $h->no_produksi }}</td>
+                        <td class="font-weight-bold text-primary">{{ $h->no_produksi }}</td>
                         <td class="text-left font-weight-bold pl-4">> {{ $h->material_code }}</td>
                         <td class="text-success font-weight-bold">{{ number_format($h->qty_hasil_ok) }}</td>
-                        <td class="text-danger font-weight-bold">{{ number_format($h->qty_ng_material + $h->qty_ng_process) }}</td>
+                        <td class="text-danger font-weight-bold">{{ number_format($h->qty_hasil_ng) }}</td>
                         <td><b style="color: {{ $color }}; font-size: 15px;">{{ number_format($yield, 1) }}%</b></td>
-                        {{-- ✨ TAMPILKAN KETERANGAN  --}}
-                        <td class="text-left small italic text-muted" style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            {{ $h->keterangan ?? '-' }}
+                        <td class="text-left">
+                            <div class="small italic text-dark font-weight-bold">{{ $h->keterangan ?? '-' }}</div>
+                            @if($rincianLogs->count() > 0)
+                                <div class="ng-mini-summary">
+                                    [ @foreach($rincianLogs as $rl) {{ $rl->ng_type }}({{ $rl->qty }}) @endforeach ]
+                                </div>
+                            @endif
                         </td>
                     </tr>
                     @endforeach
@@ -103,109 +123,124 @@
     </div>
 </div>
 
-{{-- 🛡️ DETAIL MODAL (ANIMASI DONUT & BREAKDOWN NG) --}}
-@foreach($history as $h)
-@php 
-    $yield = ($h->qty_ambil_pcs > 0) ? ($h->qty_hasil_ok / $h->qty_ambil_pcs) * 100 : 0;
-    $chartColor = ($yield >= 95) ? '#1cc88a' : (($yield >= 85) ? '#f6c23e' : '#e74a3b');
-@endphp
-<div class="modal fade" id="modalDetail{{ $h->id }}" tabindex="-1" role="dialog">
+{{-- 🛡️ DETAIL MODAL (ANIMASI DONUT & BREAKDOWN NG SPESIFIK) --}}
+<div class="modal fade" id="detailModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 420px;">
         <div class="modal-content shadow-lg border-0" style="border-radius: 24px; overflow: hidden;">
             <div class="modal-header bg-primary text-white border-0 py-3">
-                <h6 class="modal-title font-weight-bold uppercase tracking-widest">Audit Batch // ID: {{ $h->id }}</h6>
+                <h6 class="modal-title font-weight-bold uppercase tracking-widest">Audit Batch Detail</h6>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body p-4 text-left bg-white">
                 <div class="text-center mb-4">
-                    <div class="donut-container" style="--p: {{ $yield }}%; --c: {{ $chartColor }};">
-                        <div class="donut-text">{{ number_format($yield, 0) }}%</div>
-                    </div>
+                    <div id="donut-target"></div>
                     <small class="font-weight-bold text-muted d-block mt-3 uppercase">Production Accuracy </small>
                 </div>
 
                 <div class="row mb-3 text-center small font-weight-bold">
-                    <div class="col-6 pr-1"><div class="p-3 bg-light rounded border-bottom border-primary"><small class="text-muted d-block uppercase" style="font-size: 8px;">Target Actual</small><b class="text-primary">{{ number_format($h->qty_ambil_pcs) }}</b></div></div>
-                    <div class="col-6 pl-1"><div class="p-3 bg-light rounded border-bottom border-success"><small class="text-muted d-block uppercase" style="font-size: 8px;">Passed Good</small><b class="text-success">{{ number_format($h->qty_hasil_ok) }}</b></div></div>
+                    <div class="col-6 pr-1"><div class="p-3 bg-light rounded border-bottom border-primary"><small class="text-muted d-block uppercase" style="font-size: 8px;">Target Actual</small><b class="text-primary" id="det-ambil">0</b></div></div>
+                    <div class="col-6 pl-1"><div class="p-3 bg-light rounded border-bottom border-success"><small class="text-muted d-block uppercase" style="font-size: 8px;">Passed Good</small><b class="text-success" id="det-ok">0</b></div></div>
                 </div>
 
-                {{-- NG Breakdown Detail --}}
-                <div class="p-4 border rounded bg-white shadow-sm mb-3">
+                {{-- NG Breakdown Detail (Dynamic) --}}
+                <div class="mb-3">
                     <h6 class="font-weight-bold text-danger small mb-3 uppercase border-bottom pb-2">Reject Breakdown Details</h6>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="small font-weight-bold text-muted">1. NG Material (Defect Bahan)</span>
-                        <b class="text-dark font-family-mono">{{ $h->qty_ng_material }} Pcs</b>
-                    </div>
-                    <div class="d-flex justify-content-between">
-                        <span class="small font-weight-bold text-muted">2. NG Process (Kesalahan Mesin)</span>
-                        <b class="text-dark font-family-mono">{{ $h->qty_ng_process }} Pcs</b>
-                    </div>
+                    <div id="det-ng-list" class="ng-detail-list-box">
+                        </div>
                 </div>
 
-                {{-- ✨ TAMBAHAN: CATATAN PRODUKSI DI MODAL  --}}
                 <div class="p-3 bg-light rounded border">
                     <small class="label-title text-uppercase font-weight-bold" style="font-size: 9px; color: #94a3b8;">Production Notes :</small>
-                    <p class="mb-0 font-weight-bold text-dark small">{{ $h->keterangan ?? 'No specific notes recorded .' }}</p>
+                    <p class="mb-0 font-weight-bold text-dark small" id="det-remark">-</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-@endforeach
 
 {{-- 🖨️ PRINT AREA (A4 PORTRAIT) --}}
 <div id="print-area">
     <div class="kop-surat">
         <h2 style="font-family: Arial Black, sans-serif; letter-spacing: -1px;">PT. ASALTA MANDIRI AGUNG</h2>
-        <p>JL. RAYA JAKARTA-BOGOR KM. 49 (JLN. RODA PEMBANGUNAN) BOGOR</p>
         <p>LAPORAN DETAIL HISTORY PRODUKSI BATCH // PERIODE: {{ date('F Y') }}</p>
     </div>
 
     <table class="table-print">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 15%">BATCH NO</th>
-                <th rowspan="2" style="width: 20%">PART NUMBER</th>
-                <th colspan="3">MUTASI PRODUKSI (PCS)</th>
-                <th rowspan="2">YIELD</th>
-                <th colspan="3">DETIL REJECT & CATATAN </th>
-            </tr>
-            <tr>
-                <th>AMBIL</th>
-                <th>GOOD OK</th>
-                <th>NG TOT</th>
-                <th>MATERIAL</th>
-                <th>PROCESS</th>
-                <th>REMARK/CATATAN </th>
+                <th style="width: 15%">BATCH NO</th>
+                <th style="width: 20%">PART NUMBER</th>
+                <th>TARGET</th>
+                <th>OK</th>
+                <th>NG</th>
+                <th>YIELD</th>
+                <th style="width: 30%">DETIL REJECT & CATATAN</th>
             </tr>
         </thead>
         <tbody>
             @foreach($history as $h)
+            @php
+                $rejs = DB::table('production_ng_logs')
+                    ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
+                    ->where('production_actuals.part_no', $h->material_code)
+                    ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($h->updated_at)))
+                    ->select('ng_type', 'qty')
+                    ->get();
+            @endphp
             <tr>
-                <td class="font-bold">{{ $h->no_production ?? $h->no_produksi }}</td>
+                <td class="font-bold">{{ $h->no_produksi }}</td>
                 <td class="text-left font-bold">{{ $h->material_code }}</td>
                 <td>{{ number_format($h->qty_ambil_pcs) }}</td>
-                <td class="font-bold text-success">+{{ number_format($h->qty_hasil_ok) }}</td>
-                <td class="font-bold text-danger">-{{ number_format($h->qty_ng_material + $h->qty_ng_process) }}</td>
+                <td class="font-bold text-success">{{ number_format($h->qty_hasil_ok) }}</td>
+                <td class="font-bold text-danger">{{ number_format($h->qty_hasil_ng) }}</td>
                 <td class="font-bold">{{ number_format(($h->qty_ambil_pcs > 0 ? ($h->qty_hasil_ok/$h->qty_ambil_pcs)*100 : 0), 1) }}%</td>
-                <td>{{ $h->qty_ng_material }}</td>
-                <td>{{ $h->qty_ng_process }}</td>
-                {{-- ✨ KETERANGAN DI PRINT OUT  --}}
-                <td class="text-left">{{ $h->keterangan ?? '-' }}</td>
+                <td class="text-left" style="font-size: 8pt;">
+                    <b>Catatan:</b> {{ $h->keterangan ?? '-' }} <br>
+                    <b>Breakdown:</b> @foreach($rejs as $rj) {{ $rj->ng_type }}({{ $rj->qty }}), @endforeach
+                </td>
             </tr>
             @endforeach
         </tbody>
     </table>
-
-    <div class="ttd-box">
-        <p>Bogor, {{ date('d F Y') }}</p>
-        <p style="margin-top: 60px;">( ................................. )</p>
-        <p>PIC PRODUKSI </p>
-    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    function showDetail(h) {
+        const yieldVal = h.qty_ambil_pcs > 0 ? ((h.qty_hasil_ok / h.qty_ambil_pcs) * 100).toFixed(0) : 0;
+        const color = yieldVal >= 95 ? '#1cc88a' : (yieldVal >= 85 ? '#f6c23e' : '#e74a3b');
+
+        // Render Donut
+        document.getElementById('donut-target').innerHTML = `
+            <div class="donut-container" style="--p: ${yieldVal}%; --c: ${color};">
+                <div class="donut-text">${yieldVal}%</div>
+            </div>
+        `;
+
+        document.getElementById('det-ambil').innerText = parseInt(h.qty_ambil_pcs).toLocaleString();
+        document.getElementById('det-ok').innerText = parseInt(h.qty_hasil_ok).toLocaleString();
+        document.getElementById('det-remark').innerText = h.keterangan || 'No specific notes recorded.';
+
+        // Render Specific NG List
+        const listDiv = document.getElementById('det-ng-list');
+        listDiv.innerHTML = '';
+        
+        if (h.specific_ng && h.specific_ng.length > 0) {
+            h.specific_ng.forEach(item => {
+                listDiv.innerHTML += `
+                    <div class="ng-detail-item">
+                        <span>• ${item.ng_type.toUpperCase()}</span>
+                        <span class="text-danger">${item.qty} PCS</span>
+                    </div>
+                `;
+            });
+        } else {
+            listDiv.innerHTML = '<div class="text-center text-muted small py-2">-- No specific defects --</div>';
+        }
+
+        $('#detailModal').modal('show');
+    }
+
     $(document).ready(function(){
         $("#searchLog").on("keyup", function() {
             var value = $(this).val().toLowerCase();

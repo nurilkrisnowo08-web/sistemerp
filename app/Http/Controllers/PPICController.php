@@ -253,8 +253,9 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 8. ROBOT SINKRONISASI (Manual PHP Sync)
-     * Tambahkan fungsi ini untuk dipanggil setelah simpan produksi_batches
+     * ✨ 8. ROBOT SINKRONISASI (MODERN VERSION)
+     * Robot ini sekarang fokus mengupdate TOTAL OK & NG ke tabel ringkasan.
+     * Rincian penyakit (Burry, dll) sudah ditangani oleh loop di ProduksiController.
      */
     public function syncToActual($batchId)
     {
@@ -264,7 +265,9 @@ class PPICController extends Controller
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
 
-        // Cari row di actuals
+        // Ambil Total NG (sudah termasuk akumulasi penyakit spesifik)
+        $ngTotal = $batch->qty_hasil_ng;
+
         $actual = DB::table('production_actuals')
             ->where('part_no', $batch->material_code)
             ->where('line_code', $lineCode)
@@ -272,45 +275,27 @@ class PPICController extends Controller
             ->whereDate('created_at', $dateOnly)
             ->first();
 
-        $ngSum = ($batch->qty_ng_material + $batch->qty_ng_process);
-
         if ($actual) {
-            // Update jika sudah ada
+            // Update total di tabel dashboard
             DB::table('production_actuals')->where('id', $actual->id)->update([
                 'qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok,
-                'qty_ng' => $actual->qty_ng + $ngSum,
+                'qty_ng' => $actual->qty_ng + $ngTotal,
                 'updated_at' => now()
             ]);
-            $actualId = $actual->id;
         } else {
-            // Insert baru jika belum ada
-            $actualId = DB::table('production_actuals')->insertGetId([
+            // Buat baris baru di tabel dashboard jika belum ada
+            DB::table('production_actuals')->insert([
                 'part_no'    => $batch->material_code,
                 'line_code'  => $lineCode,
                 'shift'      => $batch->shift,
                 'qty_ok'     => $batch->qty_hasil_ok,
-                'qty_ng'     => $ngSum,
+                'qty_ng'     => $ngTotal,
                 'created_at' => $batch->created_at,
                 'updated_at' => now()
             ]);
         }
-
-        // Catat rincian NG ke logs
-        if ($batch->qty_ng_material > 0) {
-            DB::table('production_ng_logs')->insert([
-                'actual_id'  => $actualId,
-                'ng_type'    => 'NG Material',
-                'qty'        => $batch->qty_ng_material,
-                'created_at' => $batch->created_at
-            ]);
-        }
-        if ($batch->qty_ng_process > 0) {
-            DB::table('production_ng_logs')->insert([
-                'actual_id'  => $actualId,
-                'ng_type'    => 'NG Process',
-                'qty'        => $batch->qty_ng_process,
-                'created_at' => $batch->created_at
-            ]);
-        }
+        
+        // PENTING: Jangan masukkan rincian NG ke 'production_ng_logs' di sini lagi, 
+        // karena sudah dilakukan secara dinamis (loop) di ProduksiController Bapak.
     }
 }
