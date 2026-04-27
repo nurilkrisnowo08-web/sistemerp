@@ -196,13 +196,14 @@ class PPICController extends Controller
         return view('PPIC.quality_hub', compact('summary', 'ngRanking', 'details', 'date'));
     }
 
-    public function monthlyMatrix(Request $request)
+  public function monthlyMatrix(Request $request)
 {
     $month = $request->month ?? date('m');
     $year = $request->year ?? date('Y');
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-    $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name', 'cap_per_hour')->get();
+    // ✨ FIX: Hapus 'cap_per_hour' dari sini karena kolomnya tidak ada di tabel parts
+    $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
 
     $planData = DB::table('production_plans')
         ->whereMonth('plan_date', $month)
