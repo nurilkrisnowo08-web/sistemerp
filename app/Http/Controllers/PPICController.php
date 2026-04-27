@@ -302,45 +302,35 @@ class PPICController extends Controller
     DB::beginTransaction();
     try {
         $batch = DB::table('produksi_batches')->where('id', $id)->first();
-        
-        if (!$batch) {
-            return redirect()->back()->with('error', 'Batch tidak ditemukan!');
-        }
+        if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan');
 
-        // ✨ FIX 1: Pastikan angka bukan NULL (Gunakan ?? 0)
+        // Hitung sisa yang belum dikerjakan
         $ambil = (int)$batch->qty_ambil_pcs;
         $ok    = (int)$batch->qty_hasil_ok;
         $ng    = (int)$batch->qty_hasil_ng;
-        
-        // Hitung sisa yang benar-benar belum disentuh
-        $sisaMaterial = $ambil - ($ok + $ng);
+        $sisa  = $ambil - ($ok + $ng);
 
-        // ✨ FIX 2: Kembalikan stok ke Gudang RM
-        if ($sisaMaterial > 0) {
-            DB::table('rm_stocks')
-                ->where('id', $batch->rm_stock_id)
-                ->increment('stock_pcs', $sisaMaterial);
+        // 1. Balikin stok ke gudang material (RM Stock)
+        if ($sisa > 0) {
+            DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa);
         }
 
-        // ✨ FIX 3: Catat angka return ke dalam record batch tersebut
+        // 2. Update Batch: Simpan angka Return & Tutup Status
         DB::table('produksi_batches')->where('id', $id)->update([
             'status' => 'COMPLETED',
-            'qty_return_warehouse' => $sisaMaterial, // Simpan sisa materialnya
-            'keterangan' => $batch->keterangan . " | CLOSED BY PPIC: " . $sisaMaterial . " PCS RETURNED",
+            'qty_return_warehouse' => $sisa, // <-- INI YANG TADI GAK KEBACA
+            'keterangan' => $batch->keterangan . " | DIES RUSAK: " . $sisa . " PCS BALIK GUDANG",
             'updated_at' => now()
         ]);
 
-        // ✨ FIX 4: Sinkronkan hasil produksi terakhir (yang 199 tadi) ke Dashboard
+        // 3. Masukin hasil produksi yang sudah dapet ke Dashboard
         $this->syncToActual($id);
 
         DB::commit();
-        return redirect()->back()->with('success', "Batch ditutup! $sisaMaterial Pcs sisa material dikembalikan ke gudang.");
-
+        return redirect()->back()->with('success', "Batch ditutup! " . $sisa . " Pcs balik ke stok gudang.");
     } catch (\Exception $e) {
         DB::rollBack();
-        // Log errornya biar Bapak bisa baca kalau ada yang salah
-        \Log::error("Gagal Close Batch: " . $e->getMessage());
-        return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
+        return redirect()->back()->with('error', 'Gagal tutup batch: ' . $e->getMessage());
     }
 }
     /**
@@ -378,4 +368,21 @@ class PPICController extends Controller
             ]);
         }
     }
+    public function quickReschedule(Request $request, $id)
+{
+    $oldPlan = DB::table('production_plans')->where('id', $id)->first();
+    
+    // 1. Matikan rencana lama (set plan ke angka yang sudah tercapai)
+    $actualSoFar = DB::table('production_actuals')
+                   ->where('part_no', $oldPlan->part_no)
+                   ->whereDate('created_at', $oldPlan->plan_date)
+                   ->sum('qty_ok');
+
+    DB::table('production_plans')->where('id', $id)->update([
+        's1_plan_reg' => $actualSoFar, // Rencana disamakan dengan hasil biar balance 0
+        'remark' => '⚠️ DIES BROKEN - SCHEDULE STOPPED'
+    ]);
+
+    return redirect()->back()->with('success', 'Jadwal dihentikan. Silakan daftarkan Part baru di mesin ini.');
+}
 }
