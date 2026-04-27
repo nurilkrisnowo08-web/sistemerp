@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, maximum-scale=1.0, user-scalable=no">
     <title>MRP SYSTEM - PT ASALTA MANDIRI AGUNG</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
 
@@ -13,61 +13,67 @@
         :root { 
             --ind-navy: #0f172a; 
             --ind-blue: #4361ee; 
-            --ind-bg: #f1f5f9; 
+            --ind-bg: #f8fafc; 
             --ind-border: #e2e8f0; 
-            --glass-white: rgba(255, 255, 255, 0.9);
+            --glass-white: rgba(255, 255, 255, 0.95);
         }
         
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; overflow-x: hidden; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; }
 
-        /* ✨ SIDEBAR UPGRADE */
-        #accordionSidebar { background: var(--ind-navy) !important; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1060; }
+        /* ✨ FIX SIDEBAR SCROLLING */
+        #accordionSidebar { 
+            background: var(--ind-navy) !important; 
+            z-index: 1060;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+            overflow-y: auto; /* Bisa di-scroll jika menu banyak */
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.1) transparent;
+        }
+        
+        #accordionSidebar::-webkit-scrollbar { width: 5px; }
+        #accordionSidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
         .sidebar-brand-text { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; font-size: 0.9rem; color: #fff; }
         
         .nav-item .nav-link { 
-            padding: 0.8rem 1.3rem !important; margin: 4px 12px; border-radius: 12px; 
-            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6) !important; 
-            transition: 0.2s; 
+            padding: 0.85rem 1.3rem !important; margin: 4px 12px; border-radius: 12px; 
+            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.65) !important; 
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
         }
-        .nav-item .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.05); }
-        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 20px rgba(67, 97, 238, 0.35); }
+        .nav-item .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.08); transform: translateX(3px); }
+        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 15px rgba(67, 97, 238, 0.3); }
         
-        .sidebar-heading { color: rgba(255,255,255,0.3) !important; font-size: 0.65rem !important; font-weight: 800; letter-spacing: 2.5px; margin-top: 1.5rem; margin-left: 22px; }
+        .sidebar-heading { color: rgba(255,255,255,0.35) !important; font-size: 0.65rem !important; font-weight: 800; letter-spacing: 2px; margin-top: 1.8rem; margin-left: 22px; margin-bottom: 0.5rem; }
 
-        /* Dropdown Sidebar */
-        .collapse-inner { background: #ffffff !important; border-radius: 14px !important; margin: 5px 12px; padding: 0.5rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .collapse-item { font-weight: 700 !important; font-size: 0.7rem !important; color: var(--ind-navy) !important; padding: 0.6rem 1.2rem !important; border-radius: 8px; margin: 2px 8px; }
-        .collapse-item:hover { background: var(--ind-bg) !important; color: var(--ind-blue) !important; text-decoration: none; }
+        /* Dropdown Sidebar Modern */
+        .collapse-inner { background: #ffffff !important; border-radius: 16px !important; margin: 5px 12px; padding: 0.6rem 0; border: 1px solid var(--ind-border); }
+        .collapse-item { font-weight: 700 !important; font-size: 0.7rem !important; color: var(--ind-navy) !important; padding: 0.7rem 1.2rem !important; border-radius: 10px; margin: 2px 10px; transition: 0.2s; }
+        .collapse-item:hover { background: #f1f5f9 !important; color: var(--ind-blue) !important; text-decoration: none; padding-left: 1.5rem !important; }
 
-        /* ✨ TOPBAR GLASSMORPHISM */
+        /* ✨ TOPBAR MODERN */
         .topbar { 
-            background: var(--glass-white) !important; backdrop-filter: blur(15px); 
+            background: var(--glass-white) !important; backdrop-filter: blur(12px); 
             border-bottom: 1px solid var(--ind-border); height: 4.5rem; 
-            position: sticky; top: 0; z-index: 1000;
+            position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
         }
         
         #clock-wrapper { 
-            background: var(--ind-navy); padding: 6px 16px; border-radius: 12px; 
-            border: 1.5px solid var(--ind-blue); display: flex; align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            background: var(--ind-navy); padding: 7px 18px; border-radius: 12px; 
+            border: 1px solid rgba(67, 97, 238, 0.5); display: flex; align-items: center;
         }
-        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; }
+        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 700; font-size: 0.85rem; letter-spacing: 1px; }
 
-        /* ✨ RESPONSIVE FIXES */
         @media (max-width: 768px) {
-            #accordionSidebar { position: fixed; height: 100vh; left: -250px; }
+            #accordionSidebar { position: fixed; left: -250px; transition: 0.3s; }
             #accordionSidebar.toggled { left: 0; width: 260px !important; }
-            .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
+            .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
             .sidebar-overlay.active { display: block; }
-            #content-wrapper { margin-left: 0 !important; width: 100%; }
-            .hide-mobile { display: none !important; }
-            .topbar { padding: 0 1rem; }
-            .operational-shift-text { font-size: 0.9rem !important; }
         }
 
-        .main-content-area { padding-bottom: 5rem; }
+        .main-content-area { padding-top: 1rem; padding-bottom: 5rem; min-height: 85vh; }
         footer { background: #fff; border-top: 1px solid var(--ind-border); }
-        .tracking-widest { letter-spacing: 0.1em; }
     </style>
 </head>
 
@@ -75,6 +81,7 @@
     <div class="sidebar-overlay" id="overlay"></div>
     <div id="wrapper">
 
+        {{-- 🏁 SIDEBAR --}}
         <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
             <a class="sidebar-brand d-flex align-items-center justify-content-center my-4" href="{{ route('dashboard') }}">
                 <div class="sidebar-brand-icon"><i class="fas fa-microchip text-primary"></i></div>
@@ -95,6 +102,23 @@
             </li>
             <li class="nav-item {{ Request::is('line*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('line.index') }}"><i class="fas fa-fw fa-industry"></i><span>Line Registry</span></a>
+            </li>
+
+            {{-- ✨ KAMAR BARU: WELDING STATION --}}
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingReg">
+                    <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Registry</span>
+                </a>
+                <div id="collapseWeldingReg" class="collapse {{ Request::is('welding-master*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner">
+                        <a class="collapse-item {{ Request::is('welding-master/lines*') ? 'text-primary' : '' }}" href="{{ route('line.index') }}">
+                            <i class="fas fa-robot mr-1"></i> Line Welding
+                        </a>
+                        <a class="collapse-item {{ Request::is('welding-master/ng*') ? 'text-primary' : '' }}" href="#">
+                            <i class="fas fa-bug mr-1"></i> Master NG Welding
+                        </a>
+                    </div>
+                </div>
             </li>
 
             <div class="sidebar-heading">COMMERCE_FLOW</div>
@@ -147,35 +171,20 @@
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePlanning">
                     <i class="fas fa-fw fa-calendar-days"></i><span>Production Planning</span>
                 </a>
-              <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
-    <div class="py-2 collapse-inner">
-        <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">
-            Intelligence Hub
-        </a>
-        
-        {{-- ✨ KAMAR MASTER MATRIX ✨ --}}
-        <a class="collapse-item {{ Request::is('ppic/monthly-matrix*') ? 'text-primary' : '' }}" href="{{ route('ppic.monthly.matrix') }}">
-            <i class="fas fa-table-cells mr-1"></i> Monthly Master Plan
-        </a>
-
-        <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">
-            Master Schedule (MPS)
-        </a>
-
-        {{-- ✨ KAMAR BARU: QUALITY CONTROL HUB (Satu grup dengan Planning) ✨ --}}
-        <a class="collapse-item {{ Request::is('ppic/quality-hub*') ? 'text-primary' : '' }}" href="{{ route('ppic.quality.hub') }}">
-            <i class="fas fa-microscope mr-1"></i> Quality Hub (OK vs NG)
-        </a>
-    </div>
-</div>
+                <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner">
+                        <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">Intelligence Hub</a>
+                        <a class="collapse-item {{ Request::is('ppic/monthly-matrix*') ? 'text-primary' : '' }}" href="{{ route('ppic.monthly.matrix') }}"><i class="fas fa-table-cells mr-1"></i> Monthly Master Plan</a>
+                        <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">Master Schedule (MPS)</a>
+                        <a class="collapse-item {{ Request::is('ppic/quality-hub*') ? 'text-primary' : '' }}" href="{{ route('ppic.quality.hub') }}"><i class="fas fa-microscope mr-1"></i> Quality Hub (OK vs NG)</a>
+                    </div>
+                </div>
             </li>
             @endif
 
             <div class="sidebar-heading">QUALITY_CONTROL</div>
             <li class="nav-item {{ Request::is('quality*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('quality.index') }}">
-                    <i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate</span>
-                </a>
+                <a class="nav-link" href="{{ route('quality.index') }}"><i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate</span></a>
             </li>
 
             @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
@@ -189,6 +198,7 @@
             <div class="text-center d-none d-md-inline"><button class="rounded-circle border-0" id="sidebarToggle"></button></div>
         </ul>
 
+        {{-- 🏁 CONTENT AREA --}}
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <nav class="navbar navbar-expand navbar-light topbar mb-4 static-top px-lg-4">
@@ -208,10 +218,10 @@
                             </div>
                             <div id="clock-wrapper"><div id="clock">00:00:00</div></div>
                             
-                            <form action="{{ route('logout') }}" method="POST" class="ml-3 hide-mobile">
+                            <form action="{{ route('logout') }}" method="POST" class="ml-3">
                                 @csrf
                                 <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 font-weight-bold" style="font-size: 0.6rem;">
-                                    <i class="fas fa-sign-out-alt"></i>
+                                    <i class="fas fa-power-off"></i>
                                 </button>
                             </form>
                         </li>
