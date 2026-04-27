@@ -150,7 +150,7 @@ class PPICController extends Controller
    /**
      * 4. ✨ QUALITY CONTROL HUB (Disesuaikan untuk rincian Batch)
      */
-    public function qualityHub(Request $request)
+   public function qualityHub(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
@@ -168,27 +168,29 @@ class PPICController extends Controller
             ->orderBy('total', 'DESC')
             ->get();
 
-        // Ambil data actual summary
         $details = DB::table('production_actuals')
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'DESC')
             ->get();
 
-        // ✨ Tambahkan rincian batch untuk setiap baris actual
+        // ✨ Ambil Batch sekaligus rincian NG-nya
         foreach($details as $d) {
-            $d->batches = DB::table('produksi_batches')
+            $batches = DB::table('produksi_batches')
                 ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
                 ->where('material_code', $d->part_no)
                 ->where('shift', $d->shift)
                 ->whereDate('produksi_batches.created_at', $date)
-                ->select(
-                    'no_produksi', 
-                    'qty_ambil_pcs', 
-                    'qty_hasil_ok', 
-                    'qty_hasil_ng', 
-                    'kode_Line'
-                )
+                ->select('no_produksi', 'qty_ambil_pcs', 'qty_hasil_ok', 'qty_hasil_ng', 'kode_Line')
                 ->get();
+
+            foreach($batches as $b) {
+                // Ambil "Penyakit" murni milik No Produksi ini
+                $b->ng_list = DB::table('production_ng_logs')
+                    ->where('no_produksi', $b->no_produksi)
+                    ->select('ng_type', 'qty')
+                    ->get();
+            }
+            $d->batches = $batches;
         }
 
         return view('PPIC.quality_hub', compact('summary', 'ngRanking', 'details', 'date'));
