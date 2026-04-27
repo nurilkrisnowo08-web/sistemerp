@@ -109,17 +109,23 @@
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingReg">
                     <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Registry</span>
                 </a>
-                <div id="collapseWeldingReg" class="collapse {{ Request::is('welding-master*') ? 'show' : '' }}" data-parent="#accordionSidebar">
-                    <div class="py-2 collapse-inner">
-                        <a class="collapse-item {{ Request::is('welding-master/lines*') ? 'text-primary' : '' }}" href="{{ route('line.index') }}">
-                            <i class="fas fa-robot mr-1"></i> Line Welding
-                        </a>
-                        <a class="collapse-item {{ Request::is('welding-master/ng*') ? 'text-primary' : '' }}" href="#">
-                            <i class="fas fa-bug mr-1"></i> Master NG Welding
-                        </a>
+              {{-- Di bagian Kamar Baru: WELDING STATION --}}
+                <li class="nav-item">
+                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingReg">
+                        <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Registry</span>
+                    </a>
+                    <div id="collapseWeldingReg" class="collapse {{ Request::is('welding-master*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                        <div class="py-2 collapse-inner">
+                            {{-- ✨ SAMBUNGKAN KE ROUTE INI --}}
+                            <a class="collapse-item {{ Request::is('welding-master/lines*') ? 'text-primary' : '' }}" href="{{ route('welding.master.lines') }}">
+                                <i class="fas fa-robot mr-1"></i> Line Welding
+                            </a>
+                            <a class="collapse-item" href="{{ route('welding.master.ng') }}">
+                                <i class="fas fa-bug mr-1"></i> Master NG Welding
+                            </a>
+                        </div>
                     </div>
-                </div>
-            </li>
+                </li>
 
             <div class="sidebar-heading">COMMERCE_FLOW</div>
             <li class="nav-item">
