@@ -15,11 +15,17 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        // ✨ TAMBAHAN: Ambil daftar kendala produksi (Status PROBLEM) untuk notifikasi PPIC
+        // ✨ FIX: Menentukan asal tabel 'updated_at' agar tidak bentrok (Ambiguous)
         $alerts = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
-            ->select('no_produksi', 'material_code', 'kode_Line', 'keterangan', 'updated_at')
+            ->select(
+                'produksi_batches.no_produksi', 
+                'produksi_batches.material_code', 
+                'line.kode_Line', 
+                'produksi_batches.keterangan', 
+                'produksi_batches.updated_at' // <-- Ditentukan asal tabelnya
+            )
             ->get();
 
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
@@ -29,7 +35,6 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // ✨ FIX: Hanya jumlahkan hasil Stamping (Abaikan Welding)
             $actualPerPart = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
@@ -68,7 +73,6 @@ class PPICController extends Controller
             $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
-        // ✨ Sertakan 'alerts' ke dalam compact
         return view('PPIC.ppic_planning', compact(
             'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
             'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
@@ -111,11 +115,8 @@ class PPICController extends Controller
 
             $plan->total_actual = (int)$actualData;
             
-            if ($shiftParam == 'S1') {
-                $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot);
-            } else {
-                $plan->total_target = ($plan->s2_plan_reg + $plan->s2_plan_ot);
-            }
+            if ($shiftParam == 'S1') { $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot); } 
+            else { $plan->total_target = ($plan->s2_plan_reg + $plan->s2_plan_ot); }
             
             $dandoryH = ($plan->dandory_time ?? 0) / 60;
             $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
