@@ -15,6 +15,13 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
+        // ✨ TAMBAHAN: Ambil daftar kendala produksi (Status PROBLEM) untuk notifikasi PPIC
+        $alerts = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->where('produksi_batches.status', 'PROBLEM')
+            ->select('no_produksi', 'material_code', 'kode_Line', 'keterangan', 'updated_at')
+            ->get();
+
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
         $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
         $chartLabels = []; $chartTargets = []; $chartActuals = [];
@@ -61,10 +68,12 @@ class PPICController extends Controller
             $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
+        // ✨ Sertakan 'alerts' ke dalam compact
         return view('PPIC.ppic_planning', compact(
             'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
             'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
-            'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg'
+            'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg',
+            'alerts'
         ));
     }
 
@@ -93,7 +102,6 @@ class PPICController extends Controller
         foreach($plans as $plan) {
             $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
             
-            // ✨ FIX: Hanya ambil data Actual Stamping (Abaikan Welding)
             $actualData = DB::table('production_actuals')
                 ->where('part_no', $plan->part_no) 
                 ->where('shift', $dbShiftName) 
@@ -162,7 +170,6 @@ class PPICController extends Controller
     {
         $date = $request->date ?? date('Y-m-d');
 
-        // ✨ FIX: Filter Summary Hanya Stamping
         $summary = DB::table('production_actuals')
             ->whereDate('created_at', $date)
             ->where('line_code', '!=', 'WELDING AREA')
@@ -178,7 +185,6 @@ class PPICController extends Controller
             ->orderBy('total', 'DESC')
             ->get();
 
-        // ✨ FIX: Filter Log List Hanya Stamping
         $details = DB::table('production_actuals')
             ->whereDate('created_at', $date)
             ->where('line_code', '!=', 'WELDING AREA')
@@ -223,7 +229,6 @@ class PPICController extends Controller
             ->get()
             ->groupBy('part_no');
 
-        // ✨ FIX: Hanya ambil data Actual Stamping untuk tampilan bulanan
         $actualData = DB::table('production_actuals')
             ->whereMonth('created_at', $month)
             ->whereYear('created_at', $year)

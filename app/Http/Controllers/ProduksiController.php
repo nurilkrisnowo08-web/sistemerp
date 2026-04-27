@@ -315,4 +315,14 @@ class ProduksiController extends Controller
         return redirect()->back()->with('success', 'Update Berhasil!');
     }
     public function getBundles($code) { return $this->getBundlesByPart($code); }
+    public function reportProblem(Request $request, $id)
+{
+    DB::table('produksi_batches')->where('id', $id)->update([
+        'status' => 'PROBLEM',
+        'keterangan' => '⚠️ DIES RUSAK: ' . $request->problem_note,
+        'updated_at' => now()
+    ]);
+
+    return redirect()->back()->with('error', 'Laporan kendala telah dikirim ke PPIC!');
+}
 }

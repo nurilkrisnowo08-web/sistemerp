@@ -38,7 +38,8 @@
         @endif
         @if(session('error'))
             <div class="alert alert-danger border-0 shadow-sm mb-4" style="border-radius:15px; border-left: 6px solid var(--ind-danger) !important;">
-                <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
+                <div class="d-flex align-items-center"><i class="fas fa-exclamation-triangle mr-3 fa-lg"></i><div><strong class="text-uppercase">Alert </strong><br><small>{{ session('error') }}</small></div></div>
+                <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
             </div>
         @endif
     </div>
@@ -84,8 +85,18 @@
                     </td>
                     <td><span class="font-weight-bold text-primary">{{ $p->line_names }}</span></td>
                     <td class="text-center">{{ number_format($p->total_qty_batch) }}</td>
-                    <td class="text-center"><span class="badge badge-primary px-3">{{ $p->status }}</span></td>
-                    <td class="text-right">
+                    <td class="text-center">
+                        @if($p->status == 'PROBLEM')
+                            <span class="badge badge-danger px-3 animate__animated animate__flash animate__infinite"><i class="fas fa-exclamation-triangle mr-1"></i> {{ $p->status }}</span>
+                        @else
+                            <span class="badge badge-primary px-3">{{ $p->status }}</span>
+                        @endif
+                    </td>
+                    <td class="text-right d-flex justify-content-end align-items-center">
+                        {{-- ✨ TOMBOL LAPOR KENDALA (DIES RUSAK) --}}
+                        <button class="btn btn-danger btn-sm px-3 mr-2" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" style="border-radius: 10px;" title="REPORT PROBLEM">
+                            <i class="fas fa-radiation-alt"></i>
+                        </button>
                         <button class="btn btn-blueprint btn-sm px-4" style="background: var(--ind-success); color: #fff; border-radius: 10px;" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">INPUT RESULT</button>
                     </td>
                 </tr>
@@ -97,8 +108,8 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL INPUT HASIL --}}
 @foreach($activeProductions as $p)
+{{-- 🛡️ MODAL INPUT HASIL --}}
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
@@ -144,6 +155,31 @@
                 </div>
                 <div class="modal-footer border-0 p-5 bg-light">
                     <button type="submit" id="btn_{{ $p->batch_id }}" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-success); color: #fff;" disabled>COMMIT & TRANSMIT DATA</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- 🚨 MODAL LAPOR MASALAH (DIES RUSAK / KENDALA) --}}
+<div class="modal fade" id="modalProblem{{ $p->batch_id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
+            <div class="modal-header bg-danger text-white py-3 border-0">
+                <h6 class="modal-title font-weight-bold"><i class="fas fa-radiation-alt mr-2"></i> EMERGENCY REPORT: {{ $p->no_produksi }}</h6>
+            </div>
+            <form action="{{ route('produksi.report_problem', $p->batch_id) }}" method="POST">
+                @csrf @method('PUT')
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning border-0 small font-weight-bold mb-3">
+                        <i class="fas fa-info-circle mr-1"></i> Laporan ini akan langsung memicu notifikasi di Dashboard PPIC.
+                    </div>
+                    <label class="small font-weight-bold uppercase">Detail Kendala (Dies Rusak, Pin Patah, dll)</label>
+                    <textarea name="problem_note" class="form-control" rows="4" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" required placeholder="Jelaskan kondisi dies/kendala saat ini secara detail..."></textarea>
+                </div>
+                <div class="modal-footer border-0 p-4 bg-light text-right">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-dismiss="modal">CANCEL</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 font-weight-bold shadow">SEND EMERGENCY SIGNAL</button>
                 </div>
             </form>
         </div>
@@ -223,7 +259,6 @@
     }
 
     $(document).ready(function() {
-        // ✨ LOGIKA KALKULASI GAP & DATA SYNC
         $(document).on('input', '.calc-input, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
@@ -257,7 +292,6 @@
             }
         });
 
-        // Cascading Dropdowns
         $('#sel_customer').change(function() {
             $.get('/produksi/get-specs/' + $(this).val(), function(data) {
                 let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
