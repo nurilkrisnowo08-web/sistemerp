@@ -18,61 +18,66 @@
             --glass-white: rgba(255, 255, 255, 0.95);
         }
         
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; overflow-x: hidden; }
 
-        /* ✨ FIX SIDEBAR SCROLLING */
+        /* ✨ FIX SIDEBAR SCROLLING (Independent Scroll) */
         #accordionSidebar { 
             background: var(--ind-navy) !important; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 1060;
             height: 100vh;
             position: sticky;
             top: 0;
-            overflow-y: auto; /* Bisa di-scroll jika menu banyak */
+            overflow-y: auto; /* Memungkinkan scroll internal */
+            overflow-x: hidden;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.1) transparent;
         }
-        
-        #accordionSidebar::-webkit-scrollbar { width: 5px; }
+
+        #accordionSidebar::-webkit-scrollbar { width: 4px; }
         #accordionSidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
         .sidebar-brand-text { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; font-size: 0.9rem; color: #fff; }
         
         .nav-item .nav-link { 
             padding: 0.85rem 1.3rem !important; margin: 4px 12px; border-radius: 12px; 
-            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.65) !important; 
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6) !important; 
+            transition: 0.2s; 
         }
-        .nav-item .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.08); transform: translateX(3px); }
-        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 15px rgba(67, 97, 238, 0.3); }
+        .nav-item .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.05); transform: translateX(3px); }
+        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3); }
         
-        .sidebar-heading { color: rgba(255,255,255,0.35) !important; font-size: 0.65rem !important; font-weight: 800; letter-spacing: 2px; margin-top: 1.8rem; margin-left: 22px; margin-bottom: 0.5rem; }
+        .sidebar-heading { color: rgba(255,255,255,0.3) !important; font-size: 0.65rem !important; font-weight: 800; letter-spacing: 2px; margin-top: 1.5rem; margin-left: 22px; }
 
-        /* Dropdown Sidebar Modern */
-        .collapse-inner { background: #ffffff !important; border-radius: 16px !important; margin: 5px 12px; padding: 0.6rem 0; border: 1px solid var(--ind-border); }
-        .collapse-item { font-weight: 700 !important; font-size: 0.7rem !important; color: var(--ind-navy) !important; padding: 0.7rem 1.2rem !important; border-radius: 10px; margin: 2px 10px; transition: 0.2s; }
-        .collapse-item:hover { background: #f1f5f9 !important; color: var(--ind-blue) !important; text-decoration: none; padding-left: 1.5rem !important; }
+        /* Dropdown Sidebar */
+        .collapse-inner { background: #ffffff !important; border-radius: 14px !important; margin: 5px 12px; padding: 0.5rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--ind-border); }
+        .collapse-item { font-weight: 700 !important; font-size: 0.7rem !important; color: var(--ind-navy) !important; padding: 0.6rem 1.2rem !important; border-radius: 8px; margin: 2px 8px; }
+        .collapse-item:hover { background: var(--ind-bg) !important; color: var(--ind-blue) !important; text-decoration: none; padding-left: 1.4rem !important; }
 
-        /* ✨ TOPBAR MODERN */
+        /* ✨ TOPBAR GLASSMORPHISM */
         .topbar { 
-            background: var(--glass-white) !important; backdrop-filter: blur(12px); 
+            background: var(--glass-white) !important; backdrop-filter: blur(15px); 
             border-bottom: 1px solid var(--ind-border); height: 4.5rem; 
-            position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            position: sticky; top: 0; z-index: 1000;
         }
         
         #clock-wrapper { 
-            background: var(--ind-navy); padding: 7px 18px; border-radius: 12px; 
-            border: 1px solid rgba(67, 97, 238, 0.5); display: flex; align-items: center;
+            background: var(--ind-navy); padding: 6px 16px; border-radius: 12px; 
+            border: 1.5px solid var(--ind-blue); display: flex; align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 700; font-size: 0.85rem; letter-spacing: 1px; }
+        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; }
 
+        /* ✨ RESPONSIVE FIXES */
         @media (max-width: 768px) {
-            #accordionSidebar { position: fixed; left: -250px; transition: 0.3s; }
+            #accordionSidebar { position: fixed; height: 100vh; left: -250px; }
             #accordionSidebar.toggled { left: 0; width: 260px !important; }
-            .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
+            .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
             .sidebar-overlay.active { display: block; }
+            #content-wrapper { margin-left: 0 !important; width: 100%; }
         }
 
-        .main-content-area { padding-top: 1rem; padding-bottom: 5rem; min-height: 85vh; }
+        .main-content-area { padding-top: 1.5rem; padding-bottom: 5rem; min-height: 80vh; }
         footer { background: #fff; border-top: 1px solid var(--ind-border); }
     </style>
 </head>
@@ -104,28 +109,22 @@
                 <a class="nav-link" href="{{ route('line.index') }}"><i class="fas fa-fw fa-industry"></i><span>Line Registry</span></a>
             </li>
 
-            {{-- ✨ KAMAR BARU: WELDING STATION --}}
+            {{-- ✨ KAMAR BARU: WELDING STATION REGISTRY --}}
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingReg">
                     <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Registry</span>
                 </a>
-              {{-- Di bagian Kamar Baru: WELDING STATION --}}
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingReg">
-                        <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Registry</span>
-                    </a>
-                    <div id="collapseWeldingReg" class="collapse {{ Request::is('welding-master*') ? 'show' : '' }}" data-parent="#accordionSidebar">
-                        <div class="py-2 collapse-inner">
-                            {{-- ✨ SAMBUNGKAN KE ROUTE INI --}}
-                            <a class="collapse-item {{ Request::is('welding-master/lines*') ? 'text-primary' : '' }}" href="{{ route('welding.master.lines') }}">
-                                <i class="fas fa-robot mr-1"></i> Line Welding
-                            </a>
-                            <a class="collapse-item" href="{{ route('welding.master.ng') }}">
-                                <i class="fas fa-bug mr-1"></i> Master NG Welding
-                            </a>
-                        </div>
+                <div id="collapseWeldingReg" class="collapse {{ Request::is('welding-master*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner">
+                        <a class="collapse-item {{ Request::is('welding-master/lines*') ? 'text-primary' : '' }}" href="{{ route('welding.master.lines') }}">
+                            <i class="fas fa-robot mr-1"></i> Line Welding
+                        </a>
+                        <a class="collapse-item {{ Request::is('welding-master/ng*') ? 'text-primary' : '' }}" href="{{ route('welding.master.ng') }}">
+                            <i class="fas fa-bug mr-1"></i> Master NG Welding
+                        </a>
                     </div>
-                </li>
+                </div>
+            </li>
 
             <div class="sidebar-heading">COMMERCE_FLOW</div>
             <li class="nav-item">
