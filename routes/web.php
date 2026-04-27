@@ -76,7 +76,6 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     Route::get('/welding-history-prod', [WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
     Route::get('/inventory-welding/daily-recap', [WeldingStockController::class, 'dailyRecap'])->name('welding.daily_recap');
     Route::get('/inventory-welding/monthly-recap', [WeldingStockController::class, 'recap'])->name('welding.recap');
-});
 
     // 🏭 AREA LIVE MONITORING & STAMPING
     Route::get('/monitoring-produksi', [ProduksiController::class, 'index'])->name('produksi.index');
@@ -212,5 +211,6 @@ Route::get('/ppic/quality-hub', [App\Http\Controllers\PPICController::class, 'qu
     Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
     Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
     Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
+});
 });
 });
