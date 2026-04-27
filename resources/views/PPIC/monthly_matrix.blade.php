@@ -1,7 +1,11 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+{{-- ✨ FIX 2: Definisikan default shift agar PHP tidak bingung --}}
+@php $activeShift = 's1'; @endphp
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans..." rel="stylesheet">
+...
 
 <style>
     :root {
