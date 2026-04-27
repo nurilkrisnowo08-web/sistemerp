@@ -92,7 +92,7 @@ class ProduksiController extends Controller
     }
 
     /**
-     * ✨ FIX UPDATE RESULT: Mengunci rincian NG berdasarkan NO_PRODUKSI
+     * ✨ FIX UPDATE RESULT: Menggunakan ID agar data tidak KEMBAR/DOUBLE di database
      */
     public function updateResult(Request $request, $id) 
     {
@@ -102,7 +102,6 @@ class ProduksiController extends Controller
         $qty_return = (int)$request->qty_return_warehouse;
         $qty_ok = (int)$request->qty_hasil_ok; 
         
-        // 1. Hitung Rincian NG Spesifik
         $total_ng_spesifik = 0;
         $ng_details = [];
         if ($request->has('ng_detail_type')) {
@@ -121,7 +120,6 @@ class ProduksiController extends Controller
 
         DB::beginTransaction();
         try {
-            // Logic Return Material
             if ($qty_return > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -134,7 +132,6 @@ class ProduksiController extends Controller
                 }
             }
 
-            // Routing Logic
             if ($qty_ok > 0) {
                 $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
@@ -151,8 +148,8 @@ class ProduksiController extends Controller
                 $status_akhir = 'COMPLETED'; 
             }
 
-            // 2. UPDATE PRODUKSI BATCHES
-            DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->update([
+            // 2. ✨ UPDATE MENGGUNAKAN ID (Agar Line lain di batch yang sama tidak ikut berubah angkanya)
+            DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok'         => $qty_ok, 
                 'qty_ng_material'      => 0, 
                 'qty_ng_process'       => $qty_ng_total, 
@@ -163,12 +160,9 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
-            // ✨ 3. JALANKAN ROBOT SYNC UNTUK DASHBOARD
             $this->syncToActual($id);
 
-            // ✨ 4. SIMPAN RINCIAN NG KE TABEL LOGS (DITAMBAHKAN no_produksi)
             if (!empty($ng_details)) {
-                // Cari actual_id untuk referensi Dashboard
                 $lineCode = DB::table('line')->where('id', $p->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
                 $actual = DB::table('production_actuals')
                     ->where('part_no', $p->material_code)
@@ -180,7 +174,7 @@ class ProduksiController extends Controller
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert([
                             'actual_id'   => $actual->id,
-                            'no_produksi' => $p->no_produksi, // ✨ Kunci rincian ke batch ini
+                            'no_produksi' => $p->no_produksi, 
                             'ng_type'     => $detail['type'],
                             'qty'         => $detail['qty'],
                             'created_at'  => now()
@@ -190,7 +184,7 @@ class ProduksiController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('produksi.index')->with('success', 'Data Sync Berhasil dengan Rincian NG!');
+            return redirect()->route('produksi.index')->with('success', 'Data Sync Berhasil!');
 
         } catch (\Exception $e) { 
             DB::rollback(); 
