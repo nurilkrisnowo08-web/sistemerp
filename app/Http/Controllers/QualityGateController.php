@@ -7,11 +7,8 @@ use Illuminate\Support\Facades\Auth;
 
 class QualityGateController extends Controller {
 
-    /**
-     * Menampilkan antrean inspeksi (Disesuaikan agar tidak double)
-     */
     public function index() {
-        // ✨ FIX DOUBLE: Kelompokkan berdasarkan no_produksi
+        // ✨ ANTI-DOUBLE: Menggabungkan batch yang terpecah di banyak line menjadi satu tampilan
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
@@ -19,9 +16,8 @@ class QualityGateController extends Controller {
                 'material_code',
                 'keterangan',
                 'created_at',
-                DB::raw('SUM(qty_hasil_ok) as qty_hasil_ok'), // Total OK dari semua line
-                DB::raw('SUM(qty_hasil_ng) as qty_hasil_ng'), // Info NG Produksi (disimpan di background)
-                DB::raw('MIN(id) as id') // Ambil satu ID sebagai referensi route
+                DB::raw('SUM(qty_hasil_ok) as qty_hasil_ok'), 
+                DB::raw('MIN(id) as id') 
             )
             ->groupBy('no_produksi', 'material_code', 'keterangan', 'created_at')
             ->get();
@@ -35,34 +31,47 @@ class QualityGateController extends Controller {
         return view('Quality.index', compact('produksiQueue', 'weldingQueue'));
     }
 
-    /**
-     * Memproses verifikasi QC (Logika Akumulasi NG)
-     */
     public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
         try {
             if ($type == 'stamping') {
-                $batchReference = DB::table('produksi_batches')->where('id', $id)->first();
-                if (!$batchReference) throw new \Exception("Batch tidak ditemukan.");
+                $ref = DB::table('produksi_batches')->where('id', $id)->first();
+                if (!$ref) throw new \Exception("Batch tidak ditemukan.");
 
-                $batchNo = $batchReference->no_produksi;
-                $partNo  = $batchReference->material_code;
+                $batchNo = $ref->no_produksi;
+                $partNo  = $ref->material_code;
                 $table   = 'produksi_batches';
 
-                // Hitung total NG awal dari produksi (semua line di batch ini)
-                $prod_ng_total = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('qty_hasil_ng');
-                $qty_awal = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('qty_hasil_ok');
+                // 1. Ambil semua baris line dalam batch ini
+                $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
+                $total_ok_prod = $lines->sum('qty_hasil_ok');
+                $qc_verified_ok = (int)$request->qty_ok_final;
 
-                // Logika: OK Final adalah inputan QC, NG Final adalah (NG Produksi + Temuan Baru QC)
-                $final_ok = (int)$request->qty_ok_final;
-                $final_ng = (int)$prod_ng_total + (int)$request->qty_ng_final;
+                // 2. LOGIKA PENYESUAIAN (Agar data per-line tetap masuk akal)
+                // Jika QC menemukan NG baru (OK QC < OK Prod), kurangi selisihnya dari baris pertama saja
+                if ($qc_verified_ok < $total_ok_prod) {
+                    $selisih = $total_ok_prod - $qc_verified_ok;
+                    $firstLine = $lines->first();
+                    
+                    DB::table('produksi_batches')->where('id', $firstLine->id)->update([
+                        'qty_hasil_ok' => ($firstLine->qty_hasil_ok - $selisih),
+                        'qty_hasil_ng' => ($firstLine->qty_hasil_ng + $selisih),
+                    ]);
+                }
 
-                $colOk = 'qty_hasil_ok';
-                $colNg = 'qty_hasil_ng';
+                // 3. Update status SEMUA baris dalam batch ini menjadi COMPLETED
+                DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
+                    'status'     => 'COMPLETED',
+                    'qc_at'      => now(),
+                    'qc_by'      => $request->inspector_name ?? Auth::user()?->name,
+                    'updated_at' => now()
+                ]);
                 
-                // Update Clause: Update semua baris yang memiliki nomor batch sama
-                $updateWhere = ['no_produksi' => $batchNo];
-                $origin = 'STAMPING';
+                $final_ok = $qc_verified_ok;
+                $final_ng = (int)$request->qty_ng_final;
+                $origin   = 'STAMPING';
+                $qty_awal = $total_ok_prod;
+
             } else {
                 // Logika Welding (Single Line)
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
@@ -70,68 +79,59 @@ class QualityGateController extends Controller {
 
                 $batchNo = $batch->no_produksi_stamping;
                 $partNo  = $batch->part_no;
-                $qty_awal = $batch->qty_ok;
-
                 $final_ok = (int)$request->qty_ok_final;
-                $final_ng = (int)$batch->qty_ng + (int)$request->qty_ng_final;
+                $final_ng = (int)$request->qty_ng_final;
 
-                $table = 'welding_batches';
-                $colOk = 'qty_ok';
-                $colNg = 'qty_ng';
-                $updateWhere = ['id' => $id];
-                $origin = 'WELDING';
+                DB::table('welding_batches')->where('id', $id)->update([
+                    'qty_ok'     => $final_ok,
+                    'qty_ng'     => $batch->qty_ng + $final_ng,
+                    'status'     => 'COMPLETED',
+                    'qc_at'      => now(),
+                    'qc_by'      => $request->inspector_name ?? Auth::user()?->name,
+                    'updated_at' => now()
+                ]);
+                
+                $qty_awal = $batch->qty_ok;
+                $origin   = 'WELDING';
+                $table    = 'welding_batches';
             }
 
-            $inspectorName = $request->inspector_name ?? (Auth::user()?->name ?? 'QC_OFFICER');
-            $cleanPart = str_replace([' ', '-'], '', trim($partNo));
-
             // Validasi Master Finished Goods
+            $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->first();
 
-            if (!$fg) throw new \Exception("Gagal! Part No [$partNo] tidak terdaftar di Finished Goods.");
+            if (!$fg) throw new \Exception("Part No [$partNo] tidak terdaftar di Finished Goods.");
 
-            // 1. Simpan History Inspeksi
+            // 4. Simpan History Inspeksi (Hanya simpan temuan NG dari QC)
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
                 'part_no'       => $partNo,
                 'qty_from_prod' => $qty_awal,
                 'qty_ok'        => $final_ok,
-                'qty_ng'        => (int)$request->qty_ng_final, // Hanya NG yang ditemukan QC
+                'qty_ng'        => $final_ng, 
                 'ng_reason'     => $request->ng_reason ?? '',
-                'inspector'     => $inspectorName,
+                'inspector'     => $request->inspector_name ?? 'QC_OFFICER',
                 'status'        => 'APPROVED',
                 'created_at'    => now(), 
                 'updated_at'    => now()
             ]);
 
-            // 2. Update Stok FG
+            // 5. Update Stok FG
             DB::table('finished_goods')->where('id', $fg->id)->update([
                 'actual_stock' => $fg->actual_stock + $final_ok,
                 'act_stock'    => ($fg->act_stock ?? 0) + $final_ok,
                 'updated_at'   => now()
             ]);
 
-            // 3. Log Mutasi
+            // 6. Log Mutasi
             DB::table('production_logs')->insert([
                 'part_no' => $partNo, 'qty' => $final_ok, 'process_type' => 'FG', 'created_at' => now()
             ]);
 
-            // 4. Finalisasi Tabel Produksi/Welding
-            // ✨ FIX: Update menggunakan No Produksi agar semua record line ikut selesai
-            DB::table($table)->where($updateWhere)->update([
-                $colOk       => $final_ok, 
-                $colNg       => $final_ng, 
-                'keterangan' => $request->ng_reason ?? '',
-                'status'     => 'COMPLETED',
-                'qc_at'      => now(),
-                'qc_by'      => $inspectorName,
-                'updated_at' => now()
-            ]);
-
-            // 5. Robot Dashboard
+            // 7. Robot Dashboard
             $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             DB::commit();
@@ -143,27 +143,17 @@ class QualityGateController extends Controller {
         }
     }
 
-    private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin)
-    {
+    private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
-        $today = date('Y-m-d');
-
         DB::table('production_actuals')->updateOrInsert(
-            ['part_no' => $partNo, 'line_code' => $lineCode, 'created_at' => $today],
-            [
-                'qty_ok' => DB::raw("qty_ok + 0"), 
-                'qty_ng' => DB::raw("qty_ng + 0"), 
-                'shift' => 'N/A',
-                'updated_at' => now()
-            ]
+            ['part_no' => $partNo, 'line_code' => $lineCode, 'created_at' => date('Y-m-d')],
+            ['updated_at' => now()]
         );
     }
 
-    public function destroy($type, $id)
-    {
+    public function destroy($type, $id) {
         try {
             if ($type == 'stamping') {
-                // Hapus satu batch penuh agar tidak sisa di line lain
                 $batch = DB::table('produksi_batches')->where('id', $id)->first();
                 DB::table('produksi_batches')->where('no_produksi', $batch->no_produksi)->delete();
             } else {
@@ -175,8 +165,7 @@ class QualityGateController extends Controller {
         }
     }
 
-    public function history()
-    {
+    public function history() {
         $historyData = DB::table('quality_inspections')->orderBy('created_at', 'desc')->get();
         return view('Quality.history', compact('historyData'));
     }

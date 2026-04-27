@@ -72,11 +72,12 @@
                     </div>
                     <div class="text-right">
                         <label class="label-ind">Incoming OK</label>
+                        {{-- Ini menampilkan TOTAL OK dari semua line di batch ini --}}
                         <div class="qty-badge text-emerald">{{ number_format($p->qty_hasil_ok) }}</div>
                     </div>
                 </div>
                 <div class="card-body p-4">
-                    {{-- ❌ BOX REJECT BREAKDOWN SUDAH DIHAPUS ❌ --}}
+                    {{-- ❌ BOX REJECT BREAKDOWN SUDAH DIHAPUS AGAR QC FOKUS BARANG OK ❌ --}}
 
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST">
                         @csrf
