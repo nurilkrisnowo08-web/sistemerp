@@ -143,8 +143,6 @@ class PPICController extends Controller
         ))->with('shift', $shiftParam);
     }
 
-    // ... fungsi lain tetap jangan diubah ...
-
 
     public function mpsStore(Request $request)
     {
@@ -218,7 +216,7 @@ class PPICController extends Controller
 
     /**
      * 5. MONTHLY MASTER MATRIX
-     * ✨ FIX: Menghilangkan error kolom cap_per_hour yang tidak ada di DB
+     *
      */
     public function monthlyMatrix(Request $request)
     {
