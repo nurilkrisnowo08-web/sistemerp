@@ -48,6 +48,9 @@
     .btn-action-custom { border-radius: 15px; font-weight: 900; letter-spacing: 0.5px; transition: 0.3s; padding: 12px 25px; border: none; }
     .tech-input { border-radius: 15px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
     .tech-input:focus { border-color: var(--brand-primary); outline: none; background: #f8faff; }
+
+    /* NG Rows */
+    .ng-row-item { background: #fff5f5; border-radius: 12px; padding: 10px; margin-bottom: 8px; border: 1px solid #fed7d7; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -141,8 +144,11 @@
             @php $filtered = $activeWelding->where('customer', $customer); @endphp
             @forelse($filtered as $aw)
             <div class="work-card shadow-sm animate__animated animate__fadeInUp">
-                <div class="col-md-2 font-weight-extrabold text-primary" style="font-family: 'JetBrains Mono'; font-size: 14px;">
-                    <i class="fas fa-barcode mr-2 opacity-50"></i>{{ $aw->no_produksi_stamping }}
+                <div class="col-md-2">
+                    <div class="badge badge-dark mb-2 px-3 py-1" style="font-family: 'JetBrains Mono'; font-size: 10px;">{{ $aw->kode_line }}</div>
+                    <div class="font-weight-extrabold text-primary" style="font-family: 'JetBrains Mono'; font-size: 14px;">
+                        <i class="fas fa-barcode mr-2 opacity-50"></i>{{ $aw->no_produksi_stamping }}
+                    </div>
                 </div>
                 <div class="col-md-4 border-left pl-4">
                     <div class="font-weight-extrabold h5 mb-0 text-dark">{{ $aw->part_no }}</div>
@@ -156,7 +162,7 @@
                     @if($aw->batch_status == 'PENDING')
                         <span class="badge badge-warning py-2 px-3 rounded-pill font-weight-bold">WAITING</span>
                     @else
-                        <span class="badge badge-info py-2 px-3 rounded-pill font-weight-bold animate-pulse">IN PROCESS</span>
+                        <span class="badge badge-info py-2 px-3 rounded-pill font-weight-bold animate__animated animate__pulse animate__infinite">IN PROCESS</span>
                     @endif
                 </div>
                 <div class="col-md-2 text-right">
@@ -183,34 +189,48 @@
 {{-- 🏁 MODAL FINISH (QUALITY INSPECTION) --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0" style="border-radius: 25px;">
             <div class="modal-header bg-success text-white p-4">
-                <h5 class="modal-title font-weight-bold text-uppercase">Quality Inspection</h5>
+                <h5 class="modal-title font-weight-bold text-uppercase">Quality Inspection & Finishing</h5>
             </div>
             <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-4">
-                    <div class="text-center mb-4">
-                        <h2 class="font-weight-bold text-dark" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }} PCS</h2>
-                        <small class="text-muted font-weight-bold">TOTAL BATCH QUANTITY</small>
-                    </div>
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="small font-weight-bold text-success uppercase">Qty OK</label>
-                            <input type="number" name="qty_ok" class="form-control text-center tech-input" value="{{ $aw->qty_masuk }}" required>
+                    <div class="row">
+                        <div class="col-md-4 text-center border-right">
+                            <h2 class="font-weight-bold text-dark mb-0" style="font-family: 'Orbitron';">{{ number_format($aw->qty_masuk) }}</h2>
+                            <small class="text-muted font-weight-bold uppercase">Target Qty</small>
+                            
+                            <hr>
+                            
+                            <label class="small font-weight-bold text-success uppercase">Qty OK (Good)</label>
+                            <input type="number" name="qty_ok" class="form-control text-center tech-input mb-3" value="{{ $aw->qty_masuk }}" required>
+                            
+                            <label class="small font-weight-bold text-danger uppercase">Qty NG (Reject)</label>
+                            <input type="number" name="qty_ng" id="total_ng_{{ $aw->id }}" class="form-control text-center tech-input" value="0" readonly>
                         </div>
-                        <div class="col-6">
-                            <label class="small font-weight-bold text-danger uppercase">Qty NG</label>
-                            <input type="number" name="qty_ng" class="form-control text-center tech-input" value="0" required>
+                        
+                        <div class="col-md-8 pl-md-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="font-weight-bold text-dark mb-0 uppercase"><i class="fas fa-bug mr-2 text-danger"></i>Reject Breakdown</h6>
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill font-weight-bold" onclick="addNgRow({{ $aw->id }})">
+                                    <i class="fas fa-plus mr-1"></i> ADD NG TYPE
+                                </button>
+                            </div>
+                            
+                            {{-- Container untuk baris NG dinamis --}}
+                            <div id="ng_container_{{ $aw->id }}" style="max-height: 200px; overflow-y: auto; overflow-x: hidden;">
+                                <p class="text-center text-muted small py-3" id="no_ng_msg_{{ $aw->id }}">No specific defects reported.</p>
+                            </div>
+
+                            <hr>
+                            <label class="small font-weight-bold text-dark uppercase">Process Remark</label>
+                            <textarea name="keterangan" class="form-control tech-input" rows="2" placeholder="Operator notes..."></textarea>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="small font-weight-bold text-dark uppercase">Defect Description / Notes</label>
-                        <textarea name="keterangan" class="form-control tech-input" rows="3" placeholder="Input defect reason or process notes..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-0 p-4 text-center">
+                <div class="modal-footer border-0 p-4">
                     <button type="submit" class="btn btn-success btn-block py-3 font-weight-bold rounded-pill shadow-lg">TRANSFER TO QUALITY GATE</button>
                 </div>
             </form>
@@ -236,6 +256,16 @@
                             <option value="{{ $inv->part_no }}">{{ $inv->part_no }} (Available: {{ $inv->live_stock }})</option>
                         @endforeach
                     </select>
+
+                    {{-- ✨ PILIHAN LINE DARI DATABASE --}}
+                    <label class="small font-weight-bold text-muted uppercase">Select Welding Station</label>
+                    <select name="line_id" class="form-control tech-input mb-4" required>
+                        <option value="" disabled selected>-- CHOOSE STATION --</option>
+                        @foreach($weldingLines as $wl)
+                            <option value="{{ $wl->id }}">{{ $wl->kode_line }} - {{ $wl->nama_line }}</option>
+                        @endforeach
+                    </select>
+
                     <label class="small font-weight-bold text-muted uppercase">Deployment Quantity</label>
                     <input type="number" name="qty_ambil" class="form-control text-center tech-input" required style="font-size: 32px; height: 80px;" placeholder="0">
                 </div>
@@ -249,9 +279,58 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // Data NG dari Master NG Database
+    const listPenyakit = @json($listNG->pluck('ng_name'));
+
     function quickTake(partNo) {
         document.getElementById('part_select').value = partNo;
         $('#modalDeployWelding').modal('show');
+    }
+
+    // Fungsi Tambah Baris NG secara dinamis
+    function addNgRow(batchId) {
+        $(`#no_ng_msg_${batchId}`).hide();
+        const id = Date.now();
+        let options = listPenyakit.map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
+        
+        const html = `
+            <div class="ng-row-item animate__animated animate__fadeInDown" id="row-${id}">
+                <div class="row no-gutters">
+                    <div class="col-7 pr-1">
+                        <select name="ng_detail_type[]" class="form-control form-control-sm font-weight-bold" required>
+                            ${options}
+                        </select>
+                    </div>
+                    <div class="col-3 pr-1">
+                        <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm text-center font-weight-bold ng-qty-input" 
+                        placeholder="Qty" min="1" required oninput="calculateTotalNg(${batchId})">
+                    </div>
+                    <div class="col-2">
+                        <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        $(`#ng_container_${batchId}`).append(html);
+    }
+
+    function removeNgRow(rowId, batchId) {
+        $(`#row-${rowId}`).remove();
+        calculateTotalNg(batchId);
+        if ($(`#ng_container_${batchId}`).children('.ng-row-item').length === 0) {
+            $(`#no_ng_msg_${batchId}`).show();
+        }
+    }
+
+    // Hitung otomatis total NG agar operator tidak perlu menjumlah manual
+    function calculateTotalNg(batchId) {
+        let total = 0;
+        $(`#modalFinish${batchId} .ng-qty-input`).each(function() {
+            total += parseInt($(this).val()) || 0;
+        });
+        $(`#total_ng_${batchId}`).val(total);
     }
 </script>
 @endsection
