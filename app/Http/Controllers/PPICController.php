@@ -297,19 +297,44 @@ class PPICController extends Controller
     /**
      * ✨ 10. OPSI STOP (Jika perbaikan lama / Dies hancur)
      */
-    public function closeBatch($id)
-    {
-        DB::table('produksi_batches')->where('id', $id)->update([
-            'status' => 'COMPLETED', // Tutup permanen
-            'updated_at' => now()
-        ]);
+   public function closeBatch($id)
+{
+    DB::beginTransaction();
+    try {
+        $batch = DB::table('produksi_batches')->where('id', $id)->first();
         
-        // Panggil Robot Sinkronisasi agar angka terakhir tetap masuk ke Dashboard
-        $this->syncToActual($id);
+        if ($batch) {
+            // 1. Hitung sisa material yang belum jadi barang (GAP)
+            // Ambil Pcs - (Hasil OK + Hasil NG)
+            $totalHasil = $batch->qty_hasil_ok + $batch->qty_hasil_ng;
+            $sisaMaterial = $batch->qty_ambil_pcs - $totalHasil;
 
-        return redirect()->back()->with('error', 'Batch telah ditutup paksa oleh PPIC.');
+            // 2. Kembalikan sisa material ke RM Stock (Gudang Material)
+            if ($sisaMaterial > 0) {
+                DB::table('rm_stocks')
+                    ->where('id', $batch->rm_stock_id)
+                    ->increment('stock_pcs', $sisaMaterial);
+            }
+
+            // 3. Update Status Batch menjadi COMPLETED (Ditutup Paksa)
+            DB::table('produksi_batches')->where('id', $id)->update([
+                'status' => 'COMPLETED',
+                'qty_return_warehouse' => $sisaMaterial, 
+                'keterangan' => $batch->keterangan . " | CLOSED MANUALLY BY PPIC DUE TO DIES DAMAGE",
+                'updated_at' => now()
+            ]);
+
+            // 4. Sinkronkan ke Dashboard Actual
+            $this->syncToActual($id);
+        }
+
+        DB::commit();
+        return redirect()->back()->with('error', 'Batch ditutup. Sisa material ' . $sisaMaterial . ' Pcs dikembalikan ke Gudang RM.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Gagal menutup batch: ' . $e->getMessage());
     }
-
+}
     /**
      * 8. ROBOT SINKRONISASI
      */
