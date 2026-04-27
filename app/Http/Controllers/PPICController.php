@@ -297,42 +297,50 @@ class PPICController extends Controller
     /**
      * ✨ 10. OPSI STOP (Jika perbaikan lama / Dies hancur)
      */
-   public function closeBatch($id)
+ public function closeBatch($id)
 {
     DB::beginTransaction();
     try {
         $batch = DB::table('produksi_batches')->where('id', $id)->first();
         
-        if ($batch) {
-            // 1. Hitung sisa material yang belum jadi barang (GAP)
-            // Ambil Pcs - (Hasil OK + Hasil NG)
-            $totalHasil = $batch->qty_hasil_ok + $batch->qty_hasil_ng;
-            $sisaMaterial = $batch->qty_ambil_pcs - $totalHasil;
-
-            // 2. Kembalikan sisa material ke RM Stock (Gudang Material)
-            if ($sisaMaterial > 0) {
-                DB::table('rm_stocks')
-                    ->where('id', $batch->rm_stock_id)
-                    ->increment('stock_pcs', $sisaMaterial);
-            }
-
-            // 3. Update Status Batch menjadi COMPLETED (Ditutup Paksa)
-            DB::table('produksi_batches')->where('id', $id)->update([
-                'status' => 'COMPLETED',
-                'qty_return_warehouse' => $sisaMaterial, 
-                'keterangan' => $batch->keterangan . " | CLOSED MANUALLY BY PPIC DUE TO DIES DAMAGE",
-                'updated_at' => now()
-            ]);
-
-            // 4. Sinkronkan ke Dashboard Actual
-            $this->syncToActual($id);
+        if (!$batch) {
+            return redirect()->back()->with('error', 'Batch tidak ditemukan!');
         }
 
+        // ✨ FIX 1: Pastikan angka bukan NULL (Gunakan ?? 0)
+        $ambil = (int)$batch->qty_ambil_pcs;
+        $ok    = (int)$batch->qty_hasil_ok;
+        $ng    = (int)$batch->qty_hasil_ng;
+        
+        // Hitung sisa yang benar-benar belum disentuh
+        $sisaMaterial = $ambil - ($ok + $ng);
+
+        // ✨ FIX 2: Kembalikan stok ke Gudang RM
+        if ($sisaMaterial > 0) {
+            DB::table('rm_stocks')
+                ->where('id', $batch->rm_stock_id)
+                ->increment('stock_pcs', $sisaMaterial);
+        }
+
+        // ✨ FIX 3: Catat angka return ke dalam record batch tersebut
+        DB::table('produksi_batches')->where('id', $id)->update([
+            'status' => 'COMPLETED',
+            'qty_return_warehouse' => $sisaMaterial, // Simpan sisa materialnya
+            'keterangan' => $batch->keterangan . " | CLOSED BY PPIC: " . $sisaMaterial . " PCS RETURNED",
+            'updated_at' => now()
+        ]);
+
+        // ✨ FIX 4: Sinkronkan hasil produksi terakhir (yang 199 tadi) ke Dashboard
+        $this->syncToActual($id);
+
         DB::commit();
-        return redirect()->back()->with('error', 'Batch ditutup. Sisa material ' . $sisaMaterial . ' Pcs dikembalikan ke Gudang RM.');
+        return redirect()->back()->with('success', "Batch ditutup! $sisaMaterial Pcs sisa material dikembalikan ke gudang.");
+
     } catch (\Exception $e) {
         DB::rollBack();
-        return redirect()->back()->with('error', 'Gagal menutup batch: ' . $e->getMessage());
+        // Log errornya biar Bapak bisa baca kalau ada yang salah
+        \Log::error("Gagal Close Batch: " . $e->getMessage());
+        return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage());
     }
 }
     /**
