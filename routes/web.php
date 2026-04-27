@@ -7,7 +7,7 @@ use App\Http\Controllers\{
     DeliveryController, FgController, FgControlController, 
     WeldingStockController, StampingController, ProductionController, 
     CustomerController, PartController, DailyFgController, ProduksiController, 
-    LineController, PPICController, ReportController, QualityGateController
+    LineController, PPICController, ReportController, QualityGateController,WeldingMasterController
 };
 
 /*
