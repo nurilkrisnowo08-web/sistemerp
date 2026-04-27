@@ -132,51 +132,53 @@ class WeldingStockController extends Controller
     /**
      * 4. FINISH WELDING
      */
-    public function finishWelding(Request $request, $id)
-    {
-        $batch = DB::table('welding_batches')->where('id', $id)->first();
-        if (!$batch) return back()->with('error', 'Data batch tidak ditemukan.');
+   public function finishWelding(Request $request, $id)
+{
+    $batch = DB::table('welding_batches')->where('id', $id)->first();
+    if (!$batch) return back()->with('error', 'Data batch tidak ditemukan.');
 
-        $qty_ok = (int)$request->qty_ok;
-        $qty_ng = (int)$request->qty_ng;
-        $keterangan = $request->keterangan; 
+    $qty_ok = (int)$request->qty_ok;
+    $qty_ng = (int)$request->qty_ng;
+    $total_input = $qty_ok + $qty_ng;
 
-        DB::beginTransaction();
-        try {
-            // Update status menjadi COMPLETED
-            DB::table('welding_batches')->where('id', $id)->update([
-                'qty_ok'      => $qty_ok, 
-                'qty_ng'      => $qty_ng,
-                'keterangan'  => $keterangan,
-                'status'      => 'COMPLETED', 
-                'updated_at'  => now()
-            ]);
+    // 🔒 KEAMANAN 1: Validasi Jumlah
+    if ($total_input != $batch->qty_masuk) {
+        return back()->with('error', "🚨 KEAMANAN: Total (OK: $qty_ok + NG: $qty_ng) harus $batch->qty_masuk Pcs! Ada selisih " . ($batch->qty_masuk - $total_input) . " Pcs.");
+    }
 
-            // ✨ PROSES RINCIAN NG JIKA ADA
-            if ($request->has('ng_detail_type')) {
-                foreach ($request->ng_detail_type as $key => $type) {
-                    $qtyDetail = $request->ng_detail_qty[$key] ?? 0;
-                    if ($qtyDetail > 0) {
-                        DB::table('production_ng_logs')->insert([
-                            'no_produksi' => $batch->no_produksi_stamping, // Gunakan ID unik batch
-                            'ng_type'     => $type,
-                            'qty'         => $qtyDetail,
-                            'created_at'  => now()
-                        ]);
-                    }
+    DB::beginTransaction();
+    try {
+        // Simpan Hasil
+        DB::table('welding_batches')->where('id', $id)->update([
+            'qty_ok' => $qty_ok, 
+            'qty_ng' => $qty_ng,
+            'status' => 'COMPLETED', 
+            'updated_at' => now()
+        ]);
+
+        // Simpan Rincian NG jika ada
+        if ($request->has('ng_detail_type')) {
+            foreach ($request->ng_detail_type as $key => $type) {
+                $qDetail = (int)$request->ng_detail_qty[$key];
+                if ($qDetail > 0) {
+                    DB::table('production_ng_logs')->insert([
+                        'no_produksi' => $batch->no_produksi_stamping,
+                        'ng_type' => $type,
+                        'qty' => $qDetail,
+                        'created_at' => now()
+                    ]);
                 }
             }
-
-            // ✨ SINKRONISASI KE DASHBOARD
-            $this->syncWeldingToActual($id);
-
-            DB::commit();
-            return back()->with('success', 'Proses Las Selesai. Data sudah masuk ke laporan Quality Hub.');
-        } catch (\Exception $e) { 
-            DB::rollBack(); 
-            return back()->with('error', 'Gagal memproses data: ' . $e->getMessage()); 
         }
+
+        $this->syncWeldingToActual($id);
+        DB::commit();
+        return back()->with('success', 'Data aman & tersinkronisasi.');
+    } catch (\Exception $e) { 
+        DB::rollBack(); 
+        return back()->with('error', 'Gagal: ' . $e->getMessage()); 
     }
+}
 
     /**
      * ✨ 4.1 ROBOT SINKRONISASI WELDING (FIXED)
@@ -292,4 +294,5 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history_weldig', compact('historyData'));
     }
+    
 }
