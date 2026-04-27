@@ -197,30 +197,36 @@ class PPICController extends Controller
     }
 
     public function monthlyMatrix(Request $request)
-    {
-        $month = $request->month ?? date('m');
-        $year = $request->year ?? date('Y');
-        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+{
+    $month = $request->month ?? date('m');
+    $year = $request->year ?? date('Y');
+    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        $parts = DB::table('parts')
-            ->select('part_no', 'customer_code', 'part_name')
-            ->get()
-            ->map(function($p) {
-                $p->line_code = DB::table('production_plans')
-                    ->where('part_no', $p->part_no)
-                    ->orderBy('id', 'desc')
-                    ->value('line_code') ?? 'LINE A';
-                return $p;
-            });
+    $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
 
-        $planData = DB::table('production_plans')
-            ->whereMonth('plan_date', $month)
-            ->whereYear('plan_date', $year)
-            ->get()
-            ->groupBy('part_no');
+    // 1. Ambil Data Plan
+    $planData = DB::table('production_plans')
+        ->whereMonth('plan_date', $month)
+        ->whereYear('plan_date', $year)
+        ->get()
+        ->groupBy('part_no');
 
-        return view('PPIC.monthly_matrix', compact('parts', 'planData', 'month', 'year', 'daysInMonth'));
-    }
+    // 2. Ambil Data Actual (Hasil Produksi)
+    // Kita kelompokkan per part_no dan per tanggal (day)
+    $actualData = DB::table('production_actuals')
+        ->whereMonth('created_at', $month)
+        ->whereYear('created_at', $year)
+        ->select(
+            'part_no',
+            DB::raw('DAY(created_at) as day'),
+            DB::raw('SUM(qty_ok) as total_ok')
+        )
+        ->groupBy('part_no', 'day')
+        ->get()
+        ->groupBy('part_no');
+
+    return view('PPIC.monthly_matrix', compact('parts', 'planData', 'actualData', 'month', 'year', 'daysInMonth'));
+}
 
     public function saveMatrixAjax(Request $request)
     {
