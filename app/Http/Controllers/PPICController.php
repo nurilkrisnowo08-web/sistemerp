@@ -72,43 +72,62 @@ class PPICController extends Controller
      * 2. DAILY MPS
      * ✨ FIX: Menampilkan achievement gabungan shift pagi/malam
      */
-    public function mpsIndex(Request $request)
+   public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        
-        $plans = DB::table('production_plans')
-            ->where('plan_date', $date)
-            ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
-            ->orderBy('id', 'asc')
-            ->get();
+        // 1. Ambil Parameter Shift (Default S1)
+        $shiftParam = $request->shift ?? 'S1'; 
 
-        $totalDandory = 0; $totalPlanQty = 0; $totalWorkingHours = 0;
+        // 2. Query hanya data yang ada isinya di shift terpilih saja
+        $query = DB::table('production_plans')->where('plan_date', $date);
+        
+        if ($shiftParam == 'S1') {
+            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
+        } else {
+            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
+        }
+
+        $plans = $query->orderBy('id', 'asc')->get();
+
+        $totalDandory = 0; 
+        $totalPlanQty = 0; 
+        $totalWorkingHours = 0;
         $lineFinishTime = []; 
 
+        // 3. Tentukan Jam Mulai (S1: 07:30, S2: 19:30)
+        $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
+
         foreach($plans as $plan) {
+            // 4. Ambil Actual Murni sesuai Shift
+            $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
+            
             $actualData = DB::table('production_actuals')
                 ->where('part_no', $plan->part_no) 
+                ->where('shift', $dbShiftName) // Filter shift di database
                 ->whereDate('created_at', $date)
-                ->select(
-                    DB::raw("SUM(CASE WHEN shift = 'Pagi' THEN qty_ok ELSE 0 END) as s1_act"),
-                    DB::raw("SUM(CASE WHEN shift != 'Pagi' THEN qty_ok ELSE 0 END) as s2_act")
-                )->first();
+                ->sum('qty_ok');
 
-            $plan->s1_actual = $actualData->s1_act ?? 0;
-            $plan->s2_actual = $actualData->s2_act ?? 0;
+            $plan->total_actual = (int)$actualData;
             
-            $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot);
-            $plan->total_actual = ($plan->s1_actual + $plan->s2_actual);
+            // 5. Hitung Target hanya untuk shift yang dipilih
+            if ($shiftParam == 'S1') {
+                $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot);
+            } else {
+                $plan->total_target = ($plan->s2_plan_reg + $plan->s2_plan_ot);
+            }
             
+            // 6. Kalkulasi Load & Jam (Start/Finish)
             $dandoryH = ($plan->dandory_time ?? 0) / 60;
             $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
             
-            $startTime = $lineFinishTime[$plan->line_code] ?? "07:30";
+            $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
             $plan->start_time = $startTime;
             $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
             $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
 
             $plan->balance = $plan->total_target - $plan->total_actual;
+            
+            // Summary Stats
             $totalDandory += $plan->dandory_time;
             $totalPlanQty += $plan->total_target;
             $totalWorkingHours += $duration;
@@ -117,11 +136,15 @@ class PPICController extends Controller
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
+        // Oper variabel 'shiftParam' ke View sebagai 'shift'
         return view('PPIC.mps_index', compact(
             'plans', 'date', 'availableLines', 'availableCustomers', 
             'totalDandory', 'totalPlanQty', 'totalWorkingHours'
-        ));
+        ))->with('shift', $shiftParam);
     }
+
+    // ... fungsi lain tetap jangan diubah ...
+
 
     public function mpsStore(Request $request)
     {
