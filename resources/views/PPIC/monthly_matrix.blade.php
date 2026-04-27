@@ -5,137 +5,122 @@
 
 <style>
     :root {
-        --primary: #4361ee; --dark: #0f172a; --slate: #64748b;
-        --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
-        --weekend: #fff1f2; --today: #eff6ff;
+        --p-primary: #4361ee; --p-dark: #0f172a; --p-slate: #64748b;
+        --p-emerald: #10b981; --p-rose: #ef4444; --p-amber: #f59e0b;
+        --p-bg: #f8fafc;
     }
 
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: var(--dark); }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--p-bg); }
 
-    /* Matrix Container - Perbaikan Agar Bisa Digeser Licin */
-    .matrix-viewport { 
-        background: white; 
-        border-radius: 20px; 
-        border: 1px solid #e2e8f0; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-        overflow: hidden;
+    /* 🌊 Viewport Licin & Responsif */
+    .matrix-container { 
+        background: white; border-radius: 24px; border: 1px solid #e2e8f0; 
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05); overflow: hidden; 
     }
-
-    .matrix-wrapper { 
-        overflow-x: auto; 
-        overflow-y: auto; 
-        max-height: 75vh; 
-        position: relative;
-        -webkit-overflow-scrolling: touch; /* Support Smooth Scroll Mobile */
-    }
-
-    /* Table Styling */
-    .table-matrix { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; table-layout: fixed; }
     
-    .table-matrix th, .table-matrix td { 
-        border-right: 1px solid #f1f5f9; 
-        border-bottom: 1px solid #f1f5f9; 
-        padding: 0; 
-        width: 60px; /* Ukuran kolom tanggal */
+    .matrix-scroll-wrapper { 
+        overflow: auto; max-height: 75vh; 
+        -webkit-overflow-scrolling: touch; 
     }
 
-    /* Sticky Part Number */
+    /* 📊 Tabel Modern */
+    .table-matrix { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
+
+    /* 📌 Sticky Column (Part No) */
     .sticky-col { 
-        position: sticky; left: 0; background: white !important; z-index: 40; 
-        width: 220px !important; text-align: left !important; font-weight: 800;
-        box-shadow: 8px 0 15px -5px rgba(0,0,0,0.08);
-        padding: 12px !important;
+        position: sticky; left: 0; background: white !important; z-index: 45; 
+        width: 200px; padding: 12px 20px !important; border-right: 3px solid #f1f5f9 !important;
+        box-shadow: 10px 0 20px -10px rgba(0,0,0,0.1);
     }
     
-    /* Sticky Headers */
-    thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 50; background: var(--dark); color: white; height: 40px; }
-    thead tr:nth-child(2) th { position: sticky; top: 40px; z-index: 50; background: #f8fafc; color: var(--slate); font-size: 10px; height: 30px; }
+    /* 📌 Sticky Header */
+    thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 50; background: var(--p-dark); color: white; height: 45px; }
+    thead tr:nth-child(2) th { position: sticky; top: 45px; z-index: 50; background: #f8fafc; color: var(--p-slate); font-size: 10px; height: 35px; }
 
-    /* Cell Design (Plan vs Actual) */
-    .cell-container { display: flex; flex-direction: column; height: 65px; justify-content: space-between; }
+    /* 📦 Cell Box (Plan vs Actual) */
+    .cell-box { display: flex; flex-direction: column; height: 60px; min-width: 55px; justify-content: space-between; padding: 4px 0; }
     
-    .plan-box { 
-        height: 50%; background: transparent; display: flex; align-items: center; 
-        border-bottom: 1px dashed #e2e8f0;
-    }
-    
-    .actual-box { 
-        height: 50%; background: #fcfdfd; display: flex; align-items: center; 
-        justify-content: center; font-family: 'JetBrains Mono'; font-weight: 800;
-        font-size: 10px; color: var(--success);
-    }
-
+    /* Atas: Input Plan */
     .input-grid { 
         width: 100%; border: none; background: transparent; text-align: center; 
-        font-weight: 700; font-family: 'JetBrains Mono'; font-size: 11px; color: var(--primary);
+        font-weight: 700; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--p-primary);
     }
-    .input-grid:focus { background: #fff; outline: 2px solid var(--primary); z-index: 10; }
+    .input-grid:focus { background: white; box-shadow: 0 0 0 2px var(--p-primary); border-radius: 6px; outline: none; }
 
-    /* Helper Styles */
-    .bg-weekend { background-color: var(--weekend) !important; }
-    .bg-today { background-color: var(--today) !important; }
-    .shortage { color: var(--danger) !important; } /* Warna merah jika actual < plan */
-    
-    .summary-col { background: #f8fafc !important; width: 100px !important; font-family: 'Orbitron'; font-weight: 800; text-align: center !important; }
+    /* Bawah: Actual Display */
+    .act-display { 
+        font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; text-align: center;
+        background: rgba(16, 185, 129, 0.05); color: var(--p-emerald);
+        border-top: 1px dashed #e2e8f0; padding-top: 2px;
+    }
+    .act-shortage { color: var(--p-rose); background: rgba(239, 68, 68, 0.05); } /* Merah jika < Plan */
+
+    /* Row Summary */
+    .row-summary { background: #fcfcfd; font-family: 'Orbitron'; font-weight: 800; font-size: 10px; }
+    .col-total { width: 100px; background: #f8fafc !important; text-align: center !important; }
+
+    /* Highlights */
+    .bg-today { background-color: #eff6ff !important; box-shadow: inset 0 0 0 1px var(--p-primary); }
+    .bg-weekend { background-color: #fff1f2 !important; }
+
+    /* 🍬 Custom Scrollbar */
+    .matrix-scroll-wrapper::-webkit-scrollbar { height: 12px; width: 8px; }
+    .matrix-scroll-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid white; }
 </style>
 
 <div class="container-fluid mt-4 mb-5">
     {{-- Header Section --}}
-    <div class="d-flex justify-content-between align-items-end mb-4">
+    <div class="d-flex justify-content-between align-items-end mb-4 px-2">
         <div>
-            <h2 class="font-weight-black m-0" style="letter-spacing: -1px; font-family: 'Orbitron';">MONTHLY_MASTER <span class="text-primary">v4.5</span></h2>
+            <h2 class="font-weight-black m-0" style="letter-spacing: -1px; font-family: 'Orbitron';">MASTER_MATRIX <span class="text-primary">v4.5</span></h2>
             <div class="d-flex gap-3 mt-2">
-                <small class="badge badge-light border text-primary px-3"><i class="fas fa-edit mr-1"></i> BLUE = PLAN (INPUT)</small>
-                <small class="badge badge-light border text-success px-3"><i class="fas fa-check-circle mr-1"></i> GREEN = ACTUAL (LIVE)</small>
+                <small class="badge badge-outline-primary border px-3 py-1"><i class="fas fa-edit mr-1"></i> TOP: PLAN (BLUE)</small>
+                <small class="badge badge-outline-success border px-3 py-1"><i class="fas fa-check-circle mr-1"></i> BTM: ACTUAL (GREEN)</small>
             </div>
         </div>
 
         <div class="d-flex align-items-center gap-3">
-            <div class="shift-master-pill mr-3">
-                <button type="button" id="btn-s1" class="shift-btn active-s1" onclick="switchShift('s1')">S1</button>
-                <button type="button" id="btn-s2" class="shift-btn" onclick="switchShift('s2')">S2</button>
+            <div class="shift-master-pill mr-3" style="background: #f1f5f9; padding: 4px; border-radius: 12px;">
+                <button type="button" id="btn-s1" class="shift-btn active-s1" onclick="switchShift('s1')">SHIFT_1</button>
+                <button type="button" id="btn-s2" class="shift-btn" onclick="switchShift('s2')">SHIFT_2</button>
             </div>
 
-            <form action="" method="GET" class="d-flex mr-2">
+            <form action="" method="GET" class="d-flex">
                 <select name="month" class="form-control form-control-sm rounded-lg border-dark font-weight-bold px-3 mr-2" onchange="this.form.submit()">
-                    @foreach(range(1, 12) as $m)
-                        <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 1)) }}</option>
-                    @endforeach
+                    @foreach(range(1, 12) as $m) <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option> @endforeach
                 </select>
             </form>
-            <a href="{{ route('ppic.mps.index') }}" class="btn btn-primary shadow-sm font-weight-bold rounded-lg px-4">
-                <i class="fas fa-bolt mr-2"></i> DAILY_MPS
-            </a>
+            <a href="{{ route('ppic.mps.index') }}" class="btn btn-primary shadow-sm font-weight-bold rounded-lg px-4">OPEN_DAILY_MPS</a>
         </div>
     </div>
 
-    <div id="status-notif" class="toast-sync animate__animated animate__fadeInUp" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--dark); color: #fff; padding: 12px 30px; border-radius: 50px; z-index: 1000; display: none;">
-        <i class="fas fa-sync fa-spin mr-2 text-primary"></i> UPDATING_DATA_STREAM...
+    <div id="status-notif" class="toast-sync" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--p-dark); color: white; padding: 12px 30px; border-radius: 50px; z-index: 1000; display: none; font-weight: 700;">
+        <i class="fas fa-sync fa-spin mr-2 text-primary"></i> STREAMING_DATA...
     </div>
 
-    <div class="matrix-viewport">
-        <div class="matrix-wrapper">
+    <div class="matrix-container">
+        <div class="matrix-scroll-wrapper">
             <table class="table-matrix">
                 <thead>
                     <tr>
-                        <th rowspan="2" class="sticky-col">PART_NAME_SERIAL</th>
-                        <th rowspan="2" style="width: 50px;">CUST</th>
-                        <th rowspan="2" style="width: 60px;">CAP/H</th>
+                        <th rowspan="2" class="sticky-col">PART_NAME_SPEC</th>
+                        <th rowspan="2" style="width: 60px;">CUST</th>
+                        <th rowspan="2" style="width: 70px;">CAP/H</th>
                         @for($d=1; $d<=$daysInMonth; $d++)
                             @php 
                                 $dateStr = "$year-$month-$d";
-                                $isWknd = (date('N', strtotime($dateStr)) >= 6);
                                 $isToday = (date('Y-m-d', strtotime($dateStr)) == date('Y-m-d'));
+                                $isWknd = (date('N', strtotime($dateStr)) >= 6);
                             @endphp
-                            <th class="header-day {{ $isWknd ? 'text-danger' : '' }} {{ $isToday ? 'bg-primary' : '' }}">
+                            <th class="header-day {{ $isToday ? 'bg-primary' : '' }} {{ $isWknd ? 'text-danger' : '' }}">
                                 {{ str_pad($d, 2, '0', STR_PAD_LEFT) }}
                             </th>
                         @endfor
-                        <th rowspan="2" class="summary-col bg-warning text-dark">ACHV_%</th>
+                        <th rowspan="2" class="col-total bg-warning text-dark">ACHV_%</th>
                     </tr>
                     <tr>
                         @for($d=1; $d<=$daysInMonth; $d++)
-                            <th class="day-name">{{ date('D', strtotime("$year-$month-$d")) }}</th>
+                            <th class="sub-header-day text-center">{{ date('D', strtotime("$year-$month-$d")) }}</th>
                         @endfor
                     </tr>
                 </thead>
@@ -144,11 +129,11 @@
                     @php $rowPlanTotal = 0; $rowActTotal = 0; @endphp
                     <tr>
                         <td class="sticky-col">
-                            <div class="text-primary font-weight-bold" style="font-size: 12px;"># {{ $part->part_no }}</div>
-                            <small class="text-muted">{{ $part->part_name }}</small>
+                            <div class="text-primary font-weight-bold"># {{ $part->part_no }}</div>
+                            <div class="text-muted" style="font-size: 8px;">{{ $part->part_name }}</div>
                         </td>
                         <td class="text-center font-weight-bold text-muted">{{ $part->customer_code }}</td>
-                        <td class="text-center font-weight-bold bg-light">{{ $part->cap_per_hour ?? 320 }}</td>
+                        <td class="text-center bg-light font-weight-bold">{{ $part->cap_per_hour ?? 320 }}</td>
                         
                         @for($d=1; $d<=$daysInMonth; $d++)
                             @php
@@ -156,33 +141,35 @@
                                 $plan = $planData->get($part->part_no)?->firstWhere('plan_date', $dStr);
                                 $s1_val = $plan ? $plan->s1_plan_reg : 0;
                                 $s2_val = $plan ? $plan->s2_plan_reg : 0;
+                                $target = ($activeShift == 's1') ? $s1_val : $s2_val;
                                 
-                                // ✨ Data Actual Live
+                                // ✨ Data Actual Live dari Controller
                                 $actQty = $actualData->get($part->part_no)?->firstWhere('day', $d)->total_ok ?? 0;
                                 
                                 $rowPlanTotal += ($s1_val + $s2_val);
                                 $rowActTotal += $actQty;
+                                
+                                $isToday = ($dStr == date('Y-m-d'));
+                                $isWknd = (date('N', strtotime($dStr)) >= 6);
                             @endphp
-                            <td class="{{ (date('N', strtotime($dStr)) >= 6) ? 'bg-weekend' : '' }} {{ ($dStr == date('Y-m-d')) ? 'bg-today' : '' }}">
-                                <div class="cell-container">
-                                    <div class="plan-box">
-                                        <input type="number" class="input-grid qty-input" 
-                                               value="{{ $activeShift == 's1' ? ($s1_val ?: '') : ($s2_val ?: '') }}" 
-                                               data-s1="{{ $s1_val }}" data-s2="{{ $s2_val }}"
-                                               data-part="{{ $part->part_no }}" data-day="{{ $d }}"
-                                               data-cap="{{ $part->cap_per_hour ?? 320 }}" 
-                                               data-cust="{{ $part->customer_code ?? 'AMA' }}"
-                                               onchange="autoSave(this)">
-                                    </div>
-                                    <div class="actual-box {{ ($actQty < ($s1_val + $s2_val) && $actQty > 0) ? 'shortage' : '' }}">
+                            <td class="{{ $isToday ? 'bg-today' : '' }} {{ $isWknd ? 'bg-weekend' : '' }}">
+                                <div class="cell-box">
+                                    <input type="number" class="input-grid qty-input" 
+                                           value="{{ $target ?: '' }}" 
+                                           data-s1="{{ $s1_val }}" data-s2="{{ $s2_val }}"
+                                           data-part="{{ $part->part_no }}" data-day="{{ $d }}"
+                                           data-cap="{{ $part->cap_per_hour ?? 320 }}"
+                                           onchange="autoSave(this)">
+                                    
+                                    <div class="act-display {{ ($actQty < $target && $actQty > 0) ? 'act-shortage' : '' }}">
                                         {{ $actQty > 0 ? number_format($actQty) : '-' }}
                                     </div>
                                 </div>
                             </td>
                         @endfor
-                        <td class="summary-col">
+                        <td class="col-total">
                             <div class="text-primary" style="font-size: 9px;">P: {{ number_format($rowPlanTotal) }}</div>
-                            <div class="{{ $rowActTotal < $rowPlanTotal ? 'text-danger' : 'text-success' }}">
+                            <div class="{{ $rowActTotal < $rowPlanTotal ? 'text-danger' : 'text-success' }} font-weight-bold">
                                 {{ $rowPlanTotal > 0 ? round(($rowActTotal / $rowPlanTotal) * 100) : 0 }}%
                             </div>
                         </td>
@@ -197,11 +184,18 @@
 <script>
     let activeShift = 's1';
 
+    // ✨ Biar licin, kita auto-scroll ke hari ini pas buka halaman
+    document.addEventListener("DOMContentLoaded", () => {
+        const todayCol = document.querySelector('.bg-today');
+        if (todayCol) {
+            todayCol.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+    });
+
     function switchShift(shift) {
         activeShift = shift;
         document.getElementById('btn-s1').className = shift === 's1' ? 'shift-btn active-s1' : 'shift-btn';
         document.getElementById('btn-s2').className = shift === 's2' ? 'shift-btn active-s2' : 'shift-btn';
-        
         document.querySelectorAll('.qty-input').forEach(inp => {
             inp.value = inp.getAttribute(`data-${shift}`) || '';
         });
@@ -218,7 +212,6 @@
             body: JSON.stringify({
                 shift: activeShift,
                 part_no: input.dataset.part,
-                customer_code: input.dataset.cust,
                 day: input.dataset.day,
                 month: '{{ $month }}',
                 year: '{{ $year }}',
@@ -227,7 +220,6 @@
             })
         }).then(() => {
             setTimeout(() => { statusBox.style.display = "none"; }, 800);
-            location.reload(); // Refresh untuk update totalan actual jika perlu
         });
     }
 </script>
