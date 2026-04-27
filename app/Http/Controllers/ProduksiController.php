@@ -240,40 +240,38 @@ class ProduksiController extends Controller
     /**
      * ✨ FIX HISTORY: Tambahkan semua kolom ke GroupBy agar tidak error SQL Strict
      */
-    public function history() 
-    {
-        $history = DB::table('produksi_batches')
-            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-            ->select(
-                'produksi_batches.no_produksi',
-                'produksi_batches.material_code',
-                'produksi_batches.shift',
-                'produksi_batches.updated_at',
-                'produksi_batches.qty_hasil_ok',
-                'produksi_batches.qty_hasil_ng',      
-                'produksi_batches.qty_ambil_pcs',
-                'produksi_batches.keterangan', 
-                'produksi_batches.status',
-                DB::raw('MIN(produksi_batches.id) as id'),
-                DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names')
-            )
-            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-            ->groupBy(
-                'produksi_batches.no_produksi', 
-                'produksi_batches.material_code', 
-                'produksi_batches.shift', 
-                'produksi_batches.updated_at', 
-                'produksi_batches.qty_hasil_ok',
-                'produksi_batches.qty_hasil_ng',      
-                'produksi_batches.qty_ambil_pcs',
-                'produksi_batches.keterangan', 
-                'produksi_batches.status'
-            )
-            ->orderBy('updated_at', 'desc')
-            ->get();
+   public function history() 
+{
+    $history = DB::table('produksi_batches')
+        ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+        ->select(
+            'produksi_batches.no_produksi',
+            'produksi_batches.material_code',
+            'produksi_batches.shift',
+            'produksi_batches.status',
+            'produksi_batches.keterangan',
+            // ✨ Gunakan Aggregation agar data dari banyak line otomatis menjumlah
+            DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
+            DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
+            DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
+            DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
+            DB::raw('MIN(produksi_batches.id) as id'),
+            // ✨ Gabungkan nama line jika dalam satu batch ada lebih dari satu
+            DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
+        )
+        ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+        ->groupBy(
+            'produksi_batches.no_produksi', 
+            'produksi_batches.material_code', 
+            'produksi_batches.shift',
+            'produksi_batches.status',
+            'produksi_batches.keterangan'
+        )
+        ->orderBy('updated_at', 'desc')
+        ->get();
 
-        return view('Produksi.history', compact('history'));
-    }
+    return view('Produksi.history', compact('history'));
+}
 
     public function returnToRM($id) {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
