@@ -76,18 +76,6 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     Route::get('/welding-history-prod', [WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
     Route::get('/inventory-welding/daily-recap', [WeldingStockController::class, 'dailyRecap'])->name('welding.daily_recap');
     Route::get('/inventory-welding/monthly-recap', [WeldingStockController::class, 'recap'])->name('welding.recap');
-    // --- KHUSUS MANAGEMENT LINE WELDING ---
-    Route::prefix('welding-master')->group(function () {
-    // Tampilan Daftar Line Welding
-    Route::get('/lines', [WeldingMasterController::class, 'lineIndex'])->name('welding.master.lines');
-    
-    // Proses Tambah Line Baru
-    Route::post('/lines/store', [WeldingMasterController::class, 'lineStore'])->name('welding.master.line_store');
-    
-    // Proses Hapus Line
-    Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
-    Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
-    Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
 });
 
     // 🏭 AREA LIVE MONITORING & STAMPING
@@ -212,5 +200,17 @@ Route::get('/ppic-planning', [App\Http\Controllers\PPICController::class, 'index
 
 // Halaman Detail Quality (OK vs NG Breakdown)
 Route::get('/ppic/quality-hub', [App\Http\Controllers\PPICController::class, 'qualityHub'])->name('ppic.quality.hub');
+ // --- KHUSUS MANAGEMENT LINE WELDING ---
+    Route::prefix('welding-master')->group(function () {
+    // Tampilan Daftar Line Welding
+    Route::get('/lines', [WeldingMasterController::class, 'lineIndex'])->name('welding.master.lines');
+    
+    // Proses Tambah Line Baru
+    Route::post('/lines/store', [WeldingMasterController::class, 'lineStore'])->name('welding.master.line_store');
+    
+    // Proses Hapus Line
+    Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
+    Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
+    Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
 });
 });
