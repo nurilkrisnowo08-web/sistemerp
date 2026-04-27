@@ -9,6 +9,7 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
+     * ✨ FIX: Pencarian Actual sekarang lebih fleksibel (fokus ke Part & Date)
      */
     public function index(Request $request)
     {
@@ -22,9 +23,10 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
+            // ✨ FIX LOGIC: Dashboard menjumlahkan semua OK untuk part ini di tanggal terpilih
+            // Tidak lagi dikunci mati oleh line_code agar mendukung multi-line
             $actualPerPart = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
-                ->where('line_code', $p->line_code)
                 ->whereDate('created_at', $date)
                 ->sum('qty_ok');
             
@@ -69,6 +71,7 @@ class PPICController extends Controller
 
     /**
      * 2. DAILY MPS
+     * ✨ FIX: Akumulasi shift tetap akurat meskipun ganti-ganti line
      */
     public function mpsIndex(Request $request)
     {
@@ -86,7 +89,6 @@ class PPICController extends Controller
         foreach($plans as $plan) {
             $actualData = DB::table('production_actuals')
                 ->where('part_no', $plan->part_no) 
-                ->where('line_code', $plan->line_code)
                 ->whereDate('created_at', $date)
                 ->select(
                     DB::raw("SUM(CASE WHEN shift = 'Pagi' THEN qty_ok ELSE 0 END) as s1_act"),
@@ -123,9 +125,6 @@ class PPICController extends Controller
         ));
     }
 
-    /**
-     * 3. EMERGENCY STORE (Manual Entry)
-     */
     public function mpsStore(Request $request)
     {
         DB::table('production_plans')->updateOrInsert(
@@ -148,8 +147,8 @@ class PPICController extends Controller
         return redirect()->back()->with('success', 'Master Schedule Updated!');
     }
 
-    /**
-     * 4. ✨ QUALITY CONTROL HUB
+   /**
+     * 4. ✨ QUALITY CONTROL HUB (Disesuaikan untuk rincian Batch)
      */
     public function qualityHub(Request $request)
     {
@@ -169,17 +168,32 @@ class PPICController extends Controller
             ->orderBy('total', 'DESC')
             ->get();
 
+        // Ambil data actual summary
         $details = DB::table('production_actuals')
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'DESC')
             ->get();
 
+        // ✨ Tambahkan rincian batch untuk setiap baris actual
+        foreach($details as $d) {
+            $d->batches = DB::table('produksi_batches')
+                ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+                ->where('material_code', $d->part_no)
+                ->where('shift', $d->shift)
+                ->whereDate('produksi_batches.created_at', $date)
+                ->select(
+                    'no_produksi', 
+                    'qty_ambil_pcs', 
+                    'qty_hasil_ok', 
+                    'qty_hasil_ng', 
+                    'kode_Line'
+                )
+                ->get();
+        }
+
         return view('PPIC.quality_hub', compact('summary', 'ngRanking', 'details', 'date'));
     }
 
-    /**
-     * 5. MONTHLY MASTER MATRIX
-     */
     public function monthlyMatrix(Request $request)
     {
         $month = $request->month ?? date('m');
@@ -206,9 +220,6 @@ class PPICController extends Controller
         return view('PPIC.monthly_matrix', compact('parts', 'planData', 'month', 'year', 'daysInMonth'));
     }
 
-    /**
-     * 6. AJAX AUTO-SAVE
-     */
     public function saveMatrixAjax(Request $request)
     {
         $date = $request->year .'-'. str_pad($request->month, 2, '0', STR_PAD_LEFT) .'-'. str_pad($request->day, 2, '0', STR_PAD_LEFT);
@@ -236,9 +247,6 @@ class PPICController extends Controller
         return response()->json(['status' => 'success']);
     }
 
-    /**
-     * 7. API DATA
-     */
     public function apiData()
     {
         $today = date('Y-m-d');
@@ -254,48 +262,43 @@ class PPICController extends Controller
 
     /**
      * ✨ 8. ROBOT SINKRONISASI (MODERN VERSION)
-     * Robot ini sekarang fokus mengupdate TOTAL OK & NG ke tabel ringkasan.
-     * Rincian penyakit (Burry, dll) sudah ditangani oleh loop di ProduksiController.
+     * ✨ FIX: Mendukung 2 line (Line A & B) agar tidak membuat data baru terus menerus
      */
     public function syncToActual($batchId)
     {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
         if (!$batch) return;
 
+        // Ambil Nama Line (Bisa tunggal "LINE A" atau gabungan "LINE A, LINE B")
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
 
-        // Ambil Total NG (sudah termasuk akumulasi penyakit spesifik)
-        $ngTotal = $batch->qty_hasil_ng;
-
+        // ✨ UPDATE atau INSERT: Cari berdasarkan Part, Shift, dan TANGGAL saja.
+        // Jika data sudah ada, tambahkan angkanya (Accumulate).
         $actual = DB::table('production_actuals')
             ->where('part_no', $batch->material_code)
-            ->where('line_code', $lineCode)
             ->where('shift', $batch->shift)
             ->whereDate('created_at', $dateOnly)
             ->first();
 
         if ($actual) {
-            // Update total di tabel dashboard
             DB::table('production_actuals')->where('id', $actual->id)->update([
-                'qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok,
-                'qty_ng' => $actual->qty_ng + $ngTotal,
+                'line_code'  => $lineCode, // Update line terakhir yang digunakan
+                'qty_ok'     => $actual->qty_ok + $batch->qty_hasil_ok,
+                'qty_ng'     => $actual->qty_ng + $batch->qty_hasil_ng,
                 'updated_at' => now()
             ]);
         } else {
-            // Buat baris baru di tabel dashboard jika belum ada
             DB::table('production_actuals')->insert([
                 'part_no'    => $batch->material_code,
                 'line_code'  => $lineCode,
                 'shift'      => $batch->shift,
                 'qty_ok'     => $batch->qty_hasil_ok,
-                'qty_ng'     => $ngTotal,
+                'qty_ng'     => $batch->qty_hasil_ng,
                 'created_at' => $batch->created_at,
                 'updated_at' => now()
             ]);
         }
-        
-        // PENTING: Jangan masukkan rincian NG ke 'production_ng_logs' di sini lagi, 
-        // karena sudah dilakukan secara dinamis (loop) di ProduksiController Bapak.
     }
+    
 }
