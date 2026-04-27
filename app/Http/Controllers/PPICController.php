@@ -202,25 +202,19 @@ class PPICController extends Controller
     $year = $request->year ?? date('Y');
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-    $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
+    $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name', 'cap_per_hour')->get();
 
-    // 1. Ambil Data Plan
     $planData = DB::table('production_plans')
         ->whereMonth('plan_date', $month)
         ->whereYear('plan_date', $year)
         ->get()
         ->groupBy('part_no');
 
-    // 2. Ambil Data Actual (Hasil Produksi)
-    // Kita kelompokkan per part_no dan per tanggal (day)
+    // ✨ Ambil Data Actual Nyata dari Lapangan
     $actualData = DB::table('production_actuals')
         ->whereMonth('created_at', $month)
         ->whereYear('created_at', $year)
-        ->select(
-            'part_no',
-            DB::raw('DAY(created_at) as day'),
-            DB::raw('SUM(qty_ok) as total_ok')
-        )
+        ->select('part_no', DB::raw('DAY(created_at) as day'), DB::raw('SUM(qty_ok) as total_ok'))
         ->groupBy('part_no', 'day')
         ->get()
         ->groupBy('part_no');
