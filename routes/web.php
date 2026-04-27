@@ -86,7 +86,12 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     Route::get('/produksi/history', [ProduksiController::class, 'history'])->name('produksi.history');
     Route::get('/ng-report', [ProduksiController::class, 'report'])->name('produksi.report');
     // Tambahkan baris ini di web.php
-Route::put('/produksi/report-problem/{id}', [App\Http\Controllers\ProduksiController::class, 'reportProblem'])->name('produksi.report_problem');
+    Route::put('/produksi/report-problem/{id}', [App\Http\Controllers\ProduksiController::class, 'reportProblem'])->name('produksi.report_problem');
+    // PPIC menghidupkan kembali produksi (Jika perbaikan < 2 jam)
+    Route::put('/ppic/resume-batch/{id}', [App\Http\Controllers\PPICController::class, 'resumeBatch'])->name('ppic.resume_batch');
+
+    // PPIC menutup produksi (Jika perbaikan lama / Dies rusak parah)
+    Route::put('/ppic/close-batch/{id}', [App\Http\Controllers\PPICController::class, 'closeBatch'])->name('ppic.close_batch');
 
     // 🛡️ AREA QUALITY GATE
     Route::get('/quality-control-room', [QualityGateController::class, 'index'])->name('quality.index');

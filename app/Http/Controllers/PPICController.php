@@ -15,16 +15,17 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        // ✨ FIX: Menentukan asal tabel 'updated_at' agar tidak bentrok (Ambiguous)
+        // Ambil daftar kendala produksi (Status PROBLEM) untuk notifikasi PPIC
         $alerts = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
             ->select(
+                'produksi_batches.id',
                 'produksi_batches.no_produksi', 
                 'produksi_batches.material_code', 
                 'line.kode_Line', 
                 'produksi_batches.keterangan', 
-                'produksi_batches.updated_at' // <-- Ditentukan asal tabelnya
+                'produksi_batches.updated_at'
             )
             ->get();
 
@@ -165,7 +166,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. ✨ QUALITY CONTROL HUB
+     * 4. QUALITY CONTROL HUB
      */
     public function qualityHub(Request $request)
     {
@@ -277,6 +278,36 @@ class PPICController extends Controller
             'totalPlan' => $totalPlan, 
             'totalActual' => $totalActual
         ]);
+    }
+
+    /**
+     * ✨ 9. OPSI RECOVERY (Jika perbaikan cepat < 2 Jam)
+     */
+    public function resumeBatch($id)
+    {
+        DB::table('produksi_batches')->where('id', $id)->update([
+            'status' => 'PROSES', // Balikkan ke mode jalan di terminal operator
+            'keterangan' => DB::raw("CONCAT(keterangan, ' | RESUMED BY PPIC')"),
+            'updated_at' => now()
+        ]);
+
+        return redirect()->back()->with('success', 'Batch diaktifkan kembali. Operator bisa lanjut bekerja.');
+    }
+
+    /**
+     * ✨ 10. OPSI STOP (Jika perbaikan lama / Dies hancur)
+     */
+    public function closeBatch($id)
+    {
+        DB::table('produksi_batches')->where('id', $id)->update([
+            'status' => 'COMPLETED', // Tutup permanen
+            'updated_at' => now()
+        ]);
+        
+        // Panggil Robot Sinkronisasi agar angka terakhir tetap masuk ke Dashboard
+        $this->syncToActual($id);
+
+        return redirect()->back()->with('error', 'Batch telah ditutup paksa oleh PPIC.');
     }
 
     /**
