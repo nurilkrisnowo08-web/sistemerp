@@ -86,6 +86,8 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     
     // Proses Hapus Line
     Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
+    Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
+    Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
 });
 
     // 🏭 AREA LIVE MONITORING & STAMPING
