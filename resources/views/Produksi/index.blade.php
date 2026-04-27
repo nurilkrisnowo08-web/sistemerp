@@ -22,9 +22,6 @@
     .table-industrial thead th { background: #f1f5f9; color: #64748b; padding: 15px 25px; text-align: left; font-size: 10px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; }
     .table-industrial td { padding: 20px 25px; border-bottom: 1px solid var(--ind-border); font-size: 13px; font-weight: 600; }
     .id-tag { font-family: 'JetBrains Mono'; color: var(--ind-blue); font-size: 12px; font-weight: 800; background: #f0f3ff; padding: 4px 8px; border-radius: 6px; }
-    .badge-coil { background: #fff; color: var(--ind-dark); border: 2px solid var(--ind-border); padding: 6px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; }
-    .route-fg { background: rgba(16, 185, 129, 0.1); color: var(--ind-success); border: 1.5px solid var(--ind-success); padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; }
-    .route-wld { background: rgba(245, 158, 11, 0.1); color: var(--ind-warning); border: 1.5px solid var(--ind-warning); padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; }
     .input-tactical { background: #f8fafc; border: 2px solid var(--ind-border); border-radius: 12px; padding: 12px; font-weight: 700; font-family: 'JetBrains Mono'; width: 100%; transition: 0.3s; }
     .btn-blueprint { border-radius: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 12px 25px; border: none; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; }
     .progress-lite { height: 12px; border-radius: 20px; background: #f1f5f9; overflow: hidden; margin: 15px 0; border: 1px solid var(--ind-border); }
@@ -37,6 +34,11 @@
             <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" style="border-radius:15px; border-left: 6px solid var(--ind-success) !important;">
                 <div class="d-flex align-items-center"><i class="fas fa-check-circle mr-3 fa-lg"></i><div><strong class="text-uppercase">Success </strong><br><small>{{ session('success') }}</small></div></div>
                 <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger border-0 shadow-sm mb-4" style="border-radius:15px; border-left: 6px solid var(--ind-danger) !important;">
+                <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
             </div>
         @endif
     </div>
@@ -78,11 +80,11 @@
                     <td><div class="font-weight-bold text-dark">{{ $p->material_code }}</div><small class="text-muted">{{ $p->coil_id }}</small></td>
                     <td>
                         @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
-                        @if($route == 'WELDING') <span class="route-wld">WELDING</span> @else <span class="route-fg">FG</span> @endif
+                        @if(strtoupper($route) == 'WELDING') <span class="badge badge-warning">WELDING</span> @else <span class="badge badge-success">FG / QC</span> @endif
                     </td>
                     <td><span class="font-weight-bold text-primary">{{ $p->line_names }}</span></td>
                     <td class="text-center">{{ number_format($p->total_qty_batch) }}</td>
-                    <td class="text-center"><span class="badge badge-warning">{{ $p->status }}</span></td>
+                    <td class="text-center"><span class="badge badge-primary px-3">{{ $p->status }}</span></td>
                     <td class="text-right">
                         <button class="btn btn-blueprint btn-sm px-4" style="background: var(--ind-success); color: #fff; border-radius: 10px;" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">INPUT RESULT</button>
                     </td>
@@ -95,7 +97,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL INPUT HASIL (CLEAN VERSION: NO GLOBAL NG) --}}
+{{-- 🛡️ MODAL INPUT HASIL --}}
 @foreach($activeProductions as $p)
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -118,7 +120,7 @@
                         </div>
                     </div>
 
-                    {{-- 🛠️ RINCIAN NG SPESIFIK (REPLACING GLOBAL NG) --}}
+                    {{-- 🛠️ RINCIAN NG SPESIFIK --}}
                     <div class="mt-2 border-top pt-3">
                         <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
                         <div id="ng_container_{{ $p->batch_id }}">
@@ -130,12 +132,12 @@
 
                     <div class="form-group mt-4">
                         <label class="small font-weight-bold text-muted uppercase">Keterangan Produksi</label>
-                        <textarea name="keterangan" class="form-control" rows="2" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Catatan tambahan jika diperlukan..."></textarea>
+                        <textarea name="keterangan" class="form-control" rows="2" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Catatan tambahan..."></textarea>
                     </div>
 
                     <div class="p-3 bg-light mt-4 rounded-xl border text-center">
-                        <small class="text-muted font-weight-bold uppercase">Gap Status:</small>
-                        <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ $p->total_qty_batch }}</h4>
+                        <small class="text-muted font-weight-bold uppercase">Gap Status (Must be 0):</small>
+                        <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ number_format($p->total_qty_batch) }}</h4>
                         <div class="progress-lite mt-2"><div class="progress-bar-fill" id="bar_{{ $p->batch_id }}" style="width: 0%"></div></div>
                         <input type="hidden" class="target-val" data-id="{{ $p->batch_id }}" value="{{ $p->total_qty_batch }}">
                     </div>
@@ -198,7 +200,7 @@
                 </div>
                 <div class="col-3 pr-1">
                     <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" 
-                    placeholder="Qty" min="1" required data-id="${batchId}" oninput="triggerCalc(${batchId})">
+                    placeholder="Qty" min="1" required data-id="${batchId}">
                 </div>
                 <div class="col-2">
                     <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})">
@@ -220,70 +222,73 @@
         $(`#ok_${batchId}`).trigger('input');
     }
 
-$(document).ready(function() {
-    // ✨ UPDATE: LOGIKA KALKULASI GAP (NG GLOBAL DIHAPUS)
-    $(document).on('input', '.calc-input, .ng-qty-input', function() {
-        let id = $(this).data('id');
-        let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
-        
-        // Hitung akumulasi dari rincian NG spesifik
-        let dynamicNgSum = 0;
-        $(`#ng_container_${id} .ng-qty-input`).each(function() {
-            dynamicNgSum += parseInt($(this).val()) || 0;
+    $(document).ready(function() {
+        // ✨ LOGIKA KALKULASI GAP & DATA SYNC
+        $(document).on('input', '.calc-input, .ng-qty-input', function() {
+            let id = $(this).data('id');
+            let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
+            
+            let dynamicNgSum = 0;
+            $(`#ng_container_${id} .ng-qty-input`).each(function() {
+                dynamicNgSum += parseInt($(this).val()) || 0;
+            });
+
+            let okVal = parseInt($(`#ok_${id}`).val()) || 0;
+            let retVal = parseInt($(`#return_${id}`).val()) || 0;
+            let accounted = okVal + retVal + dynamicNgSum;
+
+            let gap = target - accounted;
+            $(`#gap_${id}`).text(gap.toLocaleString());
+            
+            let progress = (accounted / target) * 100;
+            $(`#bar_${id}`).css('width', progress + '%');
+            
+            let btn = $(`#btn_${id}`), msg = $(`#police_msg_${id}`);
+            
+            if (gap === 0) { 
+                msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC! Ready to commit.'); 
+                btn.prop('disabled', false); 
+            } else if (gap < 0) {
+                msg.removeClass('alert-warning alert-success').addClass('alert-danger').html('🚨 OVER LIMIT! Check your numbers.'); 
+                btn.prop('disabled', true); 
+            } else { 
+                msg.removeClass('alert-success alert-danger').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); 
+                btn.prop('disabled', true); 
+            }
         });
 
-        // Akuntansi: OK + Return + NG Spesifik
-        let accounted = (parseInt($(`#ok_${id}`).val()) || 0) + 
-                        (parseInt($(`#return_${id}`).val()) || 0) + 
-                        dynamicNgSum;
+        // Cascading Dropdowns
+        $('#sel_customer').change(function() {
+            $.get('/produksi/get-specs/' + $(this).val(), function(data) {
+                let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
+                data.forEach(i => { h += `<option value="${i.spec}" data-size="${i.size}">${i.spec} [${i.size}]</option>`; });
+                $('#sel_spec').prop('disabled', false).html(h);
+            });
+        });
 
-        let gap = target - accounted;
-        $(`#gap_${id}`).text(gap.toLocaleString());
-        $(`#bar_${id}`).css('width', ((accounted / target) * 100) + '%');
-        
-        let btn = $(`#btn_${id}`), msg = $(`#police_msg_${id}`);
-        if (accounted == target) { 
-            msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC!'); 
-            btn.prop('disabled', false); 
-        } else { 
-            msg.removeClass('alert-success').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); 
-            btn.prop('disabled', true); 
-        }
-    });
+        $('#sel_spec').change(function() {
+            let s = $(this).find(':selected').data('size');
+            $.get('/produksi/get-parts-by-spec', {customer: $('#sel_customer').val(), spec: $(this).val(), size: s}, function(data) {
+                let h = '<option value="" disabled selected>-- SELECT PART --</option>';
+                data.forEach(i => { h += `<option value="${i.material_code}">${i.material_code}</option>`; });
+                $('#sel_part').prop('disabled', false).html(h);
+            });
+        });
 
-    // CASCADING DROPDOWN 
-    $('#sel_customer').change(function() {
-        $.get('/produksi/get-specs/' + $(this).val(), function(data) {
-            let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
-            data.forEach(i => { h += `<option value="${i.spec}" data-size="${i.size}">${i.spec} [${i.size}]</option>`; });
-            $('#sel_spec').prop('disabled', false).html(h);
+        $('#sel_part').change(function() {
+            $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
+                let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
+                data.forEach(i => { h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; });
+                $('#sel_bandel').prop('disabled', false).html(h);
+            });
+        });
+
+        $('#sel_bandel, #qty_ambil_pcs, select[name="line_ids[]"]').on('change input', function() {
+            let maxStok = parseInt($('#sel_bandel option:selected').data('qty')) || 0;
+            let inputQty = parseInt($('#qty_ambil_pcs').val()) || 0;
+            let lines = $('select[name="line_ids[]"] :selected').length;
+            $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && inputQty <= maxStok && lines > 0));
         });
     });
-
-    $('#sel_spec').change(function() {
-        let s = $(this).find(':selected').data('size');
-        $.get('/produksi/get-parts-by-spec', {customer: $('#sel_customer').val(), spec: $(this).val(), size: s}, function(data) {
-            let h = '<option value="" disabled selected>-- SELECT PART --</option>';
-            data.forEach(i => { h += `<option value="${i.material_code}">${i.material_code}</option>`; });
-            $('#sel_part').prop('disabled', false).html(h);
-        });
-    });
-
-    $('#sel_part').change(function() {
-        $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
-            let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
-            data.forEach(i => { h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; });
-            $('#sel_bandel').prop('disabled', false).html(h);
-        });
-    });
-
-    let maxStok = 0;
-    $('#sel_bandel, #qty_ambil_pcs, select[name="line_ids[]"]').on('change input', function() {
-        maxStok = parseInt($('#sel_bandel option:selected').data('qty')) || 0;
-        let inputQty = parseInt($('#qty_ambil_pcs').val()) || 0;
-        let lines = $('select[name="line_ids[]"] :selected').length;
-        $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && inputQty <= maxStok && lines > 0));
-    });
-});
 </script>
 @endsection

@@ -48,7 +48,7 @@
                 <i class="fas fa-print mr-2"></i> GENERATE_PDF
             </button>
             <a href="{{ route('produksi.index') }}" class="btn btn-outline-primary rounded-pill px-4 font-weight-bold shadow-sm border-2">
-                <i class="fas fa-desktop mr-2"></i> MONITORING
+                <i class="fas fa-desktop mr-2 text-primary"></i> MONITORING
             </a>
         </div>
     </div>
@@ -91,24 +91,25 @@
                 <tbody id="historyLogBody">
                     @foreach($history as $h)
                     @php 
-                        $batchTotal = (float)$h->qty_hasil_ok + (float)$h->qty_hasil_ng;
-                        $yield = $batchTotal > 0 ? ($h->qty_hasil_ok / $batchTotal) * 100 : 0;
-                        $color = ($yield >= 95) ? 'var(--ind-success)' : (($yield >= 85) ? 'var(--ind-warning)' : 'var(--ind-danger)');
-
-                        // ✨ FIX: AMBIL DATA MURNI BERDASARKAN NO_PRODUKSI (AGAR TIDAK NGACO)
+                        // ✨ KUNCI AKURASI: Ambil rincian NG HANYA milik Batch ini saja!
                         $rincian = DB::table('production_ng_logs')
                             ->where('no_produksi', $h->no_produksi)
-                            ->select('ng_type', 'qty')
                             ->get();
                         
-                        $h->specific_ng = $rincian; 
+                        $h->specific_ng = $rincian; // Kirim ke Modal
+                        
+                        $batchOk = (float)$h->qty_hasil_ok;
+                        $batchNg = (float)$h->qty_hasil_ng;
+                        $batchTotal = $batchOk + $batchNg;
+                        $yield = $batchTotal > 0 ? ($batchOk / $batchTotal) * 100 : 0;
+                        $color = ($yield >= 95) ? 'var(--ind-success)' : (($yield >= 85) ? 'var(--ind-warning)' : 'var(--ind-danger)');
                     @endphp
                     <tr class="row-clickable" onclick="showDetail({{ json_encode($h) }})">
                         <td class="text-muted small">{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
                         <td class="id-tag">{{ $h->no_produksi }}</td>
                         <td class="text-left font-weight-bold pl-4">> {{ $h->material_code }}</td>
-                        <td class="text-success font-weight-bold">{{ number_format($h->qty_hasil_ok) }}</td>
-                        <td class="text-danger font-weight-bold">{{ number_format($h->qty_hasil_ng) }}</td>
+                        <td class="text-success font-weight-bold">{{ number_format($batchOk) }}</td>
+                        <td class="text-danger font-weight-bold">{{ number_format($batchNg) }}</td>
                         <td><b style="color: {{ $color }}; font-size: 14px;">{{ number_format($yield, 1) }}%</b></td>
                         <td class="text-left">
                             <div class="small italic text-dark font-weight-bold">{{ $h->keterangan ?? '-' }}</div>
@@ -167,8 +168,9 @@
         series: [{
             name: 'Yield %',
             data: chartData.map(h => {
-                const total = parseFloat(h.qty_hasil_ok) + parseFloat(h.qty_hasil_ng);
-                return total > 0 ? ((h.qty_hasil_ok / total) * 100).toFixed(1) : 0;
+                const ok = parseFloat(h.qty_hasil_ok) || 0;
+                const ng = parseFloat(h.qty_hasil_ng) || 0;
+                return (ok + ng) > 0 ? ((ok / (ok + ng)) * 100).toFixed(1) : 0;
             })
         }],
         chart: { type: 'area', height: 300, toolbar: { show: false }, zoom: { enabled: false } },
@@ -185,22 +187,22 @@
 
     // 2. MODAL DETAIL FUNCTION
     function showDetail(h) {
-        const batchTotal = parseFloat(h.qty_hasil_ok) + parseFloat(h.qty_hasil_ng);
-        const yieldVal = batchTotal > 0 ? ((h.qty_hasil_ok / batchTotal) * 100).toFixed(0) : 0;
+        const ok = parseInt(h.qty_hasil_ok) || 0;
+        const ng = parseInt(h.qty_hasil_ng) || 0;
+        const total = ok + ng;
+        const yieldVal = total > 0 ? ((ok / total) * 100).toFixed(0) : 0;
         const color = yieldVal >= 95 ? '#1cc88a' : (yieldVal >= 85 ? '#f6c23e' : '#e74a3b');
 
-        // Render Donut
         document.getElementById('donut-target').innerHTML = `
             <div class="donut-container" style="--p: ${yieldVal}%; --c: ${color};">
                 <div class="donut-text">${yieldVal}%</div>
             </div>
         `;
 
-        document.getElementById('det-ok').innerText = parseInt(h.qty_hasil_ok).toLocaleString() + " Pcs";
-        document.getElementById('det-ng').innerText = parseInt(h.qty_hasil_ng).toLocaleString() + " Pcs";
+        document.getElementById('det-ok').innerText = ok.toLocaleString() + " Pcs";
+        document.getElementById('det-ng').innerText = ng.toLocaleString() + " Pcs";
         document.getElementById('det-remark').innerText = h.keterangan || 'No specific notes recorded.';
 
-        // Render NG Specifics
         const listDiv = document.getElementById('det-ng-list');
         listDiv.innerHTML = '';
         
