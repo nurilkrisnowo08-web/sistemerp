@@ -9,7 +9,6 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * ✨ FIX: Akumulasi Actual sekarang menggabungkan semua line untuk part yang sama
      */
     public function index(Request $request)
     {
@@ -23,10 +22,11 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // ✨ FIX: Dashboard menjumlahkan semua hasil OK (dari Line A + Line B) untuk Part ini
+            // ✨ FIX: Hanya jumlahkan hasil Stamping (Abaikan Welding)
             $actualPerPart = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
+                ->where('line_code', '!=', 'WELDING AREA')
                 ->sum('qty_ok');
             
             $p->actual_qty = (int)$actualPerPart;
@@ -49,16 +49,16 @@ class PPICController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
             $dailyLabels[] = date('d M', strtotime($d));
-            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->sum('qty_ok');
-            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->sum('qty_ng');
+            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
+            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
         $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
             $monthlyLabels[] = date('M', strtotime("-$i months"));
-            $monthlyOk[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->sum('qty_ok');
-            $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->sum('qty_ng');
+            $monthlyOk[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
+            $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
         return view('PPIC.ppic_planning', compact(
@@ -70,15 +70,12 @@ class PPICController extends Controller
 
     /**
      * 2. DAILY MPS
-     * ✨ FIX: Menampilkan achievement gabungan shift pagi/malam
      */
-   public function mpsIndex(Request $request)
+    public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        // 1. Ambil Parameter Shift (Default S1)
         $shiftParam = $request->shift ?? 'S1'; 
 
-        // 2. Query hanya data yang ada isinya di shift terpilih saja
         $query = DB::table('production_plans')->where('plan_date', $date);
         
         if ($shiftParam == 'S1') {
@@ -89,34 +86,29 @@ class PPICController extends Controller
 
         $plans = $query->orderBy('id', 'asc')->get();
 
-        $totalDandory = 0; 
-        $totalPlanQty = 0; 
-        $totalWorkingHours = 0;
+        $totalDandory = 0; $totalPlanQty = 0; $totalWorkingHours = 0;
         $lineFinishTime = []; 
-
-        // 3. Tentukan Jam Mulai (S1: 07:30, S2: 19:30)
         $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
 
         foreach($plans as $plan) {
-            // 4. Ambil Actual Murni sesuai Shift
             $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
             
+            // ✨ FIX: Hanya ambil data Actual Stamping (Abaikan Welding)
             $actualData = DB::table('production_actuals')
                 ->where('part_no', $plan->part_no) 
-                ->where('shift', $dbShiftName) // Filter shift di database
+                ->where('shift', $dbShiftName) 
                 ->whereDate('created_at', $date)
+                ->where('line_code', '!=', 'WELDING AREA')
                 ->sum('qty_ok');
 
             $plan->total_actual = (int)$actualData;
             
-            // 5. Hitung Target hanya untuk shift yang dipilih
             if ($shiftParam == 'S1') {
                 $plan->total_target = ($plan->s1_plan_reg + $plan->s1_plan_ot);
             } else {
                 $plan->total_target = ($plan->s2_plan_reg + $plan->s2_plan_ot);
             }
             
-            // 6. Kalkulasi Load & Jam (Start/Finish)
             $dandoryH = ($plan->dandory_time ?? 0) / 60;
             $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
             
@@ -127,7 +119,6 @@ class PPICController extends Controller
 
             $plan->balance = $plan->total_target - $plan->total_actual;
             
-            // Summary Stats
             $totalDandory += $plan->dandory_time;
             $totalPlanQty += $plan->total_target;
             $totalWorkingHours += $duration;
@@ -136,13 +127,11 @@ class PPICController extends Controller
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
-        // Oper variabel 'shiftParam' ke View sebagai 'shift'
         return view('PPIC.mps_index', compact(
             'plans', 'date', 'availableLines', 'availableCustomers', 
             'totalDandory', 'totalPlanQty', 'totalWorkingHours'
         ))->with('shift', $shiftParam);
     }
-
 
     public function mpsStore(Request $request)
     {
@@ -167,14 +156,16 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. ✨ QUALITY CONTROL HUB (Disesuaikan untuk Drill-down Batch & NG)
+     * 4. ✨ QUALITY CONTROL HUB
      */
     public function qualityHub(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
+        // ✨ FIX: Filter Summary Hanya Stamping
         $summary = DB::table('production_actuals')
             ->whereDate('created_at', $date)
+            ->where('line_code', '!=', 'WELDING AREA')
             ->select(
                 DB::raw('SUM(qty_ok) as total_ok'),
                 DB::raw('SUM(qty_ng) as total_ng')
@@ -187,12 +178,13 @@ class PPICController extends Controller
             ->orderBy('total', 'DESC')
             ->get();
 
+        // ✨ FIX: Filter Log List Hanya Stamping
         $details = DB::table('production_actuals')
             ->whereDate('created_at', $date)
+            ->where('line_code', '!=', 'WELDING AREA')
             ->orderBy('created_at', 'DESC')
             ->get();
 
-        // ✨ Ambil Batch sekaligus rincian NG-nya untuk modal drill-down
         foreach($details as $d) {
             $batches = DB::table('produksi_batches')
                 ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
@@ -216,7 +208,6 @@ class PPICController extends Controller
 
     /**
      * 5. MONTHLY MASTER MATRIX
-     *
      */
     public function monthlyMatrix(Request $request)
     {
@@ -224,7 +215,6 @@ class PPICController extends Controller
         $year = $request->year ?? date('Y');
         $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-        // ✨ FIX: cap_per_hour dihapus karena tidak ada di tabel parts
         $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
 
         $planData = DB::table('production_plans')
@@ -233,10 +223,11 @@ class PPICController extends Controller
             ->get()
             ->groupBy('part_no');
 
-        // ✨ Actual Data untuk tampilan per hari
+        // ✨ FIX: Hanya ambil data Actual Stamping untuk tampilan bulanan
         $actualData = DB::table('production_actuals')
             ->whereMonth('created_at', $month)
             ->whereYear('created_at', $year)
+            ->where('line_code', '!=', 'WELDING AREA')
             ->select('part_no', DB::raw('DAY(created_at) as day'), DB::raw('SUM(qty_ok) as total_ok'))
             ->groupBy('part_no', 'day')
             ->get()
@@ -273,7 +264,7 @@ class PPICController extends Controller
     {
         $today = date('Y-m-d');
         $totalPlan = DB::table('production_plans')->where('plan_date', $today)->sum(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot')) ?: 1;
-        $totalActual = DB::table('production_actuals')->whereDate('created_at', $today)->sum('qty_ok') ?: 0;
+        $totalActual = DB::table('production_actuals')->whereDate('created_at', $today)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok') ?: 0;
         
         return response()->json([
             'achievement' => round(($totalActual / $totalPlan) * 100, 1), 
@@ -283,8 +274,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 8. ROBOT SINKRONISASI (MODERN VERSION)
-     * ✨ FIX: Akumulasi data berdasarkan Part, Shift, dan Tanggal agar tidak double baris
+     * 8. ROBOT SINKRONISASI
      */
     public function syncToActual($batchId)
     {
@@ -294,7 +284,6 @@ class PPICController extends Controller
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
 
-        // ✨ Cari data actual yang sudah ada untuk part/shift/tanggal ini
         $actual = DB::table('production_actuals')
             ->where('part_no', $batch->material_code)
             ->where('shift', $batch->shift)
@@ -302,14 +291,12 @@ class PPICController extends Controller
             ->first();
 
         if ($actual) {
-            // Update & Tambahkan angka (Accumulate)
             DB::table('production_actuals')->where('id', $actual->id)->update([
                 'qty_ok'     => $actual->qty_ok + $batch->qty_hasil_ok,
                 'qty_ng'     => $actual->qty_ng + $batch->qty_hasil_ng,
                 'updated_at' => now()
             ]);
         } else {
-            // Buat baris baru jika belum ada
             DB::table('production_actuals')->insert([
                 'part_no'    => $batch->material_code,
                 'line_code'  => $lineCode,
