@@ -9,7 +9,7 @@ class PPICController extends Controller
 {
     /**
      * 1. DASHBOARD UTAMA (Intelligence Command Center)
-     * ✨ FIX: Pencarian Actual sekarang lebih fleksibel (fokus ke Part & Date)
+     * ✨ FIX: Akumulasi Actual sekarang menggabungkan semua line untuk part yang sama
      */
     public function index(Request $request)
     {
@@ -23,8 +23,7 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // ✨ FIX LOGIC: Dashboard menjumlahkan semua OK untuk part ini di tanggal terpilih
-            // Tidak lagi dikunci mati oleh line_code agar mendukung multi-line
+            // ✨ FIX: Dashboard menjumlahkan semua hasil OK (dari Line A + Line B) untuk Part ini
             $actualPerPart = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
@@ -71,7 +70,7 @@ class PPICController extends Controller
 
     /**
      * 2. DAILY MPS
-     * ✨ FIX: Akumulasi shift tetap akurat meskipun ganti-ganti line
+     * ✨ FIX: Menampilkan achievement gabungan shift pagi/malam
      */
     public function mpsIndex(Request $request)
     {
@@ -92,8 +91,7 @@ class PPICController extends Controller
                 ->whereDate('created_at', $date)
                 ->select(
                     DB::raw("SUM(CASE WHEN shift = 'Pagi' THEN qty_ok ELSE 0 END) as s1_act"),
-                    DB::raw("SUM(CASE WHEN shift != 'Pagi' THEN qty_ok ELSE 0 END) as s2_act"),
-                    DB::raw("SUM(qty_ng) as total_ng_act")
+                    DB::raw("SUM(CASE WHEN shift != 'Pagi' THEN qty_ok ELSE 0 END) as s2_act")
                 )->first();
 
             $plan->s1_actual = $actualData->s1_act ?? 0;
@@ -147,10 +145,10 @@ class PPICController extends Controller
         return redirect()->back()->with('success', 'Master Schedule Updated!');
     }
 
-   /**
-     * 4. ✨ QUALITY CONTROL HUB (Disesuaikan untuk rincian Batch)
+    /**
+     * 4. ✨ QUALITY CONTROL HUB (Disesuaikan untuk Drill-down Batch & NG)
      */
-   public function qualityHub(Request $request)
+    public function qualityHub(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
@@ -173,7 +171,7 @@ class PPICController extends Controller
             ->orderBy('created_at', 'DESC')
             ->get();
 
-        // ✨ Ambil Batch sekaligus rincian NG-nya
+        // ✨ Ambil Batch sekaligus rincian NG-nya untuk modal drill-down
         foreach($details as $d) {
             $batches = DB::table('produksi_batches')
                 ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
@@ -184,7 +182,6 @@ class PPICController extends Controller
                 ->get();
 
             foreach($batches as $b) {
-                // Ambil "Penyakit" murni milik No Produksi ini
                 $b->ng_list = DB::table('production_ng_logs')
                     ->where('no_produksi', $b->no_produksi)
                     ->select('ng_type', 'qty')
@@ -196,32 +193,36 @@ class PPICController extends Controller
         return view('PPIC.quality_hub', compact('summary', 'ngRanking', 'details', 'date'));
     }
 
- public function monthlyMatrix(Request $request)
-{
-    $month = $request->month ?? date('m');
-    $year = $request->year ?? date('Y');
-    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+    /**
+     * 5. MONTHLY MASTER MATRIX
+     * ✨ FIX: Menghilangkan error kolom cap_per_hour yang tidak ada di DB
+     */
+    public function monthlyMatrix(Request $request)
+    {
+        $month = $request->month ?? date('m');
+        $year = $request->year ?? date('Y');
+        $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
 
-    // ✨ FIX 1: Hapus 'cap_per_hour' karena tidak ada di tabel parts
-    $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
+        // ✨ FIX: cap_per_hour dihapus karena tidak ada di tabel parts
+        $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
 
-    $planData = DB::table('production_plans')
-        ->whereMonth('plan_date', $month)
-        ->whereYear('plan_date', $year)
-        ->get()
-        ->groupBy('part_no');
+        $planData = DB::table('production_plans')
+            ->whereMonth('plan_date', $month)
+            ->whereYear('plan_date', $year)
+            ->get()
+            ->groupBy('part_no');
 
-    // Ambil Data Actual Nyata dari Lapangan
-    $actualData = DB::table('production_actuals')
-        ->whereMonth('created_at', $month)
-        ->whereYear('created_at', $year)
-        ->select('part_no', DB::raw('DAY(created_at) as day'), DB::raw('SUM(qty_ok) as total_ok'))
-        ->groupBy('part_no', 'day')
-        ->get()
-        ->groupBy('part_no');
+        // ✨ Actual Data untuk tampilan per hari
+        $actualData = DB::table('production_actuals')
+            ->whereMonth('created_at', $month)
+            ->whereYear('created_at', $year)
+            ->select('part_no', DB::raw('DAY(created_at) as day'), DB::raw('SUM(qty_ok) as total_ok'))
+            ->groupBy('part_no', 'day')
+            ->get()
+            ->groupBy('part_no');
 
-    return view('PPIC.monthly_matrix', compact('parts', 'planData', 'actualData', 'month', 'year', 'daysInMonth'));
-}
+        return view('PPIC.monthly_matrix', compact('parts', 'planData', 'actualData', 'month', 'year', 'daysInMonth'));
+    }
 
     public function saveMatrixAjax(Request $request)
     {
@@ -230,10 +231,7 @@ class PPICController extends Controller
         $column = ($shift == 's2') ? 's2_plan_reg' : 's1_plan_reg';
 
         DB::table('production_plans')->updateOrInsert(
-            [
-                'plan_date' => $date, 
-                'part_no'   => $request->part_no
-            ],
+            ['plan_date' => $date, 'part_no' => $request->part_no],
             [
                 'customer_code' => $request->customer_code,
                 'line_code'     => $request->line_code ?? 'LINE A',
@@ -265,19 +263,17 @@ class PPICController extends Controller
 
     /**
      * ✨ 8. ROBOT SINKRONISASI (MODERN VERSION)
-     * ✨ FIX: Mendukung 2 line (Line A & B) agar tidak membuat data baru terus menerus
+     * ✨ FIX: Akumulasi data berdasarkan Part, Shift, dan Tanggal agar tidak double baris
      */
     public function syncToActual($batchId)
     {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
         if (!$batch) return;
 
-        // Ambil Nama Line (Bisa tunggal "LINE A" atau gabungan "LINE A, LINE B")
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
 
-        // ✨ UPDATE atau INSERT: Cari berdasarkan Part, Shift, dan TANGGAL saja.
-        // Jika data sudah ada, tambahkan angkanya (Accumulate).
+        // ✨ Cari data actual yang sudah ada untuk part/shift/tanggal ini
         $actual = DB::table('production_actuals')
             ->where('part_no', $batch->material_code)
             ->where('shift', $batch->shift)
@@ -285,13 +281,14 @@ class PPICController extends Controller
             ->first();
 
         if ($actual) {
+            // Update & Tambahkan angka (Accumulate)
             DB::table('production_actuals')->where('id', $actual->id)->update([
-                'line_code'  => $lineCode, // Update line terakhir yang digunakan
                 'qty_ok'     => $actual->qty_ok + $batch->qty_hasil_ok,
                 'qty_ng'     => $actual->qty_ng + $batch->qty_hasil_ng,
                 'updated_at' => now()
             ]);
         } else {
+            // Buat baris baru jika belum ada
             DB::table('production_actuals')->insert([
                 'part_no'    => $batch->material_code,
                 'line_code'  => $lineCode,
@@ -303,5 +300,4 @@ class PPICController extends Controller
             ]);
         }
     }
-    
 }
