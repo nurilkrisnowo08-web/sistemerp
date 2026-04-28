@@ -13,30 +13,20 @@
     
     .heading-hub { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: var(--dark-surface); }
 
-    /* 📊 SUMMARY CARDS */
-    .stat-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; transition: 0.3s; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
-    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(67, 97, 238, 0.08); border-color: var(--brand-primary); }
-    .stat-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-    .stat-value { font-family: 'Orbitron'; font-size: 24px; font-weight: 800; color: var(--dark-surface); }
-
     /* 📈 LEDGER TABLE */
     .ledger-container { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
     .table-ledger thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 20px; border-bottom: 2px solid #edf2f7; }
     .table-ledger td { padding: 18px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; font-size: 13px; }
     
-    /* Progress Mini */
-    .progress-mini { height: 6px; border-radius: 10px; background: #e2e8f0; overflow: hidden; margin-top: 5px; }
-    .progress-bar-mini { height: 100%; transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-
-    /* 🏷️ INPUT STYLE */
-    .tech-input { border-radius: 14px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; background: #f8fafc; }
+    /* 🏷️ MODAL INDUSTRIAL STYLE */
+    .modal-content { border-radius: 35px; border: none; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+    .tech-input { border-radius: 14px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; background: #f8fafc; height: 50px; }
     .tech-input:focus { border-color: var(--brand-primary); outline: none; background: #fff; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1); }
-    
-    .modal-content { border-radius: 35px; border: none; overflow: hidden; }
 
-    /* Capacity Highlight */
-    .cap-box { background: #0f172a; border-radius: 24px; padding: 20px; color: white; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
-    .hour-display { font-family: 'JetBrains Mono'; font-weight: 800; color: var(--brand-warning); font-size: 1.5rem; }
+    /* Capacity Control Box (Industrial Dark) */
+    .cap-control-box { background: var(--dark-surface); border-radius: 24px; padding: 25px; color: white; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.1); }
+    .hour-badge { background: rgba(67, 97, 238, 0.2); border: 1.5px solid var(--brand-primary); color: #fff; padding: 10px 20px; border-radius: 15px; display: inline-block; }
+    .hour-value { font-family: 'Orbitron'; font-size: 28px; color: var(--brand-warning); font-weight: 900; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -44,7 +34,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
         <div>
             <h1 class="heading-hub mb-1">Welding_MPS <span class="text-primary">v2.0</span></h1>
-            <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-calendar-check text-primary mr-2"></i> Master Production Schedule // Unit Verification</p>
+            <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-calendar-check text-primary mr-2"></i> Master Production Schedule // Robot & Manual Welding</p>
         </div>
         <div class="d-flex align-items-center mt-3 mt-md-0">
             <form action="{{ route('ppic.welding.mps') }}" method="GET" class="mr-3 d-flex align-items-center bg-white p-2 rounded-pill shadow-sm border">
@@ -61,34 +51,6 @@
         </div>
     </div>
 
-    {{-- 📊 SUMMARY STATS --}}
-    @php
-        $totalTarget = $plans->sum('total_target');
-        $totalActual = $plans->sum('total_actual');
-        $overallProgress = $totalTarget > 0 ? ($totalActual / $totalTarget) * 100 : 0;
-    @endphp
-    <div class="row mb-5">
-        <div class="col-md-4">
-            <div class="stat-card border-left-primary" style="border-left-width: 5px !important;">
-                <div class="stat-label">Total Scheduled Load</div>
-                <div class="stat-value text-primary">{{ number_format($totalTarget) }} <small style="font-size: 12px;">PCS</small></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stat-card">
-                <div class="stat-label text-success">Verified Output</div>
-                <div class="stat-value text-success">{{ number_format($totalActual) }} <small style="font-size: 12px;">PCS</small></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="stat-card">
-                <div class="stat-label">Production Efficiency</div>
-                <div class="stat-value">{{ number_format($overallProgress, 1) }}%</div>
-                <div class="progress-mini"><div class="progress-bar-mini bg-primary" style="width: {{ $overallProgress }}%"></div></div>
-            </div>
-        </div>
-    </div>
-
     {{-- 📋 MPS TABLE --}}
     <div class="ledger-container animate__animated animate__fadeInUp">
         <div class="table-responsive">
@@ -98,17 +60,16 @@
                         <th class="text-left pl-4">Station</th>
                         <th class="text-left">Part Identification</th>
                         <th>MP</th>
+                        <th>Cap/H</th>
                         <th>Target Qty</th>
-                        <th>Actual Output</th>
+                        <th>Actual</th>
                         <th>Balance</th>
-                        <th style="width: 180px;">Load Progress</th>
                         <th class="text-right pr-4">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($plans as $p)
                     @php 
-                        $progress = $p->total_target > 0 ? ($p->total_actual / $p->total_target) * 100 : 0;
                         $isComplete = $p->total_actual >= $p->total_target && $p->total_target > 0;
                     @endphp
                     <tr>
@@ -121,32 +82,20 @@
                             <span class="badge badge-light border text-primary mt-1" style="font-size: 9px;">{{ $p->customer_code }}</span>
                         </td>
                         <td class="font-weight-black text-muted">{{ $p->manpower }}</td>
-                        <td class="font-weight-black text-dark" style="font-family: 'JetBrains Mono'; font-size: 15px;">{{ number_format($p->total_target) }}</td>
-                        <td class="text-success font-weight-black" style="font-family: 'JetBrains Mono'; font-size: 15px;">{{ number_format($p->total_actual) }}</td>
-                        <td class="{{ $p->balance > 0 ? 'text-danger' : 'text-muted' }} font-weight-black" style="font-family: 'JetBrains Mono';">{{ number_format($p->balance) }}</td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <div class="progress-mini w-100 mr-2">
-                                    <div class="progress-bar-mini {{ $isComplete ? 'bg-success' : 'bg-primary' }}" style="width: {{ min($progress, 100) }}%"></div>
-                                </div>
-                                <small class="font-weight-bold">{{ round($progress) }}%</small>
-                            </div>
-                        </td>
+                        <td class="font-weight-black text-muted">{{ $p->cap_per_hour }}</td>
+                        <td class="font-weight-black text-dark" style="font-family: 'JetBrains Mono';">{{ number_format($p->total_target) }}</td>
+                        <td class="text-success font-weight-black">{{ number_format($p->total_actual) }}</td>
+                        <td class="{{ $p->balance > 0 ? 'text-danger' : 'text-muted' }} font-weight-black">{{ number_format($p->balance) }}</td>
                         <td class="text-right pr-4">
                             @if($isComplete)
-                                <span class="badge badge-success px-3 py-2 rounded-pill font-weight-bold"><i class="fas fa-check-circle mr-1"></i> COMPLETED</span>
+                                <span class="badge badge-success px-3 py-2 rounded-pill font-weight-bold">COMPLETED</span>
                             @else
-                                <span class="badge badge-warning px-3 py-2 rounded-pill font-weight-bold animate__animated animate__pulse animate__infinite">IN PRODUCTION</span>
+                                <span class="badge badge-warning px-3 py-2 rounded-pill font-weight-bold animate__animated animate__pulse animate__infinite">IN PROCESS</span>
                             @endif
                         </td>
                     </tr>
                     @empty
-                    <tr>
-                        <td colspan="8" class="py-5 text-center">
-                            <i class="fas fa-calendar-times fa-3x text-light mb-3"></i>
-                            <p class="text-muted font-weight-bold">No welding plans scheduled for this date and shift.</p>
-                        </td>
-                    </tr>
+                    <tr><td colspan="8" class="py-5 text-center text-muted">No schedule found.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -154,42 +103,48 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL ADD WELDING PLAN --}}
-<div class="modal fade animate__animated animate__fadeIn" id="modalAddPlan" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content shadow-2xl">
+{{-- 🛡️ MODAL: REGISTER PRODUCTION PLAN (INDUSTRIAL VERSION) --}}
+<div class="modal fade animate__animated animate__zoomIn" id="modalAddPlan" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
             <div class="modal-header bg-dark text-white p-4 border-0">
-                <h5 class="modal-title font-weight-black uppercase" style="font-family: 'Orbitron'; letter-spacing: 1px;">Register_Welding_Plan</h5>
+                <h5 class="modal-title font-weight-black uppercase" style="font-family: 'Orbitron'; letter-spacing: 1px;">
+                    <i class="fas fa-microchip mr-2 text-primary"></i> Register_Welding_Plan
+                </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
+            
             <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-5">
-                    {{-- Capacity Control Box --}}
-                    <div class="cap-box">
+                    
+                    {{-- 🏭 SECTION 1: CAPACITY & TIME CALCULATOR --}}
+                    <div class="cap-control-box shadow-lg animate__animated animate__fadeInDown">
                         <div class="row align-items-center">
-                            <div class="col-md-4">
-                                <label class="small font-weight-black text-white-50 uppercase mb-2">Manpower</label>
-                                <input type="number" name="manpower" id="inp_mp" class="form-control bg-transparent border-0 text-white font-weight-black p-0" style="font-size: 24px;" value="1" required oninput="recalcHours()">
+                            <div class="col-md-3">
+                                <label class="small font-weight-black text-white-50 uppercase mb-2">Manual Manpower</label>
+                                <input type="number" name="manpower" id="inp_mp" class="form-control bg-transparent border-0 text-white font-weight-black p-0" style="font-size: 32px; outline:none;" value="1" required oninput="autoCalc()">
                             </div>
-                            <div class="col-md-4 border-left border-secondary">
-                                <label class="small font-weight-black text-white-50 uppercase mb-2">Cap / Hour</label>
-                                <input type="number" name="cap_per_hour" id="inp_cap" class="form-control bg-transparent border-0 text-white font-weight-black p-0" style="font-size: 24px;" value="100" required oninput="recalcHours()">
+                            <div class="col-md-3 border-left border-secondary">
+                                <label class="small font-weight-black text-white-50 uppercase mb-2">Capacity / Hour</label>
+                                <input type="number" name="cap_per_hour" id="inp_cap" class="form-control bg-transparent border-0 text-white font-weight-black p-0" style="font-size: 32px; outline:none;" value="100" required oninput="autoCalc()">
                             </div>
-                            <div class="col-md-4 text-center border-left border-secondary">
-                                <label class="small font-weight-black text-warning uppercase mb-1">Est. Duration</label>
-                                <div class="hour-display" id="display_hours">0.0 HRS</div>
+                            <div class="col-md-6 text-right border-left border-secondary">
+                                <div class="hour-badge">
+                                    <label class="small font-weight-black text-white-50 uppercase d-block mb-1">Estimated Production Time</label>
+                                    <div class="hour-value" id="display_hours">0.0 <small style="font-size: 14px;">HRS</small></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    {{-- 📋 SECTION 2: DEPLOYMENT DETAILS --}}
                     <div class="row">
-                        <div class="col-md-12 mb-4">
+                        <div class="col-md-4 mb-4">
                             <label class="small font-weight-black text-muted uppercase mb-2">Deployment Date</label>
                             <input type="date" name="plan_date" class="form-control tech-input" value="{{ $date }}" required>
                         </div>
-                        
-                        <div class="col-md-6 mb-4">
+                        <div class="col-md-4 mb-4">
                             <label class="small font-weight-black text-muted uppercase mb-2">Authorized Station</label>
                             <select name="line_code" class="form-control tech-input" required>
                                 <option value="" disabled selected>-- SELECT STATION --</option>
@@ -198,34 +153,36 @@
                                 @endforeach
                             </select>
                         </div>
-
-                        <div class="col-md-6 mb-4">
+                        <div class="col-md-4 mb-4">
                             <label class="small font-weight-black text-muted uppercase mb-2">Target Part Identification</label>
                             <select name="part_no" class="form-control tech-input" required>
                                 <option value="" disabled selected>-- CHOOSE PART --</option>
                                 @foreach($availableParts as $part)
-                                    <option value="{{ $part->part_no }}">[{{ $part->customer_code }}] {{ $part->part_no }} - {{ $part->part_name }}</option>
+                                    <option value="{{ $part->part_no }}">
+                                        [{{ $part->customer_code }}] {{ $part->part_no }} - {{ $part->part_name }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
 
+                        {{-- 🎯 SECTION 3: SHIFT TARGETS --}}
                         <div class="col-md-6">
-                            <div class="p-4 rounded-3xl" style="background: #f8faff; border: 1px solid #eef2f6;">
-                                <label class="small font-weight-bold text-primary uppercase mb-2 d-block">Shift 1 Target</label>
-                                <input type="number" name="s1_plan_reg" id="inp_s1" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0" oninput="recalcHours()">
+                            <div class="p-4 rounded-3xl animate__animated animate__fadeInLeft" style="background: #f0f4ff; border: 1px solid #d0dfff;">
+                                <label class="small font-weight-bold text-primary uppercase mb-2 d-block">Shift 1 Production Target</label>
+                                <input type="number" name="s1_plan_reg" id="inp_s1" class="form-control border-0 bg-transparent font-weight-black text-primary" style="font-size: 42px; outline: none;" value="0" oninput="autoCalc()">
                             </div>
                         </div>
-                        
                         <div class="col-md-6">
-                            <div class="p-4 rounded-3xl" style="background: #f8faff; border: 1px solid #eef2f6;">
-                                <label class="small font-weight-bold text-info uppercase mb-2 d-block">Shift 2 Target</label>
-                                <input type="number" name="s2_plan_reg" id="inp_s2" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0" oninput="recalcHours()">
+                            <div class="p-4 rounded-3xl animate__animated animate__fadeInRight" style="background: #fdf2f2; border: 1px solid #fee2e2;">
+                                <label class="small font-weight-bold text-danger uppercase mb-2 d-block">Shift 2 Production Target</label>
+                                <input type="number" name="s2_plan_reg" id="inp_s2" class="form-control border-0 bg-transparent font-weight-black text-danger" style="font-size: 42px; outline: none;" value="0" oninput="autoCalc()">
                             </div>
                         </div>
                     </div>
                 </div>
+
                 <div class="modal-footer border-0 p-5 pt-0">
-                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-2xl shadow-xl" style="background: #5c7cfa; font-size: 1.1rem; letter-spacing: 1px;">
+                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-2xl shadow-xl animate__animated animate__pulse animate__infinite" style="background: var(--brand-primary); font-size: 1.2rem; letter-spacing: 2px;">
                         AUTHORIZE PRODUCTION LOAD
                     </button>
                 </div>
@@ -235,24 +192,27 @@
 </div>
 
 <script>
-    function recalcHours() {
+    function autoCalc() {
+        let mp = parseFloat(document.getElementById('inp_mp').value) || 0;
         let cap = parseFloat(document.getElementById('inp_cap').value) || 0;
         let s1 = parseFloat(document.getElementById('inp_s1').value) || 0;
         let s2 = parseFloat(document.getElementById('inp_s2').value) || 0;
         
-        let total = s1 + s2;
-        let result = 0;
+        let totalQty = s1 + s2;
+        let totalHours = 0;
 
-        if (cap > 0 && total > 0) {
-            result = total / cap;
+        // Rumus: Total Target / Kapasitas Per Jam
+        if (cap > 0 && totalQty > 0) {
+            totalHours = totalQty / cap;
         }
 
-        document.getElementById('display_hours').innerText = result.toFixed(1) + ' HRS';
+        // Tampilkan hasil di box hitam (Industrial Hour Badge)
+        document.getElementById('display_hours').innerHTML = totalHours.toFixed(1) + ' <small style="font-size: 14px;">HRS</small>';
     }
 
-    // Jalankan saat modal terbuka
+    // Hitung ulang saat modal dibuka
     $('#modalAddPlan').on('shown.bs.modal', function () {
-        recalcHours();
+        autoCalc();
     });
 </script>
 @endsection
