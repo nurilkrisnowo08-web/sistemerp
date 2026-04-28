@@ -347,6 +347,9 @@ class PPICController extends Controller
 /**
  * TAMPILAN MPS WELDING (WITH PART NAMES)
  */
+/**
+ * 1. TAMPILAN MPS WELDING
+ */
 public function weldingMps(Request $request)
 {
     $date = $request->date ?? date('Y-m-d');
@@ -377,7 +380,7 @@ public function weldingMps(Request $request)
 }
 
 /**
- * SIMPAN MPS WELDING (FIX ERROR DEFAULT VALUE)
+ * 2. SIMPAN MPS WELDING (FIXED ERROR 1364)
  */
 public function weldingMpsStore(Request $request)
 {
@@ -395,6 +398,11 @@ public function weldingMpsStore(Request $request)
             's2_plan_reg'   => $request->s2_plan_reg ?? 0,
             's2_plan_ot'    => $request->s2_plan_ot ?? 0,
             'dandory_time'  => 15, 
+            
+            // ✨ FIX: Tambahkan field ini agar tidak error "doesn't have a default value"
+            'process_qty'   => 1, 
+            'qty_lot'       => 1,
+            
             'updated_at'    => now()
         ]
     );
