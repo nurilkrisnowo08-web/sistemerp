@@ -256,7 +256,8 @@ Route::prefix('welding-master')->group(function () {
 
     Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
     Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
-    Route::get('/ppic/get-batch-ng-details/{no_produksi}', [App\Http\Controllers\PPICController::class, 'getBatchNGDetails']);
+   // Tambahkan di routes/web.php
+Route::get('/ppic/get-batch-ng-details/{no_produksi}', [App\Http\Controllers\PPICController::class, 'getBatchNGDetails']);
 });
 });
 });
