@@ -53,8 +53,34 @@ class ProduksiController extends Controller
     public function productionStore(Request $request) { return $this->store($request); }
 
     /**
-     * ✨ 1. STORE RESULT (Aman & Otomatis Transfer)
+     * ✨ FIX: FUNGSI STORE (DITAMBAHKAN AGAR TIDAK ERROR 500)
      */
+    public function store(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            DB::table('produksi_batches')->insert([
+                'no_produksi'   => 'PROD-' . date('Ymd-His'),
+                'mesin_id'      => $request->mesin_id,
+                'rm_stock_id'   => $request->rm_stock_id,
+                'material_code' => $request->material_code,
+                'shift'         => $request->shift,
+                'qty_ambil_pcs' => $request->qty_ambil_pcs,
+                'status'        => 'PROSES',
+                'created_at'    => now(),
+                'updated_at'    => now()
+            ]);
+            
+            DB::table('rm_stocks')->where('id', $request->rm_stock_id)->decrement('stock_pcs', $request->qty_ambil_pcs);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Batch Produksi Dimulai!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal Start: ' . $e->getMessage());
+        }
+    }
+
     public function storeResult(Request $request, $id)
     {
         DB::beginTransaction();
@@ -91,9 +117,6 @@ class ProduksiController extends Controller
         }
     }
 
-    /**
-     * ✨ 2. UPDATE RESULT (DI SINI MASALAHNYA TADI - SUDAH DIPERBAIKI)
-     */
     public function updateResult(Request $request, $id) 
     {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
@@ -117,7 +140,6 @@ class ProduksiController extends Controller
 
         DB::beginTransaction();
         try {
-            // Logic Return Material
             if ((int)$request->qty_return_warehouse > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -130,12 +152,10 @@ class ProduksiController extends Controller
                 }
             }
 
-            // Routing Logic
             $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
             $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
             $status_akhir = ($target == 'WELDING' || $qty_ok == 0) ? 'COMPLETED' : 'WAITING_QC';
 
-            // 1. Update Batch Table
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok'         => $qty_ok, 
                 'qty_ng_material'      => 0, 
@@ -147,14 +167,9 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
-            // ✨ 2. LOGIKA TRANSFER OTOMATIS (DITAMBAHKAN AGAR KE WIP WELDING) ✨
+            // ✨ TAMBAHKAN LOGIKA TRANSMIT DI SINI AGAR OTOMATIS KE WIP WELDING ✨
             if ($target == 'WELDING') {
-                // Tambah saldo ke welding_stock
-                DB::table('finished_goods')
-                    ->where('part_no', $p->material_code)
-                    ->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
-
-                // Log untuk Terminal Welding (IN STAMPING)
+                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code,
                     'qty'          => $qty_ok,
@@ -163,15 +178,11 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                // Part lari ke FG
-                DB::table('finished_goods')
-                    ->where('part_no', $p->material_code)
-                    ->increment('stock', $qty_ok, ['updated_at' => now()]);
+                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('stock', $qty_ok, ['updated_at' => now()]);
             }
 
             $this->syncToActual($id);
 
-            // Bersihkan & Simpan NG (Tetap Sama)
             DB::table('production_ng_logs')->where('no_produksi', $p->no_produksi)->delete();
             if (!empty($ng_details)) {
                 $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
