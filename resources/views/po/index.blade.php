@@ -165,7 +165,7 @@
                                         <tr class="text-center">
                                             <th class="py-3">PART IDENTITY</th>
                                             <th>ORDER VOLUME</th>
-                                            <th>OUTSTANDING</th>
+                                            <th>SiSa PO</th>
                                             <th>SYSTEM STATUS</th>
                                             <th width="150">ADJUSTMENT</th>
                                         </tr>
