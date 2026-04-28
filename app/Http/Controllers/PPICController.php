@@ -149,44 +149,66 @@ class PPICController extends Controller
     /**
      * 4. WELDING INTELLIGENCE DASHBOARD
      */
-    public function weldingIndex(Request $request)
-    {
-        $start_date = $request->start_date ?? date('Y-m-d');
-        $end_date = $request->end_date ?? date('Y-m-d');
+   public function weldingIndex(Request $request)
+{
+    // Filter Tanggal
+    $start_date = $request->start_date ?? date('Y-m-d');
+    $end_date = $request->end_date ?? date('Y-m-d');
 
-        $alerts = DB::table('welding_batches')
-            ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
-            ->where('welding_batches.status', 'PROBLEM')
-            ->select('welding_batches.*', 'line_welding.kode_line', 'welding_batches.updated_at as jam_lapor')
-            ->get();
+    // 1. Ambil Problem Alerts
+    $alerts = DB::table('welding_batches')
+        ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
+        ->where('welding_batches.status', 'PROBLEM')
+        ->select('welding_batches.*', 'line_welding.kode_line', 'welding_batches.updated_at as jam_lapor')
+        ->get();
 
-        $plans = DB::table('welding_plans')->whereBetween('plan_date', [$start_date, $end_date])->get();
-        $chartLabels = []; $chartTargets = []; $chartActuals = [];
+    // 2. Data Chart Utama (Target vs Actual) - Range Terpilih
+    $plans = DB::table('welding_plans')->whereBetween('plan_date', [$start_date, $end_date])->get();
+    
+    $chartLabels = []; $chartTargets = []; $chartActuals = [];
+    foreach($plans as $p) {
+        $actual = DB::table('welding_actuals')
+            ->where('part_no', $p->part_no)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
+            ->sum('qty_ok');
         
-        foreach($plans as $p) {
-            $actual = DB::table('welding_actuals')->where('part_no', $p->part_no)->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])->sum('qty_ok');
-            $p->actual_qty = (int)$actual;
-            $p->plan_qty = (int)($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            $chartLabels[] = $p->part_no;
-            $chartTargets[] = $p->plan_qty;
-            $chartActuals[] = $p->actual_qty;
-        }
-
-        $totalPlan = array_sum($chartTargets);
-        $totalActual = array_sum($chartActuals);
-        $totalNg = DB::table('welding_actuals')->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])->sum('qty_ng');
-        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
-
-        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $d = date('Y-m-d', strtotime("$end_date -$i days"));
-            $dailyLabels[] = date('d M', strtotime($d));
-            $dailyOk[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ok');
-            $dailyNg[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ng');
-        }
-
-        return view('PPIC.welding_planning', compact('plans', 'achievementRate', 'start_date', 'end_date', 'totalPlan', 'totalActual', 'totalNg', 'alerts', 'chartLabels', 'chartTargets', 'chartActuals', 'dailyLabels', 'dailyOk', 'dailyNg'));
+        $target = (int)($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+        
+        $chartLabels[] = $p->part_no;
+        $chartTargets[] = $target;
+        $chartActuals[] = (int)$actual;
     }
+
+    // 3. Hitung Global Stats
+    $totalPlan = array_sum($chartTargets);
+    $totalActual = array_sum($chartActuals);
+    $totalNg = DB::table('welding_actuals')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
+                ->sum('qty_ng');
+    
+    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+    // 4. Data Trend 7 Hari (Weekly)
+    $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("$end_date -$i days"));
+        $dailyLabels[] = date('d M', strtotime($d));
+        $dailyOk[] = (int)DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ok');
+        $dailyNg[] = (int)DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ng');
+    }
+
+    // 5. Data Performa 30 Hari (Monthly) - FIX: Variabel ini yang tadi bikin error
+    $monthlyOk = []; $monthlyLabels = [];
+    for ($i = 29; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("$end_date -$i days"));
+        $monthlyOk[] = (int)DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ok');
+    }
+
+    return view('PPIC.welding_planning', compact(
+        'plans', 'achievementRate', 'start_date', 'end_date', 'totalPlan', 'totalActual', 'totalNg', 
+        'alerts', 'chartLabels', 'chartTargets', 'chartActuals', 'dailyLabels', 'dailyOk', 'dailyNg', 'monthlyOk'
+    ));
+}
 
     /**
      * 5. WELDING MPS (WITH PART NAMES & CAPACITY)
@@ -289,4 +311,5 @@ class PPICController extends Controller
         if ($actual) { DB::table('production_actuals')->where('id', $actual->id)->update(['qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok, 'qty_ng' => $actual->qty_ng + $batch->qty_hasil_ng, 'updated_at' => now()]); } 
         else { DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]); }
     }
+    
 }
