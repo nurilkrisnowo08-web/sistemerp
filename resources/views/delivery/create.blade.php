@@ -48,7 +48,7 @@
                                 <th>Part Number & Riwayat</th>
                                 <th>Qty PO</th>
                                 <th class="text-success">Terkirim</th>
-                                <th class="text-danger">Outstanding PO</th> {{-- --}}
+                                <th class="text-danger">SISA PO</th> {{-- --}}
                                 <th class="bg-warning text-dark">Stok FG (Rak)</th> {{-- POLISI STOK --}}
                                 <th width="200">Qty Kirim Sekarang</th>
                             </tr>
