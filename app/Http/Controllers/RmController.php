@@ -27,8 +27,7 @@ class RmController extends Controller
                 $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
                      ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
             })
-            ->select('rm_stocks.*', 'customers.code as customer_code', 'mm.alias_code', 'mm.std_qty_batch')
-            ->where('rm_stocks.stock_pcs', '>', 0);
+            ->select('rm_stocks.*', 'customers.code as customer_code', 'mm.alias_code', 'mm.std_qty_batch');
 
         if ($aliasSearch) { $rmQuery->where('mm.alias_code', 'LIKE', '%' . $aliasSearch . '%'); }
         if ($customer) { $rmQuery->where('rm_stocks.customer', $customer); }
@@ -41,21 +40,28 @@ class RmController extends Controller
         })->map(function($itemsInGroup) use ($startDate, $endDate) {
             
             $uniqueCoils = $itemsInGroup->unique('coil_id');
-            $allIdsInGroup = $itemsInGroup->pluck('id')->toArray(); 
+            // ✨ FIX: Ambil semua ID coil yang pernah ada untuk spek ini dari logs agar Out terbaca
+            $rep = $itemsInGroup->first();
+            $allHistoricalIds = DB::table('rm_stocks')
+                ->where('spec', $rep->spec)
+                ->where('size', $rep->size)
+                ->pluck('id')->toArray();
 
-            $logsIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allIdsInGroup)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
-            $logsOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allIdsInGroup)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
+            $logsIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
+            $logsOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
 
-            $totalLive = $uniqueCoils->sum('stock_pcs'); 
+            $totalLive = $itemsInGroup->unique('coil_id')->sum('stock_pcs'); 
             $inS = $logsIn->whereIn('source', ['supplier', null])->sum('pcs_in');
             $inR = $logsIn->where('source', 'return')->sum('pcs_in');
             $outT = $logsOut->sum('pcs_used');
 
-            $inSinceStart = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allIdsInGroup)->where('created_at', '>=', $startDate.' 00:00:00')->sum('pcs_in');
-            $outSinceStart = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allIdsInGroup)->where('created_at', '>=', $startDate.' 00:00:00')->sum('pcs_used');
-            $totalInit = $totalLive - $inSinceStart + $outSinceStart;
+            // Logika Backtracking rill
+            $futureIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
+            $futureOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
+            
+            $stokAkhirPeriod = $totalLive + $futureOut - $futureIn;
+            $totalInit = $stokAkhirPeriod - ($inS + $inR) + $outT;
 
-            $rep = $itemsInGroup->first();
             return (object)[
                 'group_key' => trim($rep->spec) . ' (' . str_replace(' ', '', $rep->size) . ')',
                 'alias_code' => $rep->alias_code, 'spec' => $rep->spec, 'size' => $rep->size,
@@ -66,9 +72,75 @@ class RmController extends Controller
             ];
         });
 
-        $availableSpecs = DB::table('rm_stocks')->where('stock_pcs', '>', 0)->distinct()->pluck('spec');
+        $availableSpecs = DB::table('rm_stocks')->distinct()->pluck('spec');
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate', 'availableSpecs', 'specFilter'));
     }
+
+    /**
+     * ✨ FIX RECAP LOG: Menjamin Out terbaca rill & Stok Awal Sinkron
+     */
+    public function recapLogPrint(Request $request) {
+        $availableCustomers = DB::table('customers')->get(); 
+        $availableSpecs = DB::table('rm_stocks')->distinct()->pluck('spec');
+        
+        $customer = $request->customer; 
+        $specFilter = $request->spec; 
+        $startDate = $request->start_date ?? date('Y-m-d'); 
+        $endDate = $request->end_date ?? date('Y-m-d');
+
+        $materials = DB::table('rm_stocks')
+            ->leftJoin('master_materials as mm', function($join) {
+                $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
+                     ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
+            })
+            ->select('rm_stocks.*', 'mm.alias_code');
+
+        if ($customer) { $materials->where('rm_stocks.customer', $customer); }
+        if ($specFilter) { $materials->where('rm_stocks.spec', $specFilter); }
+
+        $historyData = $materials->get()->groupBy(function($item) {
+            return ($item->alias_code ?? 'NA') . ' | ' . trim($item->spec) . ' | ' . str_replace(' ', '', $item->size);
+        })->map(function($group) use ($startDate, $endDate) {
+            
+            $rep = $group->first();
+            // ✨ PENTING: Ambil semua ID coil (aktif & sejarah) untuk Spek ini
+            $ids = DB::table('rm_stocks')
+                ->where('spec', $rep->spec)
+                ->where('size', $rep->size)
+                ->pluck('id')->toArray();
+            
+            $in_qty = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_in');
+            
+            $out_qty = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_used');
+
+            $future_in = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
+                ->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
+            $future_out = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
+                ->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
+
+            $liveNow = $group->unique('coil_id')->sum('stock_pcs');
+
+            // Perhitungan Saldo Mundur Rill
+            $stockAkhirPeriod = $liveNow + $future_out - $future_in;
+            $stockAwalPeriod = $stockAkhirPeriod - $in_qty + $out_qty;
+
+            return (object)[
+                'alias' => $rep->alias_code, 'spec' => $rep->spec, 'size' => $rep->size,
+                'initial' => $stockAwalPeriod, 'in_qty' => $in_qty, 'out_qty' => $out_qty, 'final' => $stockAkhirPeriod,
+                'logs' => DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
+                    ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get()
+                    ->concat(DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
+                    ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get())
+                    ->sortByDesc('created_at')
+            ];
+        })->filter(fn($item) => ($item->initial != 0 || $item->in_qty > 0 || $item->out_qty > 0 || $item->final != 0));
+
+        return view('Gudang.rm_log_print', compact('historyData', 'availableCustomers', 'availableSpecs', 'customer', 'specFilter', 'startDate', 'endDate'));
+    }
+
+    // --- FUNGSI LAINNYA (TETAP SAMA, TIDAK DIUBAH) ---
 
     public function storeBatch(Request $request)
     {
@@ -78,8 +150,7 @@ class RmController extends Controller
             foreach ($request->part_nos as $partNo) {
                 $pData = DB::table('parts')->where('part_no', $partNo)->first();
                 $rmId = DB::table('rm_stocks')->insertGetId([
-                    'material_code' => $partNo,
-                    'coil_id' => strtoupper(trim($request->coil_id)),
+                    'material_code' => $partNo, 'coil_id' => strtoupper(trim($request->coil_id)),
                     'material_name' => $pData->part_name ?? 'N/A', 
                     'spec' => trim($request->spec), 'size' => trim($request->size),
                     'customer' => $request->customer_code, 'stock_pcs' => $request->stock_pcs,
@@ -93,28 +164,11 @@ class RmController extends Controller
         } catch (\Exception $e) { DB::rollback(); return redirect()->back()->with('error', $e->getMessage()); }
     }
 
-   public function getPartsAndSpecs($c)
+    public function getPartsAndSpecs($c)
     {
-        $specs = DB::table('master_materials')
-            ->where('customer_code', trim($c))
-            ->select(
-                'material_type', 
-                'thickness', 
-                'size', 
-                'alias_code',
-                'material_type as material_name' 
-            )
-            ->get();
-
-        $parts = DB::table('parts')
-            ->where('customer_code', trim($c))
-            ->select('part_no', 'part_name')
-            ->get();
-
-        return response()->json([
-            'parts' => $parts, 
-            'specs' => $specs
-        ]);
+        $specs = DB::table('master_materials')->where('customer_code', trim($c))->select('material_type', 'thickness', 'size', 'alias_code', 'material_type as material_name')->get();
+        $parts = DB::table('parts')->where('customer_code', trim($c))->select('part_no', 'part_name')->get();
+        return response()->json(['parts' => $parts, 'specs' => $specs]);
     }
 
     public function assignPart(Request $request) {
@@ -140,74 +194,6 @@ class RmController extends Controller
         if(!$target) return back()->with('error', 'Not found.');
         DB::table('rm_stocks')->where('customer', trim($target->customer))->where(DB::raw('TRIM(spec)'), trim($target->spec))->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $target->size))->where('material_code', $target->material_code)->delete();
         return back()->with('success', 'Removed.');
-    }
-
-    /**
-     * ✨ FIX HISTORY: LOGIKA PERMUTASIAN RILL
-     * Menampilkan semua spek (meskipun stok 0) dengan hitungan mundur
-     */
-    public function recapLogPrint(Request $request) {
-        $availableCustomers = DB::table('customers')->get(); 
-        $availableSpecs = DB::table('rm_stocks')->distinct()->pluck('spec');
-        
-        $customer = $request->customer; 
-        $specFilter = $request->spec; 
-        $startDate = $request->start_date ?? date('Y-m-d'); 
-        $endDate = $request->end_date ?? date('Y-m-d');
-
-        // 1. Ambil SEMUA data material (Tanpa filter > 0 agar history tetep real rill!)
-        $materials = DB::table('rm_stocks')
-            ->leftJoin('master_materials as mm', function($join) {
-                $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
-                     ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
-            })
-            ->select('rm_stocks.*', 'mm.alias_code');
-
-        if ($customer) { $materials->where('rm_stocks.customer', $customer); }
-        if ($specFilter) { $materials->where('rm_stocks.spec', $specFilter); }
-
-        $historyData = $materials->get()->groupBy(function($item) {
-            return ($item->alias_code ?? 'NA') . ' | ' . trim($item->spec) . ' | ' . str_replace(' ', '', $item->size);
-        })->map(function($group) use ($startDate, $endDate) {
-            $ids = $group->pluck('id')->toArray();
-            
-            // Mutasi dalam periode
-            $in_qty = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
-                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_in');
-            
-            $out_qty = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
-                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_used');
-
-            // Backtracking: Mutasi SETELAH endDate sampai detik ini rill
-            $future_in = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
-                ->whereDate('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
-            $future_out = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
-                ->whereDate('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
-
-            $liveNow = $group->unique('coil_id')->sum('stock_pcs');
-
-            // Hitung mundur rill!
-            $stockAkhirPeriod = $liveNow - $future_in + $future_out;
-            $stockAwalPeriod = $stockAkhirPeriod - $in_qty + $out_qty;
-
-            $rep = $group->first();
-            return (object)[
-                'alias' => $rep->alias_code,
-                'spec' => $rep->spec,
-                'size' => $rep->size,
-                'initial' => $stockAwalPeriod,
-                'in_qty' => $in_qty,
-                'out_qty' => $out_qty,
-                'final' => $stockAkhirPeriod,
-                'logs' => DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
-                    ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get()
-                    ->concat(DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
-                    ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get())
-                    ->sortByDesc('created_at')
-            ];
-        })->filter(fn($item) => ($item->initial > 0 || $item->in_qty > 0 || $item->out_qty > 0 || $item->final > 0));
-
-        return view('Gudang.rm_log_print', compact('historyData', 'availableCustomers', 'availableSpecs', 'customer', 'specFilter', 'startDate', 'endDate'));
     }
 
     public function recapPrint(Request $request) {
@@ -236,42 +222,22 @@ class RmController extends Controller
     {
         $selectedCustomer = $request->customer; 
         $posQuery = DB::table('supplier_pos')->whereIn('status', ['PENDING', 'PARTIAL']);
-
         if ($selectedCustomer && $selectedCustomer != 'ALL') { 
             $posQuery->where(function($q) use ($selectedCustomer) {
                 $q->where('customer_code', trim($selectedCustomer))
                   ->orWhereExists(function ($query) use ($selectedCustomer) {
-                      $query->select(DB::raw(1))
-                            ->from('supplier_po_items')
-                            ->leftJoin('master_materials', 'supplier_po_items.material_code', '=', 'master_materials.alias_code')
-                            ->whereColumn('supplier_po_items.supplier_po_id', 'supplier_pos.id')
-                            ->where('master_materials.customer_code', trim($selectedCustomer));
+                      $query->select(DB::raw(1))->from('supplier_po_items')->leftJoin('master_materials', 'supplier_po_items.material_code', '=', 'master_materials.alias_code')->whereColumn('supplier_po_items.supplier_po_id', 'supplier_pos.id')->where('master_materials.customer_code', trim($selectedCustomer));
                   });
             });
         }
-
         $pos = $posQuery->orderBy('id', 'desc')->get();
-
         foreach ($pos as $po) {
-            $po->items = DB::table('supplier_po_items')
-                ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
-                ->select('supplier_po_items.*', 'mm.material_type as spec_real', 'mm.alias_code as alias_real', 'mm.thickness', 'mm.size', 'mm.customer_code as client_code')
-                ->where('supplier_po_id', $po->id)
-                ->get();
-
+            $po->items = DB::table('supplier_po_items')->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')->select('supplier_po_items.*', 'mm.material_type as spec_real', 'mm.alias_code as alias_real', 'mm.thickness', 'mm.size', 'mm.customer_code as client_code')->where('supplier_po_id', $po->id)->get();
             foreach($po->items as $item) { 
-                $item->target_parts = DB::table('rm_stocks')
-                    ->where('customer', trim($item->client_code))
-                    ->where('spec', trim($item->spec_real))
-                    ->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', trim($item->thickness) . 'X' . trim($item->size)))
-                    ->select('material_code as part_no', 'material_name as part_name')
-                    ->distinct()
-                    ->get(); 
+                $item->target_parts = DB::table('rm_stocks')->where('customer', trim($item->client_code))->where('spec', trim($item->spec_real))->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', trim($item->thickness) . 'X' . trim($item->size)))->select('material_code as part_no', 'material_name as part_name')->distinct()->get(); 
             }
         }
-
-        $clients = DB::table('customers')->get(); 
-        $masterMaterials = DB::table('master_materials')->get();
+        $clients = DB::table('customers')->get(); $masterMaterials = DB::table('master_materials')->get();
         return view('Gudang.po_supplier_index', compact('pos', 'clients', 'masterMaterials', 'selectedCustomer'));
     }
 
@@ -282,39 +248,19 @@ class RmController extends Controller
         if (!$item) { return back()->with('error', 'Item tidak ditemukan.'); }
         $sisaBarang = $item->qty_order - $item->qty_received;
         if ($request->qty_arrival > $sisaBarang) { return back()->with('error', "Gagal! Input melebihi sisa pesanan."); }
-
         DB::beginTransaction();
         try {
             $m = DB::table('master_materials')->where('alias_code', $item->material_code)->first();
-            $specTarget = trim($m->material_type); 
-            $sizeTarget = trim($m->thickness) . ' X ' . trim($m->size);
-            
-            $previousMapping = DB::table('rm_stocks')
-                ->where('spec', $specTarget)->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))
-                ->where('customer', trim($m->customer_code))->select('material_code', 'material_name')->distinct()->get();
-
+            $specTarget = trim($m->material_type); $sizeTarget = trim($m->thickness) . ' X ' . trim($m->size);
+            $previousMapping = DB::table('rm_stocks')->where('spec', $specTarget)->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))->where('customer', trim($m->customer_code))->select('material_code', 'material_name')->distinct()->get();
             $logCreated = false;
-
             if ($previousMapping->isEmpty()) {
-                $newId = DB::table('rm_stocks')->insertGetId([
-                    'material_code' => $m->alias_code, 'material_name' => $m->material_type, 
-                    'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 
-                    'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 
-                    'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()
-                ]);
+                $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $m->alias_code, 'material_name' => $m->material_type, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
                 DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $m->alias_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => strtoupper(trim($request->coil_id)), 'created_at' => now()]);
             } else { 
                 foreach ($previousMapping as $p) {
-                    $newId = DB::table('rm_stocks')->insertGetId([
-                        'material_code' => $p->material_code, 'material_name' => $p->material_name, 
-                        'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 
-                        'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 
-                        'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()
-                    ]);
-                    if (!$logCreated) {
-                        DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $p->material_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => strtoupper(trim($request->coil_id)), 'created_at' => now()]);
-                        $logCreated = true;
-                    }
+                    $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $p->material_code, 'material_name' => $p->material_name, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
+                    if (!$logCreated) { DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $p->material_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => strtoupper(trim($request->coil_id)), 'created_at' => now()]); $logCreated = true; }
                 } 
             }
             DB::table('supplier_po_items')->where('id', $request->item_id)->increment('qty_received', $request->qty_arrival);
@@ -322,7 +268,7 @@ class RmController extends Controller
             $doneItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->whereRaw('qty_received >= qty_order')->count();
             $status = ($doneItems == $totalItems) ? 'COMPLETED' : 'PARTIAL'; 
             DB::table('supplier_pos')->where('id', $id)->update(['status' => $status, 'updated_at' => now()]);
-            DB::commit(); return redirect()->back()->with('success', 'Inbound data processed rill!');
+            DB::commit(); return redirect()->back()->with('success', 'Inbound processed rill!');
         } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
     }
 
@@ -344,46 +290,27 @@ class RmController extends Controller
                     DB::table('supplier_po_items')->insert(['supplier_po_id' => $poId, 'material_code' => $item['spec'], 'qty_order' => $item['qty'], 'qty_received' => 0, 'created_at' => now(), 'updated_at' => now()]); 
                 }
             } 
-            DB::commit(); return redirect()->back()->with('success', 'PO Initialized Successfully rill!'); 
-        } catch (\Exception $e) { DB::rollBack(); return back()->with('error', 'Gagal Simpan: ' . $e->getMessage()); } 
+            DB::commit(); return redirect()->back()->with('success', 'PO Initialized rill!'); 
+        } catch (\Exception $e) { DB::rollBack(); return back()->with('error', $e->getMessage()); } 
     }
 
-    public function destroy($id) { 
-        DB::table('rm_stocks')->where('id', $id)->delete(); 
-        return back()->with('success', 'Data successfully removed.'); 
-    }
+    public function destroy($id) { DB::table('rm_stocks')->where('id', $id)->delete(); return back()->with('success', 'Removed.'); }
 
     public function storeMasterSpec(Request $request) { 
         DB::table('master_materials')->insert(['customer_code' => trim($request->customer_code), 'material_type' => trim($request->material_type), 'thickness' => trim($request->thickness), 'size' => trim($request->size), 'alias_code' => trim($request->alias_code), 'full_spec' => trim($request->material_type) . ' ' . trim($request->thickness) . ' X ' . trim($request->size), 'created_at' => now(), 'updated_at' => now()]); 
         return back()->with('success', 'Specification registered.'); 
     }
-    /**
-     * FUNGSI YANG HILANG: Menampilkan Riwayat PO Supplier
-     */
+
     public function poSupplierHistory(Request $request)
     {
         $selectedCustomer = $request->customer;
-        
-        // Ambil PO yang statusnya sudah COMPLETED atau masih PARTIAL untuk dilihat historynya
         $posQuery = DB::table('supplier_pos');
-
-        if ($selectedCustomer && $selectedCustomer != 'ALL') {
-            $posQuery->where('customer_code', trim($selectedCustomer));
-        }
-
+        if ($selectedCustomer && $selectedCustomer != 'ALL') { $posQuery->where('customer_code', trim($selectedCustomer)); }
         $pos = $posQuery->orderBy('updated_at', 'desc')->get();
-
         foreach ($pos as $po) {
-            $po->items = DB::table('supplier_po_items')
-                ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
-                ->select('supplier_po_items.*', 'mm.material_type', 'mm.thickness', 'mm.size')
-                ->where('supplier_po_id', $po->id)
-                ->get();
+            $po->items = DB::table('supplier_po_items')->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')->select('supplier_po_items.*', 'mm.material_type', 'mm.thickness', 'mm.size')->where('supplier_po_id', $po->id)->get();
         }
-
         $clients = DB::table('customers')->get();
-        
-        // Pastikan nama view ini sesuai dengan file di folder resources/views/Gudang/
         return view('Gudang.po_supplier_history', compact('pos', 'clients', 'selectedCustomer'));
     }
 }
