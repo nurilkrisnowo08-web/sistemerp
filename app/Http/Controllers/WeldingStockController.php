@@ -128,7 +128,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4. FINISH WELDING (DENGAN KEAMANAN DATA)
+     * 4. FINISH WELDING (DENGAN KEAMANAN DATA & SYNC)
      */
     public function finishWelding(Request $request, $id)
     {
@@ -140,27 +140,29 @@ class WeldingStockController extends Controller
         $total_input = $qty_ok + $qty_ng;
 
         if ($total_input != $batch->qty_masuk) {
-            return back()->with('error', "🚨 GAGAL: Total input ($total_input) tidak sama dengan Target ($batch->qty_masuk)!");
+            return back()->with('error', "Total input ($total_input) harus sama dengan target ($batch->qty_masuk)!");
         }
 
         DB::beginTransaction();
         try {
-            // 1. Simpan hasil akhir batch
+            // 1. Update Batch Utama
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok' => $qty_ok, 
                 'qty_ng' => $qty_ng,
                 'status' => 'COMPLETED', 
-                'keterangan' => $request->keterangan,
-                'qc_at' => now(),
                 'updated_at' => now()
             ]);
 
-            // 2. Simpan Rincian Penyakit NG (Tetap dicatat di Log internal Welding)
-            if ($request->has('ng_detail_type')) {
+            // 2. ✨ KIRIM KE QUALITY GATE (Hanya OK saja yang dikirim)
+            $actualId = $this->syncToQualityGate($id);
+
+            // 3. ✨ SIMPAN RINCIAN NG KE WELDING_NG_LOGS
+            if ($request->has('ng_detail_type') && $actualId) {
                 foreach ($request->ng_detail_type as $key => $type) {
                     $qDetail = (int)$request->ng_detail_qty[$key];
                     if ($qDetail > 0) {
-                        DB::table('production_ng_logs')->insert([
+                        DB::table('welding_ng_logs')->insert([
+                            'actual_id'   => $actualId, 
                             'no_produksi' => $batch->no_produksi_stamping,
                             'ng_type'     => $type,
                             'qty'         => $qDetail,
@@ -170,21 +172,18 @@ class WeldingStockController extends Controller
                 }
             }
 
-            // 3. ✨ OTOMATIS KIRIM KE QUALITY GATE (Hanya OK Goods)
-            $this->syncWeldingToActual($id);
-
             DB::commit();
-            return back()->with('success', 'Batch Selesai. Data OK dikirim ke Quality Gate.');
+            return back()->with('success', 'Data aman & terkirim ke Quality Gate.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
-            return back()->with('error', 'Gagal Simpan: ' . $e->getMessage()); 
+            return back()->with('error', 'Gagal: ' . $e->getMessage()); 
         }
     }
 
     /**
      * ✨ 4.1 ROBOT SINKRONISASI KE QUALITY GATE (FILTER OK ONLY)
      */
-    private function syncWeldingToActual($weldingId)
+    private function syncToQualityGate($weldingId)
     {
         $batch = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
@@ -192,33 +191,33 @@ class WeldingStockController extends Controller
             ->select('welding_batches.*', 'line_welding.kode_line')
             ->first();
 
-        if (!$batch) return;
+        if (!$batch) return null;
 
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
-        
-        // Agar muncul di kolom kanan Quality Gate, pastikan line_code mengandung kata 'WELDING'
         $lineName = $batch->kode_line ?? 'WELDING AREA';
 
-        // 🎯 TARGET: production_actuals (Tabel yang dibaca oleh layar Quality Gate)
+        // Cari data dengan pengaman Collation
         $actual = DB::table('production_actuals')
-            ->where('part_no', $batch->part_no)
+            ->whereRaw("REPLACE(part_no, ' ', '') = REPLACE(?, ' ', '')", [$batch->part_no])
             ->where('line_code', $lineName)
             ->whereDate('created_at', $dateOnly)
             ->first();
 
         if ($actual) {
             DB::table('production_actuals')->where('id', $actual->id)->update([
-                'qty_ok' => $actual->qty_ok + $batch->qty_ok, // Tambah Total OK saja
-                // 'qty_ng' TIDAK DITAMBAH sesuai permintaan Bapak (NG tidak ikut)
+                'qty_ok' => $actual->qty_ok + $batch->qty_ok, // OK bertambah
+                // qty_ng sengaja tidak diupdate (biar QC cek nol di gate)
                 'updated_at' => now()
             ]);
+            return $actual->id;
         } else {
-            DB::table('production_actuals')->insert([
+            // Jika belum ada, buat baru dan ambil ID-nya untuk referensi NG Log
+            return DB::table('production_actuals')->insertGetId([
                 'part_no'    => $batch->part_no,
                 'line_code'  => $lineName,
                 'shift'      => 'N/A',
-                'qty_ok'     => $batch->qty_ok, // Hanya Total OK saja
-                'qty_ng'     => 0,              // NG diset 0 agar QC cek dari awal
+                'qty_ok'     => $batch->qty_ok,
+                'qty_ng'     => 0, // NG diset 0 sesuai permintaan
                 'created_at' => $batch->created_at,
                 'updated_at' => now()
             ]);
