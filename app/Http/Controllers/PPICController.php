@@ -186,6 +186,10 @@ class PPICController extends Controller
 
         return view('PPIC.quality_hub', compact('date', 'sumStamping', 'ngStamping', 'detailStamping'));
     }
+    public function getBatchNGDetails($no_produksi) {
+    // Ambil detail NG dari tabel log
+    return response()->json(DB::table('production_ng_logs')->where('no_produksi', $no_produksi)->get());
+}
 
     /**
      * 4. WELDING INTELLIGENCE DASHBOARD
