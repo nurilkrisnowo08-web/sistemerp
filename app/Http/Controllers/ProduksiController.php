@@ -53,57 +53,46 @@ class ProduksiController extends Controller
     public function productionStore(Request $request) { return $this->store($request); }
 
     /**
-     * ✨ FIX STORE: HANYA INSERT 1 BARIS (ANTI-DOUBLE DATABASE)
+     * ✨ 1. STORE RESULT (Aman & Otomatis Transfer)
      */
-   public function storeResult(Request $request, $id)
-{
-    DB::beginTransaction();
-    try {
-        $batch = DB::table('produksi_batches')->where('id', $id)->first();
-        
-        // 1. Simpan hasil produksi Stamping
-        DB::table('produksi_batches')->where('id', $id)->update([
-            'qty_hasil_ok' => $request->qty_ok,
-            'qty_hasil_ng' => $request->qty_ng,
-            'status'       => 'COMPLETED', // Atau status lainnya
-            'updated_at'   => now()
-        ]);
-
-        // 2. ✨ LOGIKA PENGIRIMAN OTOMATIS KE WELDING WIP ✨
-        $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
-
-        if ($part && $part->next_process == 'WELDING') {
-            // A. Tambah saldo ke welding_stock di tabel gudang
-            DB::table('finished_goods')
-                ->where('part_no', $batch->material_code)
-                ->increment('welding_stock', $request->qty_ok, ['updated_at' => now()]);
-
-            // B. Masukkan ke production_logs agar muncul di kolom "IN (STAMPING)" 
-            // di layar Welding Terminal V3.0 (Gambar image_676dd5.png)
-            DB::table('production_logs')->insert([
-                'part_no'      => $batch->material_code,
-                'qty'          => $request->qty_ok,
-                'process_type' => 'WELDING', // Label pengiriman ke Las
-                'created_at'   => now(),
+    public function storeResult(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            $batch = DB::table('produksi_batches')->where('id', $id)->first();
+            
+            DB::table('produksi_batches')->where('id', $id)->update([
+                'qty_hasil_ok' => $request->qty_ok,
+                'qty_hasil_ng' => $request->qty_ng,
+                'status'       => 'COMPLETED',
                 'updated_at'   => now()
             ]);
-        } else {
-            // Kalau bukan part welding, masuk ke stok FG biasa
-            DB::table('finished_goods')
-                ->where('part_no', $batch->material_code)
-                ->increment('stock', $request->qty_ok, ['updated_at' => now()]);
-        }
 
-        DB::commit();
-        return back()->with('success', 'Data Transmitted to ' . ($part->next_process ?? 'FG'));
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Transmission Failed: ' . $e->getMessage());
+            $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
+
+            if ($part && $part->next_process == 'WELDING') {
+                DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('welding_stock', $request->qty_ok, ['updated_at' => now()]);
+                DB::table('production_logs')->insert([
+                    'part_no'      => $batch->material_code,
+                    'qty'          => $request->qty_ok,
+                    'process_type' => 'WELDING',
+                    'created_at'   => now(),
+                    'updated_at'   => now()
+                ]);
+            } else {
+                DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('stock', $request->qty_ok, ['updated_at' => now()]);
+            }
+
+            DB::commit();
+            return back()->with('success', 'Data Transmitted!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Transmission Failed: ' . $e->getMessage());
+        }
     }
-}
 
     /**
-     * ✨ FIX UPDATE RESULT: Membersihkan data lama agar angka NG tidak "Ngaco"
+     * ✨ 2. UPDATE RESULT (DI SINI MASALAHNYA TADI - SUDAH DIPERBAIKI)
      */
     public function updateResult(Request $request, $id) 
     {
@@ -112,7 +101,6 @@ class ProduksiController extends Controller
 
         $qty_ok = (int)$request->qty_hasil_ok; 
         
-        // 1. Hitung Rincian NG Spesifik
         $total_ng_spesifik = 0;
         $ng_details = [];
         if ($request->has('ng_detail_type')) {
@@ -147,7 +135,7 @@ class ProduksiController extends Controller
             $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
             $status_akhir = ($target == 'WELDING' || $qty_ok == 0) ? 'COMPLETED' : 'WAITING_QC';
 
-            // 2. ✨ UPDATE BERDASARKAN ID (Lebih Presisi)
+            // 1. Update Batch Table
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok'         => $qty_ok, 
                 'qty_ng_material'      => 0, 
@@ -159,16 +147,35 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
+            // ✨ 2. LOGIKA TRANSFER OTOMATIS (DITAMBAHKAN AGAR KE WIP WELDING) ✨
+            if ($target == 'WELDING') {
+                // Tambah saldo ke welding_stock
+                DB::table('finished_goods')
+                    ->where('part_no', $p->material_code)
+                    ->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
+
+                // Log untuk Terminal Welding (IN STAMPING)
+                DB::table('production_logs')->insert([
+                    'part_no'      => $p->material_code,
+                    'qty'          => $qty_ok,
+                    'process_type' => 'WELDING',
+                    'created_at'   => now(),
+                    'updated_at'   => now()
+                ]);
+            } else {
+                // Part lari ke FG
+                DB::table('finished_goods')
+                    ->where('part_no', $p->material_code)
+                    ->increment('stock', $qty_ok, ['updated_at' => now()]);
+            }
+
             $this->syncToActual($id);
 
-            // ✨ 3. ANTI-NGACO: Hapus rincian NG lama milik batch ini sebelum simpan yang baru
+            // Bersihkan & Simpan NG (Tetap Sama)
             DB::table('production_ng_logs')->where('no_produksi', $p->no_produksi)->delete();
-
             if (!empty($ng_details)) {
-                $lineCode = DB::table('line')->where('id', $p->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
                 $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
                              ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
-
                 if ($actual) {
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert([
@@ -183,7 +190,7 @@ class ProduksiController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('produksi.index')->with('success', 'Data Berhasil Disimpan!');
+            return redirect()->route('produksi.index')->with('success', 'Data Berhasil Disimpan & Transmitted!');
         } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
     }
 
@@ -248,41 +255,36 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
-    /**
-     * ✨ FIX HISTORY: Tambahkan semua kolom ke GroupBy agar tidak error SQL Strict
-     */
-   public function history() 
-{
-    $history = DB::table('produksi_batches')
-        ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-        ->select(
-            'produksi_batches.no_produksi',
-            'produksi_batches.material_code',
-            'produksi_batches.shift',
-            'produksi_batches.status',
-            'produksi_batches.keterangan',
-            // ✨ Gunakan Aggregation agar data dari banyak line otomatis menjumlah
-            DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
-            DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
-            DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
-            DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
-            DB::raw('MIN(produksi_batches.id) as id'),
-            // ✨ Gabungkan nama line jika dalam satu batch ada lebih dari satu
-            DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
-        )
-        ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-        ->groupBy(
-            'produksi_batches.no_produksi', 
-            'produksi_batches.material_code', 
-            'produksi_batches.shift',
-            'produksi_batches.status',
-            'produksi_batches.keterangan'
-        )
-        ->orderBy('updated_at', 'desc')
-        ->get();
+    public function history() 
+    {
+        $history = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->select(
+                'produksi_batches.no_produksi',
+                'produksi_batches.material_code',
+                'produksi_batches.shift',
+                'produksi_batches.status',
+                'produksi_batches.keterangan',
+                DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
+                DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
+                DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
+                DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
+                DB::raw('MIN(produksi_batches.id) as id'),
+                DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
+            )
+            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+            ->groupBy(
+                'produksi_batches.no_produksi', 
+                'produksi_batches.material_code', 
+                'produksi_batches.shift',
+                'produksi_batches.status',
+                'produksi_batches.keterangan'
+            )
+            ->orderBy('updated_at', 'desc')
+            ->get();
 
-    return view('Produksi.history', compact('history'));
-}
+        return view('Produksi.history', compact('history'));
+    }
 
     public function returnToRM($id) {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
@@ -327,13 +329,13 @@ class ProduksiController extends Controller
     }
     public function getBundles($code) { return $this->getBundlesByPart($code); }
     public function reportProblem(Request $request, $id)
-{
-    DB::table('produksi_batches')->where('id', $id)->update([
-        'status' => 'PROBLEM',
-        'keterangan' => '⚠️ DIES RUSAK: ' . $request->problem_note,
-        'updated_at' => now()
-    ]);
+    {
+        DB::table('produksi_batches')->where('id', $id)->update([
+            'status' => 'PROBLEM',
+            'keterangan' => '⚠️ DIES RUSAK: ' . $request->problem_note,
+            'updated_at' => now()
+        ]);
 
-    return redirect()->back()->with('error', 'Laporan kendala telah dikirim ke PPIC!');
-}
+        return redirect()->back()->with('error', 'Laporan kendala telah dikirim ke PPIC!');
+    }
 }
