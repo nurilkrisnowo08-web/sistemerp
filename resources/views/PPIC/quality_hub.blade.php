@@ -3,104 +3,90 @@
 @section('content')
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
 <style>
-    :root { --ind-blue: #4361ee; --ind-navy: #0f172a; }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
-    
-    .heading-tech { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: var(--ind-navy); }
-    .stat-card { background: #fff; border-radius: 25px; padding: 25px; border: none; transition: 0.3s; box-shadow: 0 10px 25px rgba(0,0,0,0.02); }
-    .yield-value { font-family: 'Orbitron'; font-weight: 900; line-height: 1; }
-    
-    .table-tech td { font-size: 13px; font-weight: 700; vertical-align: middle; padding: 18px !important; }
-    .row-clickable { cursor: pointer; transition: 0.2s; }
-    .row-clickable:hover { background-color: #f0f7ff !important; box-shadow: inset 4px 0 0 var(--ind-blue); }
+    :root { --p-blue: #4361ee; --p-navy: #0f172a; --p-bg: #f8fafc; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--p-bg); }
 
-    /* ID Produksi Clickable Style */
-    .id-link { 
-        font-family: 'JetBrains Mono'; font-size: 11px; background: #eff6ff; color: var(--ind-blue); 
-        padding: 5px 12px; border-radius: 8px; font-weight: 800; border: 1px solid #dbeafe;
-        cursor: pointer; transition: 0.2s; display: inline-block;
+    .heading-tech { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: var(--p-navy); }
+    
+    /* Stat Cards Modern */
+    .glass-card { background: #fff; border-radius: 30px; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.02); transition: 0.3s; padding: 25px; }
+    
+    /* ID Link Button */
+    .batch-id-btn { 
+        font-family: 'JetBrains Mono'; border: 1px solid #dbeafe; background: #eff6ff; color: var(--p-blue); 
+        padding: 5px 12px; border-radius: 10px; font-weight: 800; font-size: 11px; transition: 0.3s; cursor: pointer;
     }
-    .id-link:hover { background: var(--ind-blue); color: #fff; transform: scale(1.05); text-decoration: none; }
-
-    .ng-badge { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; border: 1px solid #fecaca; }
+    .batch-id-btn:hover { background: var(--p-blue); color: #fff; box-shadow: 0 5px 15px rgba(67,97,238,0.3); transform: scale(1.05); }
+    .batch-id-btn.active { background: var(--p-navy); color: #fff; border-color: var(--p-navy); }
 
     /* Modal Styling */
-    .modal-content { border-radius: 35px; border: none; overflow: hidden; }
-    .chart-container { background: #f8fafc; border-radius: 25px; padding: 20px; border: 1px solid #e2e8f0; }
-
-    /* Z-Index Fix for Double Modal */
-    #modalBatchAnalysis { z-index: 1060 !important; }
-    .modal-backdrop.show:nth-of-type(even) { z-index: 1059 !important; }
+    .modal-content { border-radius: 40px; border: none; overflow: hidden; background: #fff; }
+    .intel-panel { background: #f8fafc; border-radius: 30px; padding: 25px; height: 100%; border: 1px solid #e2e8f0; }
+    
+    .table-modern thead th { background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border: none; }
+    .table-modern td { vertical-align: middle; font-weight: 700; color: var(--p-navy); border-bottom: 1px solid #f1f5f9; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
-    
-    {{-- 🛰️ HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
             <h1 class="heading-tech mb-1">Quality <span class="text-primary">Intelligence</span></h1>
-            <p class="text-muted small font-weight-bold uppercase mb-0">PT ASALTA MANDIRI AGUNG // AUDIT_TRACE_SYSTEM</p>
+            <p class="text-muted small font-weight-bold mb-0">PT ASALTA MANDIRI AGUNG // UNIT_AUDIT_SYSTEM</p>
         </div>
-        <div class="d-flex align-items-center">
-            <form action="" method="GET" class="bg-white p-2 rounded-pill shadow-sm border d-flex align-items-center mr-3">
-                <i class="fas fa-calendar-alt mx-3 text-primary"></i>
-                <input type="date" name="date" class="border-0 font-weight-bold mr-2" value="{{ $date }}" onchange="this.form.submit()">
-            </form>
-        </div>
+        <input type="date" class="form-control border-0 shadow-sm rounded-pill px-4 font-weight-bold" style="width: 200px;" value="{{ $date }}">
     </div>
 
-    {{-- 📊 STATS CARDS --}}
-    <div class="row mb-5">
+    {{-- Dashboard Summary --}}
+    <div class="row mb-5 text-center">
         <div class="col-md-4">
-            <div class="stat-card border-left border-success" style="border-left-width: 8px !important;">
-                <small class="text-muted font-weight-bold uppercase d-block mb-1">Passed (OK)</small>
-                <div class="yield-value text-success h2 mb-0">{{ number_format($sumStamping->total_ok ?? 0) }}</div>
+            <div class="glass-card border-left border-success" style="border-left-width: 8px !important;">
+                <small class="text-muted font-weight-bold uppercase">Passed Good (OK)</small>
+                <h2 class="font-weight-black text-success mt-2">{{ number_format($sumStamping->total_ok ?? 0) }}</h2>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="stat-card border-left border-danger" style="border-left-width: 8px !important;">
-                <small class="text-muted font-weight-bold uppercase d-block mb-1">Rejected (NG)</small>
-                <div class="yield-value text-danger h2 mb-0">{{ number_format($sumStamping->total_ng ?? 0) }}</div>
+            <div class="glass-card border-left border-danger" style="border-left-width: 8px !important;">
+                <small class="text-muted font-weight-bold uppercase">Rejected (NG)</small>
+                <h2 class="font-weight-black text-danger mt-2">{{ number_format($sumStamping->total_ng ?? 0) }}</h2>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="stat-card bg-dark text-white text-center">
-                <small class="text-info font-weight-bold uppercase d-block mb-1">Overall Yield Rate</small>
+            <div class="glass-card bg-dark text-white">
+                <small class="text-info font-weight-bold uppercase">Overall Yield</small>
                 @php $totalS = ($sumStamping->total_ok ?? 0) + ($sumStamping->total_ng ?? 0); @endphp
-                <div class="yield-value text-warning h2 mb-0">{{ $totalS > 0 ? round(($sumStamping->total_ok / $totalS) * 100, 1) : 0 }}%</div>
+                <h2 class="font-weight-black text-warning mt-2">{{ $totalS > 0 ? round(($sumStamping->total_ok / $totalS) * 100, 1) : 0 }}%</h2>
             </div>
         </div>
     </div>
 
-    {{-- MAIN TABLE --}}
-    <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 25px;">
+    {{-- Main Production List --}}
+    <div class="glass-card p-0 overflow-hidden">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 text-center">
-                <thead class="bg-light">
-                    <tr class="small text-muted font-weight-black uppercase">
+            <table class="table table-hover mb-0 text-center table-modern">
+                <thead>
+                    <tr>
                         <th class="text-left pl-5">Part Identification</th>
                         <th>Station</th>
-                        <th class="text-success">OK</th>
-                        <th class="text-danger">NG</th>
-                        <th>Action</th>
+                        <th class="text-success">Actual OK</th>
+                        <th class="text-danger">Actual NG</th>
+                        <th>Audit Trace</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($detailStamping as $ds)
-                    <tr>
+                    <tr style="height: 80px;">
                         <td class="text-left pl-5">
-                            <div class="text-dark font-weight-black" style="font-size: 15px;">{{ $ds->part_no }}</div>
+                            <div class="font-weight-black text-dark" style="font-size: 15px;">{{ $ds->part_no }}</div>
+                            <small class="text-muted font-weight-bold">UNIT_READY_FOR_AUDIT</small>
                         </td>
-                        <td><span class="badge badge-outline-dark font-weight-bold">{{ $ds->line_code }}</span></td>
-                        <td class="text-success font-weight-black h5 mb-0">{{ number_format($ds->qty_ok) }}</td>
-                        <td class="text-danger font-weight-black h5 mb-0">{{ number_format($ds->qty_ng) }}</td>
+                        <td><span class="badge badge-light border px-3 py-2 rounded-lg font-weight-bold">{{ $ds->line_code }}</span></td>
+                        <td class="text-success font-weight-black h5">{{ number_format($ds->qty_ok) }}</td>
+                        <td class="text-danger font-weight-black h5">{{ number_format($ds->qty_ng) }}</td>
                         <td>
-                            <button class="btn btn-primary rounded-pill px-4 font-weight-bold btn-sm shadow-sm" 
-                                    onclick="showDrilldown('{{ $ds->part_no }}', {{ json_encode($ds->batches ?? []) }})">
-                                VIEW_DETAIL
+                            <button class="btn btn-primary rounded-pill px-4 font-weight-bold btn-sm shadow-sm" onclick="openAudit('{{ $ds->part_no }}', {{ json_encode($ds->batches) }})">
+                                ANALYZE
                             </button>
                         </td>
                     </tr>
@@ -111,61 +97,54 @@
     </div>
 </div>
 
-{{-- 🤖 MODAL 1: AUDIT TRACE (DAFTAR BATCH) --}}
-<div class="modal fade animate__animated animate__fadeInDown" id="modalDrilldown" tabindex="-1">
+{{-- 🤖 THE MASTER INTEGRATED MODAL --}}
+<div class="modal fade animate__animated animate__fadeIn" id="modalAudit" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 shadow-2xl">
-            <div class="modal-header bg-primary text-white p-4">
-                <h5 class="modal-title font-weight-black uppercase" style="font-family: 'Orbitron';" id="drilldownTitle">BATCH_DRILLDOWN</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-4">
+        <div class="modal-content shadow-2xl">
+            <div class="modal-body p-5">
                 <div class="row">
-                    <div class="col-lg-5 mb-4">
-                        <div class="chart-container text-center h-100">
-                            <h6 class="font-weight-black text-muted small uppercase mb-4">Summary Performance</h6>
-                            <div id="partSummaryDonut"></div>
-                            <div class="row mt-3">
-                                <div class="col-6 border-right text-success"><small class="font-weight-bold">TOTAL OK</small><h4 id="lblTotalOk" class="font-weight-black mb-0">0</h4></div>
-                                <div class="col-6 text-danger"><small class="font-weight-bold">TOTAL NG</small><h4 id="lblTotalNg" class="font-weight-black mb-0">0</h4></div>
-                            </div>
+                    {{-- KIRI: DAFTAR BATCH --}}
+                    <div class="col-lg-6 pr-lg-5">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="font-weight-black mb-0" id="modalTitle">--</h4>
+                            <span class="badge badge-primary rounded-pill px-3">BATCH_LIST</span>
                         </div>
-                    </div>
-                    <div class="col-lg-7">
-                        <div class="table-responsive border rounded-xl overflow-hidden">
-                            <table class="table table-hover mb-0 text-center">
-                                <thead class="bg-light small font-weight-black uppercase">
+                        <div class="table-responsive" style="max-height: 450px;">
+                            <table class="table table-borderless table-modern">
+                                <thead class="small text-muted font-weight-bold">
                                     <tr>
-                                        <th class="text-left pl-4">No Produksi (Click for NG Detail)</th>
+                                        <th>Production ID</th>
                                         <th>In</th>
                                         <th class="text-success">OK</th>
                                         <th class="text-danger">NG</th>
                                     </tr>
                                 </thead>
-                                <tbody id="drilldownBody"></tbody>
+                                <tbody id="auditBody"></tbody>
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+                    {{-- KANAN: INTELLIGENCE PANEL (CHART & DETAILS) --}}
+                    <div class="col-lg-6">
+                        <div class="intel-panel shadow-sm text-center">
+                            <h6 class="font-weight-black text-muted uppercase small mb-4">Batch Performance Intelligence</h6>
+                            
+                            {{-- Container Grafik --}}
+                            <div id="intelChartContainer" style="min-height: 300px;">
+                                <div id="intelChart"></div>
+                            </div>
 
-{{-- 📊 MODAL 2: BATCH NG ANALYSIS (CHART DONUT SPESIFIK) --}}
-<div class="modal fade animate__animated animate__zoomIn" id="modalBatchAnalysis" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow-2xl border-0">
-            <div class="modal-header bg-dark text-white p-4">
-                <h6 class="modal-title font-weight-bold uppercase" id="batchAnalysisTitle">BATCH_REJECT_BREAKDOWN</h6>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-4 text-center">
-                <div class="chart-container">
-                    <div id="batchDonutChart"></div>
+                            {{-- Container List Reject --}}
+                            <div id="ngDetailContent" class="mt-4 text-left">
+                                <div class="text-center py-5 text-muted opacity-50">
+                                    <i class="fas fa-mouse-pointer d-block mb-2 fa-2x"></i>
+                                    <p class="small font-weight-bold">CLICK A BATCH ID ON THE LEFT<br>TO VIEW DETAILED ANALYSIS</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="ngDetailList" class="mt-4 text-left">
-                    {{-- Text Detail NG muncul di sini via JS --}}
+                <div class="mt-4 pt-4 border-top">
+                    <button class="btn btn-light btn-block rounded-pill font-weight-bold py-3" data-dismiss="modal">CLOSE AUDIT SESSION</button>
                 </div>
             </div>
         </div>
@@ -173,113 +152,117 @@
 </div>
 
 <script>
-    let summaryChart = null;
-    let detailChart = null;
+    let chartObj = null;
 
-    // FUNGSI MODAL 1: Daftar Batch
-    function showDrilldown(partNo, batches) {
-        document.getElementById('drilldownTitle').innerText = "AUDIT TRACE: " + partNo;
-        const body = document.getElementById('drilldownBody');
+    // 1. Membuka Modal Utama & Isi Tabel Kiri
+    function openAudit(partNo, batches) {
+        document.getElementById('modalTitle').innerText = partNo;
+        const body = document.getElementById('auditBody');
         body.innerHTML = '';
-
-        let tOk = 0, tNg = 0;
+        
+        // Reset Panel Kanan
+        document.getElementById('ngDetailContent').innerHTML = `
+            <div class="text-center py-5 text-muted opacity-50">
+                <i class="fas fa-mouse-pointer d-block mb-2 fa-2x"></i>
+                <p class="small font-weight-bold">CLICK A BATCH ID ON THE LEFT<br>TO VIEW DETAILED ANALYSIS</p>
+            </div>`;
+        if(chartObj) chartObj.destroy(); chartObj = null;
 
         batches.forEach(b => {
-            let qIn = parseInt(b.qty_ambil_pcs || b.qty_masuk) || 0;
-            let qOk = parseInt(b.qty_hasil_ok || b.qty_ok) || 0;
-            let qNg = parseInt(b.qty_hasil_ng || b.qty_ng) || 0;
+            let qIn = b.qty_ambil_pcs || b.qty_masuk || 0;
+            let qOk = b.qty_hasil_ok || b.qty_ok || 0;
+            let qNg = b.qty_hasil_ng || b.qty_ng || 0;
             let id = b.no_produksi || b.no_produksi_stamping || b.no_produksi_welding;
-
-            tOk += qOk; tNg += qNg;
 
             body.innerHTML += `
                 <tr>
-                    <td class="text-left pl-4">
-                        <span class="id-link" onclick="loadBatchAnalysis('${id}', ${qOk}, ${qNg})">
-                            ${id}
-                        </span>
-                    </td>
-                    <td class="font-weight-bold text-muted">${qIn}</td>
+                    <td><button class="batch-id-btn" onclick="analyzeBatch(this, '${id}', ${qIn}, ${qOk}, ${qNg})">${id}</button></td>
+                    <td class="font-weight-bold">${qIn}</td>
                     <td class="text-success font-weight-black">${qOk}</td>
                     <td class="text-danger font-weight-black">${qNg}</td>
-                </tr>
-            `;
+                </tr>`;
         });
-
-        document.getElementById('lblTotalOk').innerText = tOk.toLocaleString();
-        document.getElementById('lblTotalNg').innerText = tNg.toLocaleString();
-        
-        renderSummaryDonut(tOk, tNg);
-        $('#modalDrilldown').modal('show');
+        $('#modalAudit').modal('show');
     }
 
-    // FUNGSI MODAL 2: Rincian NG Per Batch
-    function loadBatchAnalysis(noProd, ok, ng) {
-        document.getElementById('batchAnalysisTitle').innerText = "ANALYSIS: " + noProd;
-        
-        // Ambil data rincian NG lewat AJAX
-        fetch(`/ppic/get-batch-ng-details/${noProd}`)
+    // 2. Klik ID Batch -> Update Grafik & List NG (Intelligence)
+    function analyzeBatch(btn, id, totalIn, ok, ng) {
+        // Efek Visual Tombol Aktif
+        document.querySelectorAll('.batch-id-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Fetch Data detail NG dari Server
+        fetch(`/ppic/get-batch-ng-details/${id}`)
             .then(res => res.json())
             .then(data => {
                 const labels = ['GOOD OK'];
                 const values = [ok];
-                let detailHtml = '<p class="small font-weight-black text-muted uppercase mb-2">Defect Distribution:</p>';
+                let ngHtml = '<hr><p class="small font-weight-black text-muted uppercase mb-3">Defect Distribution:</p>';
 
                 if(data.length > 0) {
                     data.forEach(item => {
                         labels.push(item.ng_type.toUpperCase());
                         values.push(parseInt(item.qty));
-                        detailHtml += `
-                            <div class="d-flex justify-content-between border-bottom py-2 small font-weight-bold">
-                                <span class="text-danger"><i class="fas fa-caret-right mr-2"></i>${item.ng_type.toUpperCase()}</span>
-                                <span class="font-weight-black">${item.qty} PCS</span>
+                        ngHtml += `
+                            <div class="d-flex justify-content-between align-items-center mb-2 p-3 bg-white rounded-xl border-left border-danger" style="border-left-width: 5px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                                <span class="small font-weight-bold text-dark">${item.ng_type.toUpperCase()}</span>
+                                <span class="badge badge-danger rounded-pill px-3 py-2 font-weight-black">${item.qty} PCS</span>
                             </div>`;
                     });
-                } else if(ng > 0) {
+                } else if (ng > 0) {
+                    // Jika ada NG tapi rinciannya tidak diisi
                     labels.push('UNSPECIFIED NG');
                     values.push(ng);
-                    detailHtml += `<div class="text-center text-muted py-3">DETAIL LOG NOT FOUND</div>`;
+                    ngHtml += `<div class="alert alert-warning rounded-xl text-center small font-weight-bold">NG RECORDED BUT NO DETAILS FOUND</div>`;
                 } else {
-                    detailHtml += `<div class="text-center text-success font-weight-bold py-3">ZERO DEFECT BATCH</div>`;
+                    ngHtml += '<div class="alert alert-success rounded-xl text-center small font-weight-bold">✨ 100% QUALITY PERFECT (NO DEFECTS)</div>';
                 }
 
-                document.getElementById('ngDetailList').innerHTML = detailHtml;
-                
-                // Tampilkan modal 2
-                $('#modalBatchAnalysis').modal('show');
-                
-                // Render Chart dengan delay agar ukuran pas
-                setTimeout(() => renderDetailDonut(labels, values), 300);
+                document.getElementById('ngDetailContent').innerHTML = ngHtml;
+                renderIntelligenceChart(labels, values, totalIn);
             });
     }
 
-    // Render Chart Modal 1 (Ringkasan Part)
-    function renderSummaryDonut(ok, ng) {
-        const options = {
-            series: [ok, ng],
-            chart: { type: 'donut', height: 280 },
-            labels: ['Good OK', 'Total NG'],
-            colors: ['#10b981', '#ef4444'],
-            plotOptions: { pie: { donut: { size: '75%', labels: { show: true, total: { show: true, label: 'YIELD', formatter: () => ((ok/(ok+ng))*100).toFixed(1) + '%' } } } } },
-            legend: { position: 'bottom' }
-        };
-        if (summaryChart) summaryChart.updateOptions(options);
-        else { summaryChart = new ApexCharts(document.querySelector("#partSummaryDonut"), options); summaryChart.render(); }
-    }
-
-    // Render Chart Modal 2 (Detail Batch)
-    function renderDetailDonut(labels, values) {
+    // 3. Render Grafik Donut Intelligence
+    function renderIntelligenceChart(labels, values, totalIn) {
         const options = {
             series: values,
-            chart: { type: 'donut', height: 320 },
+            chart: { type: 'donut', height: 350, animations: { enabled: true, speed: 600 } },
             labels: labels,
             colors: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'],
+            legend: { position: 'bottom', fontWeight: 700, fontSize: '12px' },
             stroke: { width: 0 },
-            plotOptions: { pie: { donut: { size: '70%', labels: { show: true, total: { show: true, label: 'TOTAL IN' } } } } },
-            legend: { position: 'bottom', fontWeight: 700 }
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '75%',
+                        labels: {
+                            show: true,
+                            total: {
+                                show: true,
+                                label: 'YIELD RATE',
+                                fontSize: '12px',
+                                fontWeight: 900,
+                                color: '#64748b',
+                                formatter: function (w) {
+                                    const okValue = w.globals.series[0];
+                                    const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                    return total > 0 ? ((okValue / total) * 100).toFixed(1) + '%' : '0%';
+                                }
+                            },
+                            value: { fontSize: '22px', fontWeight: 900, color: '#0f172a', show: true }
+                        }
+                    }
+                }
+            }
         };
-        if (detailChart) detailChart.updateOptions(options);
-        else { detailChart = new ApexCharts(document.querySelector("#batchDonutChart"), options); detailChart.render(); }
+
+        if (chartObj) {
+            chartObj.updateOptions(options);
+        } else {
+            chartObj = new ApexCharts(document.querySelector("#intelChart"), options);
+            chartObj.render();
+        }
     }
 </script>
 @endsection
