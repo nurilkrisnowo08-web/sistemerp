@@ -64,37 +64,67 @@ class PPICController extends Controller
     /**
      * 2. DAILY MPS (STAMPING)
      */
-    public function mpsIndex(Request $request)
-    {
-        $date = $request->date ?? date('Y-m-d');
-        $shiftParam = $request->shift ?? 'S1'; 
-        $query = DB::table('production_plans')->where('plan_date', $date);
-        if ($shiftParam == 'S1') { $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0); } 
-        else { $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0); }
+   public function mpsIndex(Request $request)
+{
+    $date = $request->date ?? date('Y-m-d');
+    $shiftParam = $request->shift ?? 'S1'; 
 
-        $plans = $query->orderBy('id', 'asc')->get();
-        $lineFinishTime = []; 
-        $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
-
-        foreach($plans as $plan) {
-            $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
-            $actualData = DB::table('production_actuals')->where('part_no', $plan->part_no)->where('shift', $dbShiftName)->whereDate('created_at', $date)->sum('qty_ok');
-            $plan->total_actual = (int)$actualData;
-            $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
-            
-            $dandoryH = ($plan->dandory_time ?? 0) / 60;
-            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
-            $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
-            $plan->start_time = $startTime;
-            $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
-            $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
-            $plan->balance = $plan->total_target - $plan->total_actual;
-        }
-
-        $availableLines = DB::table('line')->get();
-        $availableCustomers = DB::table('customers')->get();
-        return view('PPIC.mps_index', compact('plans', 'date', 'availableLines', 'availableCustomers'))->with('shift', $shiftParam);
+    $query = DB::table('production_plans')->where('plan_date', $date);
+    
+    if ($shiftParam == 'S1') {
+        $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
+    } else {
+        $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
     }
+
+    $plans = $query->orderBy('id', 'asc')->get();
+
+    // ✨ INITIALIZE SUMMARY VARIABLES (FIX UNKNOWN VARIABLES)
+    $totalPlanQty = 0;
+    $totalWorkingHours = 0;
+    $totalDandory = 0;
+
+    $lineFinishTime = []; 
+    $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
+
+    foreach($plans as $plan) {
+        $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
+        
+        $actualData = DB::table('production_actuals')
+            ->where('part_no', $plan->part_no) 
+            ->where('shift', $dbShiftName) 
+            ->whereDate('created_at', $date)
+            ->where('line_code', '!=', 'WELDING AREA')
+            ->sum('qty_ok');
+
+        $plan->total_actual = (int)$actualData;
+        $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
+        
+        // 📊 ACCUMULATE TOTALS FOR HUD
+        $totalPlanQty += $plan->total_target;
+        $totalDandory += ($plan->dandory_time ?? 0);
+
+        $dandoryH = ($plan->dandory_time ?? 0) / 60;
+        $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
+        
+        $totalWorkingHours += $duration;
+
+        $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
+        $plan->start_time = $startTime;
+        $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
+        $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
+        $plan->balance = $plan->total_target - $plan->total_actual;
+    }
+
+    $availableLines = DB::table('line')->get();
+    $availableCustomers = DB::table('customers')->get();
+
+    // ✨ SEND ALL VARIABLES TO VIEW
+    return view('PPIC.mps_index', compact(
+        'plans', 'date', 'availableLines', 'availableCustomers', 
+        'totalPlanQty', 'totalWorkingHours', 'totalDandory'
+    ))->with('shift', $shiftParam);
+}
 
     public function mpsStore(Request $request)
     {
