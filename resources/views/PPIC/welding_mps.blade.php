@@ -32,7 +32,7 @@
     .tech-input { border-radius: 14px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; background: #f8fafc; }
     .tech-input:focus { border-color: var(--brand-primary); outline: none; background: #fff; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1); }
     
-    .modal-content { border-radius: 30px; border: none; overflow: hidden; }
+    .modal-content { border-radius: 35px; border: none; overflow: hidden; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -40,7 +40,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
         <div>
             <h1 class="heading-hub mb-1">Welding_MPS <span class="text-primary">v2.0</span></h1>
-            <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-calendar-check text-primary mr-2"></i> Master Production Schedule // Robot & Manual Welding</p>
+            <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-calendar-check text-primary mr-2"></i> Master Production Schedule // Unit Verification</p>
         </div>
         <div class="d-flex align-items-center mt-3 mt-md-0">
             <form action="{{ route('ppic.welding.mps') }}" method="GET" class="mr-3 d-flex align-items-center bg-white p-2 rounded-pill shadow-sm border">
@@ -112,7 +112,9 @@
                         </td>
                         <td class="text-left">
                             <div class="font-weight-black text-dark" style="font-size: 14px;">{{ $p->part_no }}</div>
-                            <small class="text-muted font-weight-bold uppercase">{{ $p->customer_code }}</small>
+                            {{-- ✨ PART NAME DARI JOIN DATABASE --}}
+                            <small class="text-muted font-weight-bold uppercase d-block" style="font-size: 10px;">{{ $p->part_name }}</small>
+                            <span class="badge badge-light border text-primary mt-1" style="font-size: 9px;">{{ $p->customer_code }}</span>
                         </td>
                         <td class="font-weight-black text-dark" style="font-family: 'JetBrains Mono'; font-size: 15px;">{{ number_format($p->total_target) }}</td>
                         <td class="text-success font-weight-black" style="font-family: 'JetBrains Mono'; font-size: 15px;">{{ number_format($p->total_actual) }}</td>
@@ -147,7 +149,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL ADD WELDING PLAN --}}
+{{-- 🛡️ MODAL ADD WELDING PLAN (VISUAL MATCH) --}}
 <div class="modal fade animate__animated animate__fadeIn" id="modalAddPlan" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content shadow-2xl">
@@ -160,12 +162,12 @@
                 <div class="modal-body p-5">
                     <div class="row">
                         <div class="col-md-12 mb-4">
-                            <label class="small font-weight-black text-muted uppercase">Deployment Date</label>
+                            <label class="small font-weight-black text-muted uppercase mb-2">Deployment Date</label>
                             <input type="date" name="plan_date" class="form-control tech-input" value="{{ $date }}" required>
                         </div>
                         
                         <div class="col-md-6 mb-4">
-                            <label class="small font-weight-black text-muted uppercase">Authorized Station</label>
+                            <label class="small font-weight-black text-muted uppercase mb-2">Authorized Station</label>
                             <select name="line_code" class="form-control tech-input" required>
                                 <option value="" disabled selected>-- SELECT STATION --</option>
                                 @foreach($availableLines as $line)
@@ -175,32 +177,34 @@
                         </div>
 
                         <div class="col-md-6 mb-4">
-                            <label class="small font-weight-black text-muted uppercase">Target Part Identification</label>
+                            <label class="small font-weight-black text-muted uppercase mb-2">Target Part Identification</label>
                             <select name="part_no" class="form-control tech-input" required>
                                 <option value="" disabled selected>-- CHOOSE PART --</option>
                                 @foreach($availableParts as $part)
-                                    <option value="{{ $part->part_no }}">[{{ $part->customer_code }}] {{ $part->part_no }}</option>
+                                    <option value="{{ $part->part_no }}">
+                                        [{{ $part->customer_code }}] {{ $part->part_no }} - {{ $part->part_name }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
 
                         <div class="col-md-6">
-                            <div class="p-3 bg-light rounded-2xl">
-                                <label class="small font-weight-black text-primary uppercase">Shift 1 Target</label>
-                                <input type="number" name="s1_plan_reg" class="form-control tech-input font-weight-black" style="font-size: 20px;" value="0">
+                            <div class="p-4 rounded-3xl" style="background: #f8faff; border: 1px solid #eef2f6;">
+                                <label class="small font-weight-bold text-primary uppercase mb-2 d-block">Shift 1 Target</label>
+                                <input type="number" name="s1_plan_reg" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0">
                             </div>
                         </div>
                         
                         <div class="col-md-6">
-                            <div class="p-3 bg-light rounded-2xl">
-                                <label class="small font-weight-black text-info uppercase">Shift 2 Target</label>
-                                <input type="number" name="s2_plan_reg" class="form-control tech-input font-weight-black" style="font-size: 20px;" value="0">
+                            <div class="p-4 rounded-3xl" style="background: #f8faff; border: 1px solid #eef2f6;">
+                                <label class="small font-weight-bold text-info uppercase mb-2 d-block">Shift 2 Target</label>
+                                <input type="number" name="s2_plan_reg" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0">
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-5 pt-0">
-                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-2xl shadow-xl" style="font-size: 1.1rem; letter-spacing: 1px;">
+                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-2xl shadow-xl" style="background: #5c7cfa; font-size: 1.1rem; letter-spacing: 1px;">
                         AUTHORIZE PRODUCTION LOAD
                     </button>
                 </div>

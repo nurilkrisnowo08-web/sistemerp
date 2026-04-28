@@ -344,51 +344,62 @@ class PPICController extends Controller
     /**
  * TAMPILAN MPS WELDING
  */
+/**
+ * TAMPILAN MPS WELDING (WITH PART NAMES)
+ */
 public function weldingMps(Request $request)
 {
     $date = $request->date ?? date('Y-m-d');
-    $plans = DB::table('welding_plans')->where('plan_date', $date)->orderBy('id', 'asc')->get();
+    $shiftParam = $request->shift ?? 'S1'; 
+
+    // ✨ Ambil data Plan + Join Parts agar muncul PART NAME-nya
+    $plans = DB::table('welding_plans')
+        ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
+        ->where('welding_plans.plan_date', $date)
+        ->select('welding_plans.*', 'parts.part_name') // Ambil Part Name
+        ->orderBy('welding_plans.id', 'asc')
+        ->get();
 
     foreach($plans as $plan) {
-        $actual = DB::table('welding_actuals')->where('part_no', $plan->part_no)->whereDate('created_at', $date)->sum('qty_ok');
+        $actual = DB::table('welding_actuals')
+            ->where('part_no', $plan->part_no)
+            ->whereDate('created_at', $date)
+            ->sum('qty_ok');
         $plan->total_actual = (int)$actual;
-        $plan->total_target = ($request->shift == 'S2') ? ($plan->s2_plan_reg + $plan->s2_plan_ot) : ($plan->s1_plan_reg + $plan->s1_plan_ot);
+        $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
         $plan->balance = $plan->total_target - $plan->total_actual;
     }
 
     $availableLines = DB::table('line_welding')->get();
-    
-    // ✨ TAMBAHAN: Ambil daftar Part yang proses selanjutnya adalah WELDING
-    $availableParts = DB::table('parts')
-        ->where('next_process', 'WELDING')
-        ->orderBy('customer_code', 'asc')
-        ->get();
+    $availableParts = DB::table('parts')->where('next_process', 'WELDING')->get();
 
-    return view('PPIC.welding_mps', compact('plans', 'date', 'availableLines', 'availableParts'))->with('shift', $request->shift ?? 'S1');
+    return view('PPIC.welding_mps', compact('plans', 'date', 'availableLines', 'availableParts'))->with('shift', $shiftParam);
 }
 
 /**
- * SIMPAN MPS WELDING (AUTO CUSTOMER)
+ * SIMPAN MPS WELDING (FIX ERROR DEFAULT VALUE)
  */
 public function weldingMpsStore(Request $request)
 {
-    // ✨ KEAMANAN: Ambil customer_code otomatis dari database parts agar tidak tertukar
     $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
-    $customerCode = $partData ? $partData->customer_code : 'UNKNOWN';
-
+    
     DB::table('welding_plans')->updateOrInsert(
         ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
         [
-            'customer_code' => $customerCode, // ✨ Otomatis terisi
+            'customer_code' => $partData->customer_code ?? 'UNK',
             'line_code'     => $request->line_code,
             's1_plan_reg'   => $request->s1_plan_reg ?? 0,
             's1_plan_ot'    => $request->s1_plan_ot ?? 0,
             's2_plan_reg'   => $request->s2_plan_reg ?? 0,
             's2_plan_ot'    => $request->s2_plan_ot ?? 0,
+            // ✨ FIX: Isi nilai default agar tidak error di server
+            'dandory_time'  => 15, 
+            'manpower'      => 1,
+            'cap_per_hour'  => 50,
             'updated_at'    => now()
         ]
     );
-    return redirect()->back()->with('success', 'Welding Schedule for '.$customerCode.' Updated!');
+    return redirect()->back()->with('success', 'Welding Plan Authorized!');
 }
 
     public function weldingQualityHub(Request $request)
