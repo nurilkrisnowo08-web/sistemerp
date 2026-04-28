@@ -338,17 +338,62 @@ class PPICController extends Controller
 
     // --- RECOVERY FUNCTIONS (JANGAN DIUBAH) ---
     public function resumeBatch($id) { DB::table('produksi_batches')->where('id', $id)->update(['status' => 'PROSES', 'updated_at' => now()]); return redirect()->back()->with('success', 'Batch resumed.'); }
-    public function closeBatch($id) { 
-        DB::beginTransaction(); 
-        try { 
-            $batch = DB::table('produksi_batches')->where('id', $id)->first(); 
-            $sisa = (int)$batch->qty_ambil_pcs - ((int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng); 
-            if ($sisa > 0) { DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa); } 
-            DB::table('produksi_batches')->where('id', $id)->update(['status' => 'COMPLETED', 'qty_return_warehouse' => $sisa, 'updated_at' => now()]); 
-            $this->syncToActual($id); 
-            DB::commit(); return redirect()->back()->with('success', "Batch closed."); 
-        } catch (\Exception $e) { DB::rollBack(); return redirect()->back()->with('error', $e->getMessage()); } 
+    public function closeBatch($id)
+{
+    DB::beginTransaction();
+    try {
+        // 1. Ambil data batch yang mau ditutup
+        $batch = DB::table('produksi_batches')->where('id', $id)->first();
+        if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan.');
+
+        // 2. Hitung sisa material untuk dibalikin ke gudang (Warehouse)
+        $sisa = (int)$batch->qty_ambil_pcs - ((int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng);
+        if ($sisa > 0) {
+            DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa);
+        }
+
+        // 3. Update status batch di Stamping jadi COMPLETED
+        DB::table('produksi_batches')->where('id', $id)->update([
+            'status' => 'COMPLETED',
+            'qty_return_warehouse' => $sisa,
+            'updated_at' => now()
+        ]);
+
+        // 4. ✨ LOGIKA PENGIRIMAN KE WELDING WIP (WELDING_STOCK) ✨
+        $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
+
+        if ($part && $part->next_process == 'WELDING') {
+            // A. Masukkan ke saldo Welding (WIP) di Finished Goods
+            DB::table('finished_goods')
+                ->where('part_no', $batch->material_code)
+                ->increment('welding_stock', $batch->qty_hasil_ok, ['updated_at' => now()]);
+
+            // B. Masukkan ke Log agar muncul di kolom "IN (STAMPING)" di Welding Terminal
+            DB::table('production_logs')->insert([
+                'part_no'      => $batch->material_code,
+                'qty'          => $batch->qty_hasil_ok,
+                'process_type' => 'WELDING', // Indikator buat Terminal Welding
+                'created_at'   => now(),
+                'updated_at'   => now()
+            ]);
+        } else {
+            // Jika part langsung jadi (FG), masuk ke stok normal
+            DB::table('finished_goods')
+                ->where('part_no', $batch->material_code)
+                ->increment('stock', $batch->qty_hasil_ok, ['updated_at' => now()]);
+        }
+
+        // 5. Sinkronisasi hasil ke laporan Quality Hub
+        $this->syncToActual($id);
+
+        DB::commit();
+        return redirect()->back()->with('success', "Batch Closed & Output Transferred to " . ($part->next_process ?? 'FG Area'));
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return redirect()->back()->with('error', 'Gagal memproses penutupan: ' . $e->getMessage());
     }
+}
     public function syncToActual($batchId) {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first(); if (!$batch) return;
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
