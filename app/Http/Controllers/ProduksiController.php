@@ -52,9 +52,6 @@ class ProduksiController extends Controller
 
     public function productionStore(Request $request) { return $this->store($request); }
 
-    /**
-     * ✨ FIX: FUNGSI STORE (DITAMBAHKAN AGAR TIDAK ERROR 500)
-     */
     public function store(Request $request)
     {
         DB::beginTransaction();
@@ -81,6 +78,9 @@ class ProduksiController extends Controller
         }
     }
 
+    /**
+     * ✨ FIX: Mengarahkan ke kolom actual_stock (image_5aca17.png)
+     */
     public function storeResult(Request $request, $id)
     {
         DB::beginTransaction();
@@ -106,7 +106,8 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('stock', $request->qty_ok, ['updated_at' => now()]);
+                // ✨ FIX: Ganti 'stock' menjadi 'actual_stock'
+                DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('actual_stock', $request->qty_ok, ['updated_at' => now()]);
             }
 
             DB::commit();
@@ -117,6 +118,9 @@ class ProduksiController extends Controller
         }
     }
 
+    /**
+     * ✨ FIX: Inti perbaikan pengiriman ke Welding WIP
+     */
     public function updateResult(Request $request, $id) 
     {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
@@ -167,9 +171,11 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
-            // ✨ TAMBAHKAN LOGIKA TRANSMIT DI SINI AGAR OTOMATIS KE WIP WELDING ✨
+            // ✨ LOGIKA TRANSMIT KE WIP WELDING ✨
             if ($target == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
+                
+                // Ini yang membuat data muncul di monitor Welding WIP (IN STAMPING)
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code,
                     'qty'          => $qty_ok,
@@ -178,7 +184,8 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('stock', $qty_ok, ['updated_at' => now()]);
+                // ✨ FIX: Ganti 'stock' menjadi 'actual_stock'
+                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
             }
 
             $this->syncToActual($id);
