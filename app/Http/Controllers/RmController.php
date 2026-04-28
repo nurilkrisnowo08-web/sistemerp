@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class RmController extends Controller
 {
     /**
-     * 1. MONITORING STOK RM - DASHBOARD SINKRONISASI
+     * 1. MONITORING STOK RM - DASHBOARD SINKRONISASI (FIXED LOGIC)
      */
     public function storeIndex(Request $request)
     {
@@ -39,14 +39,16 @@ class RmController extends Controller
             return trim($item->spec) . ' | ' . str_replace(' ', '', $item->size);
         })->map(function($itemsInGroup) use ($startDate, $endDate) {
             
-            $uniqueCoils = $itemsInGroup->unique('coil_id');
-            // ✨ FIX: Ambil semua ID coil yang pernah ada untuk spek ini dari logs agar Out terbaca
             $rep = $itemsInGroup->first();
+            
+            // ✨ FIX UTAMA: Ambil SEMUA ID coil (baik yang masih ada stok maupun yang sudah 0/habis)
+            // agar transaksi OUT coil lama tetap terhitung dalam sejarah.
             $allHistoricalIds = DB::table('rm_stocks')
                 ->where('spec', $rep->spec)
                 ->where('size', $rep->size)
                 ->pluck('id')->toArray();
 
+            // Ambil Logs berdasarkan ID Sejarah
             $logsIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
             $logsOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
 
@@ -55,11 +57,15 @@ class RmController extends Controller
             $inR = $logsIn->where('source', 'return')->sum('pcs_in');
             $outT = $logsOut->sum('pcs_used');
 
-            // Logika Backtracking rill
+            // ✨ LOGIKA BACKTRACKING RILL (Saldo Mundur)
+            // 1. Hitung transaksi di masa depan (setelah End Date)
             $futureIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
             $futureOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
             
+            // 2. Tentukan Stok Akhir di tanggal End Date
             $stokAkhirPeriod = $totalLive + $futureOut - $futureIn;
+            
+            // 3. Tentukan Stok Awal di tanggal Start Date
             $totalInit = $stokAkhirPeriod - ($inS + $inR) + $outT;
 
             return (object)[
@@ -67,7 +73,7 @@ class RmController extends Controller
                 'alias_code' => $rep->alias_code, 'spec' => $rep->spec, 'size' => $rep->size,
                 'std_qty_batch' => $rep->std_qty_batch, 'total_live' => $totalLive, 'total_init' => $totalInit,
                 'total_in_s' => $inS, 'total_in_r' => $inR, 'total_out' => $outT,
-                'details' => $uniqueCoils, 'all_parts' => $itemsInGroup,
+                'details' => $itemsInGroup->unique('coil_id'), 'all_parts' => $itemsInGroup,
                 'combined_logs' => $logsIn->concat($logsOut)->sortByDesc('created_at')
             ];
         });
@@ -77,7 +83,7 @@ class RmController extends Controller
     }
 
     /**
-     * ✨ FIX RECAP LOG: Menjamin Out terbaca rill & Stok Awal Sinkron
+     * ✨ FIX HISTORY: LOGIKA PERMUTASIAN RILL
      */
     public function recapLogPrint(Request $request) {
         $availableCustomers = DB::table('customers')->get(); 
@@ -103,7 +109,7 @@ class RmController extends Controller
         })->map(function($group) use ($startDate, $endDate) {
             
             $rep = $group->first();
-            // ✨ PENTING: Ambil semua ID coil (aktif & sejarah) untuk Spek ini
+            // ✨ Ambil semua ID historis untuk spek ini
             $ids = DB::table('rm_stocks')
                 ->where('spec', $rep->spec)
                 ->where('size', $rep->size)
@@ -122,8 +128,8 @@ class RmController extends Controller
 
             $liveNow = $group->unique('coil_id')->sum('stock_pcs');
 
-            // Perhitungan Saldo Mundur Rill
-            $stockAkhirPeriod = $liveNow + $future_out - $future_in;
+            // Hitung mundur rill!
+            $stockAkhirPeriod = $liveNow - $future_in + $future_out;
             $stockAwalPeriod = $stockAkhirPeriod - $in_qty + $out_qty;
 
             return (object)[
@@ -140,7 +146,7 @@ class RmController extends Controller
         return view('Gudang.rm_log_print', compact('historyData', 'availableCustomers', 'availableSpecs', 'customer', 'specFilter', 'startDate', 'endDate'));
     }
 
-    // --- FUNGSI LAINNYA (TETAP SAMA, TIDAK DIUBAH) ---
+    // --- FUNGSI LAINNYA DI BAWAH INI TETAP UTUH ---
 
     public function storeBatch(Request $request)
     {
@@ -150,7 +156,8 @@ class RmController extends Controller
             foreach ($request->part_nos as $partNo) {
                 $pData = DB::table('parts')->where('part_no', $partNo)->first();
                 $rmId = DB::table('rm_stocks')->insertGetId([
-                    'material_code' => $partNo, 'coil_id' => strtoupper(trim($request->coil_id)),
+                    'material_code' => $partNo,
+                    'coil_id' => strtoupper(trim($request->coil_id)),
                     'material_name' => $pData->part_name ?? 'N/A', 
                     'spec' => trim($request->spec), 'size' => trim($request->size),
                     'customer' => $request->customer_code, 'stock_pcs' => $request->stock_pcs,
