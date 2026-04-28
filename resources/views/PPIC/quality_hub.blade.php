@@ -21,16 +21,17 @@
     .ng-badge { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; border: 1px solid #fecaca; }
 
     /* Modal Styling */
-    .modal-content { border-radius: 35px; border: none; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
-    .chart-box { background: #f8fafc; border-radius: 25px; padding: 20px; border: 1px solid #e2e8f0; min-height: 350px; display: flex; flex-direction: column; justify-content: center; }
+    .modal-content { border-radius: 35px; border: none; overflow: hidden; }
+    .chart-container { background: #f8fafc; border-radius: 25px; padding: 20px; border: 1px solid #e2e8f0; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
+    
     {{-- 🛰️ HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-5">
         <div>
             <h1 class="heading-tech mb-1">Stamping <span class="text-primary">Quality_Hub</span></h1>
-            <p class="text-muted small font-weight-bold uppercase mb-0">PT ASALTA MANDIRI AGUNG // UNIT_AUDIT_LOG</p>
+            <p class="text-muted small font-weight-bold uppercase mb-0">PT ASALTA MANDIRI AGUNG // BATCH_ANALYSIS_MODE</p>
         </div>
         <div class="d-flex align-items-center">
             <form action="" method="GET" class="bg-white p-2 rounded-pill shadow-sm border d-flex align-items-center mr-3">
@@ -59,7 +60,7 @@
         </div>
         <div class="col-md-4">
             <div class="stat-card bg-dark text-white">
-                <small class="text-info font-weight-bold uppercase d-block mb-1">Yield Achievement</small>
+                <small class="text-info font-weight-bold uppercase d-block mb-1">Overall Yield Rate</small>
                 @php $totalS = ($sumStamping->total_ok ?? 0) + ($sumStamping->total_ng ?? 0); @endphp
                 <div class="yield-value text-warning h2 mb-0">{{ $totalS > 0 ? round(($sumStamping->total_ok / $totalS) * 100, 1) : 0 }}%</div>
             </div>
@@ -67,26 +68,30 @@
     </div>
 
     <div class="row">
+        {{-- 📋 MAIN LOG TABLE --}}
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 25px;">
+                <div class="bg-light p-4 border-bottom d-flex justify-content-between align-items-center">
+                    <h6 class="font-weight-black mb-0 uppercase"><i class="fas fa-stream mr-2 text-primary"></i> Stamping_Production_Log</h6>
+                    <span class="badge badge-dark rounded-pill px-3">{{ count($detailStamping) }} Entries</span>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0 text-center">
-                        <thead class="bg-light">
+                        <thead class="bg-white">
                             <tr class="small text-muted font-weight-black uppercase">
                                 <th class="text-left pl-4">Part Identification</th>
                                 <th>Station</th>
                                 <th>Shift</th>
-                                <th>OK Items</th>
-                                <th>NG Items</th>
+                                <th>OK</th>
+                                <th>NG</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($detailStamping as $ds)
-                            {{-- SAAT DIKLIK, MEMANGGIL showDrilldown --}}
-                            <tr class="row-clickable" onclick="showDrilldown('{{ $ds->part_no }}', {{ json_encode($ds->batches ?? []) }})">
+                            <tr class="row-clickable" onclick="showDrilldown({{ json_encode($ds->part_no) }}, {{ json_encode($ds->batches ?? []) }})">
                                 <td class="text-left pl-4">
                                     <div class="text-primary font-weight-black">{{ $ds->part_no }}</div>
-                                    <small class="text-muted">Click to view audit trace</small>
+                                    <small class="text-muted">Click to drill down batches</small>
                                 </td>
                                 <td><span class="badge badge-outline-dark font-weight-bold">{{ $ds->line_code }}</span></td>
                                 <td><span class="badge {{ $ds->shift == 'Pagi' ? 'badge-warning' : 'badge-dark' }} px-3">{{ strtoupper($ds->shift) }}</span></td>
@@ -100,17 +105,19 @@
             </div>
         </div>
 
+        {{-- 📉 NG BREAKDOWN --}}
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm p-4" style="border-radius: 25px;">
-                <h6 class="font-weight-black text-muted uppercase small mb-4">Defect Ranking (Top NG)</h6>
+                <h6 class="font-weight-black text-muted uppercase small mb-4"><i class="fas fa-bug mr-2 text-danger"></i> Defect Analysis</h6>
                 @forelse($ngStamping as $index => $ns)
                 <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-xl border">
                     <span class="font-weight-bold text-dark"><span class="text-primary mr-2">#{{$index+1}}</span> {{ strtoupper($ns->ng_type) }}</span>
                     <span class="ng-badge">{{ $ns->total }} PCS</span>
                 </div>
                 @empty
-                <div class="text-center py-5 opacity-50">
-                    <p class="small font-weight-bold">NO DEFECTS RECORDED</p>
+                <div class="text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success opacity-25 mb-3"></i>
+                    <p class="small font-weight-bold text-muted">ZERO DEFECTS REPORTED</p>
                 </div>
                 @endforelse
             </div>
@@ -118,47 +125,38 @@
     </div>
 </div>
 
-{{-- 🤖 MODAL DRILLDOWN DENGAN GRAFIK --}}
-<div class="modal fade" id="modalDrilldown" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-        <div class="modal-content border-0">
-            <div class="modal-header bg-warning text-dark p-4">
-                <h5 class="modal-title font-weight-black uppercase" id="drilldownTitle" style="font-family: 'Orbitron';">AUDIT_TRACE</h5>
-                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+{{-- 🤖 MODAL DRILLDOWN (DENGAN GRAFIK) --}}
+<div class="modal fade animate__animated animate__zoomIn" id="modalDrilldown" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 35px;">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title font-weight-black uppercase" style="font-family: 'Orbitron';" id="drilldownTitle">BATCH_DRILLDOWN</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-4 bg-white">
+            <div class="modal-body p-4">
                 <div class="row">
-                    {{-- SEKTOR KIRI: GRAFIK DONUT --}}
+                    {{-- Grafik Donut --}}
                     <div class="col-lg-5 mb-4">
-                        <div class="chart-box">
-                            <h6 class="text-center font-weight-bold text-muted small mb-4">BATCH PERFORMANCE COMPOSITION</h6>
-                            <div id="drilldownDonut"></div>
-                            <div class="row mt-4 text-center">
-                                <div class="col-4 border-right">
-                                    <small class="text-muted font-weight-bold">AMBIL</small>
-                                    <h5 id="lblTotalAmbil" class="font-weight-black mb-0">0</h5>
-                                </div>
-                                <div class="col-4 border-right text-success">
-                                    <small class="font-weight-bold">OK</small>
-                                    <h5 id="lblTotalOk" class="font-weight-black mb-0">0</h5>
-                                </div>
-                                <div class="col-4 text-danger">
-                                    <small class="font-weight-bold">NG</small>
-                                    <h5 id="lblTotalNg" class="font-weight-black mb-0">0</h5>
-                                </div>
+                        <div class="chart-container text-center h-100">
+                            <h6 class="font-weight-black text-muted small uppercase mb-4">Performance Composition</h6>
+                            <div id="batchDonutChart"></div>
+                            <div class="row mt-3">
+                                <div class="col-4 border-right"><small class="d-block text-muted font-weight-bold">TOTAL IN</small><h5 id="chartLabelIn" class="font-weight-black mb-0">0</h5></div>
+                                <div class="col-4 border-right"><small class="d-block text-success font-weight-bold">GOOD OK</small><h5 id="chartLabelOk" class="text-success font-weight-black mb-0">0</h5></div>
+                                <div class="col-4"><small class="d-block text-danger font-weight-bold">REJECT NG</small><h5 id="chartLabelNg" class="text-danger font-weight-black mb-0">0</h5></div>
                             </div>
                         </div>
                     </div>
-                    {{-- SEKTOR KANAN: TABEL BATCH --}}
+                    {{-- Tabel Detail --}}
                     <div class="col-lg-7">
                         <div class="table-responsive border rounded-xl overflow-hidden shadow-sm">
                             <table class="table table-hover mb-0 text-center">
-                                <thead class="bg-light small font-weight-black">
+                                <thead class="bg-light small font-weight-black uppercase">
                                     <tr>
-                                        <th class="text-left pl-4">Production ID</th>
+                                        <th class="text-left pl-4">No Produksi</th>
                                         <th>In</th>
-                                        <th class="text-success">OK</th>
-                                        <th class="text-danger">NG</th>
+                                        <th>OK</th>
+                                        <th>NG</th>
                                     </tr>
                                 </thead>
                                 <tbody id="drilldownBody"></tbody>
@@ -167,16 +165,16 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light p-3">
-                <button class="btn btn-dark btn-block font-weight-bold py-3 rounded-xl shadow-sm" data-dismiss="modal">CLOSE AUDIT LOG</button>
+            <div class="modal-footer bg-light border-0 p-3">
+                <button class="btn btn-dark btn-block font-weight-bold py-3 rounded-2xl" data-dismiss="modal">CLOSE AUDIT DATA</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Inisialisasi variabel chart secara global
-    let auditChart = null;
+    // Inisialisasi Chart Global agar bisa diupdate
+    let donutChart = null;
 
     function showDrilldown(partNo, batches) {
         document.getElementById('drilldownTitle').innerText = "AUDIT TRACE: " + partNo;
@@ -187,13 +185,13 @@
         let totalOk = 0;
         let totalNg = 0;
 
-        if (!batches || batches.length === 0) {
-            body.innerHTML = '<tr><td colspan="4" class="py-5 text-muted">NO DATA AVAILABLE</td></tr>';
+        if (batches.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" class="py-5 text-muted">-- NO ACTIVE BATCHES FOUND --</td></tr>';
         } else {
             batches.forEach(b => {
-                let qIn = parseInt(b.qty_ambil_pcs || b.qty_masuk) || 0;
-                let qOk = parseInt(b.qty_hasil_ok || b.qty_ok) || 0;
-                let qNg = parseInt(b.qty_hasil_ng || b.qty_ng) || 0;
+                let qIn = parseInt(b.qty_ambil_pcs) || 0;
+                let qOk = parseInt(b.qty_hasil_ok) || 0;
+                let qNg = parseInt(b.qty_hasil_ng) || 0;
 
                 totalIn += qIn;
                 totalOk += qOk;
@@ -201,8 +199,8 @@
 
                 body.innerHTML += `
                     <tr>
-                        <td class="text-left pl-4 font-weight-bold small">
-                            <span class="text-primary">${b.no_produksi || b.no_produksi_stamping || b.no_produksi_welding}</span>
+                        <td class="text-left pl-4 font-weight-bold">
+                            <span class="batch-pill">${b.no_produksi}</span>
                         </td>
                         <td class="font-weight-black text-muted">${qIn.toLocaleString()}</td>
                         <td class="text-success font-weight-black">${qOk.toLocaleString()}</td>
@@ -212,25 +210,23 @@
             });
         }
 
-        // Update Label Summary
-        document.getElementById('lblTotalAmbil').innerText = totalIn.toLocaleString();
-        document.getElementById('lblTotalOk').innerText = totalOk.toLocaleString();
-        document.getElementById('lblTotalNg').innerText = totalNg.toLocaleString();
+        // Update Label HUD di Modal
+        document.getElementById('chartLabelIn').innerText = totalIn.toLocaleString();
+        document.getElementById('chartLabelOk').innerText = totalOk.toLocaleString();
+        document.getElementById('chartLabelNg').innerText = totalNg.toLocaleString();
 
-        // Render atau Update Grafik
-        renderAuditDonut(totalOk, totalNg);
+        // Render atau Update Grafik Donut
+        renderDonut(totalOk, totalNg);
 
-        // Tampilkan Modal
         $('#modalDrilldown').modal('show');
     }
 
-    function renderAuditDonut(ok, ng) {
+    function renderDonut(ok, ng) {
         const options = {
             series: [ok, ng],
-            chart: { type: 'donut', height: 320, animations: { enabled: true, speed: 800 } },
-            labels: ['PASS GOOD (OK)', 'REJECT (NG)'],
+            chart: { type: 'donut', height: 280, animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            labels: ['OK Goods', 'NG Reject'],
             colors: ['#10b981', '#ef4444'],
-            legend: { position: 'bottom', fontWeight: 700 },
             dataLabels: { enabled: false },
             plotOptions: {
                 pie: {
@@ -238,30 +234,28 @@
                         size: '80%',
                         labels: {
                             show: true,
-                            name: { show: true, fontSize: '12px', fontWeight: 700, color: '#64748b' },
-                            value: { 
-                                show: true, fontSize: '24px', fontWeight: 900, color: '#0f172a',
-                                formatter: (val) => val.toLocaleString()
-                            },
+                            name: { show: true, fontSize: '12px', fontWeight: 800, color: '#64748b' },
+                            value: { show: true, fontSize: '24px', fontWeight: 900, color: '#0f172a', formatter: (val) => val.toLocaleString() },
                             total: {
-                                show: true, label: 'TOTAL OK RATE', fontSize: '10px', fontWeight: 900, color: '#4361ee',
+                                show: true, label: 'TOTAL YIELD', fontSize: '10px', fontWeight: 900, color: '#4361ee',
                                 formatter: function (w) {
-                                    const sum = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
-                                    if (sum === 0) return '0%';
-                                    return ((ok / sum) * 100).toFixed(1) + '%';
+                                    const total = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                    if(total === 0) return '0%';
+                                    return ((ok / total) * 100).toFixed(1) + '%';
                                 }
                             }
                         }
                     }
                 }
-            }
+            },
+            legend: { position: 'bottom', fontWeight: 700 }
         };
 
-        if (auditChart) {
-            auditChart.updateOptions(options);
+        if (donutChart) {
+            donutChart.updateOptions(options);
         } else {
-            auditChart = new ApexCharts(document.querySelector("#drilldownDonut"), options);
-            auditChart.render();
+            donutChart = new ApexCharts(document.querySelector("#batchDonutChart"), options);
+            donutChart.render();
         }
     }
 </script>
