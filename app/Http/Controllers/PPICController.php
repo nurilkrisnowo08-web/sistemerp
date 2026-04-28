@@ -11,56 +11,67 @@ class PPICController extends Controller
      * 1. DASHBOARD UTAMA (STAMPING)
      */
     public function index(Request $request)
-    {
-        $date = $request->date ?? date('Y-m-d');
-        $today = date('Y-m-d');
+{
+    $date = $request->date ?? date('Y-m-d');
+    $today = date('Y-m-d');
+    
+    // 1. Ambil Alerts
+    $alerts = DB::table('produksi_batches')
+        ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+        ->where('produksi_batches.status', 'PROBLEM')
+        ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at')
+        ->get();
+
+    // 2. Ambil Plans & Hitung Progress
+    $plans = DB::table('production_plans')->where('plan_date', $date)->get();
+    $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
+    $chartLabels = []; $chartTargets = []; $chartActuals = [];
+
+    foreach($plans as $p) {
+        $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+        $actualPerPart = DB::table('production_actuals')->where('part_no', $p->part_no)->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
         
-        $alerts = DB::table('produksi_batches')
-            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-            ->where('produksi_batches.status', 'PROBLEM')
-            ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at')
-            ->get();
+        $p->actual_qty = (int)$actualPerPart;
+        $p->plan_qty = (int)$targetPerPart;
+        $chartLabels[] = $p->part_no;
+        $chartTargets[] = (int)$targetPerPart;
+        $chartActuals[] = (int)$actualPerPart;
 
-        $plans = DB::table('production_plans')->where('plan_date', $date)->get();
-        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-        $chartLabels = []; $chartTargets = []; $chartActuals = [];
-
-        foreach($plans as $p) {
-            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            $actualPerPart = DB::table('production_actuals')
-                ->where('part_no', $p->part_no)
-                ->whereDate('created_at', $date)
-                ->where('line_code', 'NOT LIKE', 'W-%')
-                ->where('line_code', '!=', 'WELDING AREA')
-                ->sum('qty_ok');
-            
-            $p->actual_qty = (int)$actualPerPart;
-            $p->plan_qty = (int)$targetPerPart;
-            $chartLabels[] = $p->part_no;
-            $chartTargets[] = (int)$targetPerPart;
-            $chartActuals[] = (int)$actualPerPart;
-
-            if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { $statusCount['completed']++; }
-            elseif ($date < $today && $actualPerPart < $targetPerPart) { $statusCount['shortage']++; }
-            elseif ($actualPerPart > 0) { $statusCount['running']++; }
-            else { $statusCount['waiting']++; }
-        }
-
-        $totalPlan = $plans->sum('plan_qty') ?: 0;
-        $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
-
-        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $d = date('Y-m-d', strtotime("-$i days"));
-            $dailyLabels[] = date('d M', strtotime($d));
-            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', 'NOT LIKE', 'W-%')->sum('qty_ok');
-            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', 'NOT LIKE', 'W-%')->sum('qty_ng');
-        }
-
-        return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 'dailyLabels', 'dailyOk', 'dailyNg', 'alerts'));
+        if($targetPerPart > 0 && $actualPerPart >= $targetPerPart) { $statusCount['completed']++; }
+        elseif ($date < $today && $actualPerPart < $targetPerPart) { $statusCount['shortage']++; }
+        elseif ($actualPerPart > 0) { $statusCount['running']++; }
+        else { $statusCount['waiting']++; }
     }
 
+    $totalPlan = $plans->sum('plan_qty') ?: 0;
+    $totalActual = $plans->sum('actual_qty') ?: 0;
+    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+    // 3. Data Daily (7 Hari)
+    $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("-$i days"));
+        $dailyLabels[] = date('d M', strtotime($d));
+        $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
+        $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
+    }
+
+    // 4. Data Monthly (6 Bulan) - ✨ INI YANG TADI KURANG ✨
+    $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
+    for ($i = 5; $i >= 0; $i--) {
+        $mDate = date('Y-m', strtotime("-$i months"));
+        $monthlyLabels[] = date('M', strtotime("-$i months"));
+        $monthlyOk[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
+        $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
+    }
+
+    return view('PPIC.ppic_planning', compact(
+        'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
+        'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
+        'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg',
+        'alerts'
+    ));
+}
     /**
      * 2. DAILY MPS (STAMPING)
      */
