@@ -211,6 +211,53 @@ Route::get('/ppic/quality-hub', [App\Http\Controllers\PPICController::class, 'qu
     Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
     Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
     Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
+    // --- PPIC WELDING COMMAND CENTER ---
+    Route::prefix('ppic-welding')->group(function () {
+        // 1. Dashboard khusus Welding (Target vs Actual Las)
+    Route::get('/intelligence', [PPICController::class, 'weldingIndex'])->name('ppic.welding.index');
+        
+        // 2. Master Schedule khusus Welding (Jadwal Robot/Spot Las)
+    Route::get('/mps', [PPICController::class, 'weldingMps'])->name('ppic.welding.mps');
+        
+        // 3. Quality Hub khusus Welding (Pantauan Blowhole, Undercut, dll)
+    Route::get('/quality', [PPICController::class, 'weldingQualityHub'])->name('ppic.welding.quality');
+    Route::prefix('ppic-welding')->group(function () {
+    
+    // 1. Dashboard Utama Welding (Target vs Actual)
+    Route::get('/intelligence', [PPICController::class, 'weldingIndex'])->name('ppic.welding.index');
+    
+    // 2. Master Schedule khusus Welding (MPS)
+    Route::get('/mps', [PPICController::class, 'weldingMps'])->name('ppic.welding.mps');
+    Route::post('/mps/store', [PPICController::class, 'weldingMpsStore'])->name('ppic.welding.mps_store');
+    
+    // 3. Quality Hub khusus Welding (Pantauan NG Las)
+    Route::get('/quality', [PPICController::class, 'weldingQualityHub'])->name('ppic.welding.quality');
+});
+
+// --- RE-SYNC TERMINAL OPERATOR WELDING ---
+// Pastikan rute finish welding sudah benar untuk menampung rincian NG
+Route::prefix('welding')->group(function () {
+    Route::get('/', [WeldingStockController::class, 'index'])->name('welding.index');
+    Route::post('/deploy', [WeldingStockController::class, 'deployWelding'])->name('welding.deploy');
+    Route::put('/start/{id}', [WeldingStockController::class, 'startWelding'])->name('welding.start');
+    
+    // Rute Finish (Inilah yang mengirim data ke welding_actuals & production_ng_logs)
+    Route::put('/finish/{id}', [WeldingStockController::class, 'finishWelding'])->name('welding.finish');
+    
+    Route::get('/history', [WeldingStockController::class, 'history'])->name('welding.history');
+    Route::get('/history-audit', [WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
+});
+
+// --- MASTER REGISTRY WELDING (MESIN & NG) ---
+Route::prefix('welding-master')->group(function () {
+    Route::get('/lines', [WeldingMasterController::class, 'lineIndex'])->name('welding.master.lines');
+    Route::post('/lines/store', [WeldingMasterController::class, 'lineStore'])->name('welding.master.line_store');
+    Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
+
+    Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
+    Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
+});
+});
 });
 });
 });

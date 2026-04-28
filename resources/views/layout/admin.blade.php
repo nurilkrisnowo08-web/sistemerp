@@ -7,6 +7,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
 
     <style>
@@ -20,18 +21,17 @@
         
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--ind-bg); color: #1e293b; overflow-x: hidden; }
 
-        /* ✨ FIX SIDEBAR SCROLLING (Independent Scroll) */
+        /* ✨ SIDEBAR ULTRA-CLEAN & ANIMATED */
         #accordionSidebar { 
             background: var(--ind-navy) !important; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 1060;
             height: 100vh;
             position: sticky;
             top: 0;
-            overflow-y: auto; /* Memungkinkan scroll internal */
-            overflow-x: hidden;
+            overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: rgba(255,255,255,0.1) transparent;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         #accordionSidebar::-webkit-scrollbar { width: 4px; }
@@ -39,20 +39,62 @@
 
         .sidebar-brand-text { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; font-size: 0.9rem; color: #fff; }
         
+        /* Menu Animation */
         .nav-item .nav-link { 
-            padding: 0.85rem 1.3rem !important; margin: 4px 12px; border-radius: 12px; 
-            font-size: 0.75rem; font-weight: 600; color: rgba(255,255,255,0.6) !important; 
-            transition: 0.2s; 
+            padding: 0.9rem 1.3rem !important; margin: 4px 12px; border-radius: 14px; 
+            font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.6) !important; 
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            display: flex; align-items: center;
         }
-        .nav-item .nav-link:hover { color: #fff !important; background: rgba(255,255,255,0.05); transform: translateX(3px); }
-        .nav-item.active .nav-link { background: var(--ind-blue) !important; color: #fff !important; box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3); }
-        
-        .sidebar-heading { color: rgba(255,255,255,0.3) !important; font-size: 0.65rem !important; font-weight: 800; letter-spacing: 2px; margin-top: 1.5rem; margin-left: 22px; }
 
-        /* Dropdown Sidebar */
-        .collapse-inner { background: #ffffff !important; border-radius: 14px !important; margin: 5px 12px; padding: 0.5rem 0; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--ind-border); }
-        .collapse-item { font-weight: 700 !important; font-size: 0.7rem !important; color: var(--ind-navy) !important; padding: 0.6rem 1.2rem !important; border-radius: 8px; margin: 2px 8px; }
-        .collapse-item:hover { background: var(--ind-bg) !important; color: var(--ind-blue) !important; text-decoration: none; padding-left: 1.4rem !important; }
+        .nav-item .nav-link i { font-size: 1rem; width: 1.5rem; transition: 0.3s; }
+
+        /* Hover Effect */
+        .nav-item .nav-link:hover { 
+            color: #fff !important; 
+            background: rgba(255,255,255,0.08); 
+            transform: translateX(8px) scale(1.02);
+        }
+
+        .nav-item .nav-link:hover i { color: var(--ind-blue); transform: scale(1.2); }
+
+        .nav-item.active .nav-link { 
+            background: var(--ind-blue) !important; 
+            color: #fff !important; 
+            box-shadow: 0 10px 20px rgba(67, 97, 238, 0.3); 
+        }
+        
+        .sidebar-heading { 
+            color: rgba(255,255,255,0.3) !important; 
+            font-size: 0.65rem !important; 
+            font-weight: 800; 
+            letter-spacing: 3px; 
+            margin-top: 1.8rem; 
+            margin-left: 24px;
+            text-transform: uppercase;
+        }
+
+        /* Dropdown Style */
+        .collapse-inner { 
+            background: rgba(255,255,255,0.03) !important; 
+            border-radius: 14px !important; 
+            margin: 5px 12px; padding: 0.5rem 0; 
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .collapse-item { 
+            font-weight: 600 !important; 
+            font-size: 0.7rem !important; 
+            color: rgba(255,255,255,0.5) !important; 
+            padding: 0.7rem 1.5rem !important; 
+            border-radius: 10px; margin: 2px 8px; 
+            transition: 0.3s;
+        }
+        .collapse-item:hover { 
+            background: var(--ind-blue) !important; 
+            color: #fff !important; 
+            text-decoration: none; 
+            padding-left: 1.8rem !important;
+        }
 
         /* ✨ TOPBAR GLASSMORPHISM */
         .topbar { 
@@ -62,23 +104,20 @@
         }
         
         #clock-wrapper { 
-            background: var(--ind-navy); padding: 6px 16px; border-radius: 12px; 
+            background: var(--ind-navy); padding: 8px 18px; border-radius: 14px; 
             border: 1.5px solid var(--ind-blue); display: flex; align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
-        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; }
+        #clock { font-family: 'JetBrains Mono', monospace; color: #fff; font-weight: 800; font-size: 0.9rem; letter-spacing: 1px; }
 
-        /* ✨ RESPONSIVE FIXES */
         @media (max-width: 768px) {
             #accordionSidebar { position: fixed; height: 100vh; left: -250px; }
             #accordionSidebar.toggled { left: 0; width: 260px !important; }
             .sidebar-overlay { display: none; position: fixed; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 1050; top: 0; left: 0; }
             .sidebar-overlay.active { display: block; }
-            #content-wrapper { margin-left: 0 !important; width: 100%; }
         }
 
         .main-content-area { padding-top: 1.5rem; padding-bottom: 5rem; min-height: 80vh; }
-        footer { background: #fff; border-top: 1px solid var(--ind-border); }
     </style>
 </head>
 
@@ -89,115 +128,93 @@
         {{-- 🏁 SIDEBAR --}}
         <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
             <a class="sidebar-brand d-flex align-items-center justify-content-center my-4" href="{{ route('dashboard') }}">
-                <div class="sidebar-brand-icon"><i class="fas fa-microchip text-primary"></i></div>
+                <div class="sidebar-brand-icon"><i class="fas fa-cube text-primary animate__animated animate__pulse animate__infinite"></i></div>
                 <div class="sidebar-brand-text mx-2">ASALTA <span class="text-xs opacity-50">v2</span></div>
             </a>
 
             <li class="nav-item {{ Request::is('dashboard*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('dashboard') }}"><i class="fas fa-fw fa-gauge-high"></i><span>Dashboard Hub</span></a>
+                <a class="nav-link" href="{{ route('dashboard') }}"><i class="fas fa-fw fa-layer-group"></i><span>Dashboard Hub</span></a>
             </li>
 
             @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
             <div class="sidebar-heading">DATA_REGISTRY</div>
             <li class="nav-item {{ Request::is('customers*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('customers.index') }}"><i class="fas fa-fw fa-users"></i><span>Customers</span></a>
+                <a class="nav-link" href="{{ route('customers.index') }}"><i class="fas fa-fw fa-users-gear"></i><span>Customers</span></a>
             </li>
             <li class="nav-item {{ Request::is('parts*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('parts.index') }}"><i class="fas fa-fw fa-cubes"></i><span>Parts Library</span></a>
+                <a class="nav-link" href="{{ route('parts.index') }}"><i class="fas fa-fw fa-boxes-stacked"></i><span>Parts Library</span></a>
             </li>
-            <li class="nav-item {{ Request::is('line*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('line.index') }}"><i class="fas fa-fw fa-industry"></i><span>Line Registry</span></a>
-            </li>
-
-            {{-- ✨ KAMAR BARU: WELDING STATION REGISTRY --}}
+            
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingReg">
-                    <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Registry</span>
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseMasterLine">
+                    <i class="fas fa-fw fa-industry"></i><span>Line Registry</span>
                 </a>
-                <div id="collapseWeldingReg" class="collapse {{ Request::is('welding-master*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div id="collapseMasterLine" class="collapse" data-parent="#accordionSidebar">
                     <div class="py-2 collapse-inner">
-                        <a class="collapse-item {{ Request::is('welding-master/lines*') ? 'text-primary' : '' }}" href="{{ route('welding.master.lines') }}">
-                            <i class="fas fa-robot mr-1"></i> Line Welding
-                        </a>
-                        <a class="collapse-item {{ Request::is('welding-master/ng*') ? 'text-primary' : '' }}" href="{{ route('welding.master.ng') }}">
-                            <i class="fas fa-bug mr-1"></i> Master NG Welding
-                        </a>
-                    </div>
-                </div>
-            </li>
-
-            <div class="sidebar-heading">COMMERCE_FLOW</div>
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePO">
-                    <i class="fas fa-fw fa-file-invoice-dollar"></i><span>Order Center</span>
-                </a>
-                <div id="collapsePO" class="collapse" data-parent="#accordionSidebar">
-                    <div class="py-2 collapse-inner">
-                        <a class="collapse-item" href="{{ route('po-customer.index') }}">PO Customer</a>
-                        <a class="collapse-item" href="{{ route('rm.po_supplier') }}">PO Supplier</a>
+                        <a class="collapse-item" href="{{ route('line.index') }}">Stamping Line</a>
+                        <a class="collapse-item" href="{{ route('welding.master.lines') }}">Welding Line</a>
+                        <a class="collapse-item" href="{{ route('welding.master.ng') }}">Defect (NG) Master</a>
                     </div>
                 </div>
             </li>
             @endif
 
-            <div class="sidebar-heading">INVENTORY_SYNC</div>
+            <div class="sidebar-heading">MANUFACTURING_PLAN</div>
+
+            {{-- 🛠️ KAMAR 1: STAMPING CONTROL --}}
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStamping">
+                    <i class="fas fa-fw fa-microchip"></i><span>Stamping Control</span>
+                </a>
+                <div id="collapseStamping" class="collapse {{ Request::is('ppic*') && !Request::is('ppic-welding*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner">
+                        <a class="collapse-item" href="{{ route('ppic.index') }}">Intelligence Hub</a>
+                        <a class="collapse-item" href="{{ route('ppic.mps.index') }}">Master Schedule (MPS)</a>
+                        <a class="collapse-item" href="{{ route('ppic.quality.hub') }}">Quality Hub</a>
+                    </div>
+                </div>
+            </li>
+
+            {{-- ⚡ KAMAR 2: WELDING CONTROL (KAMAR BARU) --}}
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingPPIC">
+                    <i class="fas fa-fw fa-bolt-lightning"></i><span>Welding Control</span>
+                </a>
+                <div id="collapseWeldingPPIC" class="collapse {{ Request::is('ppic-welding*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                    <div class="py-2 collapse-inner">
+                        <a class="collapse-item text-primary font-weight-bold" href="{{ route('ppic.welding.index') }}">
+                            <i class="fas fa-chart-line mr-1"></i> Welding Dashboard
+                        </a>
+                        <a class="collapse-item" href="{{ route('ppic.welding.mps') }}">
+                            <i class="fas fa-calendar-check mr-1"></i> Welding MPS
+                        </a>
+                        <a class="collapse-item" href="{{ route('ppic.welding.quality') }}">
+                            <i class="fas fa-microscope mr-1"></i> Quality Hub Las
+                        </a>
+                    </div>
+                </div>
+            </li>
+
+            <div class="sidebar-heading">OPERATIONAL_TERMINAL</div>
+            <li class="nav-item {{ Request::is('produksi*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('produksi.index') }}"><i class="fas fa-fw fa-desktop"></i><span>Stamping Terminal</span></a>
+            </li>
+            <li class="nav-item {{ Request::is('welding*') && !Request::is('welding-master*') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('welding.index') }}"><i class="fas fa-fw fa-fire-burner"></i><span>Welding Terminal</span></a>
+            </li>
+
+            <div class="sidebar-heading">LOGISTICS_SYNC</div>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFG">
                     <i class="fas fa-fw fa-box-open"></i><span>Finished Goods</span>
                 </a>
                 <div id="collapseFG" class="collapse" data-parent="#accordionSidebar">
                     <div class="py-2 collapse-inner">
-                        <a class="collapse-item" href="{{ route('fg.index') }}">Live Stock</a>
-                        <a class="collapse-item" href="{{ route('fg-daily.index') }}">Mutation Log</a>
+                        <a class="collapse-item" href="{{ route('fg.index') }}">Live Inventory</a>
+                        <a class="collapse-item" href="{{ route('fg-daily.index') }}">Mutation Logs</a>
                     </div>
                 </div>
             </li>
-            <li class="nav-item {{ Request::is('welding*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('welding.index') }}"><i class="fas fa-fw fa-fire-burner"></i><span>Welding WIP</span></a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseRM">
-                    <i class="fas fa-fw fa-layer-group"></i><span>Raw Materials</span>
-                </a>
-                <div id="collapseRM" class="collapse" data-parent="#accordionSidebar">
-                    <div class="py-2 collapse-inner">
-                        <a class="collapse-item" href="{{ route('rm.store') }}">Stockroom</a>
-                    </div>
-                </div>
-            </li>
-
-            <div class="sidebar-heading">MANUFACTURING</div>
-            <li class="nav-item {{ Request::is('produksi*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('produksi.index') }}"><i class="fas fa-fw fa-desktop"></i><span>Live Monitor</span></a>
-            </li>
-            
-            @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
-            <li class="nav-item {{ Request::is('ppic*') ? 'active' : '' }}">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapsePlanning">
-                    <i class="fas fa-fw fa-calendar-days"></i><span>Production Planning</span>
-                </a>
-                <div id="collapsePlanning" class="collapse {{ Request::is('ppic*') ? 'show' : '' }}" data-parent="#accordionSidebar">
-                    <div class="py-2 collapse-inner">
-                        <a class="collapse-item {{ Request::is('ppic-planning') ? 'text-primary' : '' }}" href="{{ route('ppic.index') }}">Intelligence Hub</a>
-                        <a class="collapse-item {{ Request::is('ppic/monthly-matrix*') ? 'text-primary' : '' }}" href="{{ route('ppic.monthly.matrix') }}"><i class="fas fa-table-cells mr-1"></i> Monthly Master Plan</a>
-                        <a class="collapse-item {{ Request::is('ppic/mps*') ? 'text-primary' : '' }}" href="{{ route('ppic.mps.index') }}">Master Schedule (MPS)</a>
-                        <a class="collapse-item {{ Request::is('ppic/quality-hub*') ? 'text-primary' : '' }}" href="{{ route('ppic.quality.hub') }}"><i class="fas fa-microscope mr-1"></i> Quality Hub (OK vs NG)</a>
-                    </div>
-                </div>
-            </li>
-            @endif
-
-            <div class="sidebar-heading">QUALITY_CONTROL</div>
-            <li class="nav-item {{ Request::is('quality*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('quality.index') }}"><i class="fas fa-fw fa-shield-halved"></i><span>Quality Gate</span></a>
-            </li>
-
-            @if(in_array(Auth::user()->role, ['kepala_ppic', 'staff_ppic']))
-            <div class="sidebar-heading">LOGISTICS</div>
-            <li class="nav-item {{ Request::is('delivery*') ? 'active' : '' }}">
-                <a class="nav-link" href="{{ route('delivery.index') }}"><i class="fas fa-fw fa-truck-ramp-box"></i><span>Dispatch Portal</span></a>
-            </li>
-            @endif
 
             <hr class="sidebar-divider d-none d-md-block opacity-25">
             <div class="text-center d-none d-md-inline"><button class="rounded-circle border-0" id="sidebarToggle"></button></div>
@@ -210,7 +227,7 @@
                     <button id="sidebarToggleTop" class="btn btn-link rounded-circle mr-3"><i class="fa fa-bars text-dark"></i></button>
                     
                     <div class="hide-mobile">
-                        <h6 class="font-weight-extrabold text-dark m-0 uppercase tracking-widest" style="font-size: 0.65rem;">
+                        <h6 class="font-weight-extrabold text-dark m-0 uppercase tracking-widest" style="font-size: 0.65rem; letter-spacing: 2px;">
                             ASALTA MANDIRI AGUNG // INDUSTRIAL CORE
                         </h6>
                     </div>
@@ -235,7 +252,7 @@
 
                 <div class="container-fluid main-content-area">
                     <div class="mb-4 d-md-flex align-items-center justify-content-between">
-                        <h5 class="font-weight-bold text-dark mb-0 operational-shift-text">
+                        <h5 class="font-weight-bold text-dark mb-0">
                             <i class="far fa-calendar-check mr-2 text-primary"></i>
                             <span class="text-primary font-weight-extrabold">{{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</span>
                         </h5>
