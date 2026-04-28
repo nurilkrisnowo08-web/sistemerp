@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class WeldingStockController extends Controller
 {
     /**
-     * 1. TERMINAL HUB LIVE
+     * 1. TERMINAL HUB LIVE (Tetap Sama)
      */
     public function index(Request $request)
     {
@@ -74,7 +74,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 2. DEPLOY WELDING (TomBOL TAKE)
+     * 2. DEPLOY WELDING (TomBOL TAKE) - (Tetap Sama)
      */
     public function deployWelding(Request $request)
     {
@@ -116,7 +116,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 3. START OPERATION
+     * 3. START OPERATION (Tetap Sama)
      */
     public function startWelding($id)
     {
@@ -128,7 +128,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4. FINISH WELDING (DENGAN KEAMANAN DATA & SYNC)
+     * 4. FINISH WELDING (ADJUSTED FOR DASHBOARD SYNC)
      */
     public function finishWelding(Request $request, $id)
     {
@@ -153,7 +153,7 @@ class WeldingStockController extends Controller
                 'updated_at' => now()
             ]);
 
-            // 2. ✨ KIRIM KE QUALITY GATE (Hanya OK saja yang dikirim)
+            // 2. ✨ KIRIM KE WELDING ACTUALS (Agar kebaca Plan Actual di Dashboard)
             $actualId = $this->syncToQualityGate($id);
 
             // 3. ✨ SIMPAN RINCIAN NG KE WELDING_NG_LOGS
@@ -162,7 +162,7 @@ class WeldingStockController extends Controller
                     $qDetail = (int)$request->ng_detail_qty[$key];
                     if ($qDetail > 0) {
                         DB::table('welding_ng_logs')->insert([
-                            'actual_id'   => $actualId, 
+                            'actual_id'   => $actualId, // ID dari welding_actuals
                             'no_produksi' => $batch->no_produksi_stamping,
                             'ng_type'     => $type,
                             'qty'         => $qDetail,
@@ -173,7 +173,7 @@ class WeldingStockController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Data aman & terkirim ke Quality Gate.');
+            return back()->with('success', 'Data aman & Sinkron ke Dashboard Intelligence.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return back()->with('error', 'Gagal: ' . $e->getMessage()); 
@@ -181,7 +181,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * ✨ 4.1 ROBOT SINKRONISASI KE QUALITY GATE (FILTER OK ONLY)
+     * ✨ 4.1 ROBOT SINKRONISASI KE WELDING ACTUALS (FIXED TARGET TABLE)
      */
     private function syncToQualityGate($weldingId)
     {
@@ -196,28 +196,28 @@ class WeldingStockController extends Controller
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
         $lineName = $batch->kode_line ?? 'WELDING AREA';
 
-        // Cari data dengan pengaman Collation
-        $actual = DB::table('production_actuals')
+        // ✨ UPDATE ATAU INSERT KE TABEL WELDING_ACTUALS (Bukan production_actuals)
+        $actual = DB::table('welding_actuals')
             ->whereRaw("REPLACE(part_no, ' ', '') = REPLACE(?, ' ', '')", [$batch->part_no])
             ->where('line_code', $lineName)
             ->whereDate('created_at', $dateOnly)
             ->first();
 
         if ($actual) {
-            DB::table('production_actuals')->where('id', $actual->id)->update([
-                'qty_ok' => $actual->qty_ok + $batch->qty_ok, // OK bertambah
-                // qty_ng sengaja tidak diupdate (biar QC cek nol di gate)
+            DB::table('welding_actuals')->where('id', $actual->id)->update([
+                'qty_ok' => $actual->qty_ok + $batch->qty_ok,
+                'qty_ng' => $actual->qty_ng + $batch->qty_ng,
                 'updated_at' => now()
             ]);
             return $actual->id;
         } else {
             // Jika belum ada, buat baru dan ambil ID-nya untuk referensi NG Log
-            return DB::table('production_actuals')->insertGetId([
+            return DB::table('welding_actuals')->insertGetId([
                 'part_no'    => $batch->part_no,
                 'line_code'  => $lineName,
-                'shift'      => 'N/A',
+                'shift'      => 'N/A', // Bisa disesuaikan logic shift jika perlu
                 'qty_ok'     => $batch->qty_ok,
-                'qty_ng'     => 0, // NG diset 0 sesuai permintaan
+                'qty_ng'     => $batch->qty_ng,
                 'created_at' => $batch->created_at,
                 'updated_at' => now()
             ]);
@@ -225,7 +225,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 5. HISTORY MUTASI STOK
+     * 5. HISTORY MUTASI STOK (Tetap Sama)
      */
     public function history(Request $request)
     {
@@ -282,7 +282,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 6. RIWAYAT PRODUKSI WELDING
+     * 6. RIWAYAT PRODUKSI WELDING (Tetap Sama)
      */
     public function historyWelding()
     {
