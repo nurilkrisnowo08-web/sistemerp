@@ -8,15 +8,25 @@
     :root { --ind-blue: #4361ee; --ind-navy: #0f172a; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
     .heading-tech { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: var(--ind-navy); }
-    .row-clickable { cursor: pointer; transition: 0.2s; }
-    .row-clickable:hover { background-color: #f0f7ff !important; }
     
-    /* Style ID Produksi agar terlihat bisa diklik */
-    .id-link { color: var(--ind-blue); text-decoration: underline; cursor: pointer; font-weight: 800; font-family: 'JetBrains Mono'; }
-    .id-link:hover { color: #000; background: #fff3cd; }
+    /* ID Link Styling */
+    .id-link { 
+        color: var(--ind-blue); 
+        cursor: pointer; 
+        font-weight: 800; 
+        font-family: 'JetBrains Mono'; 
+        padding: 2px 8px;
+        border-radius: 4px;
+        transition: 0.2s;
+    }
+    .id-link:hover { background-color: var(--ind-blue); color: #fff; text-decoration: none; }
 
     .modal-content { border-radius: 30px; border: none; }
-    .chart-box { background: #f8fafc; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; }
+    .chart-box { background: #f8fafc; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; min-height: 350px; }
+
+    /* FIX: Agar Modal 2 muncul di depan Modal 1 */
+    #modalBatchAnalysis { z-index: 1060 !important; }
+    .modal-backdrop.show:nth-of-type(even) { z-index: 1059 !important; }
 </style>
 
 <div class="container-fluid py-4 px-4">
@@ -39,9 +49,7 @@
                 <tbody>
                     @foreach($detailStamping as $ds)
                     <tr>
-                        <td class="text-left pl-4">
-                            <div class="font-weight-black">{{ $ds->part_no }}</div>
-                        </td>
+                        <td class="text-left pl-4"><div class="font-weight-black">{{ $ds->part_no }}</div></td>
                         <td class="text-success font-weight-bold">{{ number_format($ds->qty_ok) }}</td>
                         <td class="text-danger font-weight-bold">{{ number_format($ds->qty_ng) }}</td>
                         <td>
@@ -58,12 +66,12 @@
     </div>
 </div>
 
-{{-- 🤖 MODAL 1: AUDIT TRACE (DAFTAR BATCH) --}}
+{{-- 🤖 MODAL 1: AUDIT TRACE --}}
 <div class="modal fade" id="modalDrilldown" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark p-4">
-                <h5 class="modal-title font-weight-black uppercase" id="drilldownTitle">AUDIT_TRACE</h5>
+                <h5 class="modal-title font-weight-black uppercase">AUDIT_TRACE</h5>
                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body p-0">
@@ -72,8 +80,8 @@
                         <tr>
                             <th class="text-left pl-4">Production ID (Click for Chart)</th>
                             <th>In</th>
-                            <th class="text-success">OK</th>
-                            <th class="text-danger">NG</th>
+                            <th>OK</th>
+                            <th>NG</th>
                         </tr>
                     </thead>
                     <tbody id="drilldownBody"></tbody>
@@ -83,7 +91,7 @@
     </div>
 </div>
 
-{{-- 📊 MODAL 2: BATCH NG ANALYSIS (CHART DONUT) --}}
+{{-- 📊 MODAL 2: BATCH ANALYSIS (CHART DONUT) --}}
 <div class="modal fade" id="modalBatchAnalysis" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-2xl">
@@ -95,9 +103,7 @@
                 <div class="chart-box">
                     <div id="batchDonutChart"></div>
                 </div>
-                <div id="ngDetailList" class="mt-4 text-left">
-                    {{-- Rincian Text NG Muncul di Sini --}}
-                </div>
+                <div id="ngDetailList" class="mt-4 text-left"></div>
             </div>
         </div>
     </div>
@@ -106,9 +112,7 @@
 <script>
     let batchChart = null;
 
-    // Fungsi Munculkan Modal 1 (Daftar Batch)
     function showDrilldown(partNo, batches) {
-        document.getElementById('drilldownTitle').innerText = "AUDIT TRACE: " + partNo;
         const body = document.getElementById('drilldownBody');
         body.innerHTML = '';
 
@@ -134,13 +138,11 @@
         $('#modalDrilldown').modal('show');
     }
 
-    // Fungsi Munculkan Modal 2 (Grafik Donut Per Batch)
     function loadBatchAnalysis(noProd, qtyOk, qtyNg) {
         document.getElementById('batchAnalysisTitle').innerText = "ANALYSIS: " + noProd;
         
-        // Ambil data rincian NG lewat AJAX
         fetch(`/ppic/get-batch-ng-details/${noProd}`)
-            .then(response => response.json())
+            .then(res => res.json())
             .then(data => {
                 const labels = ['GOOD_OK'];
                 const values = [qtyOk];
@@ -156,22 +158,41 @@
                                 <span class="font-weight-black">${item.qty} PCS</span>
                             </div>`;
                     });
+                } else if(qtyNg > 0) {
+                    // Jika ada NG tapi detail log tidak ketemu di DB
+                    labels.push('OTHER_NG');
+                    values.push(qtyNg);
+                    detailHtml += `<div class="text-center text-danger py-2">DETAIL LOG NOT FOUND (${qtyNg} PCS)</div>`;
                 } else {
-                    detailHtml += '<div class="text-center text-success py-2 font-weight-bold">NO REJECTS RECORDED</div>';
+                    detailHtml += '<div class="text-center text-success py-2 font-weight-bold">100% QUALITY PASSED</div>';
                 }
 
                 document.getElementById('ngDetailList').innerHTML = detailHtml;
-                renderBatchChart(labels, values);
+                
+                // Tampilkan modal dulu baru gambar chart agar ukurannya pas
                 $('#modalBatchAnalysis').modal('show');
+                
+                // Delay sedikit agar container modal muncul sempurna sebelum ApexCharts menggambar
+                setTimeout(() => {
+                    renderBatchChart(labels, values);
+                }, 300);
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Gagal mengambil rincian NG.");
             });
     }
 
     function renderBatchChart(labels, values) {
         const options = {
             series: values,
-            chart: { type: 'donut', height: 350 },
+            chart: { 
+                type: 'donut', 
+                height: 350,
+                animations: { enabled: true, speed: 800 }
+            },
             labels: labels,
-            colors: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899'],
+            colors: ['#10b981', '#ef4444', '#f59e0b', '#3b82f6', '#8b5cf6'],
             legend: { position: 'bottom', fontWeight: 700 },
             plotOptions: {
                 pie: {
@@ -182,6 +203,8 @@
                             total: {
                                 show: true,
                                 label: 'TOTAL IN',
+                                fontSize: '14px',
+                                fontWeight: 900,
                                 formatter: (w) => w.globals.seriesTotals.reduce((a, b) => a + b, 0)
                             }
                         }
