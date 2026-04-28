@@ -1,209 +1,273 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
 <style>
+    :root {
+        --stamping-blue: #4361ee; --welding-gold: #f59e0b; --industrial-navy: #0f172a;
+        --glass-white: rgba(255, 255, 255, 0.9);
+    }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
-    .card-custom { border-radius: 15px; border: none; transition: 0.3s; }
-    .font-black { font-weight: 800; letter-spacing: -0.5px; }
-    .bg-gradient-dark { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
     
-    /* Hover Effect Table */
+    /* Typography Industrial */
+    .heading-tech { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: var(--industrial-navy); }
+    .yield-value { font-family: 'Orbitron'; font-weight: 900; line-height: 1; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* Card Layouts */
+    .dept-card { background: #fff; border-radius: 30px; border: 1px solid #e2e8f0; overflow: hidden; height: 100%; transition: 0.3s; }
+    .dept-card:hover { border-color: var(--stamping-blue); box-shadow: 0 20px 40px rgba(0,0,0,0.05); }
+    
+    .dept-header-stamping { background: linear-gradient(90deg, #4361ee, #4cc9f0); color: white; padding: 20px; }
+    .dept-header-welding { background: linear-gradient(90deg, #f59e0b, #fbbf24); color: #000; padding: 20px; }
+
+    .stat-pill { background: #f8fafc; border-radius: 20px; padding: 15px; border: 1px solid #edf2f7; text-align: center; }
+    
+    /* Table Styling */
+    .table-tech td { font-size: 13px; font-weight: 700; vertical-align: middle; padding: 15px !important; }
     .row-clickable { cursor: pointer; transition: 0.2s; }
-    .row-clickable:hover { background-color: #f0f7ff !important; box-shadow: inset 4px 0 0 #2563eb; }
+    .row-clickable:hover { background-color: #f0f7ff !important; transform: scale(1.01); }
+
+    /* NG Tags */
+    .ng-badge { background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; border: 1px solid #fecaca; }
     
-    .batch-id-pill { font-family: 'JetBrains Mono'; font-size: 10px; background: #e2e8f0; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
-    .ng-detail-row { border-bottom: 1px dashed #cbd5e1; padding: 8px 0; }
+    /* Fixed Button Date */
+    .btn-sync { background: var(--industrial-navy); color: white; border-radius: 12px; border: none; padding: 8px 20px; font-weight: 700; transition: 0.3s; }
+    .btn-sync:hover { background: var(--stamping-blue); }
 </style>
 
-<div class="container-fluid mt-4 mb-5">
-    {{-- Header & Stats (Sama seperti sebelumnya) --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="font-black text-dark mb-0">QUALITY_CONTROL_HUB</h2>
-            <p class="text-muted small font-weight-bold uppercase mb-0">PT ASALTA MANDIRI AGUNG // BATCH_ANALYSIS_MODE</p>
+<div class="container-fluid py-4 px-4">
+    
+    {{-- 🛰️ UNIFIED HEADER --}}
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div class="animate__animated animate__fadeInLeft">
+            <h1 class="heading-tech mb-1">Quality_Hub <span class="text-primary">Intelligence</span></h1>
+            <p class="text-muted small font-weight-bold uppercase mb-0">PT ASALTA MANDIRI AGUNG // Unified Quality Control Center</p>
         </div>
-        <div class="d-flex align-items-center gap-3">
-            <form action="" method="GET" class="mr-2">
-                <input type="date" name="date" class="form-control rounded-pill border-dark px-4 shadow-sm" value="{{ $date }}" onchange="this.form.submit()">
-            </form>
-            <a href="{{ route('ppic.mps.index') }}" class="btn btn-outline-dark rounded-pill px-4 font-weight-bold shadow-sm">
-                <i class="fas fa-arrow-left mr-2"></i> BACK TO MPS
-            </a>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card card-custom shadow-sm bg-white p-4 border-left border-success" style="border-left-width: 8px !important;">
-                <h6 class="text-muted small font-weight-bold uppercase mb-1">Passed Good (OK)</h6>
-                <h2 class="font-black mb-0 text-success">{{ number_format($summary->total_ok ?? 0) }}</h2>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card card-custom shadow-sm bg-white p-4 border-left border-danger" style="border-left-width: 8px !important;">
-                <h6 class="text-muted small font-weight-bold uppercase mb-1">Total Rejected (NG)</h6>
-                <h2 class="font-black mb-0 text-danger">{{ number_format($summary->total_ng ?? 0) }}</h2>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card card-custom shadow-sm bg-gradient-dark text-white p-4">
-                <h6 class="small font-weight-bold uppercase mb-1 text-info">Overall Yield Rate</h6>
-                @php 
-                    $total = ($summary->total_ok ?? 0) + ($summary->total_ng ?? 0);
-                    $yield = $total > 0 ? round(($summary->total_ok / $total) * 100, 1) : 0;
-                @endphp
-                <h2 class="font-black mb-0 text-warning">{{ $yield }}%</h2>
-            </div>
-        </div>
+        <form action="" method="GET" class="bg-white p-2 rounded-pill shadow-sm border d-flex align-items-center animate__animated animate__fadeInRight">
+            <i class="fas fa-calendar-alt mx-3 text-primary"></i>
+            <input type="date" name="date" class="border-0 font-weight-bold mr-2" value="{{ $date }}" onchange="this.form.submit()">
+            <button type="submit" class="btn-sync">SYNC_DATA</button>
+        </form>
     </div>
 
     <div class="row">
-        {{-- Tabel Utama --}}
-        <div class="col-12">
-            <div class="card card-custom shadow-sm p-0 bg-white overflow-hidden">
-                <div class="p-4 bg-light d-flex justify-content-between align-items-center border-bottom">
-                    <h5 class="font-black mb-0"><i class="fas fa-stream mr-2 text-primary"></i> ACTUAL_PRODUCTION_LOG</h5>
-                    <span class="badge badge-dark rounded-pill px-3">{{ count($details) }} Entries</span>
+        
+        {{-- --- 🛠️ ZONA 1: STAMPING DEPARTMENT --- --}}
+        <div class="col-lg-6 mb-4 animate__animated animate__fadeInUp">
+            <div class="dept-card shadow-sm">
+                <div class="dept-header-stamping d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="font-weight-black mb-0 uppercase" style="font-family: 'Orbitron';">Stamping_Control</h5>
+                        <small class="font-weight-bold opacity-75">Production Logs & Yield</small>
+                    </div>
+                    <i class="fas fa-microchip fa-2x opacity-50"></i>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 text-center">
-                        <thead>
-                            <tr class="text-uppercase small font-weight-bold text-muted">
-                                <th class="text-left pl-4">Part Identification</th>
-                                <th>Line</th>
-                                <th>Shift</th>
-                                <th>Passed Good</th>
-                                <th>NG Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($details as $d)
-                            <tr class="row-clickable" onclick="showBatchList({{ json_encode($d->part_no) }}, {{ json_encode($d->batches) }})">
-                                <td class="text-left pl-4">
-                                    <span class="font-weight-bold text-primary">{{ $d->part_no }}</span>
-                                    <br><small class="text-muted">Click to drill down batches</small>
-                                </td>
-                                <td><span class="badge badge-outline-dark font-weight-bold">{{ $d->line_code }}</span></td>
-                                <td><span class="badge {{ $d->shift == 'Pagi' ? 'badge-warning' : 'badge-dark' }} px-3">{{ strtoupper($d->shift) }}</span></td>
-                                <td class="text-success font-weight-bold">{{ number_format($d->qty_ok) }}</td>
-                                <td class="text-danger font-weight-bold">{{ number_format($d->qty_ng) }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                
+                <div class="p-4">
+                    {{-- Stats --}}
+                    <div class="row mb-4">
+                        <div class="col-4">
+                            <div class="stat-pill">
+                                <small class="text-muted font-weight-bold uppercase d-block mb-1">OK Goods</small>
+                                <div class="yield-value text-success h4 mb-0">{{ number_format($sumStamping->total_ok ?? 0) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-pill">
+                                <small class="text-muted font-weight-bold uppercase d-block mb-1">NG Goods</small>
+                                <div class="yield-value text-danger h4 mb-0">{{ number_format($sumStamping->total_ng ?? 0) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-pill bg-dark text-white border-0">
+                                <small class="text-info font-weight-bold uppercase d-block mb-1">Yield Rate</small>
+                                @php $totalS = ($sumStamping->total_ok ?? 0) + ($sumStamping->total_ng ?? 0); @endphp
+                                <div class="yield-value text-warning h4 mb-0">{{ $totalS > 0 ? round(($sumStamping->total_ok / $totalS) * 100, 1) : 0 }}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Table --}}
+                    <div class="table-responsive">
+                        <table class="table table-tech text-center">
+                            <thead class="bg-light">
+                                <tr class="small text-muted font-weight-black uppercase">
+                                    <th class="text-left pl-4">Part ID</th>
+                                    <th>Station</th>
+                                    <th>OK</th>
+                                    <th>NG</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($detailStamping as $ds)
+                                <tr class="row-clickable" onclick="showDrilldown('STAMPING', {{ json_encode($ds->part_no) }}, {{ json_encode($ds->batches ?? []) }})">
+                                    <td class="text-left pl-4">
+                                        <div class="text-primary font-weight-black">{{ $ds->part_no }}</div>
+                                        <small class="text-muted font-mono">STAMPING_MODE</small>
+                                    </td>
+                                    <td><span class="badge badge-dark font-mono">{{ $ds->line_code }}</span></td>
+                                    <td class="text-success font-weight-black">{{ number_format($ds->qty_ok) }}</td>
+                                    <td class="text-danger font-weight-black">{{ number_format($ds->qty_ng) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
+        </div>
+
+        {{-- --- ⚡ ZONA 2: WELDING DEPARTMENT --- --}}
+        <div class="col-lg-6 mb-4 animate__animated animate__fadeInUp" style="animation-delay: 0.2s;">
+            <div class="dept-card shadow-sm border-warning">
+                <div class="dept-header-welding d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="font-weight-black mb-0 uppercase" style="font-family: 'Orbitron';">Welding_Control</h5>
+                        <small class="font-weight-bold opacity-75">Verification Logs & Yield</small>
+                    </div>
+                    <i class="fas fa-bolt-lightning fa-2x opacity-50"></i>
+                </div>
+                
+                <div class="p-4">
+                    {{-- Stats --}}
+                    <div class="row mb-4">
+                        <div class="col-4">
+                            <div class="stat-pill">
+                                <small class="text-muted font-weight-bold uppercase d-block mb-1">OK Output</small>
+                                <div class="yield-value text-success h4 mb-0">{{ number_format($sumWelding->total_ok ?? 0) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-pill">
+                                <small class="text-muted font-weight-bold uppercase d-block mb-1">NG Output</small>
+                                <div class="yield-value text-danger h4 mb-0">{{ number_format($sumWelding->total_ng ?? 0) }}</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="stat-pill bg-dark text-white border-0">
+                                <small class="text-info font-weight-bold uppercase d-block mb-1">Yield Rate</small>
+                                @php $totalW = ($sumWelding->total_ok ?? 0) + ($sumWelding->total_ng ?? 0); @endphp
+                                <div class="yield-value text-warning h4 mb-0">{{ $totalW > 0 ? round(($sumWelding->total_ok / $totalW) * 100, 1) : 0 }}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Table --}}
+                    <div class="table-responsive">
+                        <table class="table table-tech text-center">
+                            <thead class="bg-light">
+                                <tr class="small text-muted font-weight-black uppercase">
+                                    <th class="text-left pl-4">Part ID</th>
+                                    <th>Station</th>
+                                    <th>OK</th>
+                                    <th>NG</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($detailWelding as $dw)
+                                <tr class="row-clickable" onclick="showDrilldown('WELDING', {{ json_encode($dw->part_no) }}, {{ json_encode($dw->batches ?? []) }})">
+                                    <td class="text-left pl-4">
+                                        <div class="text-warning font-weight-black">{{ $dw->part_no }}</div>
+                                        <small class="text-muted font-mono">WELDING_MODE</small>
+                                    </td>
+                                    <td><span class="badge badge-warning text-dark font-mono">{{ $dw->line_code }}</span></td>
+                                    <td class="text-success font-weight-black">{{ number_format($dw->qty_ok) }}</td>
+                                    <td class="text-danger font-weight-black">{{ number_format($dw->qty_ng) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    {{-- --- 📊 NG RANKING SECTION (BOTTOM) --- --}}
+    <div class="row mt-5">
+        <div class="col-md-6 animate__animated animate__fadeInUp">
+            <h6 class="font-weight-black text-muted uppercase small mb-3"><i class="fas fa-bug mr-2 text-primary"></i> Stamping Defect Breakdown</h6>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border">
+                @foreach($ngStamping as $index => $ns)
+                <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                    <span class="font-weight-bold text-dark small"><span class="text-primary mr-2">#{{$index+1}}</span> {{ strtoupper($ns->ng_type) }}</span>
+                    <span class="ng-badge">{{ $ns->total }} PCS</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        <div class="col-md-6 animate__animated animate__fadeInUp" style="animation-delay: 0.3s;">
+            <h6 class="font-weight-black text-muted uppercase small mb-3"><i class="fas fa-fire mr-2 text-warning"></i> Welding Defect Breakdown</h6>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border">
+                @foreach($ngWelding as $index => $nw)
+                <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                    <span class="font-weight-bold text-dark small"><span class="text-warning mr-2">#{{$index+1}}</span> {{ strtoupper($nw->ng_type) }}</span>
+                    <span class="ng-badge" style="background:#fef3c7; color:#92400e; border-color:#fde68a;">{{ $nw->total }} PCS</span>
+                </div>
+                @endforeach
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalBatchList" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-            <div class="modal-header bg-primary text-white py-4" style="border-radius: 20px 20px 0 0;">
-                <h5 class="modal-title font-black" id="modalPartName">BATCH_DRILLDOWN</h5>
+{{-- --- 🤖 MODAL DRILLDOWN BATCH --- --}}
+<div class="modal fade" id="modalDrilldown" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 30px;">
+            <div id="modalHeader" class="modal-header text-white p-4" style="border-radius: 30px 30px 0 0;">
+                <h5 class="modal-title font-weight-black uppercase" id="drilldownTitle">BATCH_DRILLDOWN</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body p-0">
-                <table class="table mb-0">
-                    <thead class="bg-light small font-weight-bold">
-                        <tr class="text-center">
+                <table class="table table-hover mb-0 text-center">
+                    <thead class="bg-light small font-weight-black uppercase">
+                        <tr>
                             <th class="text-left pl-4">No Produksi</th>
                             <th>Line</th>
-                            <th>Ambil</th>
+                            <th>In</th>
                             <th>OK</th>
                             <th>NG</th>
                         </tr>
                     </thead>
-                    <tbody id="batchTableBody">
-                        {{-- JS Content --}}
-                    </tbody>
+                    <tbody id="drilldownBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalSpecificNG" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px;">
-            <div class="modal-header bg-dark text-white py-4" style="border-radius: 25px 25px 0 0;">
-                <h6 class="modal-title font-black" id="ngBatchTitle">NG_ANALYSIS</h6>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="text-center mb-4">
-                    <div class="small text-muted uppercase font-weight-bold">Final OK Release:</div>
-                    <h1 class="font-black text-success" id="ngOkVal">0</h1>
-                    <div class="badge badge-danger px-4 py-2" id="ngTotalBadge">TOTAL REJECT: 0 PCS</div>
-                </div>
-                
-                <h6 class="font-weight-bold text-dark border-bottom pb-2 mb-3">DEFECT_BREAKDOWN</h6>
-                <div id="ngListContainer">
-                    {{-- JS Content --}}
-                </div>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-dark btn-block font-weight-bold py-3" style="border-radius:15px;" data-dismiss="modal">ACKNOWLEDGE</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
-    // Tampilkan Modal 1 (Daftar Batch)
-    function showBatchList(partNo, batches) {
-        document.getElementById('modalPartName').innerText = "BATCH_DRILLDOWN: " + partNo;
-        const tbody = document.getElementById('batchTableBody');
-        tbody.innerHTML = '';
-
-        batches.forEach(b => {
-            // Stringify data NG agar bisa dikirim ke fungsi berikutnya
-            const ngData = JSON.stringify(b.ng_list);
-            tbody.innerHTML += `
-                <tr class="row-clickable text-center font-weight-bold" onclick='showNGDetail("${b.no_produksi}", ${b.qty_hasil_ok}, ${b.qty_hasil_ng}, ${ngData})'>
-                    <td class="text-left pl-4">
-                        <span class="batch-id-pill">${b.no_produksi}</span>
-                        <br><small class="text-muted">Click for NG details</small>
-                    </td>
-                    <td>${b.kode_Line || '-'}</td>
-                    <td class="text-dark">${parseInt(b.qty_ambil_pcs).toLocaleString()}</td>
-                    <td class="text-success">${parseInt(b.qty_hasil_ok).toLocaleString()}</td>
-                    <td class="text-danger">${parseInt(b.qty_hasil_ng).toLocaleString()}</td>
-                </tr>
-            `;
-        });
-        $('#modalBatchList').modal('show');
-    }
-
-    // Tampilkan Modal 2 (Rincian NG)
-    function showNGDetail(noProduksi, ok, totalNg, ngList) {
-        // Sembunyikan modal pertama agar tidak tumpang tindih (opsional)
-        // $('#modalBatchList').modal('hide'); 
-
-        document.getElementById('ngBatchTitle').innerText = "NG_ANALYSIS: " + noProduksi;
-        document.getElementById('ngOkVal').innerText = ok.toLocaleString() + " PCS";
-        document.getElementById('ngTotalBadge').innerText = "TOTAL REJECT: " + totalNg + " PCS";
-
-        const container = document.getElementById('ngListContainer');
-        container.innerHTML = '';
-
-        if (ngList.length === 0) {
-            container.innerHTML = '<div class="text-center py-4 text-muted small font-weight-bold italic">-- NO SPECIFIC DEFECTS REPORTED --</div>';
+    function showDrilldown(type, partNo, batches) {
+        const title = document.getElementById('drilldownTitle');
+        const header = document.getElementById('modalHeader');
+        const body = document.getElementById('drilldownBody');
+        
+        title.innerText = `${type}_BATCH_LOG: ${partNo}`;
+        header.className = (type === 'STAMPING') ? 'modal-header bg-primary text-white p-4' : 'modal-header bg-warning text-dark p-4';
+        
+        body.innerHTML = '';
+        if (batches.length === 0) {
+            body.innerHTML = '<tr><td colspan="5" class="py-5 text-muted">-- NO ACTIVE BATCHES FOUND --</td></tr>';
         } else {
-            ngList.forEach(ng => {
-                container.innerHTML += `
-                    <div class="d-flex justify-content-between ng-detail-row">
-                        <span class="font-weight-bold text-danger"><i class="fas fa-times-circle mr-2"></i>${ng.ng_type.toUpperCase()}</span>
-                        <span class="font-weight-bold">${ng.qty} PCS</span>
-                    </div>
+            batches.forEach(b => {
+                body.innerHTML += `
+                    <tr>
+                        <td class="text-left pl-4 font-weight-bold font-mono" style="font-size:11px;">
+                            <span class="badge badge-light border">${b.no_produksi}</span>
+                        </td>
+                        <td><span class="badge badge-outline-dark">${b.kode_Line || 'GENERAL'}</span></td>
+                        <td class="font-weight-black">${parseInt(b.qty_ambil_pcs || b.qty_masuk).toLocaleString()}</td>
+                        <td class="text-success font-weight-black">${parseInt(b.qty_hasil_ok || b.qty_ok || 0).toLocaleString()}</td>
+                        <td class="text-danger font-weight-black">${parseInt(b.qty_hasil_ng || b.qty_ng || 0).toLocaleString()}</td>
+                    </tr>
                 `;
             });
         }
-        $('#modalSpecificNG').modal('show');
+        $('#modalDrilldown').modal('show');
     }
 </script>
-
 @endsection

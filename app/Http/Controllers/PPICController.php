@@ -15,18 +15,10 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        // Ambil daftar kendala produksi (Status PROBLEM) untuk notifikasi PPIC
         $alerts = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
-            ->select(
-                'produksi_batches.id',
-                'produksi_batches.no_produksi', 
-                'produksi_batches.material_code', 
-                'line.kode_Line', 
-                'produksi_batches.keterangan', 
-                'produksi_batches.updated_at'
-            )
+            ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at')
             ->get();
 
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
@@ -35,12 +27,7 @@ class PPICController extends Controller
 
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            
-            $actualPerPart = DB::table('production_actuals')
-                ->where('part_no', $p->part_no)
-                ->whereDate('created_at', $date)
-                ->where('line_code', '!=', 'WELDING AREA')
-                ->sum('qty_ok');
+            $actualPerPart = DB::table('production_actuals')->where('part_no', $p->part_no)->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
             
             $p->actual_qty = (int)$actualPerPart;
             $p->plan_qty = (int)$targetPerPart;
@@ -74,12 +61,7 @@ class PPICController extends Controller
             $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
-        return view('PPIC.ppic_planning', compact(
-            'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
-            'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
-            'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg',
-            'alerts'
-        ));
+        return view('PPIC.ppic_planning', compact('plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg', 'alerts'));
     }
 
     /**
@@ -89,14 +71,9 @@ class PPICController extends Controller
     {
         $date = $request->date ?? date('Y-m-d');
         $shiftParam = $request->shift ?? 'S1'; 
-
         $query = DB::table('production_plans')->where('plan_date', $date);
-        
-        if ($shiftParam == 'S1') {
-            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
-        } else {
-            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
-        }
+        if ($shiftParam == 'S1') { $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0); } 
+        else { $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0); }
 
         $plans = $query->orderBy('id', 'asc')->get();
         $lineFinishTime = []; 
@@ -104,20 +81,12 @@ class PPICController extends Controller
 
         foreach($plans as $plan) {
             $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
-            
-            $actualData = DB::table('production_actuals')
-                ->where('part_no', $plan->part_no) 
-                ->where('shift', $dbShiftName) 
-                ->whereDate('created_at', $date)
-                ->where('line_code', '!=', 'WELDING AREA')
-                ->sum('qty_ok');
-
+            $actualData = DB::table('production_actuals')->where('part_no', $plan->part_no)->where('shift', $dbShiftName)->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
             $plan->total_actual = (int)$actualData;
             $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
             
             $dandoryH = ($plan->dandory_time ?? 0) / 60;
             $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
-            
             $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
             $plan->start_time = $startTime;
             $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
@@ -127,7 +96,6 @@ class PPICController extends Controller
 
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
-
         return view('PPIC.mps_index', compact('plans', 'date', 'availableLines', 'availableCustomers'))->with('shift', $shiftParam);
     }
 
@@ -135,57 +103,46 @@ class PPICController extends Controller
     {
         DB::table('production_plans')->updateOrInsert(
             ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
-            [
-                'customer_code' => $request->customer_code,
-                'line_code'     => $request->line_code,
-                'manpower'      => $request->manpower ?? 8,
-                'process_qty'   => $request->process_qty ?? 4,
-                'qty_lot'       => $request->qty_lot ?? 200,
-                'cap_per_hour'  => $request->cap_per_hour ?? 320,
-                's1_plan_reg'   => $request->s1_plan_reg ?? 0,
-                's1_plan_ot'    => $request->s1_plan_ot ?? 0,
-                's2_plan_reg'   => $request->s2_plan_reg ?? 0,
-                's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-                'dandory_time'  => $request->dandory_time ?? 15,
-                'updated_at'    => now()
-            ]
+            ['customer_code' => $request->customer_code, 'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 8, 'process_qty' => $request->process_qty ?? 4, 'qty_lot' => $request->qty_lot ?? 200, 'cap_per_hour' => $request->cap_per_hour ?? 320, 's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0, 's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'dandory_time' => $request->dandory_time ?? 15, 'updated_at' => now()]
         );
         return redirect()->back()->with('success', 'Master Schedule Updated!');
     }
 
     /**
-     * 4. QUALITY CONTROL HUB (STAMPING)
+     * ✨ 4. UNIFIED QUALITY HUB (STAMPING + WELDING)
+     * Disatukan di sini agar PPIC tidak pusing pindah view.
      */
     public function qualityHub(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        $summary = DB::table('production_actuals')
-            ->whereDate('created_at', $date)
-            ->where('line_code', '!=', 'WELDING AREA')
-            ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))
-            ->first();
 
-        $ngRanking = DB::table('production_ng_logs')
+        // --- DATA STAMPING ---
+        $sumStamping = DB::table('production_actuals')
+            ->whereDate('created_at', $date)
+            ->where('line_code', 'NOT LIKE', 'W-%')
+            ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))->first();
+
+        $ngStamping = DB::table('production_ng_logs')
+            ->select('ng_type', DB::raw('SUM(qty) as total'))
+            ->whereDate('created_at', $date)
+            ->whereNotIn('ng_type', function($q) { $q->select('ng_name')->from('master_ngs')->where('category', 'WELDING'); })
+            ->groupBy('ng_type')->orderBy('total', 'DESC')->get();
+
+        $detailStamping = DB::table('production_actuals')->whereDate('created_at', $date)->where('line_code', 'NOT LIKE', 'W-%')->get();
+
+        // --- DATA WELDING ---
+        $sumWelding = DB::table('welding_actuals')
+            ->whereDate('created_at', $date)
+            ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))->first();
+
+        $ngWelding = DB::table('welding_ng_logs') // Tabel NG khusus Welding
             ->select('ng_type', DB::raw('SUM(qty) as total'))
             ->whereDate('created_at', $date)
             ->groupBy('ng_type')->orderBy('total', 'DESC')->get();
 
-        $details = DB::table('production_actuals')
-            ->whereDate('created_at', $date)
-            ->where('line_code', '!=', 'WELDING AREA')
-            ->orderBy('created_at', 'DESC')->get();
+        $detailWelding = DB::table('welding_actuals')->whereDate('created_at', $date)->get();
 
-        foreach($details as $d) {
-            $d->batches = DB::table('produksi_batches')
-                ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-                ->where('material_code', $d->part_no)
-                ->where('shift', $d->shift)
-                ->whereDate('produksi_batches.created_at', $date)
-                ->select('no_produksi', 'qty_ambil_pcs', 'qty_hasil_ok', 'qty_hasil_ng', 'kode_Line')
-                ->get();
-        }
-
-        return view('PPIC.quality_hub', compact('summary', 'ngRanking', 'details', 'date'));
+        return view('PPIC.quality_hub', compact('date', 'sumStamping', 'ngStamping', 'detailStamping', 'sumWelding', 'ngWelding', 'detailWelding'));
     }
 
     /**
@@ -199,11 +156,7 @@ class PPICController extends Controller
         $parts = DB::table('parts')->select('part_no', 'customer_code', 'part_name')->get();
 
         $planData = DB::table('production_plans')->whereMonth('plan_date', $month)->whereYear('plan_date', $year)->get()->groupBy('part_no');
-        $actualData = DB::table('production_actuals')
-            ->whereMonth('created_at', $month)->whereYear('created_at', $year)
-            ->where('line_code', '!=', 'WELDING AREA')
-            ->select('part_no', DB::raw('DAY(created_at) as day'), DB::raw('SUM(qty_ok) as total_ok'))
-            ->groupBy('part_no', 'day')->get()->groupBy('part_no');
+        $actualData = DB::table('production_actuals')->whereMonth('created_at', $month)->whereYear('created_at', $year)->where('line_code', '!=', 'WELDING AREA')->select('part_no', DB::raw('DAY(created_at) as day'), DB::raw('SUM(qty_ok) as total_ok'))->groupBy('part_no', 'day')->get()->groupBy('part_no');
 
         return view('PPIC.monthly_matrix', compact('parts', 'planData', 'actualData', 'month', 'year', 'daysInMonth'));
     }
@@ -211,13 +164,8 @@ class PPICController extends Controller
     public function saveMatrixAjax(Request $request)
     {
         $date = $request->year .'-'. str_pad($request->month, 2, '0', STR_PAD_LEFT) .'-'. str_pad($request->day, 2, '0', STR_PAD_LEFT);
-        $shift = $request->shift; 
-        $column = ($shift == 's2') ? 's2_plan_reg' : 's1_plan_reg';
-
-        DB::table('production_plans')->updateOrInsert(
-            ['plan_date' => $date, 'part_no' => $request->part_no],
-            ['customer_code' => $request->customer_code, 'line_code' => $request->line_code ?? 'LINE A', $column => $request->qty, 'updated_at' => now()]
-        );
+        $column = ($request->shift == 's2') ? 's2_plan_reg' : 's1_plan_reg';
+        DB::table('production_plans')->updateOrInsert(['plan_date' => $date, 'part_no' => $request->part_no], ['customer_code' => $request->customer_code, 'line_code' => $request->line_code ?? 'LINE A', $column => $request->qty, 'cap_per_hour' => 320, 'dandory_time' => 15, 'manpower' => 8, 'process_qty' => 4, 'qty_lot' => 200, 'updated_at' => now()]);
         return response()->json(['status' => 'success']);
     }
 
@@ -246,7 +194,7 @@ class PPICController extends Controller
             $this->syncToActual($id);
             DB::commit();
             return redirect()->back()->with('success', "Batch ditutup! $sisa Pcs balik ke stok.");
-        } catch (\Exception $e) { DB::rollBack(); return redirect()->back()->with('error', 'Gagal: ' . $e->getMessage()); }
+        } catch (\Exception $e) { DB::rollBack(); return redirect()->back()->with('error', $e->getMessage()); }
     }
 
     public function syncToActual($batchId)
@@ -255,11 +203,8 @@ class PPICController extends Controller
         if (!$batch) return;
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $actual = DB::table('production_actuals')->where('part_no', $batch->material_code)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
-        if ($actual) {
-            DB::table('production_actuals')->where('id', $actual->id)->update(['qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok, 'qty_ng' => $actual->qty_ng + $batch->qty_hasil_ng, 'updated_at' => now()]);
-        } else {
-            DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]);
-        }
+        if ($actual) { DB::table('production_actuals')->where('id', $actual->id)->update(['qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok, 'qty_ng' => $actual->qty_ng + $batch->qty_hasil_ng, 'updated_at' => now()]); } 
+        else { DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]); }
     }
 
     public function quickReschedule(Request $request, $id)
@@ -272,158 +217,77 @@ class PPICController extends Controller
 
     /**
      * ============================================================
-     * ✨ BAGIAN BARU: WELDING INTELLIGENCE SYSTEM (PISAH TABEL)
+     * ✨ BAGIAN WELDING (TABEL: welding_plans & welding_actuals)
      * ============================================================
      */
 
-   public function weldingIndex(Request $request)
-{
-    // Filter Tanggal (Default hari ini)
-    $start_date = $request->start_date ?? date('Y-m-d');
-    $end_date = $request->end_date ?? date('Y-m-d');
+    public function weldingIndex(Request $request)
+    {
+        $start_date = $request->start_date ?? date('Y-m-d');
+        $end_date = $request->end_date ?? date('Y-m-d');
 
-    // 1. Ambil Alert PROBLEM
-    $alerts = DB::table('welding_batches')
-        ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
-        ->where('welding_batches.status', 'PROBLEM')
-        ->select('welding_batches.*', 'line_welding.kode_line', 'welding_batches.updated_at as jam_lapor')
-        ->get();
+        $alerts = DB::table('welding_batches')->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')->where('welding_batches.status', 'PROBLEM')->select('welding_batches.*', 'line_welding.kode_line', 'welding_batches.updated_at as jam_lapor')->get();
 
-    // 2. Data Chart Target vs Actual Per Part (Range Tanggal)
-    $plans = DB::table('welding_plans')
-            ->whereBetween('plan_date', [$start_date, $end_date])
-            ->get();
-
-    $chartLabels = []; $chartTargets = []; $chartActuals = [];
-    foreach($plans as $p) {
-        $actual = DB::table('welding_actuals')
-            ->where('part_no', $p->part_no)
-            ->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
-            ->sum('qty_ok');
+        $plans = DB::table('welding_plans')->whereBetween('plan_date', [$start_date, $end_date])->get();
+        $chartLabels = []; $chartTargets = []; $chartActuals = [];
         
-        $p->actual_qty = (int)$actual;
-        $p->plan_qty = (int)($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-        
-        $chartLabels[] = $p->part_no;
-        $chartTargets[] = $p->plan_qty;
-        $chartActuals[] = $p->actual_qty;
+        foreach($plans as $p) {
+            $actual = DB::table('welding_actuals')->where('part_no', $p->part_no)->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])->sum('qty_ok');
+            $p->actual_qty = (int)$actual;
+            $p->plan_qty = (int)($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+            $chartLabels[] = $p->part_no;
+            $chartTargets[] = $p->plan_qty;
+            $chartActuals[] = $p->actual_qty;
+        }
+
+        $totalPlan = array_sum($chartTargets);
+        $totalActual = array_sum($chartActuals);
+        $totalNg = DB::table('welding_actuals')->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])->sum('qty_ng');
+        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $d = date('Y-m-d', strtotime("$end_date -$i days"));
+            $dailyLabels[] = date('d M', strtotime($d));
+            $dailyOk[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ok');
+            $dailyNg[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ng');
+        }
+
+        $monthlyLabels = []; $monthlyOk = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $m = date('Y-m', strtotime("$end_date -$i months"));
+            $monthlyLabels[] = date('M Y', strtotime("$end_date -$i months"));
+            $monthlyOk[] = DB::table('welding_actuals')->where('created_at', 'LIKE', "$m%")->sum('qty_ok');
+        }
+
+        return view('PPIC.welding_planning', compact('plans', 'achievementRate', 'start_date', 'end_date', 'totalPlan', 'totalActual', 'totalNg', 'alerts', 'chartLabels', 'chartTargets', 'chartActuals', 'dailyLabels', 'dailyOk', 'dailyNg', 'monthlyLabels', 'monthlyOk'));
     }
 
-    // 3. Global Stats (OK vs NG)
-    $totalPlan = array_sum($chartTargets);
-    $totalActual = array_sum($chartActuals);
-    $totalNg = DB::table('welding_actuals')
-                ->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
-                ->sum('qty_ng');
-    
-    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
-
-    // 4. Data Performa Per Hari (Trend 7 Hari Terakhir dari End Date)
-    $dailyLabels = []; $dailyOk = []; $dailyNg = [];
-    for ($i = 6; $i >= 0; $i--) {
-        $d = date('Y-m-d', strtotime("$end_date -$i days"));
-        $dailyLabels[] = date('d M', strtotime($d));
-        $dailyOk[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ok');
-        $dailyNg[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ng');
-    }
-
-    // 5. Data Performa Per Bulan (6 Bulan Terakhir)
-    $monthlyLabels = []; $monthlyOk = [];
-    for ($i = 5; $i >= 0; $i--) {
-        $m = date('Y-m', strtotime("$end_date -$i months"));
-        $monthlyLabels[] = date('M Y', strtotime("$end_date -$i months"));
-        $monthlyOk[] = DB::table('welding_actuals')->where('created_at', 'LIKE', "$m%")->sum('qty_ok');
-    }
-
-    return view('PPIC.welding_planning', compact(
-        'plans', 'achievementRate', 'start_date', 'end_date', 'totalPlan', 'totalActual', 'totalNg',
-        'alerts', 'chartLabels', 'chartTargets', 'chartActuals', 'dailyLabels', 'dailyOk', 'dailyNg', 'monthlyLabels', 'monthlyOk'
-    ));
-}
-
-    /**
- * TAMPILAN MPS WELDING
- */
-/**
- * TAMPILAN MPS WELDING (WITH PART NAMES)
- */
-/**
- * 1. TAMPILAN MPS WELDING
- */
-public function weldingMps(Request $request)
-{
-    $date = $request->date ?? date('Y-m-d');
-    $shiftParam = $request->shift ?? 'S1'; 
-
-    // ✨ Ambil data Plan + Join Parts agar muncul PART NAME-nya
-    $plans = DB::table('welding_plans')
-        ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
-        ->where('welding_plans.plan_date', $date)
-        ->select('welding_plans.*', 'parts.part_name') // Ambil Part Name
-        ->orderBy('welding_plans.id', 'asc')
-        ->get();
-
-    foreach($plans as $plan) {
-        $actual = DB::table('welding_actuals')
-            ->where('part_no', $plan->part_no)
-            ->whereDate('created_at', $date)
-            ->sum('qty_ok');
-        $plan->total_actual = (int)$actual;
-        $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
-        $plan->balance = $plan->total_target - $plan->total_actual;
-    }
-
-    $availableLines = DB::table('line_welding')->get();
-    $availableParts = DB::table('parts')->where('next_process', 'WELDING')->get();
-
-    return view('PPIC.welding_mps', compact('plans', 'date', 'availableLines', 'availableParts'))->with('shift', $shiftParam);
-}
-
-/**
- * 2. SIMPAN MPS WELDING (FIXED ERROR 1364)
- */
-public function weldingMpsStore(Request $request)
-{
-    $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
-    
-    DB::table('welding_plans')->updateOrInsert(
-        ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
-        [
-            'customer_code' => $partData->customer_code ?? 'UNK',
-            'line_code'     => $request->line_code,
-            'manpower'      => $request->manpower ?? 1,
-            'cap_per_hour'  => $request->cap_per_hour ?? 0,
-            's1_plan_reg'   => $request->s1_plan_reg ?? 0,
-            's1_plan_ot'    => $request->s1_plan_ot ?? 0,
-            's2_plan_reg'   => $request->s2_plan_reg ?? 0,
-            's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-            'dandory_time'  => 15, 
-            
-            // ✨ FIX: Tambahkan field ini agar tidak error "doesn't have a default value"
-            'process_qty'   => 1, 
-            'qty_lot'       => 1,
-            
-            'updated_at'    => now()
-        ]
-    );
-    return redirect()->back()->with('success', 'Welding Plan & Capacity Authorized!');
-}
-
-    public function weldingQualityHub(Request $request)
+    public function weldingMps(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        $summary = DB::table('welding_actuals')
-            ->whereDate('created_at', $date)
-            ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))
-            ->first();
+        $shiftParam = $request->shift ?? 'S1'; 
+        $plans = DB::table('welding_plans')->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')->where('welding_plans.plan_date', $date)->select('welding_plans.*', 'parts.part_name')->orderBy('welding_plans.id', 'asc')->get();
 
-        $ngRanking = DB::table('production_ng_logs')
-            ->select('ng_type', DB::raw('SUM(qty) as total'))
-            ->whereDate('created_at', $date)
-            ->whereIn('ng_type', function($q) { $q->select('ng_name')->from('master_ngs')->where('category', 'WELDING'); })
-            ->groupBy('ng_type')->orderBy('total', 'DESC')->get();
+        foreach($plans as $plan) {
+            $actual = DB::table('welding_actuals')->where('part_no', $plan->part_no)->whereDate('created_at', $date)->sum('qty_ok');
+            $plan->total_actual = (int)$actual;
+            $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
+            $plan->balance = $plan->total_target - $plan->total_actual;
+        }
 
-        $details = DB::table('welding_actuals')->whereDate('created_at', $date)->get();
-        return view('PPIC.welding_quality_hub', compact('summary', 'ngRanking', 'details', 'date'));
+        $availableLines = DB::table('line_welding')->get();
+        $availableParts = DB::table('parts')->where('next_process', 'WELDING')->get();
+        return view('PPIC.welding_mps', compact('plans', 'date', 'availableLines', 'availableParts'))->with('shift', $shiftParam);
+    }
+
+    public function weldingMpsStore(Request $request)
+    {
+        $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
+        DB::table('welding_plans')->updateOrInsert(
+            ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
+            ['customer_code' => $partData->customer_code ?? 'UNK', 'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0, 's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0, 's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'dandory_time' => 15, 'process_qty' => 1, 'qty_lot' => 1, 'updated_at' => now()]
+        );
+        return redirect()->back()->with('success', 'Welding Plan & Capacity Authorized!');
     }
 }

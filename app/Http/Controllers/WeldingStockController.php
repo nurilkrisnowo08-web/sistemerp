@@ -74,7 +74,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 2. DEPLOY WELDING (Tombol TAKE)
+     * 2. DEPLOY WELDING (TomBOL TAKE)
      */
     public function deployWelding(Request $request)
     {
@@ -139,7 +139,6 @@ class WeldingStockController extends Controller
         $qty_ng = (int)$request->qty_ng;
         $total_input = $qty_ok + $qty_ng;
 
-        // 🔒 KEAMANAN 1: Validasi Integritas Angka
         if ($total_input != $batch->qty_masuk) {
             return back()->with('error', "🚨 GAGAL: Total input ($total_input) tidak sama dengan Target ($batch->qty_masuk)!");
         }
@@ -156,7 +155,7 @@ class WeldingStockController extends Controller
                 'updated_at' => now()
             ]);
 
-            // 2. Simpan Rincian Penyakit NG
+            // 2. Simpan Rincian Penyakit NG (Tetap dicatat di Log internal Welding)
             if ($request->has('ng_detail_type')) {
                 foreach ($request->ng_detail_type as $key => $type) {
                     $qDetail = (int)$request->ng_detail_qty[$key];
@@ -171,11 +170,11 @@ class WeldingStockController extends Controller
                 }
             }
 
-            // 3. ✨ Sinkronisasi ke Tabel Actual Khusus WELDING
+            // 3. ✨ OTOMATIS KIRIM KE QUALITY GATE (Hanya OK Goods)
             $this->syncWeldingToActual($id);
 
             DB::commit();
-            return back()->with('success', 'Data aman & tersinkronisasi ke Dashboard PPIC.');
+            return back()->with('success', 'Batch Selesai. Data OK dikirim ke Quality Gate.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return back()->with('error', 'Gagal Simpan: ' . $e->getMessage()); 
@@ -183,11 +182,10 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * ✨ 4.1 ROBOT SINKRONISASI (MENGGUNAKAN TABEL WELDING_ACTUALS)
+     * ✨ 4.1 ROBOT SINKRONISASI KE QUALITY GATE (FILTER OK ONLY)
      */
     private function syncWeldingToActual($weldingId)
     {
-        // Ambil data batch terbaru
         $batch = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
             ->where('welding_batches.id', $weldingId)
@@ -197,28 +195,30 @@ class WeldingStockController extends Controller
         if (!$batch) return;
 
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
-        $lineName = $batch->kode_line ?? 'W-GENERAL';
+        
+        // Agar muncul di kolom kanan Quality Gate, pastikan line_code mengandung kata 'WELDING'
+        $lineName = $batch->kode_line ?? 'WELDING AREA';
 
-        // ✨ UPDATE TABEL welding_actuals (Bukan production_actuals lagi)
-        $actual = DB::table('welding_actuals')
+        // 🎯 TARGET: production_actuals (Tabel yang dibaca oleh layar Quality Gate)
+        $actual = DB::table('production_actuals')
             ->where('part_no', $batch->part_no)
             ->where('line_code', $lineName)
             ->whereDate('created_at', $dateOnly)
             ->first();
 
         if ($actual) {
-            DB::table('welding_actuals')->where('id', $actual->id)->update([
-                'qty_ok' => $actual->qty_ok + $batch->qty_ok,
-                'qty_ng' => $actual->qty_ng + $batch->qty_ng,
+            DB::table('production_actuals')->where('id', $actual->id)->update([
+                'qty_ok' => $actual->qty_ok + $batch->qty_ok, // Tambah Total OK saja
+                // 'qty_ng' TIDAK DITAMBAH sesuai permintaan Bapak (NG tidak ikut)
                 'updated_at' => now()
             ]);
         } else {
-            DB::table('welding_actuals')->insert([
+            DB::table('production_actuals')->insert([
                 'part_no'    => $batch->part_no,
                 'line_code'  => $lineName,
                 'shift'      => 'N/A',
-                'qty_ok'     => $batch->qty_ok,
-                'qty_ng'     => $batch->qty_ng,
+                'qty_ok'     => $batch->qty_ok, // Hanya Total OK saja
+                'qty_ng'     => 0,              // NG diset 0 agar QC cek dari awal
                 'created_at' => $batch->created_at,
                 'updated_at' => now()
             ]);
