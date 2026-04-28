@@ -276,27 +276,70 @@ class PPICController extends Controller
      * ============================================================
      */
 
-    public function weldingIndex(Request $request)
-    {
-        $date = $request->date ?? date('Y-m-d');
-        $alerts = DB::table('welding_batches')->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
-            ->where('welding_batches.status', 'PROBLEM')->select('welding_batches.*', 'line_welding.kode_line')->get();
+   public function weldingIndex(Request $request)
+{
+    // Filter Tanggal (Default hari ini)
+    $start_date = $request->start_date ?? date('Y-m-d');
+    $end_date = $request->end_date ?? date('Y-m-d');
 
-        // Target dari welding_plans
-        $plans = DB::table('welding_plans')->where('plan_date', $date)->get();
-        foreach($plans as $p) {
-            // Hasil dari welding_actuals
-            $actual = DB::table('welding_actuals')->where('part_no', $p->part_no)->whereDate('created_at', $date)->sum('qty_ok');
-            $p->actual_qty = (int)$actual;
-            $p->plan_qty = (int)($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-        }
+    // 1. Ambil Alert PROBLEM
+    $alerts = DB::table('welding_batches')
+        ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
+        ->where('welding_batches.status', 'PROBLEM')
+        ->select('welding_batches.*', 'line_welding.kode_line', 'welding_batches.updated_at as jam_lapor')
+        ->get();
 
-        $totalPlan = $plans->sum('plan_qty') ?: 0;
-        $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+    // 2. Data Chart Target vs Actual Per Part (Range Tanggal)
+    $plans = DB::table('welding_plans')
+            ->whereBetween('plan_date', [$start_date, $end_date])
+            ->get();
 
-        return view('PPIC.welding_planning', compact('plans', 'achievementRate', 'date', 'totalPlan', 'totalActual', 'alerts'));
+    $chartLabels = []; $chartTargets = []; $chartActuals = [];
+    foreach($plans as $p) {
+        $actual = DB::table('welding_actuals')
+            ->where('part_no', $p->part_no)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
+            ->sum('qty_ok');
+        
+        $p->actual_qty = (int)$actual;
+        $p->plan_qty = (int)($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
+        
+        $chartLabels[] = $p->part_no;
+        $chartTargets[] = $p->plan_qty;
+        $chartActuals[] = $p->actual_qty;
     }
+
+    // 3. Global Stats (OK vs NG)
+    $totalPlan = array_sum($chartTargets);
+    $totalActual = array_sum($chartActuals);
+    $totalNg = DB::table('welding_actuals')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$start_date, $end_date])
+                ->sum('qty_ng');
+    
+    $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+
+    // 4. Data Performa Per Hari (Trend 7 Hari Terakhir dari End Date)
+    $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $d = date('Y-m-d', strtotime("$end_date -$i days"));
+        $dailyLabels[] = date('d M', strtotime($d));
+        $dailyOk[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ok');
+        $dailyNg[] = DB::table('welding_actuals')->whereDate('created_at', $d)->sum('qty_ng');
+    }
+
+    // 5. Data Performa Per Bulan (6 Bulan Terakhir)
+    $monthlyLabels = []; $monthlyOk = [];
+    for ($i = 5; $i >= 0; $i--) {
+        $m = date('Y-m', strtotime("$end_date -$i months"));
+        $monthlyLabels[] = date('M Y', strtotime("$end_date -$i months"));
+        $monthlyOk[] = DB::table('welding_actuals')->where('created_at', 'LIKE', "$m%")->sum('qty_ok');
+    }
+
+    return view('PPIC.welding_planning', compact(
+        'plans', 'achievementRate', 'start_date', 'end_date', 'totalPlan', 'totalActual', 'totalNg',
+        'alerts', 'chartLabels', 'chartTargets', 'chartActuals', 'dailyLabels', 'dailyOk', 'dailyNg', 'monthlyLabels', 'monthlyOk'
+    ));
+}
 
     public function weldingMps(Request $request)
     {
