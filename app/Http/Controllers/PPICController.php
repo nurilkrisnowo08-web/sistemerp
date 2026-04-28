@@ -388,18 +388,17 @@ public function weldingMpsStore(Request $request)
         [
             'customer_code' => $partData->customer_code ?? 'UNK',
             'line_code'     => $request->line_code,
+            'manpower'      => $request->manpower ?? 1,
+            'cap_per_hour'  => $request->cap_per_hour ?? 0,
             's1_plan_reg'   => $request->s1_plan_reg ?? 0,
             's1_plan_ot'    => $request->s1_plan_ot ?? 0,
             's2_plan_reg'   => $request->s2_plan_reg ?? 0,
             's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-            // ✨ FIX: Isi nilai default agar tidak error di server
             'dandory_time'  => 15, 
-            'manpower'      => 1,
-            'cap_per_hour'  => 50,
             'updated_at'    => now()
         ]
     );
-    return redirect()->back()->with('success', 'Welding Plan Authorized!');
+    return redirect()->back()->with('success', 'Welding Plan & Capacity Authorized!');
 }
 
     public function weldingQualityHub(Request $request)

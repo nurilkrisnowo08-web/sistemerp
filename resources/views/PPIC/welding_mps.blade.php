@@ -33,6 +33,10 @@
     .tech-input:focus { border-color: var(--brand-primary); outline: none; background: #fff; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1); }
     
     .modal-content { border-radius: 35px; border: none; overflow: hidden; }
+
+    /* Capacity Highlight */
+    .cap-box { background: #0f172a; border-radius: 24px; padding: 20px; color: white; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+    .hour-display { font-family: 'JetBrains Mono'; font-weight: 800; color: var(--brand-warning); font-size: 1.5rem; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -93,10 +97,11 @@
                     <tr>
                         <th class="text-left pl-4">Station</th>
                         <th class="text-left">Part Identification</th>
+                        <th>MP</th>
                         <th>Target Qty</th>
                         <th>Actual Output</th>
                         <th>Balance</th>
-                        <th style="width: 200px;">Load Progress</th>
+                        <th style="width: 180px;">Load Progress</th>
                         <th class="text-right pr-4">Status</th>
                     </tr>
                 </thead>
@@ -112,10 +117,10 @@
                         </td>
                         <td class="text-left">
                             <div class="font-weight-black text-dark" style="font-size: 14px;">{{ $p->part_no }}</div>
-                            {{-- ✨ PART NAME DARI JOIN DATABASE --}}
                             <small class="text-muted font-weight-bold uppercase d-block" style="font-size: 10px;">{{ $p->part_name }}</small>
                             <span class="badge badge-light border text-primary mt-1" style="font-size: 9px;">{{ $p->customer_code }}</span>
                         </td>
+                        <td class="font-weight-black text-muted">{{ $p->manpower }}</td>
                         <td class="font-weight-black text-dark" style="font-family: 'JetBrains Mono'; font-size: 15px;">{{ number_format($p->total_target) }}</td>
                         <td class="text-success font-weight-black" style="font-family: 'JetBrains Mono'; font-size: 15px;">{{ number_format($p->total_actual) }}</td>
                         <td class="{{ $p->balance > 0 ? 'text-danger' : 'text-muted' }} font-weight-black" style="font-family: 'JetBrains Mono';">{{ number_format($p->balance) }}</td>
@@ -137,7 +142,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="py-5 text-center">
+                        <td colspan="8" class="py-5 text-center">
                             <i class="fas fa-calendar-times fa-3x text-light mb-3"></i>
                             <p class="text-muted font-weight-bold">No welding plans scheduled for this date and shift.</p>
                         </td>
@@ -149,7 +154,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL ADD WELDING PLAN (VISUAL MATCH) --}}
+{{-- 🛡️ MODAL ADD WELDING PLAN --}}
 <div class="modal fade animate__animated animate__fadeIn" id="modalAddPlan" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content shadow-2xl">
@@ -160,6 +165,24 @@
             <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-5">
+                    {{-- Capacity Control Box --}}
+                    <div class="cap-box">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <label class="small font-weight-black text-white-50 uppercase mb-2">Manpower</label>
+                                <input type="number" name="manpower" id="inp_mp" class="form-control bg-transparent border-0 text-white font-weight-black p-0" style="font-size: 24px;" value="1" required oninput="recalcHours()">
+                            </div>
+                            <div class="col-md-4 border-left border-secondary">
+                                <label class="small font-weight-black text-white-50 uppercase mb-2">Cap / Hour</label>
+                                <input type="number" name="cap_per_hour" id="inp_cap" class="form-control bg-transparent border-0 text-white font-weight-black p-0" style="font-size: 24px;" value="100" required oninput="recalcHours()">
+                            </div>
+                            <div class="col-md-4 text-center border-left border-secondary">
+                                <label class="small font-weight-black text-warning uppercase mb-1">Est. Duration</label>
+                                <div class="hour-display" id="display_hours">0.0 HRS</div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-12 mb-4">
                             <label class="small font-weight-black text-muted uppercase mb-2">Deployment Date</label>
@@ -181,9 +204,7 @@
                             <select name="part_no" class="form-control tech-input" required>
                                 <option value="" disabled selected>-- CHOOSE PART --</option>
                                 @foreach($availableParts as $part)
-                                    <option value="{{ $part->part_no }}">
-                                        [{{ $part->customer_code }}] {{ $part->part_no }} - {{ $part->part_name }}
-                                    </option>
+                                    <option value="{{ $part->part_no }}">[{{ $part->customer_code }}] {{ $part->part_no }} - {{ $part->part_name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -191,14 +212,14 @@
                         <div class="col-md-6">
                             <div class="p-4 rounded-3xl" style="background: #f8faff; border: 1px solid #eef2f6;">
                                 <label class="small font-weight-bold text-primary uppercase mb-2 d-block">Shift 1 Target</label>
-                                <input type="number" name="s1_plan_reg" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0">
+                                <input type="number" name="s1_plan_reg" id="inp_s1" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0" oninput="recalcHours()">
                             </div>
                         </div>
                         
                         <div class="col-md-6">
                             <div class="p-4 rounded-3xl" style="background: #f8faff; border: 1px solid #eef2f6;">
                                 <label class="small font-weight-bold text-info uppercase mb-2 d-block">Shift 2 Target</label>
-                                <input type="number" name="s2_plan_reg" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0">
+                                <input type="number" name="s2_plan_reg" id="inp_s2" class="form-control border-0 bg-transparent font-weight-black" style="font-size: 32px; outline: none;" value="0" oninput="recalcHours()">
                             </div>
                         </div>
                     </div>
@@ -212,4 +233,26 @@
         </div>
     </div>
 </div>
+
+<script>
+    function recalcHours() {
+        let cap = parseFloat(document.getElementById('inp_cap').value) || 0;
+        let s1 = parseFloat(document.getElementById('inp_s1').value) || 0;
+        let s2 = parseFloat(document.getElementById('inp_s2').value) || 0;
+        
+        let total = s1 + s2;
+        let result = 0;
+
+        if (cap > 0 && total > 0) {
+            result = total / cap;
+        }
+
+        document.getElementById('display_hours').innerText = result.toFixed(1) + ' HRS';
+    }
+
+    // Jalankan saat modal terbuka
+    $('#modalAddPlan').on('shown.bs.modal', function () {
+        recalcHours();
+    });
+</script>
 @endsection
