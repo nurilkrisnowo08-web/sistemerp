@@ -186,9 +186,24 @@ class PPICController extends Controller
 
         return view('PPIC.quality_hub', compact('date', 'sumStamping', 'ngStamping', 'detailStamping'));
     }
-    public function getBatchNGDetails($no_produksi) {
-    // Ambil detail NG dari tabel log
-    return response()->json(DB::table('production_ng_logs')->where('no_produksi', $no_produksi)->get());
+    
+  public function getBatchNGDetails($no_produksi)
+{
+    // Cari detail reject di logs (Bisa stamping atau welding)
+    $details = DB::table('production_ng_logs')
+                ->where('no_produksi', $no_produksi)
+                ->select('ng_type', 'qty')
+                ->get();
+    
+    // Jika di stamping kosong, coba cek di welding logs
+    if($details->isEmpty()){
+        $details = DB::table('welding_ng_logs')
+                    ->where('no_produksi', $no_produksi)
+                    ->select('ng_type', 'qty')
+                    ->get();
+    }
+
+    return response()->json($details);
 }
 
     /**
