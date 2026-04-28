@@ -43,10 +43,17 @@ class ProduksiController extends Controller
 
         $activeProductions = $query->orderBy('batch_id', 'desc')->get();
         
-        // ✨ FIX image_4d22f8: Gunakan GroupBy agar ID Coil (seperti SAI) tidak muncul double di dropdown
+        // ✨ FIX image_4d22f8 & image_4bcd7c: Gunakan GroupBy & Aggregation agar SAI tidak double & tidak Error 500
         $materials = DB::table('rm_stocks')
             ->where('stock_pcs', '>', 0)
-            ->select('id', 'coil_id', 'stock_pcs', 'spec', 'size', 'customer')
+            ->select(
+                DB::raw('MAX(id) as id'), 
+                'coil_id', 
+                DB::raw('SUM(stock_pcs) as stock_pcs'), 
+                DB::raw('MAX(spec) as spec'), 
+                DB::raw('MAX(size) as size'), 
+                DB::raw('MAX(customer) as customer')
+            )
             ->groupBy('coil_id') 
             ->get(); 
 
@@ -78,11 +85,11 @@ class ProduksiController extends Controller
             
             DB::table('rm_stocks')->where('id', $request->rm_stock_id)->decrement('stock_pcs', $request->qty_ambil_pcs);
 
-            // ✨ FIX UTAMA: Catat ke log mutasi RM agar kolom OUT di RM HUB terisi rill
+            // ✨ FIX image_4ca6bb: Catat ke log mutasi RM agar kolom OUT di RM HUB terisi rill
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
                 'material_code' => $request->material_code,
-                'pcs_used'      => $request->qty_ambil_pcs,
+                'pcs_used'      => $request->qty_ambil_pcs, // Pastikan kolom ini 'pcs_used' di database Bapak
                 'no_produksi'   => $no_produksi,
                 'created_at'    => now(),
                 'updated_at'    => now()
@@ -166,7 +173,7 @@ class ProduksiController extends Controller
                         'no_produksi' => $p->no_produksi, 'created_at' => now()
                     ]);
                     
-                    // ✨ Update log produksi jika ada barang kembali
+                    // ✨ Update log produksi jika ada barang kembali agar Out di HUB sinkron
                     $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
                     if($currentLog) {
                         DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)
@@ -200,7 +207,6 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                // ✨ FIX image_5aca17: Gunakan actual_stock
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
             }
 
@@ -246,7 +252,7 @@ class ProduksiController extends Controller
         );
     }
 
-    // --- RECOVERY FUNCTIONS & HELPERS (TETAP SAMA) ---
+    // --- RECOVERY FUNCTIONS & HELPERS ---
     public function getSpecsByCustomer($customer) {
         $specs = DB::table('rm_stocks')->where('customer', trim($customer))->where('stock_pcs', '>', 0)
             ->select(DB::raw('TRIM(spec) as spec'), 'size', DB::raw("REPLACE(size, ' ', '') as size_clean"))
@@ -327,7 +333,7 @@ class ProduksiController extends Controller
         try {
             if ($p && $rmInfo) { 
                 DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $p->qty_ambil_pcs); 
-                // Hapus juga log produksinya agar Out di RM HUB kembali normal
+                // ✨ FIX: Hapus juga log produksinya agar Out di RM HUB kembali normal
                 DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->delete();
             }
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->delete();
