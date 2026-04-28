@@ -49,7 +49,6 @@ class WeldingStockController extends Controller
                 return $item;
             });
 
-        // ✨ TAMBAHAN: Ambil data Master untuk Modal
         $weldingLines = DB::table('line_welding')->get();
         $listNG = DB::table('master_ngs')->whereIn('category', ['WELDING', 'GENERAL'])->orderBy('ng_name', 'asc')->get();
 
@@ -57,7 +56,6 @@ class WeldingStockController extends Controller
             ->leftJoin('finished_goods', function($join) {
                 $join->on(DB::raw("REPLACE(welding_batches.part_no, ' ', '')"), '=', DB::raw("REPLACE(finished_goods.part_no, ' ', '')"));
             })
-            // Tambahkan Join ke line_welding agar nama mesin muncul di tabel
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
             ->select(
                 'welding_batches.*', 
@@ -82,7 +80,7 @@ class WeldingStockController extends Controller
     {
         $qty_ambil = (int)$request->qty_ambil;
         $part_no = $request->part_no;
-        $line_id = $request->line_id; // ✨ Ambil ID Mesin dari Modal
+        $line_id = $request->line_id;
         $cleanPart = str_replace(' ', '', trim($part_no));
 
         DB::beginTransaction();
@@ -102,7 +100,7 @@ class WeldingStockController extends Controller
             DB::table('welding_batches')->insert([
                 'no_produksi_stamping' => 'WLD-' . date('Ymd-His'), 
                 'part_no'              => $part_no,
-                'line_id'              => $line_id, // ✨ Simpan ID Mesin
+                'line_id'              => $line_id,
                 'qty_masuk'            => $qty_ambil,
                 'status'               => 'PENDING',
                 'created_at'           => now(),
@@ -130,61 +128,66 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4. FINISH WELDING
+     * 4. FINISH WELDING (DENGAN KEAMANAN DATA)
      */
-   public function finishWelding(Request $request, $id)
-{
-    $batch = DB::table('welding_batches')->where('id', $id)->first();
-    if (!$batch) return back()->with('error', 'Data batch tidak ditemukan.');
+    public function finishWelding(Request $request, $id)
+    {
+        $batch = DB::table('welding_batches')->where('id', $id)->first();
+        if (!$batch) return back()->with('error', 'Data batch tidak ditemukan.');
 
-    $qty_ok = (int)$request->qty_ok;
-    $qty_ng = (int)$request->qty_ng;
-    $total_input = $qty_ok + $qty_ng;
+        $qty_ok = (int)$request->qty_ok;
+        $qty_ng = (int)$request->qty_ng;
+        $total_input = $qty_ok + $qty_ng;
 
-    // 🔒 KEAMANAN 1: Validasi Jumlah
-    if ($total_input != $batch->qty_masuk) {
-        return back()->with('error', "🚨 KEAMANAN: Total (OK: $qty_ok + NG: $qty_ng) harus $batch->qty_masuk Pcs! Ada selisih " . ($batch->qty_masuk - $total_input) . " Pcs.");
-    }
-
-    DB::beginTransaction();
-    try {
-        // Simpan Hasil
-        DB::table('welding_batches')->where('id', $id)->update([
-            'qty_ok' => $qty_ok, 
-            'qty_ng' => $qty_ng,
-            'status' => 'COMPLETED', 
-            'updated_at' => now()
-        ]);
-
-        // Simpan Rincian NG jika ada
-        if ($request->has('ng_detail_type')) {
-            foreach ($request->ng_detail_type as $key => $type) {
-                $qDetail = (int)$request->ng_detail_qty[$key];
-                if ($qDetail > 0) {
-                    DB::table('production_ng_logs')->insert([
-                        'no_produksi' => $batch->no_produksi_stamping,
-                        'ng_type' => $type,
-                        'qty' => $qDetail,
-                        'created_at' => now()
-                    ]);
-                }
-            }
+        // 🔒 KEAMANAN 1: Validasi Integritas Angka
+        if ($total_input != $batch->qty_masuk) {
+            return back()->with('error', "🚨 GAGAL: Total input ($total_input) tidak sama dengan Target ($batch->qty_masuk)!");
         }
 
-        $this->syncWeldingToActual($id);
-        DB::commit();
-        return back()->with('success', 'Data aman & tersinkronisasi.');
-    } catch (\Exception $e) { 
-        DB::rollBack(); 
-        return back()->with('error', 'Gagal: ' . $e->getMessage()); 
+        DB::beginTransaction();
+        try {
+            // 1. Simpan hasil akhir batch
+            DB::table('welding_batches')->where('id', $id)->update([
+                'qty_ok' => $qty_ok, 
+                'qty_ng' => $qty_ng,
+                'status' => 'COMPLETED', 
+                'keterangan' => $request->keterangan,
+                'qc_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 2. Simpan Rincian Penyakit NG
+            if ($request->has('ng_detail_type')) {
+                foreach ($request->ng_detail_type as $key => $type) {
+                    $qDetail = (int)$request->ng_detail_qty[$key];
+                    if ($qDetail > 0) {
+                        DB::table('production_ng_logs')->insert([
+                            'no_produksi' => $batch->no_produksi_stamping,
+                            'ng_type'     => $type,
+                            'qty'         => $qDetail,
+                            'created_at'  => now()
+                        ]);
+                    }
+                }
+            }
+
+            // 3. ✨ Sinkronisasi ke Tabel Actual Khusus WELDING
+            $this->syncWeldingToActual($id);
+
+            DB::commit();
+            return back()->with('success', 'Data aman & tersinkronisasi ke Dashboard PPIC.');
+        } catch (\Exception $e) { 
+            DB::rollBack(); 
+            return back()->with('error', 'Gagal Simpan: ' . $e->getMessage()); 
+        }
     }
-}
 
     /**
-     * ✨ 4.1 ROBOT SINKRONISASI WELDING (FIXED)
+     * ✨ 4.1 ROBOT SINKRONISASI (MENGGUNAKAN TABEL WELDING_ACTUALS)
      */
     private function syncWeldingToActual($weldingId)
     {
+        // Ambil data batch terbaru
         $batch = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
             ->where('welding_batches.id', $weldingId)
@@ -194,24 +197,23 @@ class WeldingStockController extends Controller
         if (!$batch) return;
 
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
-        $lineName = $batch->kode_line ?? 'WELDING AREA';
+        $lineName = $batch->kode_line ?? 'W-GENERAL';
 
-        // Update production_actuals
-        $actual = DB::table('production_actuals')
+        // ✨ UPDATE TABEL welding_actuals (Bukan production_actuals lagi)
+        $actual = DB::table('welding_actuals')
             ->where('part_no', $batch->part_no)
             ->where('line_code', $lineName)
-            ->where('shift', 'N/A')
             ->whereDate('created_at', $dateOnly)
             ->first();
 
         if ($actual) {
-            DB::table('production_actuals')->where('id', $actual->id)->update([
+            DB::table('welding_actuals')->where('id', $actual->id)->update([
                 'qty_ok' => $actual->qty_ok + $batch->qty_ok,
                 'qty_ng' => $actual->qty_ng + $batch->qty_ng,
                 'updated_at' => now()
             ]);
         } else {
-            DB::table('production_actuals')->insert([
+            DB::table('welding_actuals')->insert([
                 'part_no'    => $batch->part_no,
                 'line_code'  => $lineName,
                 'shift'      => 'N/A',
@@ -294,5 +296,4 @@ class WeldingStockController extends Controller
 
         return view('welding.welding_history_weldig', compact('historyData'));
     }
-    
 }
