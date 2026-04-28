@@ -55,41 +55,52 @@ class ProduksiController extends Controller
     /**
      * ✨ FIX STORE: HANYA INSERT 1 BARIS (ANTI-DOUBLE DATABASE)
      */
-    public function store(Request $request)
-    {
-        $rm = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
-        $totalPcs = (int)$request->qty_ambil_pcs;
-        $lineIds = $request->line_ids; // Array ID mesin
+   public function storeResult(Request $request, $id)
+{
+    DB::beginTransaction();
+    try {
+        $batch = DB::table('produksi_batches')->where('id', $id)->first();
+        
+        // 1. Simpan hasil produksi Stamping
+        DB::table('produksi_batches')->where('id', $id)->update([
+            'qty_hasil_ok' => $request->qty_ok,
+            'qty_hasil_ng' => $request->qty_ng,
+            'status'       => 'COMPLETED', // Atau status lainnya
+            'updated_at'   => now()
+        ]);
 
-        if (!$rm || !$lineIds) return redirect()->back()->with('error', 'Pilih Line dulu!');
+        // 2. ✨ LOGIKA PENGIRIMAN OTOMATIS KE WELDING WIP ✨
+        $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
 
-        DB::beginTransaction();
-        try {
-            DB::table('rm_stocks')->where('coil_id', trim($rm->coil_id))->decrement('stock_pcs', $totalPcs);
-            
-            $noProduksi = $request->no_produksi;
+        if ($part && $part->next_process == 'WELDING') {
+            // A. Tambah saldo ke welding_stock di tabel gudang
+            DB::table('finished_goods')
+                ->where('part_no', $batch->material_code)
+                ->increment('welding_stock', $request->qty_ok, ['updated_at' => now()]);
 
-            DB::table('rm_production_logs')->insert([
-                'rm_stock_id' => $rm->id, 'material_code' => $request->material_code, 
-                'pcs_used' => $totalPcs, 'no_produksi' => $noProduksi, 'created_at' => now()
+            // B. Masukkan ke production_logs agar muncul di kolom "IN (STAMPING)" 
+            // di layar Welding Terminal V3.0 (Gambar image_676dd5.png)
+            DB::table('production_logs')->insert([
+                'part_no'      => $batch->material_code,
+                'qty'          => $request->qty_ok,
+                'process_type' => 'WELDING', // Label pengiriman ke Las
+                'created_at'   => now(),
+                'updated_at'   => now()
             ]);
+        } else {
+            // Kalau bukan part welding, masuk ke stok FG biasa
+            DB::table('finished_goods')
+                ->where('part_no', $batch->material_code)
+                ->increment('stock', $request->qty_ok, ['updated_at' => now()]);
+        }
 
-            // ✨ KUNCI: Masukkan hanya 1 row ke produksi_batches (Meskipun pilih banyak mesin)
-            DB::table('produksi_batches')->insert([
-                'no_produksi'   => $noProduksi, 
-                'shift'         => $request->shift, 
-                'mesin_id'      => $lineIds[0], // Simpan ID mesin pertama sebagai representasi
-                'material_code' => $request->material_code, 
-                'rm_stock_id'   => $rm->id, 
-                'qty_ambil_pcs' => $totalPcs, // Total qty utuh
-                'status'        => 'PROSES', 
-                'created_at'    => now()
-            ]);
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Batch Berhasil Dibuat (Single Data Mode).');
-        } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
+        DB::commit();
+        return back()->with('success', 'Data Transmitted to ' . ($part->next_process ?? 'FG'));
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Transmission Failed: ' . $e->getMessage());
     }
+}
 
     /**
      * ✨ FIX UPDATE RESULT: Membersihkan data lama agar angka NG tidak "Ngaco"
