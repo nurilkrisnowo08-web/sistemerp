@@ -27,6 +27,10 @@
     
     .table-modern thead th { background: #f1f5f9; color: #64748b; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border: none; }
     .table-modern td { vertical-align: middle; font-weight: 700; color: var(--p-navy); border-bottom: 1px solid #f1f5f9; }
+
+    /* NG Highlight List */
+    .ng-item-box { background: white; border-radius: 15px; padding: 12px 15px; border-left: 5px solid #ef4444; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    .batch-summary-box { background: var(--p-navy); color: white; border-radius: 15px; padding: 15px; margin-bottom: 20px; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -61,7 +65,6 @@
         </div>
     </div>
 
-    {{-- Main Production List --}}
     <div class="glass-card p-0 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover mb-0 text-center table-modern">
@@ -97,13 +100,12 @@
     </div>
 </div>
 
-{{-- 🤖 THE MASTER INTEGRATED MODAL --}}
+{{-- 🤖 MODAL UTAMA --}}
 <div class="modal fade animate__animated animate__fadeIn" id="modalAudit" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content shadow-2xl">
             <div class="modal-body p-5">
                 <div class="row">
-                    {{-- KIRI: DAFTAR BATCH --}}
                     <div class="col-lg-6 pr-lg-5">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h4 class="font-weight-black mb-0" id="modalTitle">--</h4>
@@ -123,17 +125,14 @@
                             </table>
                         </div>
                     </div>
-                    {{-- KANAN: INTELLIGENCE PANEL (CHART & DETAILS) --}}
                     <div class="col-lg-6">
                         <div class="intel-panel shadow-sm text-center">
                             <h6 class="font-weight-black text-muted uppercase small mb-4">Batch Performance Intelligence</h6>
                             
-                            {{-- Container Grafik --}}
                             <div id="intelChartContainer" style="min-height: 300px;">
                                 <div id="intelChart"></div>
                             </div>
 
-                            {{-- Container List Reject --}}
                             <div id="ngDetailContent" class="mt-4 text-left">
                                 <div class="text-center py-5 text-muted opacity-50">
                                     <i class="fas fa-mouse-pointer d-block mb-2 fa-2x"></i>
@@ -154,13 +153,11 @@
 <script>
     let chartObj = null;
 
-    // 1. Membuka Modal Utama & Isi Tabel Kiri
     function openAudit(partNo, batches) {
         document.getElementById('modalTitle').innerText = partNo;
         const body = document.getElementById('auditBody');
         body.innerHTML = '';
         
-        // Reset Panel Kanan
         document.getElementById('ngDetailContent').innerHTML = `
             <div class="text-center py-5 text-muted opacity-50">
                 <i class="fas fa-mouse-pointer d-block mb-2 fa-2x"></i>
@@ -185,37 +182,43 @@
         $('#modalAudit').modal('show');
     }
 
-    // 2. Klik ID Batch -> Update Grafik & List NG (Intelligence)
     function analyzeBatch(btn, id, totalIn, ok, ng) {
-        // Efek Visual Tombol Aktif
         document.querySelectorAll('.batch-id-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
 
-        // Fetch Data detail NG dari Server
         fetch(`/ppic/get-batch-ng-details/${id}`)
             .then(res => res.json())
             .then(data => {
                 const labels = ['GOOD OK'];
                 const values = [ok];
-                let ngHtml = '<hr><p class="small font-weight-black text-muted uppercase mb-3">Defect Distribution:</p>';
+                
+                // ✨ HUD Summary: Tampilkan info Ambil, OK, NG di atas daftar rincian
+                let ngHtml = `
+                    <div class="batch-summary-box shadow-sm">
+                        <div class="row text-center">
+                            <div class="col-4 border-right border-secondary"><small class="d-block opacity-75 uppercase">Taken (In)</small><b class="h5">${totalIn}</b></div>
+                            <div class="col-4 border-right border-secondary"><small class="d-block opacity-75 uppercase">Good (OK)</small><b class="h5 text-success">${ok}</b></div>
+                            <div class="col-4"><small class="d-block opacity-75 uppercase">Reject (NG)</small><b class="h5 text-danger">${ng}</b></div>
+                        </div>
+                    </div>
+                    <p class="small font-weight-black text-muted uppercase mb-3">Defect Details Breakdown:</p>`;
 
                 if(data.length > 0) {
                     data.forEach(item => {
                         labels.push(item.ng_type.toUpperCase());
                         values.push(parseInt(item.qty));
                         ngHtml += `
-                            <div class="d-flex justify-content-between align-items-center mb-2 p-3 bg-white rounded-xl border-left border-danger" style="border-left-width: 5px !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+                            <div class="ng-item-box d-flex justify-content-between align-items-center animate__animated animate__fadeInLeft">
                                 <span class="small font-weight-bold text-dark">${item.ng_type.toUpperCase()}</span>
                                 <span class="badge badge-danger rounded-pill px-3 py-2 font-weight-black">${item.qty} PCS</span>
                             </div>`;
                     });
                 } else if (ng > 0) {
-                    // Jika ada NG tapi rinciannya tidak diisi
                     labels.push('UNSPECIFIED NG');
                     values.push(ng);
-                    ngHtml += `<div class="alert alert-warning rounded-xl text-center small font-weight-bold">NG RECORDED BUT NO DETAILS FOUND</div>`;
+                    ngHtml += `<div class="alert alert-warning rounded-xl text-center small font-weight-bold">NG DETECTED, BUT SPECIFIC LOG NOT FOUND</div>`;
                 } else {
-                    ngHtml += '<div class="alert alert-success rounded-xl text-center small font-weight-bold">✨ 100% QUALITY PERFECT (NO DEFECTS)</div>';
+                    ngHtml += `<div class="alert alert-success rounded-xl text-center small font-weight-bold"><i class="fas fa-check-circle mr-1"></i> 100% QUALITY PERFECT</div>`;
                 }
 
                 document.getElementById('ngDetailContent').innerHTML = ngHtml;
@@ -223,7 +226,6 @@
             });
     }
 
-    // 3. Render Grafik Donut Intelligence
     function renderIntelligenceChart(labels, values, totalIn) {
         const options = {
             series: values,
@@ -257,12 +259,8 @@
             }
         };
 
-        if (chartObj) {
-            chartObj.updateOptions(options);
-        } else {
-            chartObj = new ApexCharts(document.querySelector("#intelChart"), options);
-            chartObj.render();
-        }
+        if (chartObj) { chartObj.updateOptions(options); } 
+        else { chartObj = new ApexCharts(document.querySelector("#intelChart"), options); chartObj.render(); }
     }
 </script>
 @endsection
