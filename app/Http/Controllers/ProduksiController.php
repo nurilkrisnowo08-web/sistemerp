@@ -43,7 +43,13 @@ class ProduksiController extends Controller
 
         $activeProductions = $query->orderBy('batch_id', 'desc')->get();
         
-        $materials = DB::table('rm_stocks')->where('stock_pcs', '>', 0)->get(); 
+        // ✨ FIX image_4d22f8: Gunakan GroupBy agar ID Coil (seperti SAI) tidak muncul double di dropdown
+        $materials = DB::table('rm_stocks')
+            ->where('stock_pcs', '>', 0)
+            ->select('id', 'coil_id', 'stock_pcs', 'spec', 'size', 'customer')
+            ->groupBy('coil_id') 
+            ->get(); 
+
         $customers = DB::table('customers')->get();
         $lines = DB::table('line')->get(); 
 
@@ -56,8 +62,10 @@ class ProduksiController extends Controller
     {
         DB::beginTransaction();
         try {
+            $no_produksi = 'PROD-' . date('Ymd-His');
+
             DB::table('produksi_batches')->insert([
-                'no_produksi'   => 'PROD-' . date('Ymd-His'),
+                'no_produksi'   => $no_produksi,
                 'mesin_id'      => $request->mesin_id,
                 'rm_stock_id'   => $request->rm_stock_id,
                 'material_code' => $request->material_code,
@@ -70,6 +78,16 @@ class ProduksiController extends Controller
             
             DB::table('rm_stocks')->where('id', $request->rm_stock_id)->decrement('stock_pcs', $request->qty_ambil_pcs);
 
+            // ✨ FIX UTAMA: Catat ke log mutasi RM agar kolom OUT di RM HUB terisi rill
+            DB::table('rm_production_logs')->insert([
+                'rm_stock_id'   => $request->rm_stock_id,
+                'material_code' => $request->material_code,
+                'pcs_used'      => $request->qty_ambil_pcs,
+                'no_produksi'   => $no_produksi,
+                'created_at'    => now(),
+                'updated_at'    => now()
+            ]);
+
             DB::commit();
             return redirect()->back()->with('success', 'Batch Produksi Dimulai!');
         } catch (\Exception $e) {
@@ -78,9 +96,6 @@ class ProduksiController extends Controller
         }
     }
 
-    /**
-     * ✨ FIX: Mengarahkan ke kolom actual_stock (image_5aca17.png)
-     */
     public function storeResult(Request $request, $id)
     {
         DB::beginTransaction();
@@ -106,7 +121,7 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                // ✨ FIX: Ganti 'stock' menjadi 'actual_stock'
+                // ✨ FIX image_5aca17: Gunakan actual_stock
                 DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('actual_stock', $request->qty_ok, ['updated_at' => now()]);
             }
 
@@ -118,9 +133,6 @@ class ProduksiController extends Controller
         }
     }
 
-    /**
-     * ✨ FIX: Inti perbaikan pengiriman ke Welding WIP
-     */
     public function updateResult(Request $request, $id) 
     {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
@@ -153,6 +165,13 @@ class ProduksiController extends Controller
                         'pcs_in' => (int)$request->qty_return_warehouse, 'source' => 'return', 
                         'no_produksi' => $p->no_produksi, 'created_at' => now()
                     ]);
+                    
+                    // ✨ Update log produksi jika ada barang kembali
+                    $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
+                    if($currentLog) {
+                        DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)
+                            ->update(['pcs_used' => ($currentLog->pcs_used - (int)$request->qty_return_warehouse)]);
+                    }
                 }
             }
 
@@ -171,11 +190,8 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
-            // ✨ LOGIKA TRANSMIT KE WIP WELDING ✨
             if ($target == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
-                
-                // Ini yang membuat data muncul di monitor Welding WIP (IN STAMPING)
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code,
                     'qty'          => $qty_ok,
@@ -184,13 +200,12 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                // ✨ FIX: Ganti 'stock' menjadi 'actual_stock'
+                // ✨ FIX image_5aca17: Gunakan actual_stock
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
             }
 
             $this->syncToActual($id);
 
-            DB::table('production_ng_logs')->where('no_produksi', $p->no_produksi)->delete();
             if (!empty($ng_details)) {
                 $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
                              ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
@@ -231,6 +246,7 @@ class ProduksiController extends Controller
         );
     }
 
+    // --- RECOVERY FUNCTIONS & HELPERS (TETAP SAMA) ---
     public function getSpecsByCustomer($customer) {
         $specs = DB::table('rm_stocks')->where('customer', trim($customer))->where('stock_pcs', '>', 0)
             ->select(DB::raw('TRIM(spec) as spec'), 'size', DB::raw("REPLACE(size, ' ', '') as size_clean"))
@@ -309,7 +325,11 @@ class ProduksiController extends Controller
         $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
         DB::beginTransaction();
         try {
-            if ($p && $rmInfo) { DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $p->qty_ambil_pcs); }
+            if ($p && $rmInfo) { 
+                DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $p->qty_ambil_pcs); 
+                // Hapus juga log produksinya agar Out di RM HUB kembali normal
+                DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->delete();
+            }
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->delete();
             DB::commit(); return redirect()->route('produksi.index')->with('success', 'Batch Dibatalkan.');
         } catch (\Exception $e) { DB::rollback(); return back(); }
@@ -345,7 +365,6 @@ class ProduksiController extends Controller
         DB::table('rm_stocks')->where('id', $id)->update(['coil_id' => $request->coil_id, 'stock_pcs' => $request->stock_pcs, 'updated_at' => now()]);
         return redirect()->back()->with('success', 'Update Berhasil!');
     }
-    public function getBundles($code) { return $this->getBundlesByPart($code); }
     public function reportProblem(Request $request, $id)
     {
         DB::table('produksi_batches')->where('id', $id)->update([
@@ -353,7 +372,6 @@ class ProduksiController extends Controller
             'keterangan' => '⚠️ DIES RUSAK: ' . $request->problem_note,
             'updated_at' => now()
         ]);
-
         return redirect()->back()->with('error', 'Laporan kendala telah dikirim ke PPIC!');
     }
 }
