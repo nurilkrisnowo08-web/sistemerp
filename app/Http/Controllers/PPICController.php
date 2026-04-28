@@ -261,35 +261,39 @@ class PPICController extends Controller
     /**
      * ✨ 6. QUALITY HUB KHUSUS WELDING (TOTAL PISAH)
      */
-    public function weldingQualityHub(Request $request)
-    {
-        $date = $request->date ?? date('Y-m-d');
+   public function weldingQualityHub(Request $request)
+{
+    $date = $request->date ?? date('Y-m-d');
 
-        // Sum khusus Welding (Baca tabel welding_actuals)
-        $sumWelding = DB::table('welding_actuals')
-            ->whereDate('created_at', $date)
-            ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))->first();
+    // 1. Summary (Total OK & NG)
+    $summary = DB::table('welding_actuals')
+        ->whereDate('created_at', $date)
+        ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))
+        ->first();
 
-        // NG khusus Welding (Baca tabel welding_ng_logs)
-        $ngWelding = DB::table('welding_ng_logs')
-            ->select('ng_type', DB::raw('SUM(qty) as total'))
-            ->whereDate('created_at', $date)
-            ->groupBy('ng_type')->orderBy('total', 'DESC')->get();
+    // 2. Ranking Penyakit (NG) - Nama disamakan dengan View: $ngRanking
+    $ngRanking = DB::table('welding_ng_logs')
+        ->select('ng_type', DB::raw('SUM(qty) as total'))
+        ->whereDate('created_at', $date)
+        ->groupBy('ng_type')
+        ->orderBy('total', 'DESC')
+        ->get();
 
-        // Detail list Welding
-        $detailWelding = DB::table('welding_actuals')->whereDate('created_at', $date)->get();
+    // 3. Detail Per Part & Station
+    $details = DB::table('welding_actuals')->whereDate('created_at', $date)->get();
 
-        foreach($detailWelding as $d) {
-            $d->batches = DB::table('welding_batches')
-                ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
-                ->where('part_no', $d->part_no)
-                ->whereDate('welding_batches.created_at', $date)
-                ->select('no_produksi_stamping as no_produksi', 'qty_masuk', 'qty_ok', 'qty_ng', 'kode_line')
-                ->get();
-        }
-
-        return view('PPIC.welding_quality_hub', compact('date', 'sumWelding', 'ngWelding', 'detailWelding'));
+    foreach($details as $d) {
+        $d->batches = DB::table('welding_batches')
+            ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
+            ->where('part_no', $d->part_no)
+            ->whereDate('welding_batches.created_at', $date)
+            ->select('no_produksi_stamping as no_produksi', 'qty_masuk', 'qty_ok', 'qty_ng', 'kode_line')
+            ->get();
     }
+
+    // ✨ Compact harus sesuai dengan nama variabel yang dipanggil di blade
+    return view('PPIC.welding_quality_hub', compact('date', 'summary', 'ngRanking', 'details'));
+}
 
     // --- RECOVERY FUNCTIONS (JANGAN DIUBAH) ---
     public function resumeBatch($id) { DB::table('produksi_batches')->where('id', $id)->update(['status' => 'PROSES', 'updated_at' => now()]); return redirect()->back()->with('success', 'Batch resumed.'); }
