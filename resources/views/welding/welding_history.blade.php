@@ -59,7 +59,7 @@
 <div id="printArea">
     <div class="print-header">
         <h1 style="margin:0; font-size: 24px;">PT ASALTA MANDIRI AGUNG</h1>
-        <h3 style="margin:5px 0; letter-spacing: 2px;">WELDING WIP & RAW MATERIAL LEDGER</h3>
+        <h3 style="margin:5px 0; letter-spacing: 2px;">WELDING WIP</h3>
         <p style="margin:0; font-size: 12px; font-weight: bold;">Periode Laporan: {{ $startDate }} s/d {{ $endDate }}</p>
     </div>
     
@@ -71,7 +71,7 @@
                 <th>IN (STAMP)</th>
                 <th>IN (RETURN)</th>
                 <th>OUT (WELD)</th>
-                <th>Closing Balance</th>
+                <th>actual stock</th>
             </tr>
         </thead>
         <tbody>
