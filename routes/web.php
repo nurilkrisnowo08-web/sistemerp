@@ -173,6 +173,14 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::get('/get-parts-and-specs/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('rm.get_parts');
     Route::post('/rm/update-unit-pcs', [RmController::class, 'updateUnitPcs'])->name('rm.update_unit_pcs');
     Route::post('/rm/assign-part', [RmController::class, 'assignPart'])->name('rm.assign_part_to_unit');
+    // Rute pendaftaran Spek Master (Yang bikin error merah tadi)
+    Route::post('/rm/store-master-spec', [RmController::class, 'storeMasterSpec'])->name('rm.store_master_spec');
+
+    // Rute pendaftaran Coil Baru
+    Route::post('/rm/store-batch', [RmController::class, 'storeBatch'])->name('rm.store_batch');
+
+    // Rute AJAX untuk ambil data Spek & Part otomatis
+    Route::get('/get-parts-and-specs/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('rm.get_parts');
 
     // FG Adjustments
     Route::get('/stock-fg/{id}/edit', [FgController::class, 'edit'])->name('fg.edit');
