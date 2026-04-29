@@ -1,62 +1,55 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <style>
     :root {
-        --ind-navy: #0f172a; --ind-blue: #2563eb; --ind-amber: #d97706;
-        --ind-emerald: #059669; --ind-rose: #e11d48; --bg-main: #f8fafc;
+        --ind-navy: #0f172a; --ind-blue: #4361ee; --ind-amber: #f59e0b;
+        --ind-emerald: #10b981; --ind-rose: #ef4444; --bg-main: #f1f5f9;
     }
-    body { font-family: 'Inter', sans-serif; background-color: var(--bg-main); color: #1e293b; }
-    .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--ind-navy); }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
+    .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
     
     /* Stats Cards */
-    .stat-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.3s; }
-    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.05); }
+    .stat-card { background: #fff; border-radius: 24px; padding: 20px; border: 1px solid rgba(255,255,255,0.8); box-shadow: 0 10px 30px rgba(0,0,0,0.02); transition: 0.3s; }
     .stat-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
-    .stat-value { font-family: 'Orbitron'; font-size: 24px; font-weight: 800; color: var(--ind-navy); }
+    .stat-value { font-family: 'Orbitron'; font-size: 26px; font-weight: 800; }
 
-    /* Table Design */
-    .ledger-container { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    /* Table Modern */
+    .ledger-container { background: #fff; border-radius: 30px; border: 1px solid #eef2f6; overflow: hidden; box-shadow: 0 15px 50px rgba(0,0,0,0.03); }
     .table-history thead th { 
-        background: #f8fafc; color: #64748b; font-size: 11px; 
-        text-transform: uppercase; letter-spacing: 1px; padding: 18px 15px; 
-        border-bottom: 2px solid #edf2f7; font-weight: 800;
+        background: #f8fafc; color: #64748b; font-size: 10px; 
+        text-transform: uppercase; letter-spacing: 1.5px; padding: 22px 15px; border: none;
     }
-    .table-history tbody tr { cursor: pointer; transition: 0.2s; }
-    .table-history tbody tr:hover { background-color: #f8faff; }
-    .table-history td { padding: 16px 15px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 600; font-size: 13px; }
+    .table-history tbody tr { cursor: pointer; transition: 0.3s; }
+    .table-history tbody tr:hover { background-color: rgba(67, 97, 238, 0.04); }
+    .table-history td { padding: 18px 15px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; font-size: 13px; }
 
-    .origin-badge { font-size: 10px; padding: 4px 10px; border-radius: 6px; font-weight: 800; }
-    .yield-badge { padding: 4px 10px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 12px; }
+    .origin-badge { font-size: 9px; padding: 5px 12px; border-radius: 10px; font-weight: 800; letter-spacing: 0.5px; }
+    .yield-badge { padding: 6px 12px; border-radius: 12px; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 12px; }
     
-    .chart-box { background: #fff; border-radius: 24px; padding: 25px; border: 1px solid #e2e8f0; margin-bottom: 30px; }
-    
-    /* ✨ Remark Style */
-    .remark-text { font-size: 11px; color: #64748b; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-    .ng-mini-list { font-size: 10px; color: var(--ind-rose); font-family: 'JetBrains Mono'; margin-top: 4px; line-height: 1.2; }
+    .remark-text { font-size: 12px; color: var(--ind-navy); font-weight: 600; }
+    .ng-pills-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .ng-pill { background: #fff1f2; color: var(--ind-rose); font-size: 9px; padding: 2px 8px; border-radius: 6px; border: 1px solid #fecdd3; font-family: 'JetBrains Mono'; font-weight: 700; }
 
-    /* Modal Detail */
-    .modal-content { border-radius: 24px; border: none; }
-    .detail-label { font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
-    .detail-value { font-weight: 700; color: var(--ind-navy); font-size: 15px; }
-    .ng-detail-box { background: #fff1f2; border: 1px solid #fecdd3; border-radius: 12px; padding: 15px; }
+    /* Modal Styling */
+    .modal-content { border-radius: 40px; border: none; overflow: hidden; }
+    .ng-detail-box { background: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 20px; padding: 20px; }
 </style>
 
-<div class="container-fluid py-4">
+<div class="container-fluid py-4 animate__animated animate__fadeIn">
     {{-- 1. HEADER --}}
-    <div class="d-flex justify-content-between align-items-center mb-5 bg-white p-4 rounded-xl border shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-5 bg-white p-4 rounded-3xl border shadow-sm">
         <div>
-            <h2 class="industrial-header m-0">QUALITY_AUDIT <span class="text-primary">HISTORY</span></h2>
-            <small class="text-muted font-weight-bold uppercase">Consolidated QC Verification Logs</small>
+            <h2 class="industrial-header m-0 text-primary uppercase">Quality_Audit <span class="text-dark">History</span></h2>
+            <p class="text-muted small font-weight-bold mb-0 uppercase">Operational Insights & Batch Verifications</p>
         </div>
-        <div>
-            <a href="{{ route('quality.index') }}" class="btn btn-outline-primary rounded-pill px-4 font-weight-bold">
-                <i class="fas fa-shield-alt mr-2"></i> QC TERMINAL
-            </a>
-        </div>
+        <a href="{{ route('quality.index') }}" class="btn btn-dark rounded-pill px-4 font-weight-black shadow-sm">
+            <i class="fas fa-arrow-left mr-2"></i> QC TERMINAL
+        </a>
     </div>
 
     {{-- 2. STATS --}}
@@ -66,34 +59,28 @@
         $grandTotal = $totalOk + $totalNg;
         $avgYield = $grandTotal > 0 ? ($totalOk / $grandTotal) * 100 : 0;
     @endphp
-    <div class="row mb-4">
-        <div class="col-md-3"><div class="stat-card"><div class="stat-label">Total OK Items</div><div class="stat-value text-emerald">{{ number_format($totalOk) }}</div></div></div>
-        <div class="col-md-3"><div class="stat-card"><div class="stat-label">Total NG Items</div><div class="stat-value text-rose">{{ number_format($totalNg) }}</div></div></div>
-        <div class="col-md-3"><div class="stat-card"><div class="stat-label">Success Rate</div><div class="stat-value text-primary">{{ number_format($avgYield, 1) }}%</div></div></div>
-        <div class="col-md-3"><div class="stat-card"><div class="stat-label">Inspections Done</div><div class="stat-value">{{ $historyData->count() }}</div></div></div>
+    <div class="row mb-5">
+        <div class="col-md-3"><div class="stat-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s;"><div class="stat-label">Total OK Items</div><div class="stat-value text-emerald">{{ number_format($totalOk) }}</div></div></div>
+        <div class="col-md-3"><div class="stat-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s;"><div class="stat-label">Total NG Items</div><div class="stat-value text-rose">{{ number_format($totalNg) }}</div></div></div>
+        <div class="col-md-3"><div class="stat-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s;"><div class="stat-label">Global Yield</div><div class="stat-value text-primary">{{ number_format($avgYield, 1) }}%</div></div></div>
+        <div class="col-md-3"><div class="stat-card animate__animated animate__fadeInUp" style="animation-delay: 0.4s;"><div class="stat-label">Verification Logs</div><div class="stat-value">{{ $historyData->count() }}</div></div></div>
     </div>
 
-    {{-- 3. CHART --}}
-    <div class="chart-box shadow-sm">
-        <h6 class="font-weight-bold mb-4 text-uppercase small tracking-widest text-muted">Quality Trend Analysis</h6>
-        <div id="qualityChart"></div>
-    </div>
-
-    {{-- 4. TABLE --}}
-    <div class="ledger-container shadow-sm">
+    {{-- 3. TABLE --}}
+    <div class="ledger-container shadow-sm animate__animated animate__fadeInUp">
         <div class="table-responsive">
             <table class="table table-history mb-0 text-center">
                 <thead>
                     <tr>
-                        <th class="text-left pl-4">Timestamp</th>
+                        <th class="text-left pl-5">Log Timestamp</th>
                         <th>Origin</th>
-                        <th>Batch_No</th>
-                        <th class="text-left">Part_Identification</th>
+                        <th>Batch Number</th>
+                        <th class="text-left">Part Identification</th>
                         <th class="text-success">OK</th>
                         <th class="text-danger">NG</th>
                         <th>Yield</th>
                         <th>Inspector</th>
-                        <th class="text-left">Analysis / NG Breakdown</th> {{-- ✨ HEADER DISESUAIKAN --}}
+                        <th class="text-left">Defect Analysis Breakdown</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white">
@@ -101,49 +88,39 @@
                     @php
                         $total = (float)$h->qty_ok + (float)$h->qty_ng;
                         $yield = $total > 0 ? ($h->qty_ok / $total) * 100 : 0;
-
-                        // ✨ QUERY RINCIAN NG SPESIFIK UNTUK BARIS INI
-                        $logs = DB::table('production_ng_logs')
-                            ->join('production_actuals', 'production_ng_logs.actual_id', '=', 'production_actuals.id')
-                            ->where('production_actuals.part_no', $h->part_no)
-                            ->whereDate('production_ng_logs.created_at', date('Y-m-d', strtotime($h->created_at)))
-                            ->select('ng_type', 'qty')
-                            ->get();
-                        
-                        // Sisipkan logs ke dalam objek agar terbaca di Modal JS
-                        $h->specific_ng = $logs;
                     @endphp
                     <tr onclick="showDetail({{ json_encode($h) }})">
-                        <td class="text-left pl-4 text-muted small">{{ \Carbon\Carbon::parse($h->created_at)->format('d/m/Y H:i') }}</td>
+                        <td class="text-left pl-5 text-muted small font-weight-bold">{{ date('d/m/Y H:i', strtotime($h->created_at)) }}</td>
                         <td>
-                            <span class="origin-badge {{ $h->origin == 'WELDING' ? 'bg-warning text-dark' : 'bg-info text-white' }}">
+                            <span class="origin-badge {{ $h->origin == 'WELDING' ? 'bg-warning text-dark' : 'bg-primary text-white' }}">
                                 {{ $h->origin }}
                             </span>
                         </td>
-                        <td class="font-weight-bold text-primary" style="font-family: 'JetBrains Mono';">{{ $h->batch_no }}</td>
-                        <td class="text-dark font-weight-bold text-left">{{ $h->part_no }}</td>
-                        <td class="text-success font-weight-bolder">{{ number_format($h->qty_ok) }}</td>
-                        <td class="text-danger font-weight-bolder">{{ number_format($h->qty_ng) }}</td>
+                        <td class="text-primary font-weight-black" style="font-family: 'JetBrains Mono';">{{ $h->batch_no }}</td>
+                        <td class="text-dark font-weight-black text-left">{{ $h->part_no }}</td>
+                        <td class="text-success font-weight-black">{{ number_format($h->qty_ok) }}</td>
+                        <td class="text-danger font-weight-black">{{ number_format($h->qty_ng) }}</td>
                         <td>
-                            <span class="yield-badge {{ $yield < 100 ? 'bg-light text-warning border' : 'bg-light text-success border' }}">
+                            <span class="yield-badge {{ $yield < 100 ? 'text-warning border-warning' : 'text-success border-success' }} border">
                                 {{ number_format($yield, 1) }}%
                             </span>
                         </td>
-                        <td class="text-uppercase small font-weight-bold">{{ $h->inspector }}</td>
+                        <td class="text-uppercase small font-weight-black">{{ $h->inspector }}</td>
                         <td class="text-left">
-                            <div class="remark-text">{{ $h->ng_reason ?: 'Regular Inspection' }}</div>
-                            {{-- ✨ TAMPILKAN RINCIAN NG KECIL DI TABEL --}}
-                            @if($logs->count() > 0)
-                                <div class="ng-mini-list">
-                                    @foreach($logs as $l)
-                                        • {{ $l->ng_type }} ({{ $l->qty }}) 
+                            {{-- ✨ TAMPILKAN RINGKASAN NG DARI NG_REASON --}}
+                            @if($h->ng_reason && $h->ng_reason != 'OK GOODS')
+                                <div class="ng-pills-container">
+                                    @foreach(explode(', ', $h->ng_reason) as $pill)
+                                        <span class="ng-pill">{{ $pill }}</span>
                                     @endforeach
                                 </div>
+                            @else
+                                <small class="text-muted italic">No defects</small>
                             @endif
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="py-5 text-muted">No audit logs found.</td></tr>
+                    <tr><td colspan="9" class="py-5 text-muted">Zero inspection records found in database.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -151,38 +128,37 @@
     </div>
 </div>
 
-{{-- 5. DETAIL MODAL --}}
-<div class="modal fade" id="detailModal" tabindex="-1">
+{{-- 4. DETAIL MODAL (Cyber Industrial) --}}
+<div class="modal fade animate__animated animate__zoomIn" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content shadow-lg">
-            <div class="modal-header bg-dark text-white px-4 py-3 border-0">
-                <h6 class="modal-title font-weight-bold text-uppercase tracking-wider">Inspection Detail Report</h6>
+        <div class="modal-content shadow-2xl">
+            <div class="modal-header bg-dark text-white px-4 py-4 border-0">
+                <h6 class="modal-title font-weight-black uppercase tracking-widest"><i class="fas fa-file-contract mr-2 text-primary"></i>Verification_Report</h6>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-4">
-                <div class="text-center mb-4">
-                    <div class="detail-label">Batch Identifier</div>
-                    <div class="h4 font-weight-bold text-primary mt-1" id="det-batch" style="font-family: 'Orbitron';"></div>
+            <div class="modal-body p-5">
+                <div class="text-center mb-5">
+                    <small class="stat-label">Batch Identifier</small>
+                    <div class="h3 font-weight-black text-primary mt-1" id="det-batch" style="font-family: 'Orbitron';"></div>
                 </div>
-                <div class="row mb-4">
-                    <div class="col-6 mb-3 border-right"><div class="detail-label">Part No</div><div class="detail-value" id="det-part"></div></div>
-                    <div class="col-6 mb-3"><div class="detail-label">Origin</div><div class="detail-value" id="det-origin"></div></div>
-                    <div class="col-4 mb-3 border-right"><div class="detail-label">Qty OK</div><div class="detail-value text-success h5" id="det-ok"></div></div>
-                    <div class="col-4 mb-3 border-right"><div class="detail-label">Qty NG</div><div class="detail-value text-danger h5" id="det-ng"></div></div>
-                    <div class="col-4 mb-3"><div class="detail-label">Yield</div><div class="detail-value" id="det-yield"></div></div>
-                    <div class="col-12 mb-3"><div class="detail-label">Inspector Name</div><div class="detail-value" id="det-inspector"></div></div>
+                
+                <div class="row mb-5 text-center">
+                    <div class="col-6 mb-4"><div class="stat-label">Part Identification</div><div class="font-weight-black h5" id="det-part"></div></div>
+                    <div class="col-6 mb-4"><div class="stat-label">Process Origin</div><div class="font-weight-black h5" id="det-origin"></div></div>
+                    <div class="col-4 border-right"><div class="stat-label">Verified OK</div><div class="text-success font-weight-black h4" id="det-ok"></div></div>
+                    <div class="col-4 border-right"><div class="stat-label">Total NG</div><div class="text-danger font-weight-black h4" id="det-ng"></div></div>
+                    <div class="col-4"><div class="stat-label">Efficiency</div><div class="text-primary font-weight-black h4" id="det-yield"></div></div>
                 </div>
 
-                {{-- ✨ BOX RINCIAN NG SPESIFIK DI MODAL --}}
                 <div class="mb-4">
-                    <div class="detail-label mb-2">Specific Reject Breakdown (NG)</div>
+                    <label class="stat-label mb-3 d-block"><i class="fas fa-list-ul mr-2"></i>Defect Breakdown (Categorized)</label>
                     <div id="det-ng-list" class="ng-detail-box">
                         </div>
                 </div>
 
-                <div class="col-12 p-0">
-                    <div class="detail-label">QC Analysis Notes</div>
-                    <div class="p-3 bg-light rounded-xl border mt-1 text-muted small" id="det-reason" style="min-height: 60px;"></div>
+                <div class="bg-light p-4 rounded-3xl border">
+                    <small class="stat-label d-block mb-2">Lead Inspector Remarks</small>
+                    <div class="font-weight-bold text-muted small" id="det-inspector" style="letter-spacing: 1px;"></div>
                 </div>
             </div>
         </div>
@@ -190,29 +166,6 @@
 </div>
 
 <script>
-    // 1. CHART LOGIC
-    const historyData = @json($historyData->take(15)->reverse()->values());
-    const options = {
-        series: [{
-            name: 'Yield %',
-            data: historyData.map(item => {
-                const total = parseFloat(item.qty_ok) + parseFloat(item.qty_ng);
-                return total > 0 ? ((item.qty_ok / total) * 100).toFixed(1) : 0;
-            })
-        }],
-        chart: { type: 'area', height: 300, toolbar: { show: false }, zoom: { enabled: false } },
-        colors: ['#2563eb'],
-        stroke: { curve: 'smooth', width: 3 },
-        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 } },
-        xaxis: { 
-            categories: historyData.map(item => item.batch_no.substr(-6)),
-            labels: { style: { fontSize: '10px', fontWeight: 600 } }
-        },
-        yaxis: { max: 100, min: 0, labels: { formatter: val => val + "%" } }
-    };
-    new ApexCharts(document.querySelector("#qualityChart"), options).render();
-
-    // 2. MODAL DETAIL (Disesuaikan untuk NG Spesifik)
     function showDetail(data) {
         const total = parseFloat(data.qty_ok) + parseFloat(data.qty_ng);
         const yieldVal = total > 0 ? ((data.qty_ok / total) * 100).toFixed(1) : 0;
@@ -220,27 +173,36 @@
         document.getElementById('det-batch').innerText = data.batch_no;
         document.getElementById('det-part').innerText = data.part_no;
         document.getElementById('det-origin').innerText = data.origin;
-        document.getElementById('det-ok').innerText = data.qty_ok + " PCS";
-        document.getElementById('det-ng').innerText = data.qty_ng + " PCS";
+        document.getElementById('det-ok').innerText = data.qty_ok;
+        document.getElementById('det-ng').innerText = data.qty_ng;
         document.getElementById('det-yield').innerText = yieldVal + "%";
-        document.getElementById('det-inspector').innerText = data.inspector;
-        document.getElementById('det-reason').innerText = data.ng_reason || 'No specific QC analysis recorded.';
+        document.getElementById('det-inspector').innerText = data.inspector.toUpperCase();
 
-        // ✨ HANDLE RINCIAN NG DI MODAL
         const ngListDiv = document.getElementById('det-ng-list');
-        ngListDiv.innerHTML = ''; // Kosongkan dulu
+        ngListDiv.innerHTML = ''; 
 
-        if (data.specific_ng && data.specific_ng.length > 0) {
-            data.specific_ng.forEach(item => {
-                ngListDiv.innerHTML += `
-                    <div class="d-flex justify-content-between mb-1" style="font-family: 'JetBrains Mono'; font-size: 12px; font-weight:700;">
-                        <span class="text-danger">• ${item.ng_type.toUpperCase()}</span>
-                        <span class="badge badge-danger">${item.qty} PCS</span>
-                    </div>
-                `;
+        // ✨ LOGIKA PARSING: Memecah string "CRACK (2), NOBI (1)" menjadi baris-baris rill
+        if (data.ng_reason && data.ng_reason !== 'OK GOODS') {
+            const defects = data.ng_reason.split(', ');
+            defects.forEach(defect => {
+                // defect is something like "CRACK (2)"
+                const parts = defect.match(/(.+)\s\((\d+)\)/);
+                if (parts) {
+                    const name = parts[1];
+                    const qty = parts[2];
+                    ngListDiv.innerHTML += `
+                        <div class="d-flex justify-content-between align-items-center mb-2 bg-white p-3 rounded-xl shadow-sm border">
+                            <span class="font-weight-black text-danger uppercase" style="font-size:12px;">• ${name}</span>
+                            <span class="badge badge-danger rounded-pill px-3 font-weight-black">${qty} PCS</span>
+                        </div>
+                    `;
+                } else {
+                    // Fallback jika format string beda
+                    ngListDiv.innerHTML += `<div class="text-dark font-weight-bold">• ${defect}</div>`;
+                }
             });
         } else {
-            ngListDiv.innerHTML = '<small class="text-muted italic">No specific defect breakdown found.</small>';
+            ngListDiv.innerHTML = '<div class="text-center py-2 text-muted font-weight-bold italic">ZERO_DEFECTS_CONFIRMED</div>';
         }
         
         $('#detailModal').modal('show');
