@@ -10,36 +10,42 @@ class WeldingMasterController extends Controller
     public function lineIndex()
     {
         $lines = DB::table('line_welding')->get();
-        // ✨ DISESUAIKAN: Folder 'welding', file 'master_line'
+        // Sesuai dengan folder welding/master_line.blade.php
         return view('welding.master_line', compact('lines'));
     }
 
     public function ngIndex()
     {
-        // Ambil NG khusus WELDING
+        // ✨ PERBAIKAN: Ambil SEMUA kategori (Welding, Stamping, General) 
+        // agar saat Bapak input NG Stamping, datanya langsung muncul di tabel.
         $listNG = DB::table('master_ngs')
-            ->where('category', 'WELDING')
+            ->orderBy('category', 'asc')
             ->orderBy('ng_name', 'asc')
             ->get();
 
-        // ✨ DISESUAIKAN: Folder 'welding', file 'welding_ng' 
-        // (Pastikan file sudah di-rename jadi welding_ng.blade.php)
         return view('welding.welding_ng', compact('listNG'));
     }
 
     public function ngStore(Request $request)
     {
-        $request->validate(['ng_name' => 'required|max:255']);
+        // Validasi input
+        $request->validate([
+            'ng_name' => 'required|max:255',
+            'category' => 'required' 
+        ]);
 
         try {
+            // ✨ PERBAIKAN: Hapus created_at & updated_at karena kolom tersebut 
+            // tidak ada di database Bapak (Penyebab error SQLSTATE[42S22])
             DB::table('master_ngs')->insert([
-                'ng_name'    => strtoupper(trim($request->ng_name)),
-                'category'   => 'WELDING',
-                'created_at' => now(),
-                'updated_at' => now()
+                'ng_name'  => strtoupper(trim($request->ng_name)),
+                'category' => $request->category, // Mengikuti input dari Modal (Welding/Stamping/General)
             ]);
+
             return redirect()->back()->with('success', 'Master NG Berhasil Ditambahkan!');
+
         } catch (\Exception $e) {
+            // Menampilkan error jika ada masalah lain
             return redirect()->back()->with('error', 'Gagal Simpan: ' . $e->getMessage());
         }
     }
