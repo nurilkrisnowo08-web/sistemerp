@@ -22,7 +22,8 @@ class WeldingMasterController extends Controller
             ->get();
 
         // Kita arahkan ke folder Master dengan nama file master_ng
-        return view('Master.master_ng', compact('listNG'));
+      // Sesuaikan dengan folder 'welding' dan file 'welding_ng'
+    return view('welding.welding_ng', compact('listNG'));
     }
 
     public function ngStore(Request $request)
