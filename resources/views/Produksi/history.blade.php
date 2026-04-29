@@ -39,11 +39,16 @@
         </div>
         
         {{-- 📅 DATE RANGE FILTER --}}
-        <form action="{{ route('produksi.history') }}" method="GET" class="filter-bar d-flex align-items-center mt-3 mt-md-0">
-            <i class="fas fa-calendar-alt text-muted mr-3"></i>
-            <input type="date" name="start_date" value="{{ $startDate }}" class="input-date-custom">
-            <span class="mx-3 text-muted font-weight-bold">TO</span>
-            <input type="date" name="end_date" value="{{ $endDate }}" class="input-date-custom mr-4">
+        {{-- Bagian baris 42-46 di file history.blade.php Bapak --}}
+<form action="{{ route('produksi.history') }}" method="GET" class="filter-bar d-flex align-items-center mt-3 mt-md-0">
+    <i class="fas fa-calendar-alt text-muted mr-3"></i>
+    <input type="date" name="start_date" value="{{ $startDate }}" class="input-date-custom">
+    <span class="mx-3 text-muted font-weight-bold">TO</span>
+    <input type="date" name="end_date" value="{{ $endDate }}" class="input-date-custom mr-4">
+    <button type="submit" class="btn btn-primary rounded-pill px-4 font-weight-bold shadow-sm">
+        <i class="fas fa-sync-alt mr-2"></i> SYNC
+    </button>
+</form>
             <button type="submit" class="btn btn-primary rounded-pill px-4 font-weight-bold shadow-sm">
                 <i class="fas fa-sync-alt mr-2"></i> SYNC
             </button>
