@@ -10,7 +10,8 @@ class WeldingMasterController extends Controller
     public function lineIndex()
     {
         $lines = DB::table('line_welding')->get();
-        return view('Master.welding_line', compact('lines'));
+        // ✨ DISESUAIKAN: Folder 'welding', file 'master_line'
+        return view('welding.master_line', compact('lines'));
     }
 
     public function ngIndex()
@@ -21,9 +22,9 @@ class WeldingMasterController extends Controller
             ->orderBy('ng_name', 'asc')
             ->get();
 
-        // Kita arahkan ke folder Master dengan nama file master_ng
-      // Sesuaikan dengan folder 'welding' dan file 'welding_ng'
-    return view('welding.welding_ng', compact('listNG'));
+        // ✨ DISESUAIKAN: Folder 'welding', file 'welding_ng' 
+        // (Pastikan file sudah di-rename jadi welding_ng.blade.php)
+        return view('welding.welding_ng', compact('listNG'));
     }
 
     public function ngStore(Request $request)
