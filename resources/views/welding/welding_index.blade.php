@@ -7,99 +7,89 @@
 <style>
     :root {
         --brand-primary: #4361ee; --brand-success: #10b981; --brand-danger: #ef4444;
-        --brand-warning: #f59e0b; --dark-surface: #0f172a; --bg-main: #f8fafc;
+        --brand-return: #6366f1; --dark-surface: #0f172a; --bg-main: #f1f5f9;
     }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #334155; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
     
     .heading-hub { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(135deg, var(--brand-primary), #7209b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    /* 📈 LEDGER TABLE - CLEAN STYLE */
-    .ledger-container { background: #fff; border-radius: 24px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.03); margin-bottom: 35px; }
-    .table-ledger thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 20px; border-bottom: 2px solid #edf2f7; }
-    .table-ledger td { padding: 18px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; }
+    /* 📈 LEDGER TABLE - INDUSTRIAL GLASS */
+    .ledger-container { background: #fff; border-radius: 30px; border: 1px solid rgba(255,255,255,0.7); overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.04); margin-bottom: 35px; }
+    .table-ledger thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 22px; border: none; }
+    .table-ledger td { padding: 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; }
     
-    /* 🏷️ PT NAVIGATION - MODERN PILLS */
-    .nav-section { background: #fff; padding: 10px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 25px; border: 1px solid #e2e8f0; display: inline-flex; }
+    /* 🏷️ PT NAVIGATION */
+    .nav-section { background: #fff; padding: 8px; border-radius: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 30px; border: 1px solid #e2e8f0; display: inline-flex; }
     .nav-pills .nav-link { 
-        border-radius: 14px; padding: 10px 24px; font-weight: 800; font-size: 0.8rem;
-        transition: 0.3s; margin-right: 5px; background: transparent; color: #64748b !important; border: 1px solid transparent;
+        border-radius: 16px; padding: 12px 28px; font-weight: 800; font-size: 0.75rem;
+        transition: 0.3s; color: #64748b !important;
     }
-    .nav-pills .nav-link.active { 
-        background: var(--dark-surface) !important; color: #fff !important; 
-        box-shadow: 0 8px 15px rgba(15, 23, 42, 0.15);
-    }
+    .nav-pills .nav-link.active { background: var(--dark-surface) !important; color: #fff !important; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2); }
 
-    /* 🛠️ WORK CARDS - SMOOTH DESIGN */
+    /* 🛠️ WORK CARDS */
     .work-card { 
-        background: #fff; border-radius: 24px; border: 1px solid #eef2f6; 
-        padding: 24px; margin-bottom: 20px; transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); 
-        display: flex; align-items: center; box-shadow: 0 5px 15px rgba(0,0,0,0.01);
+        background: #fff; border-radius: 28px; border: 1px solid #eef2f6; 
+        padding: 28px; margin-bottom: 20px; transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); 
+        display: flex; align-items: center; position: relative;
     }
-    .work-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(67, 97, 238, 0.08); border-color: var(--brand-primary); }
+    .work-card:hover { transform: scale(1.01); box-shadow: 0 20px 50px rgba(67, 97, 238, 0.1); border-color: var(--brand-primary); }
     
-    .station-tag { background: #f1f5f9; color: var(--dark-surface); font-family: 'JetBrains Mono'; font-size: 10px; padding: 4px 10px; border-radius: 8px; font-weight: 800; margin-bottom: 8px; display: inline-block; }
-    .qty-display { font-family: 'Orbitron'; font-weight: 900; font-size: 36px; color: var(--dark-surface); line-height: 1; }
+    .station-tag { background: #f1f5f9; color: var(--dark-surface); font-family: 'JetBrains Mono'; font-size: 10px; padding: 5px 12px; border-radius: 10px; font-weight: 800; margin-bottom: 10px; display: inline-block; }
+    .qty-display { font-family: 'Orbitron'; font-weight: 900; font-size: 38px; color: var(--dark-surface); line-height: 1; }
 
-    .tech-input { border-radius: 16px; border: 2px solid #f1f5f9; font-weight: 700; transition: 0.3s; height: 55px; background: #f8fafc; }
-    .tech-input:focus { border-color: var(--brand-primary); outline: none; background: #fff; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1); }
+    .tech-input-lg { border-radius: 20px; border: 2.5px solid #eef2f6; font-weight: 800; transition: 0.3s; height: 75px; background: #f8fafc; text-align: center; font-family: 'Orbitron'; }
+    .tech-input-lg:focus { border-color: var(--brand-primary); outline: none; background: #fff; box-shadow: 0 0 0 6px rgba(67, 97, 238, 0.1); }
 
-    .ng-row-item { background: #fff5f5; border-radius: 18px; padding: 15px; margin-bottom: 12px; border: 1px solid #fed7d7; transition: 0.3s; }
-    .ng-row-item:hover { border-color: var(--brand-danger); }
-    
-    /* Security Feedback UI */
-    .security-status { border-radius: 14px; padding: 12px; font-weight: 800; font-size: 11px; margin-top: 15px; text-align: center; transition: 0.3s; }
+    .security-status { border-radius: 18px; padding: 15px; font-weight: 800; font-size: 12px; text-align: center; transition: 0.3s; margin-top: 20px; }
     .status-match { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
     .status-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+    /* Return Highlight Section */
+    .return-box { background: rgba(99, 102, 241, 0.05); border: 2px dashed var(--brand-return); border-radius: 24px; padding: 20px; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
     {{-- 🛰️ HEADER HUB --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
         <div>
-            <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v3.0</span></h1>
-            <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-shield-halved text-primary mr-2"></i> Industrial Control Unit / PT Asalta Mandiri Agung</p>
+            <h1 class="heading-hub mb-1">Welding Terminal <span style="-webkit-text-fill-color: var(--dark-surface);">v3.2</span></h1>
+            <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-microchip text-primary mr-2"></i> Quality & Logistics Sync / PT Asalta Mandiri Agung</p>
         </div>
         <div class="d-flex align-items-center mt-3 mt-md-0">
             <a href="{{ route('welding.history') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm">VAULT</a>
-            <a href="{{ route('welding.history.weldig') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm text-primary">LOGS</a>
-            <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg mr-3" data-toggle="modal" data-target="#modalDeployWelding"><i class="fas fa-bolt mr-1"></i> DEPLOY</button>
-            
-            <div class="bg-white px-4 py-2 rounded-2xl shadow-sm border border-primary text-center">
-                <small class="text-muted font-weight-bold d-block uppercase" style="font-size: 8px;">Execution Date</small>
-                <span class="font-weight-bold text-primary" style="font-family: 'JetBrains Mono'; font-size: 14px;">{{ \Carbon\Carbon::parse($date)->format('d.m.Y') }}</span>
-            </div>
+            <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg" data-toggle="modal" data-target="#modalDeployWelding"><i class="fas fa-plus-circle mr-1"></i> DEPLOY BATCH</button>
         </div>
     </div>
 
-    {{-- 📊 LEDGER TABLE --}}
+    {{-- 📊 WIP LEDGER --}}
     <div class="ledger-container">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
                 <thead>
                     <tr>
-                        <th class="text-left pl-4">WIP Part Identification</th>
+                        <th class="text-left pl-5">Part Identification</th>
                         <th>Opening</th>
                         <th class="text-success">In (Stamping)</th>
+                        <th class="text-return" style="color: var(--brand-return);">In (Return)</th>
                         <th class="text-danger">Out (Welding)</th>
-                        <th class="text-primary bg-light">Live Stock</th>
-                        <th>Run Rate</th>
-                        <th class="text-right pr-4">Action</th>
+                        <th class="bg-light text-primary">Live Stock</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($inventoryWelding as $inv)
                     <tr>
-                        <td class="text-left pl-4">
+                        <td class="text-left pl-5">
                             <div class="font-weight-black text-dark" style="font-size: 15px;">{{ $inv->part_no }}</div>
                             <small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">{{ $inv->part_name }}</small>
                         </td>
-                        <td class="text-muted font-mono" style="font-size: 13px;">{{ number_format($inv->init) }}</td>
-                        <td class="text-success font-weight-black">+{{ number_format($inv->in_s) }}</td>
-                        <td class="text-danger font-weight-black">-{{ number_format($inv->out) }}</td>
-                        <td class="text-primary font-weight-black bg-light" style="font-size: 18px;">{{ number_format($inv->live_stock) }}</td>
-                        <td><span class="badge badge-light border px-3 py-1 font-weight-bold text-dark">{{ $inv->run }}x</span></td>
-                        <td class="text-right pr-4">
-                            <button class="btn btn-outline-primary btn-sm rounded-pill px-4 font-weight-black" onclick="quickTake('{{ trim($inv->part_no) }}')">DEPLOY</button>
+                        <td class="text-muted font-mono">{{ number_format($inv->init) }}</td>
+                        <td class="text-success">+{{ number_format($inv->in_s) }}</td>
+                        <td style="color: var(--brand-return);">+{{ number_format($inv->in_r ?? 0) }}</td>
+                        <td class="text-danger">-{{ number_format($inv->out) }}</td>
+                        <td class="bg-light text-primary" style="font-size: 20px;">{{ number_format($inv->live_stock) }}</td>
+                        <td>
+                            <button class="btn btn-dark btn-sm rounded-pill px-4 font-weight-black" onclick="quickTake('{{ trim($inv->part_no) }}')">TAKE</button>
                         </td>
                     </tr>
                     @endforeach
@@ -108,127 +98,126 @@
         </div>
     </div>
 
-    {{-- 📑 PT NAVIGATION --}}
+    {{-- 📑 NAVIGATION & WORKSTREAM --}}
     <div class="nav-section">
         <ul class="nav nav-pills" id="ptTab">
             @foreach($availableCustomers as $index => $customer)
             @php $slugPT = Str::slug($customer); $count = $activeWelding->where('customer', $customer)->count(); @endphp
             <li class="nav-item">
                 <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ $slugPT }}">
-                    {{ strtoupper($customer) }} @if($count > 0) <span class="count-badge animate__animated animate__pulse animate__infinite">{{ $count }}</span> @endif
+                    {{ strtoupper($customer) }} @if($count > 0) <span class="badge badge-danger ml-2">{{ $count }}</span> @endif
                 </a>
             </li>
             @endforeach
         </ul>
     </div>
 
-    {{-- 🛠️ ACTIVE WORKSTREAM --}}
     <div class="tab-content" id="ptTabContent">
         @foreach($availableCustomers as $index => $customer)
         @php $slugPT = Str::slug($customer); @endphp
         <div class="tab-pane fade {{ $index == 0 ? 'show active' : '' }}" id="pt-{{ $slugPT }}">
-            @php $filtered = $activeWelding->where('customer', $customer); @endphp
-            @forelse($filtered as $aw)
+            @foreach($activeWelding->where('customer', $customer) as $aw)
             <div class="work-card shadow-sm animate__animated animate__fadeInUp">
                 <div class="col-md-3">
-                    <span class="station-tag">{{ $aw->kode_line ?? 'WAITING_STATION' }}</span>
-                    <div class="font-weight-black text-primary" style="font-family: 'JetBrains Mono'; font-size: 14px;">
-                        <i class="fas fa-barcode mr-2 opacity-50"></i>{{ $aw->no_produksi_stamping }}
-                    </div>
+                    <span class="station-tag">{{ $aw->kode_line ?? 'UNASSIGNED' }}</span>
+                    <div class="font-weight-black text-primary font-mono" style="font-size: 14px;">{{ $aw->no_produksi_stamping }}</div>
                 </div>
-                <div class="col-md-3 border-left pl-4">
-                    <div class="font-weight-black h5 mb-0 text-dark">{{ $aw->part_no }}</div>
+                <div class="col-md-4 border-left pl-4">
+                    <div class="font-weight-black h5 mb-0">{{ $aw->part_no }}</div>
                     <small class="text-muted font-weight-bold uppercase">{{ $aw->part_name }}</small>
                 </div>
                 <div class="col-md-2 text-center">
                     <div class="qty-display">{{ number_format($aw->qty_masuk) }}</div>
-                    <small class="text-muted font-weight-black" style="font-size: 9px; letter-spacing: 1px;">BATCH TARGET</small>
+                    <small class="text-muted font-weight-black uppercase" style="font-size: 9px;">Batch Target</small>
                 </div>
-                <div class="col-md-2 text-center">
-                    @if($aw->batch_status == 'PENDING')
-                        <span class="badge badge-warning py-2 px-4 rounded-pill font-weight-black shadow-sm">WAITING_AUTH</span>
-                    @else
-                        <span class="badge badge-info py-2 px-4 rounded-pill font-weight-black animate__animated animate__pulse animate__infinite">LIVE_PROCESS</span>
-                    @endif
-                </div>
-                <div class="col-md-2 text-right">
+                <div class="col-md-3 text-right">
                     @if($aw->batch_status == 'PENDING')
                         <form action="{{ route('welding.start', $aw->id) }}" method="POST">
                             @csrf @method('PUT')
-                            <button class="btn btn-primary btn-block btn-action-custom shadow-lg">START OPERATION</button>
+                            <button class="btn btn-primary rounded-pill px-5 font-weight-black shadow-lg">START OPERATION</button>
                         </form>
                     @else
-                        <button class="btn btn-success btn-block btn-action-custom shadow-lg" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">FINISH BATCH</button>
+                        <button class="btn btn-success rounded-pill px-5 font-weight-black shadow-lg" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">FINISH BATCH</button>
                     @endif
                 </div>
             </div>
-            @empty
-            <div class="text-center py-5 bg-white rounded-3xl border-2 border-dashed">
-                <i class="fas fa-check-double fa-2x text-light mb-3"></i>
-                <p class="text-muted font-weight-bold mb-0">No active process for {{ $customer }}.</p>
-            </div>
-            @endforelse
+            @endforeach
         </div>
         @endforeach
     </div>
 </div>
 
-{{-- 🏁 MODAL FINISH (SMART QUALITY GATE) --}}
+{{-- 🏁 MODAL FINISH (QUALITY & RETURN GATE) --}}
 @foreach($activeWelding as $aw)
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1" data-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0" style="border-radius: 32px; overflow: hidden;">
-            <div class="modal-header bg-success text-white p-4 border-0">
-                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron'; letter-spacing: 1px;">Quality Inspection Gate</h5>
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0" style="border-radius: 40px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white p-4 border-0">
+                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron'; letter-spacing: 1px;">Industrial Inspection Gate</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form action="{{ route('welding.finish', $aw->id) }}" method="POST" onsubmit="return validateSecurity({{ $aw->id }}, {{ $aw->qty_masuk }})">
+            <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-5">
                     <div class="row">
-                        <div class="col-md-4 text-center border-right">
+                        <div class="col-md-4 text-center border-right pr-5">
                             <div class="p-4 bg-light rounded-3xl mb-4">
-                                <h1 class="font-weight-black text-dark mb-0" id="target_display_{{ $aw->id }}" style="font-family: 'Orbitron'; font-size: 42px;">{{ number_format($aw->qty_masuk) }}</h1>
-                                <small class="text-muted font-weight-black uppercase">Required Output</small>
+                                <h1 class="font-weight-black text-dark mb-0" style="font-family: 'Orbitron'; font-size: 50px;">{{ number_format($aw->qty_masuk) }}</h1>
+                                <small class="text-muted font-weight-black uppercase">Batch Capacity</small>
                             </div>
                             
-                            <label class="small font-weight-black text-success uppercase mb-2">Quantity Passed (OK)</label>
-                            <input type="number" name="qty_ok" id="input_ok_{{ $aw->id }}" class="form-control text-center tech-input mb-4 font-weight-black text-success" 
-                                   style="font-size: 28px;" value="{{ $aw->qty_masuk }}" required oninput="manualOkCheck({{ $aw->id }}, {{ $aw->qty_masuk }})">
-                            
-                            <label class="small font-weight-black text-danger uppercase mb-2">Total Rejected (NG)</label>
-                            <input type="number" name="qty_ng" id="total_ng_{{ $aw->id }}" class="form-control text-center tech-input font-weight-black text-danger" 
-                                   style="font-size: 28px; background: #fff;" value="0" readonly>
+                            <div class="form-group mb-4">
+                                <label class="small font-weight-black text-success uppercase mb-2">Quantity Passed (OK)</label>
+                                <input type="number" name="qty_ok" id="input_ok_{{ $aw->id }}" class="form-control tech-input-lg text-success" 
+                                       value="{{ $aw->qty_masuk }}" required oninput="calculateTotal({{ $aw->id }}, {{ $aw->qty_masuk }})">
+                            </div>
 
-                            <div id="sec_msg_{{ $aw->id }}" class="security-status status-match mt-4">
-                                <i class="fas fa-shield-check mr-2"></i>DATA_INTEGRITY_OK
+                            <div id="sec_msg_{{ $aw->id }}" class="security-status status-match">
+                                <i class="fas fa-shield-check mr-2"></i>DATA_INTEGRITY_VERIFIED
                             </div>
                         </div>
                         
-                        <div class="col-md-8 pl-md-5">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h6 class="font-weight-black text-dark mb-0 uppercase"><i class="fas fa-microscope mr-2 text-danger"></i>Defect Breakdown</h6>
-                                <button type="button" class="btn btn-dark btn-sm rounded-pill font-weight-black px-4" onclick="addNgRow({{ $aw->id }}, {{ $aw->qty_masuk }})">
-                                    + ADD DEFECT
-                                </button>
-                            </div>
-                            
-                            <div id="ng_container_{{ $aw->id }}" class="pr-2" style="max-height: 250px; overflow-y: auto;">
-                                <div class="text-center text-muted small py-5" id="no_ng_msg_{{ $aw->id }}">
-                                    <i class="fas fa-circle-check text-success fa-2x mb-3 d-block"></i>
-                                    Perfect Production Batch. No defects recorded.
+                        <div class="col-md-8 pl-5">
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="return-box">
+                                        <label class="small font-weight-black text-primary uppercase d-block mb-2">
+                                            <i class="fas fa-undo-alt mr-2"></i> WIP Return to Rack
+                                        </label>
+                                        <input type="number" name="qty_return" id="input_ret_{{ $aw->id }}" class="form-control tech-input-lg border-primary" 
+                                               style="color: var(--brand-primary); height: 60px; font-size: 24px;" value="0" oninput="calculateTotal({{ $aw->id }}, {{ $aw->qty_masuk }})">
+                                        <small class="text-muted font-weight-bold d-block mt-2">Sisa komponen balik ke rak WIP.</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="p-3 bg-white border-danger border rounded-2xl" style="border-width: 2px;">
+                                        <label class="small font-weight-black text-danger uppercase d-block mb-2">Rejected (NG) Total</label>
+                                        <input type="number" name="qty_ng" id="total_ng_{{ $aw->id }}" class="form-control tech-input-lg border-0 bg-transparent text-danger" 
+                                               style="height: 60px; font-size: 24px;" value="0" readonly>
+                                    </div>
                                 </div>
                             </div>
 
-                            <hr class="my-4">
-                            <label class="small font-weight-black text-dark uppercase mb-2">Process Abnormalities / Remarks</label>
-                            <textarea name="keterangan" class="form-control tech-input" style="height: 80px;" placeholder="Operator notes..."></textarea>
+                            <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+                                <h6 class="font-weight-black text-dark mb-0 uppercase"><i class="fas fa-bug mr-2 text-danger"></i>Defect Breakdown</h6>
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-4 font-weight-black" onclick="addNgRow({{ $aw->id }}, {{ $aw->qty_masuk }})">+ ADD NG</button>
+                            </div>
+                            
+                            <div id="ng_container_{{ $aw->id }}" style="max-height: 180px; overflow-y: auto;">
+                                <div class="text-center text-muted py-4 border rounded-2xl border-dashed" id="no_ng_msg_{{ $aw->id }}">No defects recorded.</div>
+                            </div>
+
+                            <div class="mt-4">
+                                <label class="small font-weight-black text-dark uppercase mb-2">Operator Remarks</label>
+                                <textarea name="keterangan" class="form-control" style="border-radius: 15px; border: 2px solid #f1f5f9;" placeholder="Abnormalities..."></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-5 pt-0">
-                    <button type="submit" id="btn_submit_{{ $aw->id }}" class="btn btn-success btn-block py-4 font-weight-black rounded-2xl shadow-lg" style="font-size: 1.1rem; letter-spacing: 1px;">
-                        AUTHORIZE & SUBMIT BATCH
+                    <button type="submit" id="btn_submit_{{ $aw->id }}" class="btn btn-success btn-block py-4 font-weight-black rounded-2xl shadow-xl uppercase" style="font-size: 1.2rem; letter-spacing: 2px;">
+                        Authorize & Submit to Master Vault
                     </button>
                 </div>
             </form>
@@ -237,137 +226,57 @@
 </div>
 @endforeach
 
-{{-- 🚀 MODAL DEPLOY --}}
-<div class="modal fade" id="modalDeployWelding" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-2xl" style="border-radius: 32px;">
-            <div class="modal-header bg-dark text-white p-4">
-                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron'; letter-spacing: 1px;">Deployment Center</h5>
-            </div>
-            <form action="{{ route('welding.deploy') }}" method="POST">
-                @csrf
-                <div class="modal-body p-5">
-                    <label class="small font-weight-black text-muted uppercase mb-2">Target Part Identification</label>
-                    <select name="part_no" id="part_select" class="form-control tech-input mb-4" required>
-                        <option value="" disabled selected>-- SELECT PART --</option>
-                        @foreach($inventoryWelding as $inv)
-                            <option value="{{ $inv->part_no }}">{{ $inv->part_no }} (Available: {{ $inv->live_stock }})</option>
-                        @endforeach
-                    </select>
+{{-- MODAL DEPLOY & SCRIPTS (SAMA SEPERTI SEBELUMNYA) --}}
+@include('welding.welding_modals')
 
-                    <label class="small font-weight-black text-muted uppercase mb-2">Authorized Welding Station</label>
-                    <select name="line_id" class="form-control tech-input mb-4" required>
-                        <option value="" disabled selected>-- SELECT STATION --</option>
-                        @foreach($weldingLines as $wl)
-                            <option value="{{ $wl->id }}">{{ $wl->kode_line }} - {{ $wl->nama_line }}</option>
-                        @endforeach
-                    </select>
-
-                    <label class="small font-weight-black text-muted uppercase mb-2">Input Deployment Quantity</label>
-                    <input type="number" name="qty_ambil" class="form-control text-center tech-input font-weight-black" 
-                           required style="font-size: 48px; height: 110px; color: var(--brand-primary);" placeholder="0">
-                </div>
-                <div class="modal-footer border-0 p-5 pt-0">
-                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-2xl shadow-xl">START BATCH DEPLOYMENT</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     const listPenyakit = @json($listNG->pluck('ng_name'));
-
-    function quickTake(partNo) {
-        document.getElementById('part_select').value = partNo;
-        $('#modalDeployWelding').modal('show');
-    }
 
     function addNgRow(batchId, target) {
         $(`#no_ng_msg_${batchId}`).hide();
         const id = Date.now();
         let options = listPenyakit.map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
-        
         const html = `
-            <div class="ng-row-item animate__animated animate__fadeInDown" id="row-${id}">
-                <div class="row no-gutters align-items-center">
-                    <div class="col-7 pr-3">
-                        <select name="ng_detail_type[]" class="form-control form-control-sm font-weight-bold border-0 bg-transparent" required>
-                            ${options}
-                        </select>
-                    </div>
-                    <div class="col-3 pr-3">
-                        <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm text-center font-weight-black ng-qty-input tech-input h-auto py-2" 
-                        placeholder="0" min="1" required oninput="autoCalculate(${batchId}, ${target})">
-                    </div>
-                    <div class="col-2 text-right">
-                        <button type="button" class="btn btn-link text-danger p-0" onclick="removeNgRow(${id}, ${batchId}, ${target})">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
+            <div class="ng-row-item animate__animated animate__fadeInDown d-flex align-items-center mb-2 p-2 bg-light rounded-xl" id="row-${id}">
+                <select name="ng_detail_type[]" class="form-control form-control-sm border-0 bg-transparent font-weight-bold flex-grow-1">${options}</select>
+                <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm tech-input ng-qty-input mx-3" style="width: 80px; height: 40px;" placeholder="0" required oninput="calculateTotal(${batchId}, ${target})">
+                <button type="button" class="btn btn-link text-danger p-0" onclick="removeNgRow(${id}, ${batchId}, ${target})"><i class="fas fa-times-circle fa-lg"></i></button>
+            </div>`;
         $(`#ng_container_${batchId}`).append(html);
     }
 
     function removeNgRow(rowId, batchId, target) {
         $(`#row-${rowId}`).remove();
-        autoCalculate(batchId, target);
-        if ($(`#ng_container_${batchId}`).children('.ng-row-item').length === 0) {
-            $(`#no_ng_msg_${batchId}`).show();
-        }
+        calculateTotal(batchId, target);
+        if ($(`#ng_container_${batchId}`).children('.ng-row-item').length === 0) $(`#no_ng_msg_${batchId}`).show();
     }
 
-    // ✨ SMART AUTO-CALCULATION
-    function autoCalculate(batchId, target) {
+    // ✨ LOGIKA KALKULASI SINKRON (OK + NG + RET = TARGET)
+    function calculateTotal(batchId, target) {
         let totalNg = 0;
-        $(`#ng_container_${batchId} .ng-qty-input`).each(function() {
-            totalNg += parseInt($(this).val()) || 0;
-        });
-
+        $(`#ng_container_${batchId} .ng-qty-input`).each(function() { totalNg += parseInt($(this).val()) || 0; });
         $(`#total_ng_${batchId}`).val(totalNg);
-        
-        // OK otomatis berkurang
-        let okResult = target - totalNg;
-        $(`#input_ok_${batchId}`).val(okResult < 0 ? 0 : okResult);
 
-        refreshSecurityUI(batchId, target);
-    }
+        let ret = parseInt($(`#input_ret_{{ $aw->id ?? 0 }}`).val()) || 0; // Seharusnya dinamis ID modal
+        // Karena di loop Blade, mari gunakan pencarian selector yang lebih aman:
+        let currentRet = parseInt($(`#modalFinish${batchId} #input_ret_${batchId}`).val()) || 0;
 
-    function manualOkCheck(batchId, target) {
-        refreshSecurityUI(batchId, target);
-    }
-
-    function refreshSecurityUI(batchId, target) {
         let ok = parseInt($(`#input_ok_${batchId}`).val()) || 0;
-        let ng = parseInt($(`#total_ng_${batchId}`).val()) || 0;
-        let grandTotal = ok + ng;
-        
+        let grandTotal = ok + totalNg + currentRet;
+
         let msgBox = $(`#sec_msg_${batchId}`);
         let btnSubmit = $(`#btn_submit_${batchId}`);
 
         if (grandTotal === target && ok >= 0) {
             msgBox.removeClass('status-error animate__headShake').addClass('status-match')
                   .html('<i class="fas fa-shield-check mr-2"></i>DATA_INTEGRITY_MATCHED');
-            btnSubmit.prop('disabled', false).css('opacity', '1').css('cursor', 'pointer');
+            btnSubmit.prop('disabled', false).css('opacity', '1');
         } else {
             let gap = target - grandTotal;
             msgBox.removeClass('status-match').addClass('status-error animate__headShake')
-                  .html(`<i class="fas fa-triangle-exclamation mr-2"></i>GAP DETECTED: ${gap > 0 ? '+'+gap : gap} Pcs`);
-            btnSubmit.prop('disabled', true).css('opacity', '0.5').css('cursor', 'not-allowed');
+                  .html(`<i class="fas fa-exclamation-triangle mr-2"></i>GAP: ${gap} PCS`);
+            btnSubmit.prop('disabled', true).css('opacity', '0.5');
         }
-    }
-
-    function validateSecurity(batchId, target) {
-        let ok = parseInt($(`#input_ok_${batchId}`).val()) || 0;
-        let ng = parseInt($(`#total_ng_${batchId}`).val()) || 0;
-        if ((ok + ng) !== target) {
-            alert("🚨 SECURITY: Total output must match batch target!");
-            return false;
-        }
-        return true;
     }
 </script>
 @endsection
