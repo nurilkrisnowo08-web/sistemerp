@@ -253,9 +253,16 @@ Route::prefix('welding-master')->group(function () {
     Route::get('/lines', [WeldingMasterController::class, 'lineIndex'])->name('welding.master.lines');
     Route::post('/lines/store', [WeldingMasterController::class, 'lineStore'])->name('welding.master.line_store');
     Route::delete('/lines/destroy/{id}', [WeldingMasterController::class, 'lineDestroy'])->name('welding.master.line_destroy');
-
-    Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng');
+    
+    // --- Master NG (Cacat Produksi) ---
+    // 1. Tampilkan Halaman Master NG
+    Route::get('/ng', [WeldingMasterController::class, 'ngIndex'])->name('welding.master.ng_index');
+    
+    // 2. Simpan Master NG Baru (Action dari Modal)
     Route::post('/ng/store', [WeldingMasterController::class, 'ngStore'])->name('welding.master.ng_store');
+    
+    // 3. Hapus Master NG
+    Route::delete('/ng/destroy/{id}', [WeldingMasterController::class, 'ngDestroy'])->name('welding.master.ng.destroy');
    // Tambahkan di routes/web.php
 Route::get('/ppic/get-batch-ng-details/{no_produksi}', [App\Http\Controllers\PPICController::class, 'getBatchNGDetails']);
 });
