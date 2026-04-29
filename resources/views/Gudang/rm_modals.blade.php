@@ -1,9 +1,9 @@
 {{-- 🚀 MODAL 01: REGISTER NEW COIL --}}
 <div class="modal fade animate__animated animate__fadeIn" id="modalTambahRM" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-centered"> {{-- Ukuran XL untuk kenyamanan input --}}
+    <div class="modal-dialog modal-xl modal-dialog-centered"> 
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 40px; overflow: hidden;">
             
-            {{-- HEADER: Cyber Dark Style --}}
+            {{-- HEADER --}}
             <div class="modal-header bg-dark text-white p-4 border-0">
                 <div class="d-flex align-items-center">
                     <div class="bg-primary rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
@@ -45,7 +45,7 @@
                                 <select id="selectMasterSpec" class="form-control form-control-tech" required disabled style="height: 55px; font-weight: 700;">
                                     <option value="">-- SELECT CLIENT FIRST --</option>
                                 </select>
-                                {{-- Hidden inputs --}}
+                                {{-- ✨ Hidden inputs: Pastikan ID ini sama dengan yang ada di script main view --}}
                                 <input type="hidden" name="spec" id="autoSpec">
                                 <input type="hidden" name="size" id="autoSize">
                             </div>
@@ -59,13 +59,18 @@
                             </div>
 
                             <div class="row mb-4">
-                                <div class="col-6">
+                                <div class="col-4">
                                     <label class="small font-weight-black text-muted uppercase mb-2 d-block">Min_Stock</label>
-                                    <input type="number" name="min_stock" class="form-control form-control-tech" value="500" style="height: 50px; font-weight: 700;">
+                                    <input type="number" name="min_stock" class="form-control form-control-tech" value="500" style="height: 50px; font-weight: 700;" required>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <label class="small font-weight-black text-muted uppercase mb-2 d-block">Max_Stock</label>
-                                    <input type="number" name="max_stock" class="form-control form-control-tech" value="1000" style="height: 50px; font-weight: 700;">
+                                    <input type="number" name="max_stock" class="form-control form-control-tech" value="1000" style="height: 50px; font-weight: 700;" required>
+                                </div>
+                                {{-- ✨ FIXED: Kolom ini WAJIB ada sesuai Controller Bapak --}}
+                                <div class="col-4">
+                                    <label class="small font-weight-black text-muted uppercase mb-2 d-block">Std_Batch</label>
+                                    <input type="number" name="std_qty_batch" class="form-control form-control-tech" value="300" style="height: 50px; font-weight: 700;" required>
                                 </div>
                             </div>
 
