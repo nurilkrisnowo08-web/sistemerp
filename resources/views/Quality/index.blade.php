@@ -19,7 +19,7 @@
     .part-title { font-weight: 800; font-size: 1.25rem; color: var(--ind-navy); }
     .qty-badge { font-family: 'Orbitron', sans-serif; font-size: 1.75rem; font-weight: 800; line-height: 1; }
     .label-ind { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem; display: block; }
-    .input-ind { background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px; font-weight: 700; padding: 0.75rem; transition: 0.2s; }
+    .input-ind { background: #ffffff; border: 2px solid #e2e8f0; border-radius: 10px; font-weight: 700; padding: 0.75rem; transition: 0.2s; width: 100%; }
     .input-ind:focus { border-color: var(--ind-blue); outline: none; }
     .btn-action { font-family: 'Orbitron', sans-serif; font-size: 0.8rem; padding: 14px; border-radius: 10px; text-transform: uppercase; font-weight: 800; border: none; }
     .empty-placeholder { border: 2px dashed #cbd5e1; border-radius: 16px; padding: 4rem; color: #94a3b8; font-weight: 600; text-align: center; }
@@ -56,7 +56,7 @@
     @endif
 
     <div class="row">
-        {{-- 🚛 STAMPING/PRODUCTION QUEUE --}}
+        {{-- 🚛 STAMPING/PRODUCTION QUEUE (Kamar Stamping) --}}
         <div class="col-lg-6 mb-4">
             <div class="d-flex align-items-center mb-4 px-2">
                 <div style="width: 5px; height: 25px; background: var(--ind-blue); border-radius: 10px;" class="mr-3"></div>
@@ -72,13 +72,10 @@
                     </div>
                     <div class="text-right">
                         <label class="label-ind">Incoming OK</label>
-                        {{-- Ini menampilkan TOTAL OK dari semua line di batch ini --}}
                         <div class="qty-badge text-emerald">{{ number_format($p->qty_hasil_ok) }}</div>
                     </div>
                 </div>
                 <div class="card-body p-4">
-                    {{-- ❌ BOX REJECT BREAKDOWN SUDAH DIHAPUS AGAR QC FOKUS BARANG OK ❌ --}}
-
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST">
                         @csrf
                         <div class="row mb-4">
@@ -92,6 +89,17 @@
                             </div>
                         </div>
 
+                        {{-- ✨ KAMAR NG STAMPING --}}
+                        <div class="form-group mb-4">
+                            <label class="label-ind">Defect Category (Stamping)</label>
+                            <select name="ng_reason" class="form-control input-ind">
+                                <option value="">-- OK GOODS (NO DEFECT) --</option>
+                                @foreach($ngStamping as $ng)
+                                    <option value="{{ $ng->ng_name }}">{{ $ng->ng_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
                             <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Input QC Name..." required>
@@ -99,7 +107,7 @@
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Inspector Remark / Defect Note</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Describe defects if any...">{{ $p->keterangan }}</textarea>
+                            <textarea name="inspector_note" class="form-control input-ind" rows="2" placeholder="Describe defects if any...">{{ $p->keterangan }}</textarea>
                         </div>
 
                         <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-sm mb-3">COMMIT RELEASE TO FG</button>
@@ -116,7 +124,7 @@
             @endforelse
         </div>
 
-        {{-- 👨‍🏭 WELDING VERIFICATION --}}
+        {{-- 👨‍制造 WELDING VERIFICATION (Kamar Welding) --}}
         <div class="col-lg-6 mb-4">
             <div class="d-flex align-items-center mb-4 px-2 text-warning">
                 <div style="width: 5px; height: 25px; background: var(--ind-amber); border-radius: 10px;" class="mr-3"></div>
@@ -149,6 +157,17 @@
                             </div>
                         </div>
 
+                        {{-- ✨ KAMAR NG WELDING --}}
+                        <div class="form-group mb-4">
+                            <label class="label-ind">Defect Category (Welding)</label>
+                            <select name="ng_reason" class="form-control input-ind">
+                                <option value="">-- OK GOODS (NO DEFECT) --</option>
+                                @foreach($ngWelding as $ng)
+                                    <option value="{{ $ng->ng_name }}">{{ $ng->ng_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="form-group mb-4">
                             <label class="label-ind">Authorized Inspector</label>
                             <input type="text" name="inspector_name" class="form-control input-ind" placeholder="Type Name..." required>
@@ -156,7 +175,7 @@
 
                         <div class="form-group mb-4">
                             <label class="label-ind">Analysis Notes</label>
-                            <textarea name="ng_reason" class="form-control input-ind" rows="2" placeholder="Record analysis...">{{ $w->keterangan }}</textarea>
+                            <textarea name="inspector_note" class="form-control input-ind" rows="2" placeholder="Record analysis...">{{ $w->keterangan }}</textarea>
                         </div>
 
                         <button type="submit" id="btn-{{ $w->id }}" class="btn btn-block btn-action shadow-sm" style="background: var(--ind-amber); color: #fff;">

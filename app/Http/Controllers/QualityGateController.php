@@ -28,7 +28,17 @@ class QualityGateController extends Controller {
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('Quality.index', compact('produksiQueue', 'weldingQueue'));
+        // ✨ TAMBAHAN: Kamar NG Stamping (Ambil kategori STAMPING + GENERAL)
+        $ngStamping = DB::table('master_ngs')
+            ->whereIn('category', ['STAMPING', 'GENERAL'])
+            ->get();
+
+        // ✨ TAMBAHAN: Kamar NG Welding (Ambil kategori WELDING + GENERAL)
+        $ngWelding = DB::table('master_ngs')
+            ->whereIn('category', ['WELDING', 'GENERAL'])
+            ->get();
+
+        return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
 
     public function approve(Request $request, $type, $id) {
@@ -42,13 +52,10 @@ class QualityGateController extends Controller {
                 $partNo  = $ref->material_code;
                 $table   = 'produksi_batches';
 
-                // 1. Ambil semua baris line dalam batch ini
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
                 $qc_verified_ok = (int)$request->qty_ok_final;
 
-                // 2. LOGIKA PENYESUAIAN (Agar data per-line tetap masuk akal)
-                // Jika QC menemukan NG baru (OK QC < OK Prod), kurangi selisihnya dari baris pertama saja
                 if ($qc_verified_ok < $total_ok_prod) {
                     $selisih = $total_ok_prod - $qc_verified_ok;
                     $firstLine = $lines->first();
@@ -59,7 +66,6 @@ class QualityGateController extends Controller {
                     ]);
                 }
 
-                // 3. Update status SEMUA baris dalam batch ini menjadi COMPLETED
                 DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                     'status'     => 'COMPLETED',
                     'qc_at'      => now(),
@@ -73,7 +79,6 @@ class QualityGateController extends Controller {
                 $qty_awal = $total_ok_prod;
 
             } else {
-                // Logika Welding (Single Line)
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
                 if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
 
@@ -96,7 +101,6 @@ class QualityGateController extends Controller {
                 $table    = 'welding_batches';
             }
 
-            // Validasi Master Finished Goods
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -104,7 +108,6 @@ class QualityGateController extends Controller {
 
             if (!$fg) throw new \Exception("Part No [$partNo] tidak terdaftar di Finished Goods.");
 
-            // 4. Simpan History Inspeksi (Hanya simpan temuan NG dari QC)
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -112,26 +115,23 @@ class QualityGateController extends Controller {
                 'qty_from_prod' => $qty_awal,
                 'qty_ok'        => $final_ok,
                 'qty_ng'        => $final_ng, 
-                'ng_reason'     => $request->ng_reason ?? '',
+                'ng_reason'     => $request->ng_reason ?? '', // Nilai ini nanti diisi nama NG dari dropdown
                 'inspector'     => $request->inspector_name ?? 'QC_OFFICER',
                 'status'        => 'APPROVED',
                 'created_at'    => now(), 
                 'updated_at'    => now()
             ]);
 
-            // 5. Update Stok FG
             DB::table('finished_goods')->where('id', $fg->id)->update([
                 'actual_stock' => $fg->actual_stock + $final_ok,
                 'act_stock'    => ($fg->act_stock ?? 0) + $final_ok,
                 'updated_at'   => now()
             ]);
 
-            // 6. Log Mutasi
             DB::table('production_logs')->insert([
                 'part_no' => $partNo, 'qty' => $final_ok, 'process_type' => 'FG', 'created_at' => now()
             ]);
 
-            // 7. Robot Dashboard
             $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             DB::commit();
