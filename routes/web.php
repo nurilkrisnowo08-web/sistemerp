@@ -146,7 +146,7 @@ Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
     Route::get('/rm-log-print', [RmController::class, 'recapLogPrint'])->name('rm.log_print');
     Route::get('/rm-recap-print', [RmController::class, 'recapPrint'])->name('rm.recap_print');
     Route::get('/ppic-planning', [PPICController::class, 'index'])->name('ppic.index');
-});
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -169,6 +169,10 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::post('/rm/assign-part', [RmController::class, 'assignPart'])->name('rm.assign_part');
     Route::delete('/rm/delete/{id}', [RmController::class, 'destroy'])->name('rm.destroy');
     Route::delete('/rm/remove-part/{id}', [RmController::class, 'removePartFromUnit'])->name('rm.remove_part_from_unit');
+     // Rute untuk RM Hub
+    Route::get('/get-parts-and-specs/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('rm.get_parts');
+    Route::post('/rm/update-unit-pcs', [RmController::class, 'updateUnitPcs'])->name('rm.update_unit_pcs');
+    Route::post('/rm/assign-part', [RmController::class, 'assignPart'])->name('rm.assign_part_to_unit');
 
     // FG Adjustments
     Route::get('/stock-fg/{id}/edit', [FgController::class, 'edit'])->name('fg.edit');

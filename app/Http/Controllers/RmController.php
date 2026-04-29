@@ -317,4 +317,21 @@ class RmController extends Controller
         $clients = DB::table('customers')->get();
         return view('Gudang.po_supplier_history', compact('pos', 'clients', 'selectedCustomer'));
     }
+    public function updateUnitPcs(Request $request)
+    {
+        $request->validate([
+            'id' => 'required',
+            'new_qty' => 'required|numeric'
+        ]);
+
+        try {
+            DB::table('rm_stocks')->where('id', $request->id)->update([
+                'stock_pcs' => $request->new_qty,
+                'updated_at' => now()
+            ]);
+            return back()->with('success', 'Stock Adjusted rill!');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+    }
 }
