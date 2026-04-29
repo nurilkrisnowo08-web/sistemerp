@@ -28,12 +28,11 @@ class QualityGateController extends Controller {
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // ✨ TAMBAHAN: Kamar NG Stamping (Ambil kategori STAMPING + GENERAL)
+        // ✨ KAMAR NG: Memisahkan alasan NG agar tidak bercampur
         $ngStamping = DB::table('master_ngs')
             ->whereIn('category', ['STAMPING', 'GENERAL'])
             ->get();
 
-        // ✨ TAMBAHAN: Kamar NG Welding (Ambil kategori WELDING + GENERAL)
         $ngWelding = DB::table('master_ngs')
             ->whereIn('category', ['WELDING', 'GENERAL'])
             ->get();
@@ -50,12 +49,12 @@ class QualityGateController extends Controller {
 
                 $batchNo = $ref->no_produksi;
                 $partNo  = $ref->material_code;
-                $table   = 'produksi_batches';
 
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
                 $qc_verified_ok = (int)$request->qty_ok_final;
 
+                // Logika penyesuaian selisih NG baru
                 if ($qc_verified_ok < $total_ok_prod) {
                     $selisih = $total_ok_prod - $qc_verified_ok;
                     $firstLine = $lines->first();
@@ -79,6 +78,7 @@ class QualityGateController extends Controller {
                 $qty_awal = $total_ok_prod;
 
             } else {
+                // Logika Welding
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
                 if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
 
@@ -98,9 +98,9 @@ class QualityGateController extends Controller {
                 
                 $qty_awal = $batch->qty_ok;
                 $origin   = 'WELDING';
-                $table    = 'welding_batches';
             }
 
+            // Validasi Stok FG
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -108,6 +108,7 @@ class QualityGateController extends Controller {
 
             if (!$fg) throw new \Exception("Part No [$partNo] tidak terdaftar di Finished Goods.");
 
+            // ✨ SIMPAN INSPEKSI: Pastikan ng_reason menangkap data dari dropdown
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -115,19 +116,22 @@ class QualityGateController extends Controller {
                 'qty_from_prod' => $qty_awal,
                 'qty_ok'        => $final_ok,
                 'qty_ng'        => $final_ng, 
-                'ng_reason'     => $request->ng_reason ?? '', // Nilai ini nanti diisi nama NG dari dropdown
+                // Jika tidak ada NG, set 'OK'
+                'ng_reason'     => ($final_ng > 0) ? ($request->ng_reason ?? 'OTHER_DEFECT') : 'OK_GOODS',
                 'inspector'     => $request->inspector_name ?? 'QC_OFFICER',
                 'status'        => 'APPROVED',
                 'created_at'    => now(), 
                 'updated_at'    => now()
             ]);
 
+            // Update Stok FG
             DB::table('finished_goods')->where('id', $fg->id)->update([
                 'actual_stock' => $fg->actual_stock + $final_ok,
                 'act_stock'    => ($fg->act_stock ?? 0) + $final_ok,
                 'updated_at'   => now()
             ]);
 
+            // Log Mutasi
             DB::table('production_logs')->insert([
                 'part_no' => $partNo, 'qty' => $final_ok, 'process_type' => 'FG', 'created_at' => now()
             ]);
