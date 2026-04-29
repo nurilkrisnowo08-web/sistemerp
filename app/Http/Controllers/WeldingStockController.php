@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class WeldingStockController extends Controller
 {
     /**
-     * 1. TERMINAL HUB LIVE (Updated with Return Logic)
+     * 1. TERMINAL HUB LIVE (Updated: Logic Return Direct from Batches)
      */
     public function index(Request $request)
     {
@@ -30,32 +30,30 @@ class WeldingStockController extends Controller
             ->map(function($item) use ($date) {
                 $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
-                // 1. Masuk dari Stamping (Normal)
+                // 1. IN (Stamping): Dari Log Produksi Stamping
                 $in_stamping = DB::table('production_logs')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->where('process_type', 'WELDING')
-                    ->whereNull('source') // Asumsi source null adalah dari stamping
                     ->whereDate('created_at', $date)
                     ->sum('qty') ?? 0;
 
-                // 2. ✨ Masuk dari Return (WIP Balik ke Rak)
-                $in_return = DB::table('production_logs')
+                // 2. ✨ IN (Return): Dari tabel welding_batches sendiri
+                $in_return = DB::table('welding_batches')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                    ->where('process_type', 'WELDING')
-                    ->where('source', 'return') 
+                    ->where('status', 'COMPLETED')
                     ->whereDate('created_at', $date)
-                    ->sum('qty') ?? 0;
+                    ->sum('qty_return') ?? 0;
 
-                // 3. Keluar ke Welding (Berdasarkan Qty Ambil/Deploy)
+                // 3. OUT (Welding): Berapa yang dideploy ke terminal
                 $out_welding = DB::table('welding_batches')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->whereDate('created_at', $date)
                     ->sum('qty_masuk') ?? 0;
 
-                // ✨ RUMUS BARU: Live - (Total In) + Out = Init
+                // RUMUS: Live - (In_Stamp + In_Ret) + Out = Init
                 $item->init = $item->live_stock - ($in_stamping + $in_return) + $out_welding;
                 $item->in_s = $in_stamping;
-                $item->in_r = $in_return; // ✨ Muncul di kolom IN (R)
+                $item->in_r = $in_return; // Masuk ke kolom return hijau di ledger
                 $item->out = $out_welding;
                 $item->run = ($item->live_stock > 0) ? round($item->live_stock / 50, 1) : 0;
 
@@ -150,41 +148,31 @@ class WeldingStockController extends Controller
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $qty_ret = (int)$request->qty_return; // ✨ Ambil dari input return baru
+        $qty_ret = (int)$request->qty_return; // ✨ Ambil sisa material yang dibalikin ke rak
 
-        // Validasi: Qty Masuk = OK + NG + RETURN
-        $total_check = $qty_ok + $qty_ng + $qty_ret;
+        // Validasi rill: Ambil = OK + NG + RETURN
+        $total_input = $qty_ok + $qty_ng + $qty_ret;
 
-        if ($total_check != $batch->qty_masuk) {
-            return back()->with('error', "Total input ($total_check) tidak sesuai dengan Material Ambil ($batch->qty_masuk)!");
+        if ($total_input != $batch->qty_masuk) {
+            return back()->with('error', "Total input ($total_input) tidak pas dengan Target ($batch->qty_masuk)!");
         }
 
         DB::beginTransaction();
         try {
-            // 1. Update Batch Utama (Simpan Record Return di satu baris)
+            // 1. Update Batch (Simpan hasil OK, NG, dan RETURN di satu baris)
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok'     => $qty_ok, 
                 'qty_ng'     => $qty_ng,
+                'qty_return' => $qty_ret, // ✨ Simpan return ke database
                 'status'     => 'COMPLETED', 
-                'keterangan' => $request->keterangan . " (Return: $qty_ret)",
                 'updated_at' => now()
             ]);
 
-            // 2. ✨ LOGIKA RETURN: Kembalikan sisa WIP ke Rak Welding
+            // 2. ✨ Kembalikan Stok Sisa ke Rak WIP Welding
             if ($qty_ret > 0) {
                 DB::table('finished_goods')
                     ->where('part_no', $batch->part_no)
                     ->increment('welding_stock', $qty_ret);
-
-                // Catat di Production Logs sebagai 'return' agar muncul di Ledger IN(R)
-                DB::table('production_logs')->insert([
-                    'part_no'      => $batch->part_no,
-                    'qty'          => $qty_ret,
-                    'process_type' => 'WELDING',
-                    'source'       => 'return', // ✨ Kunci sinkronisasi
-                    'no_produksi'  => $batch->no_produksi_stamping,
-                    'created_at'   => now()
-                ]);
             }
 
             // 3. Sinkron ke Welding Actuals
@@ -207,7 +195,7 @@ class WeldingStockController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Batch Selesai! Sisa material telah dikembalikan ke rak WIP.');
+            return back()->with('success', 'Batch Selesai & Sisa material dikembalikan ke rak.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return back()->with('error', 'Gagal: ' . $e->getMessage()); 
@@ -257,7 +245,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 5. HISTORY MUTASI STOK (Updated for Return Sync)
+     * 5. HISTORY MUTASI STOK (Updated for Internal Return Logic)
      */
     public function history(Request $request)
     {
@@ -276,37 +264,48 @@ class WeldingStockController extends Controller
         $historyData = $query->get()->map(function($item) use ($startDate, $endDate) {
             $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
-            // Total Masuk (Stamping + Return)
-            $in_period = DB::table('production_logs')
+            // In dari Stamping
+            $in_stamp = DB::table('production_logs')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->where('process_type', 'WELDING')
                 ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-                ->sum('qty');
+                ->sum('qty') ?? 0;
+
+            // In dari Return Welding
+            $in_ret = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('status', 'COMPLETED')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty_return') ?? 0;
 
             // Total Keluar
             $out_period = DB::table('welding_batches')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                ->where('status', 'COMPLETED')
                 ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
                 ->sum('qty_masuk');
 
             // Backtracking (Masa depan)
-            $future_in = DB::table('production_logs')
+            $future_in_stamp = DB::table('production_logs')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->where('process_type', 'WELDING')
                 ->whereDate('created_at', '>', $endDate)
-                ->sum('qty');
+                ->sum('qty') ?? 0;
 
-            $future_out = DB::table('welding_batches')
+            $future_in_ret = DB::table('welding_batches')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->where('status', 'COMPLETED')
                 ->whereDate('created_at', '>', $endDate)
+                ->sum('qty_return') ?? 0;
+
+            $future_out = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->whereDate('created_at', '>', $endDate)
                 ->sum('qty_masuk');
 
-            $item->total_in = $in_period;
+            $item->total_in = $in_stamp + $in_ret;
             $item->total_out = $out_period;
-            $item->stock_akhir = ($item->welding_stock ?? 0) + $future_out - $future_in;
-            $item->stock_awal = $item->stock_akhir - $in_period + $out_period;
+            $item->stock_akhir = ($item->welding_stock ?? 0) + $future_out - ($future_in_stamp + $future_in_ret);
+            $item->stock_awal = $item->stock_akhir - ($in_stamp + $in_ret) + $out_period;
 
             return $item;
         })->filter(function($i) {
