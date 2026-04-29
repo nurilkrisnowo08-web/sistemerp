@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 class RmController extends Controller
 {
     /**
-     * 1. MONITORING STOK RM - DASHBOARD SINKRONISASI (FIXED LOGIC)
+     * 1. MONITORING STOK RM - DASHBOARD SINKRONISASI (FIXED: HIDE EMPTY STOCK)
      */
     public function storeIndex(Request $request)
     {
@@ -27,6 +27,8 @@ class RmController extends Controller
                 $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
                      ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
             })
+            // ✨ PERBAIKAN: Hanya ambil coil yang stoknya lebih dari 0
+            ->where('rm_stocks.stock_pcs', '>', 0)
             ->select('rm_stocks.*', 'customers.code as customer_code', 'mm.alias_code', 'mm.std_qty_batch');
 
         if ($aliasSearch) { $rmQuery->where('mm.alias_code', 'LIKE', '%' . $aliasSearch . '%'); }
@@ -41,14 +43,12 @@ class RmController extends Controller
             
             $rep = $itemsInGroup->first();
             
-            // ✨ FIX UTAMA: Ambil SEMUA ID coil (baik yang masih ada stok maupun yang sudah 0/habis)
-            // agar transaksi OUT coil lama tetap terhitung dalam sejarah.
+            // Ambil SEMUA ID coil (termasuk yang sudah habis) untuk keperluan hitung MUTASI rill
             $allHistoricalIds = DB::table('rm_stocks')
                 ->where('spec', $rep->spec)
                 ->where('size', $rep->size)
                 ->pluck('id')->toArray();
 
-            // Ambil Logs berdasarkan ID Sejarah
             $logsIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
             $logsOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
 
@@ -57,15 +57,10 @@ class RmController extends Controller
             $inR = $logsIn->where('source', 'return')->sum('pcs_in');
             $outT = $logsOut->sum('pcs_used');
 
-            // ✨ LOGIKA BACKTRACKING RILL (Saldo Mundur)
-            // 1. Hitung transaksi di masa depan (setelah End Date)
             $futureIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
             $futureOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
             
-            // 2. Tentukan Stok Akhir di tanggal End Date
             $stokAkhirPeriod = $totalLive + $futureOut - $futureIn;
-            
-            // 3. Tentukan Stok Awal di tanggal Start Date
             $totalInit = $stokAkhirPeriod - ($inS + $inR) + $outT;
 
             return (object)[
@@ -83,7 +78,7 @@ class RmController extends Controller
     }
 
     /**
-     * ✨ FIX HISTORY: LOGIKA PERMUTASIAN RILL
+     * ✨ FIX HISTORY: HANYA TAMPILKAN COIL AKTIF
      */
     public function recapLogPrint(Request $request) {
         $availableCustomers = DB::table('customers')->get(); 
@@ -99,6 +94,8 @@ class RmController extends Controller
                 $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
                      ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
             })
+            // ✨ PERBAIKAN: Filter stok > 0
+            ->where('rm_stocks.stock_pcs', '>', 0)
             ->select('rm_stocks.*', 'mm.alias_code');
 
         if ($customer) { $materials->where('rm_stocks.customer', $customer); }
@@ -109,7 +106,6 @@ class RmController extends Controller
         })->map(function($group) use ($startDate, $endDate) {
             
             $rep = $group->first();
-            // ✨ Ambil semua ID historis untuk spek ini
             $ids = DB::table('rm_stocks')
                 ->where('spec', $rep->spec)
                 ->where('size', $rep->size)
@@ -128,7 +124,6 @@ class RmController extends Controller
 
             $liveNow = $group->unique('coil_id')->sum('stock_pcs');
 
-            // Hitung mundur rill!
             $stockAkhirPeriod = $liveNow - $future_in + $future_out;
             $stockAwalPeriod = $stockAkhirPeriod - $in_qty + $out_qty;
 
@@ -146,7 +141,7 @@ class RmController extends Controller
         return view('Gudang.rm_log_print', compact('historyData', 'availableCustomers', 'availableSpecs', 'customer', 'specFilter', 'startDate', 'endDate'));
     }
 
-    // --- FUNGSI LAINNYA DI BAWAH INI TETAP UTUH ---
+    // --- FUNGSI LAINNYA TETAP UTUH ---
 
     public function storeBatch(Request $request)
     {
@@ -207,7 +202,9 @@ class RmController extends Controller
         $targetDate = $request->date ?? date('Y-m-d'); $customer = $request->customer;
         $startDaily = $targetDate . ' 00:00:00'; $endDaily = $targetDate . ' 23:59:59'; $startMonth = date('Y-m-01', strtotime($targetDate)) . ' 00:00:00';
         $title = "INVENTORY RECAP REPORT: " . date('d F Y', strtotime($targetDate));
-        $query = DB::table('rm_stocks')->leftJoin('master_materials as mm', function($join) { $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')")); })->select('mm.alias_code', 'rm_stocks.spec', 'rm_stocks.size', DB::raw('SUM(rm_stocks.stock_pcs) as total_live_now'), DB::raw('GROUP_CONCAT(rm_stocks.id) as consolidated_ids'));
+        $query = DB::table('rm_stocks')->leftJoin('master_materials as mm', function($join) { $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')")); })->select('mm.alias_code', 'rm_stocks.spec', 'rm_stocks.size', DB::raw('SUM(rm_stocks.stock_pcs) as total_live_now'), DB::raw('GROUP_CONCAT(rm_stocks.id) as consolidated_ids'))
+        // ✨ PERBAIKAN: Filter stok > 0
+        ->where('rm_stocks.stock_pcs', '>', 0);
         if ($customer) { $query->where('rm_stocks.customer', $customer); }
         $data = $query->groupBy('mm.alias_code', 'rm_stocks.spec', 'rm_stocks.size')->get()->map(function($group) use ($startDaily, $endDaily, $startMonth) {
             $ids = explode(',', $group->consolidated_ids);
