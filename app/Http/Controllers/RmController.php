@@ -27,7 +27,7 @@ class RmController extends Controller
                 $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
                      ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
             })
-            // ✨ PERBAIKAN: Hanya ambil coil yang stoknya lebih dari 0
+            // ✨ FIX: Hanya ambil data yang stoknya rill masih ada (> 0)
             ->where('rm_stocks.stock_pcs', '>', 0)
             ->select('rm_stocks.*', 'customers.code as customer_code', 'mm.alias_code', 'mm.std_qty_batch');
 
@@ -43,7 +43,7 @@ class RmController extends Controller
             
             $rep = $itemsInGroup->first();
             
-            // Ambil SEMUA ID coil (termasuk yang sudah habis) untuk keperluan hitung MUTASI rill
+            // Tetap ambil ID sejarah agar hitungan mutasi In/Out di periode terpilih akurat
             $allHistoricalIds = DB::table('rm_stocks')
                 ->where('spec', $rep->spec)
                 ->where('size', $rep->size)
@@ -71,14 +71,14 @@ class RmController extends Controller
                 'details' => $itemsInGroup->unique('coil_id'), 'all_parts' => $itemsInGroup,
                 'combined_logs' => $logsIn->concat($logsOut)->sortByDesc('created_at')
             ];
-        });
+        })->filter(fn($group) => $group->total_live > 0); // ✨ Filter tambahan: Hilangkan grup yang total stoknya 0
 
         $availableSpecs = DB::table('rm_stocks')->distinct()->pluck('spec');
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate', 'availableSpecs', 'specFilter'));
     }
 
     /**
-     * ✨ FIX HISTORY: HANYA TAMPILKAN COIL AKTIF
+     * ✨ FIX HISTORY: HANYA TAMPILKAN UNIT YANG MASIH AKTIF
      */
     public function recapLogPrint(Request $request) {
         $availableCustomers = DB::table('customers')->get(); 
@@ -94,7 +94,7 @@ class RmController extends Controller
                 $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
                      ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
             })
-            // ✨ PERBAIKAN: Filter stok > 0
+            // ✨ FIX: Sembunyikan stok 0
             ->where('rm_stocks.stock_pcs', '>', 0)
             ->select('rm_stocks.*', 'mm.alias_code');
 
@@ -136,13 +136,14 @@ class RmController extends Controller
                     ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get())
                     ->sortByDesc('created_at')
             ];
-        })->filter(fn($item) => ($item->initial != 0 || $item->in_qty > 0 || $item->out_qty > 0 || $item->final != 0));
+        })->filter(fn($item) => $item->final > 0); // ✨ Hanya tampilkan yang stok akhirnya masih ada rill
 
         return view('Gudang.rm_log_print', compact('historyData', 'availableCustomers', 'availableSpecs', 'customer', 'specFilter', 'startDate', 'endDate'));
     }
 
-    // --- FUNGSI LAINNYA TETAP UTUH ---
-
+    /**
+     * FUNGSI LAINNYA DI BAWAH INI TETAP SAMA (TIDAK BERUBAH)
+     */
     public function storeBatch(Request $request)
     {
         $request->validate(['customer_code' => 'required', 'spec' => 'required', 'size' => 'required', 'coil_id' => 'required', 'stock_pcs' => 'required|numeric', 'min_stock' => 'required|numeric', 'max_stock' => 'required|numeric', 'std_qty_batch' => 'required|numeric', 'part_nos' => 'required|array']);
@@ -203,8 +204,7 @@ class RmController extends Controller
         $startDaily = $targetDate . ' 00:00:00'; $endDaily = $targetDate . ' 23:59:59'; $startMonth = date('Y-m-01', strtotime($targetDate)) . ' 00:00:00';
         $title = "INVENTORY RECAP REPORT: " . date('d F Y', strtotime($targetDate));
         $query = DB::table('rm_stocks')->leftJoin('master_materials as mm', function($join) { $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')")); })->select('mm.alias_code', 'rm_stocks.spec', 'rm_stocks.size', DB::raw('SUM(rm_stocks.stock_pcs) as total_live_now'), DB::raw('GROUP_CONCAT(rm_stocks.id) as consolidated_ids'))
-        // ✨ PERBAIKAN: Filter stok > 0
-        ->where('rm_stocks.stock_pcs', '>', 0);
+        ->where('rm_stocks.stock_pcs', '>', 0); // ✨ FIX: Hanya rekap yang masih ada stok
         if ($customer) { $query->where('rm_stocks.customer', $customer); }
         $data = $query->groupBy('mm.alias_code', 'rm_stocks.spec', 'rm_stocks.size')->get()->map(function($group) use ($startDaily, $endDaily, $startMonth) {
             $ids = explode(',', $group->consolidated_ids);
@@ -317,6 +317,7 @@ class RmController extends Controller
         $clients = DB::table('customers')->get();
         return view('Gudang.po_supplier_history', compact('pos', 'clients', 'selectedCustomer'));
     }
+
     public function updateUnitPcs(Request $request)
     {
         $request->validate([

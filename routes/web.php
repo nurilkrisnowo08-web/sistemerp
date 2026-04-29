@@ -181,6 +181,8 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
 
     // Rute AJAX untuk ambil data Spek & Part otomatis
     Route::get('/get-parts-and-specs/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('rm.get_parts');
+    // Tambahkan ini di routes/web.php jika belum ada
+    Route::get('/get-parts-and-specs/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('rm.get_parts');
 
     // FG Adjustments
     Route::get('/stock-fg/{id}/edit', [FgController::class, 'edit'])->name('fg.edit');
