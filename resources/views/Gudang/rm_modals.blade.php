@@ -45,7 +45,8 @@
                                 <select id="selectMasterSpec" class="form-control form-control-tech" required disabled style="height: 55px; font-weight: 700;">
                                     <option value="">-- SELECT CLIENT FIRST --</option>
                                 </select>
-                                {{-- ✨ Hidden inputs: Pastikan ID ini sama dengan yang ada di script main view --}}
+                                
+                                {{-- ✨ Hidden inputs ini WAJIB ada agar Controller bisa baca spek & size rill --}}
                                 <input type="hidden" name="spec" id="autoSpec">
                                 <input type="hidden" name="size" id="autoSize">
                             </div>
@@ -67,7 +68,7 @@
                                     <label class="small font-weight-black text-muted uppercase mb-2 d-block">Max_Stock</label>
                                     <input type="number" name="max_stock" class="form-control form-control-tech" value="1000" style="height: 50px; font-weight: 700;" required>
                                 </div>
-                                {{-- ✨ FIXED: Kolom ini WAJIB ada sesuai Controller Bapak --}}
+                                {{-- ✨ FIXED: Field ini WAJIB ada supaya simpan database tidak mental --}}
                                 <div class="col-4">
                                     <label class="small font-weight-black text-muted uppercase mb-2 d-block">Std_Batch</label>
                                     <input type="number" name="std_qty_batch" class="form-control form-control-tech" value="300" style="height: 50px; font-weight: 700;" required>
