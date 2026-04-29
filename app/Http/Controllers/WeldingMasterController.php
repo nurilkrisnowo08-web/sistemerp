@@ -28,7 +28,8 @@ class WeldingMasterController extends Controller
             ->orderBy('ng_name', 'asc')
             ->get();
 
-        return view('Master.welding_ng', compact('listNG'));
+        // Ganti 'Master.welding_ng' menjadi 'Master.master_ng'
+    return view('Master.master_ng', compact('listNG'));
     }
 
     /**
