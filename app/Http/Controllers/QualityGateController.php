@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
-        // ✨ FIX GROUPING: Grouping berdasarkan no_produksi agar tidak pecah rill
+        // Gabungkan batch agar tidak pecah di tampilan QC
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
@@ -28,13 +28,8 @@ class QualityGateController extends Controller {
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $ngStamping = DB::table('master_ngs')
-            ->whereIn('category', ['STAMPING', 'GENERAL'])
-            ->get();
-
-        $ngWelding = DB::table('master_ngs')
-            ->whereIn('category', ['WELDING', 'GENERAL'])
-            ->get();
+        $ngStamping = DB::table('master_ngs')->whereIn('category', ['STAMPING', 'GENERAL'])->get();
+        $ngWelding = DB::table('master_ngs')->whereIn('category', ['WELDING', 'GENERAL'])->get();
 
         return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
@@ -42,9 +37,12 @@ class QualityGateController extends Controller {
     public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
         try {
+            // Ambil data inspector rill
+            $inspector = $request->inspector_name ?? Auth::user()->name ?? 'QC_SYSTEM';
+
             if ($type == 'stamping') {
                 $ref = DB::table('produksi_batches')->where('id', $id)->first();
-                if (!$ref) throw new \Exception("Batch tidak ditemukan.");
+                if (!$ref) throw new \Exception("Batch Stamping Gak Ketemu rill!");
 
                 $batchNo = $ref->no_produksi;
                 $partNo  = $ref->material_code;
@@ -52,10 +50,12 @@ class QualityGateController extends Controller {
 
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
-                
+                $qty_awal = $total_ok_prod;
+
                 $qc_verified_ok = (int)$request->qty_ok_final;
                 $qc_verified_ng = (int)$request->qty_ng_final;
 
+                // Update selisih kalau QC nemu NG baru
                 if ($qc_verified_ok < $total_ok_prod) {
                     $selisih = $total_ok_prod - $qc_verified_ok;
                     $firstLine = $lines->first();
@@ -65,43 +65,34 @@ class QualityGateController extends Controller {
                     ]);
                 }
 
+                // Kunci Batch jadi COMPLETED
                 DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
-                    'status'     => 'COMPLETED',
-                    'qc_at'      => now(),
-                    'qc_by'      => Auth::user()->name,
-                    'updated_at' => now()
+                    'status' => 'COMPLETED', 'qc_at' => now(), 'qc_by' => $inspector, 'updated_at' => now()
                 ]);
-                
-                $final_ok = $qc_verified_ok;
-                $final_ng = $qc_verified_ng;
-                $qty_awal = $total_ok_prod;
 
             } else {
-                $batch = DB::table('welding_batches')->where('id', $id)->first();
-                if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
+                $ref = DB::table('welding_batches')->where('id', $id)->first();
+                if (!$ref) throw new \Exception("Batch Welding Gak Ketemu!");
 
-                $batchNo = $batch->no_produksi_stamping;
-                $partNo  = $batch->part_no;
+                $batchNo = $ref->no_produksi_stamping;
+                $partNo  = $ref->part_no;
                 $origin  = 'WELDING';
-                $final_ok = (int)$request->qty_ok_final;
-                $final_ng = (int)$request->qty_ng_final;
+                $qty_awal = $ref->qty_ok;
+
+                $qc_verified_ok = (int)$request->qty_ok_final;
+                $qc_verified_ng = (int)$request->qty_ng_final;
 
                 DB::table('welding_batches')->where('id', $id)->update([
-                    'qty_ok'     => $final_ok,
-                    'qty_ng'     => $batch->qty_ng + $final_ng,
-                    'status'     => 'COMPLETED',
-                    'qc_at'      => now(),
-                    'qc_by'      => Auth::user()->name,
-                    'updated_at' => now()
+                    'qty_ok' => $qc_verified_ok,
+                    'qty_ng' => $ref->qty_ng + $qc_verified_ng,
+                    'status' => 'COMPLETED', 'qc_at' => now(), 'qc_by' => $inspector, 'updated_at' => now()
                 ]);
-                
-                $qty_awal = $batch->qty_ok;
             }
 
-            // ✨ 1. UPDATE DASHBOARD HARI INI ✨
-            $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
+            // ✨ 1. SINKRONISASI DASHBOARD ACTUAL (Buat Grafik Naga)
+            $actual_id = $this->updateDashboardActual($partNo, $qc_verified_ok, $qc_verified_ng, $origin);
 
-            // ✨ 2. SIMPAN RINCIAN NG KE LOGS ✨
+            // ✨ 2. SIMPAN RINCIAN NG KE PRODUCTION_NG_LOGS
             DB::table('production_ng_logs')->where('no_produksi', $batchNo)->delete();
             $all_ng_names = [];
             if ($request->has('ng_details')) {
@@ -112,7 +103,7 @@ class QualityGateController extends Controller {
                             'actual_id'   => $actual_id,
                             'no_produksi' => $batchNo,
                             'ng_type'     => $ng_name,
-                            'qty'         => $qty,
+                            'qty'         => (int)$qty,
                             'created_at'  => now()
                         ]);
                     }
@@ -120,39 +111,38 @@ class QualityGateController extends Controller {
             }
             $summary_reason = !empty($all_ng_names) ? implode(', ', $all_ng_names) : 'OK GOODS';
 
-            // ✨ 3. SIMPAN KE QUALITY_INSPECTIONS (Data Archive) ✨
+            // ✨ 3. SIMPAN KE QUALITY_INSPECTIONS (Archive History)
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
                 'part_no'       => $partNo,
-                'qty_from_prod' => $qty_awal,
-                'qty_ok'        => $final_ok,
-                'qty_ng'        => $final_ng, 
-                'ng_reason'     => $summary_reason, 
-                'inspector'     => Auth::user()->name,
+                'qty_from_prod' => $qty_awal + $qc_verified_ng,
+                'qty_ok'        => $qc_verified_ok,
+                'qty_ng'        => $qc_verified_ng, 
+                'ng_reason'     => $summary_reason,
+                'inspector'     => $inspector,
                 'status'        => 'APPROVED',
-                'created_at'    => now(), 
+                'created_at'    => now(),
                 'updated_at'    => now()
             ]);
 
-            // ✨ 4. UPDATE STOK & INSERT LOG INVENTORY (AGAR KEBACA DI DASHBOARD INVENTORY) ✨
+            // ✨ 4. UPDATE STOK & LOG INVENTORY (BIAR MUNCUL DI image_1d957c.png)
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->first();
 
             if ($fg) {
-                // Update Angka Stok
                 DB::table('finished_goods')->where('id', $fg->id)->update([
-                    'actual_stock' => ($fg->actual_stock + $final_ok),
-                    'act_stock'    => (($fg->act_stock ?? 0) + $final_ok),
+                    'actual_stock' => ($fg->actual_stock + $qc_verified_ok),
+                    'act_stock'    => (($fg->act_stock ?? 0) + $qc_verified_ok),
                     'updated_at'   => now()
                 ]);
 
-                // ✨ BARIS INI YANG BIKIN DATA MUNCUL DI image_1d957c.png ✨
+                // ✨ BARIS INI WAJIB: Log Masuk Dashboard Inventory rill!
                 DB::table('production_logs')->insert([
                     'part_no'      => $partNo,
-                    'qty'          => $final_ok,
+                    'qty'          => $qc_verified_ok,
                     'process_type' => ($origin == 'STAMPING' ? 'STP' : 'WLD'),
                     'no_produksi'  => $batchNo,
                     'created_at'   => now()
@@ -160,11 +150,12 @@ class QualityGateController extends Controller {
             }
 
             DB::commit();
-            return back()->with('success', "Batch $batchNo Lulus Verifikasi QC & Masuk Inventory rill!");
+            return back()->with('success', "COMMIT BERHASIL rill! Data sudah terkirim ke Inventory.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
-            return back()->with('error', "GAGAL SIMPAN: " . $e->getMessage()); 
+            // Kalau gagal, ini bakal munculin tulisan merah apa yang salah rill!
+            return back()->with('error', "GAGAL COMMIT: " . $e->getMessage()); 
         }
     }
 
@@ -187,14 +178,16 @@ class QualityGateController extends Controller {
             return $exist->id;
         } else {
             return DB::table('production_actuals')->insertGetId([
-                'part_no' => $partNo,
-                'line_code' => $lineCode,
-                'created_at' => now(),
-                'qty_ok' => $qtyOk,
-                'qty_ng' => $qtyNg,
-                'updated_at' => now()
+                'part_no' => $partNo, 'line_code' => $lineCode,
+                'qty_ok' => $qtyOk, 'qty_ng' => $qtyNg,
+                'created_at' => now(), 'updated_at' => now()
             ]);
         }
+    }
+
+    public function history() {
+        $historyData = DB::table('quality_inspections')->orderBy('created_at', 'desc')->get();
+        return view('Quality.history', compact('historyData'));
     }
 
     public function destroy($type, $id) {
@@ -205,14 +198,7 @@ class QualityGateController extends Controller {
             } else {
                 DB::table('welding_batches')->where('id', $id)->delete();
             }
-            return back()->with('success', 'Batch berhasil dihapus.');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal: ' . $e->getMessage());
-        }
-    }
-
-    public function history() {
-        $historyData = DB::table('quality_inspections')->orderBy('created_at', 'desc')->get();
-        return view('Quality.history', compact('historyData'));
+            return back()->with('success', 'Batch dihapus.');
+        } catch (\Exception $e) { return back()->with('error', $e->getMessage()); }
     }
 }
