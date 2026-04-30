@@ -1,6 +1,15 @@
 @extends('layout.admin')
 
 @section('content')
+{{-- ✨ PINDAHKAN HITUNGAN KE ATAS AGAR TIDAK ERROR $totalTake ✨ --}}
+@php
+    $totalTake = $history->sum('qty_ambil_pcs');
+    $totalOk = $history->sum('qty_hasil_ok');
+    $totalNg = $history->sum('qty_hasil_ng');
+    $totalRet = $history->sum('qty_return_warehouse');
+    $performance = ($totalTake - $totalRet) > 0 ? ($totalOk / ($totalTake - $totalRet)) * 100 : 0;
+@endphp
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;900&family=JetBrains+Mono:wght@500;800&family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -15,51 +24,47 @@
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
     .heading-cyber { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
 
-    /* 📊 SCREEN STATS */
+    /* 📊 SCREEN UI */
     .stat-card { background: #fff; border-radius: 20px; padding: 22px; border: 1px solid rgba(0,0,0,0.05); transition: 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.02); height: 100%; position: relative; overflow: hidden; }
     .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(67, 97, 238, 0.1); }
     .stat-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
     .stat-value { font-family: 'Orbitron'; font-size: 26px; font-weight: 900; }
     .card-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
 
-    /* 📋 TABLE HUD */
     .terminal-card { background: #fff; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; }
     .table-hud thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 20px; border: none; font-weight: 800; }
-    .row-clickable { cursor: pointer; transition: 0.3s; }
-    .row-clickable:hover { background-color: rgba(67, 97, 238, 0.04) !important; }
+    .row-clickable:hover { background-color: rgba(67, 97, 238, 0.04) !important; cursor: pointer; }
     .ng-mini-pill { background: #fff1f2; color: var(--dragon-red); font-size: 9px; padding: 3px 8px; border-radius: 6px; border: 1px solid #fecdd3; font-family: 'JetBrains Mono'; font-weight: 800; display: inline-block; margin-top: 4px; margin-right: 3px; }
 
-    /* 🖨️ SAKTI PRINT ENGINE v6.0 (TOTAL TERMINATOR) */
+    /* 🖨️ SAKTI PRINT ENGINE v6.1 (ULTIMATE SIDEBAR KILLER) */
     .print-template { display: none; }
 
     @media print {
-        /* Hancurkan Layout AdminLTE */
+        /* 1. Hancurkan AdminLTE total saat print */
         .main-sidebar, .main-header, .main-footer, .no-print, .btn, .filter-bar, .modal, nav, footer, aside, .content-header { 
             display: none !important; 
         }
 
-        /* Bersihkan Body */
         body { background: white !important; margin: 0 !important; padding: 0 !important; }
         
-        /* Paksa Content melebar 100% Landscape */
+        /* 2. Paksa Konten melebar 100% dari pojok kiri */
         .content-wrapper, .content, .container-fluid { 
             margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: 100% !important;
             position: absolute !important; left: 0 !important; top: 0 !important; background: white !important;
+            display: block !important;
         }
 
         @page { size: A4 landscape; margin: 15mm; }
 
-        /* Tampilkan Template Khusus */
-        .print-template { display: block !important; }
+        .print-template { display: block !important; width: 100% !important; }
         .screen-only { display: none !important; }
 
-        /* Styling Elemen dalam Print */
+        /* 3. Desain Tabel Print ala Industrial */
         .print-header { border-bottom: 5px double #000; padding-bottom: 15px; margin-bottom: 25px; }
         .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .print-table th { background: #eee !important; color: black !important; text-transform: uppercase; font-size: 10px; padding: 10px; border: 1px solid #000; }
-        .print-table td { border: 1px solid #000; padding: 8px; font-size: 11px; text-align: center; color: black !important; }
+        .print-table th { background: #eee !important; color: black !important; font-size: 10px; padding: 10px; border: 1px solid #000; }
+        .print-table td { border: 1px solid #000; padding: 8px; font-size: 11px; text-align: center; color: black !important; font-weight: bold; }
         
-        /* Grafik Naga pas Print */
         #trendChart { width: 100% !important; height: 300px !important; display: block !important; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
@@ -67,9 +72,7 @@
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
 
-    {{-- ========================================== --}}
-    {{-- 🏛️ TEMPLATE PRINT (HIDDEN ON SCREEN)     --}}
-    {{-- ========================================== --}}
+    {{-- 🏛️ TEMPLATE PRINT --}}
     <div class="print-template">
         <div class="print-header">
             <table style="width: 100%;">
@@ -90,24 +93,22 @@
             </table>
         </div>
 
-        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-            <div style="width: 24%; border: 1px solid #000; padding: 10px; text-align: center;"><b>MATERIAL TAKE</b><br>{{ number_format($totalTake) }}</div>
-            <div style="width: 24%; border: 1px solid #000; padding: 10px; text-align: center;"><b>PASSED GOOD</b><br>{{ number_format($totalOk) }}</div>
-            <div style="width: 24%; border: 1px solid #000; padding: 10px; text-align: center;"><b>REJECT ITEMS</b><br>{{ number_format($totalNg) }}</div>
-            <div style="width: 24%; border: 1px solid #000; padding: 10px; text-align: center;"><b>PERFORMANCE</b><br>{{ number_format($performance, 1) }}%</div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 25px;">
+            <div style="width: 24%; border: 2px solid #000; padding: 15px; text-align: center;"><b>MATERIAL TAKE</b><br><span style="font-size: 20px;">{{ number_format($totalTake) }}</span></div>
+            <div style="width: 24%; border: 2px solid #000; padding: 15px; text-align: center;"><b>PASSED GOOD</b><br><span style="font-size: 20px;">{{ number_format($totalOk) }}</span></div>
+            <div style="width: 24%; border: 2px solid #000; padding: 15px; text-align: center;"><b>REJECT ITEMS</b><br><span style="font-size: 20px;">{{ number_format($totalNg) }}</span></div>
+            <div style="width: 24%; border: 2px solid #000; padding: 15px; text-align: center;"><b>PERFORMANCE</b><br><span style="font-size: 20px;">{{ number_format($performance, 1) }}%</span></div>
         </div>
     </div>
 
-    {{-- ========================================== --}}
-    {{-- 🛰️ SCREEN UI (HIDDEN ON PRINT)           --}}
-    {{-- ========================================== --}}
+    {{-- 🛰️ SCREEN UI HEADER --}}
     <div class="screen-only">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 no-print">
             <div>
                 <h2 class="heading-cyber m-0">PRODUCTION_AUDIT <span class="text-primary">v4.5</span></h2>
                 <p class="text-muted small font-weight-bold mb-0 uppercase"><i class="fas fa-dragon text-primary mr-2"></i> Dragon Engine Activated // PT AMA</p>
             </div>
-            <form action="{{ route('produksi.history') }}" method="GET" class="filter-bar d-flex align-items-center shadow-sm">
+            <form action="{{ route('produksi.history') }}" method="GET" class="filter-bar d-flex align-items-center shadow-sm p-3 bg-white rounded-xl border">
                 <i class="fas fa-calendar-alt text-primary mr-3"></i>
                 <input type="date" name="start_date" value="{{ $startDate }}" class="input-date-custom mr-3">
                 <input type="date" name="end_date" value="{{ $endDate }}" class="input-date-custom">
@@ -124,9 +125,9 @@
         </div>
     </div>
 
-    {{-- 📈 THE DRAGON CHART (Visible on both) --}}
+    {{-- 📈 THE DRAGON SPLINE CHART --}}
     <div class="terminal-card p-4 mb-5">
-        <h6 class="font-weight-black text-muted small uppercase mb-4 tracking-widest no-print"><i class="fas fa-wave-square mr-2"></i> Operational Spline (Dragon Flow)</h6>
+        <h6 class="font-weight-black text-muted small uppercase mb-4 tracking-widest no-print"><i class="fas fa-wave-square mr-2"></i> Dragon Spline Flow (Performance Analysis)</h6>
         <div id="trendChart"></div>
     </div>
 
@@ -159,7 +160,7 @@
                     <tr class="row-clickable" onclick="showDetail({{ json_encode($h) }}, {{ json_encode($rincian) }})">
                         <td class="text-left pl-5">
                             <div class="font-weight-black text-dark" style="font-size: 12px;">{{ date('d/m/y', strtotime($h->created_at)) }}</div>
-                            <div class="small text-primary font-weight-bold">{{ date('H:i', strtotime($h->created_at)) }}</div>
+                            <div class="small text-primary font-weight-bold" style="font-family: 'JetBrains Mono';">{{ date('H:i', strtotime($h->created_at)) }}</div>
                         </td>
                         <td class="small font-weight-bold text-muted">{{ $h->no_produksi }}</td>
                         <td class="text-left font-weight-black text-dark pl-4">> {{ $h->material_code }}</td>
@@ -180,14 +181,14 @@
         </div>
     </div>
 
-    {{-- 🖋️ SIGNATURE (Print Only) --}}
+    {{-- 🖋️ PRINT SIGNATURE --}}
     <div class="print-template">
-        <div style="display: flex; justify-content: space-between; text-align: center; margin-top: 50px; font-weight: 800;">
-            <div style="width: 200px;"><p>Prepared by,</p><div style="height: 60px;"></div><p>( Production )</p></div>
-            <div style="width: 200px;"><p>Checked by,</p><div style="height: 60px;"></div><p>( QC Inspector )</p></div>
-            <div style="width: 200px;"><p>Approved by,</p><div style="height: 60px;"></div><p>( Supervisor )</p></div>
+        <div style="display: flex; justify-content: space-between; text-align: center; margin-top: 60px; font-weight: 800;">
+            <div style="width: 200px;"><p>Prepared by,</p><div style="height: 70px;"></div><p>( Production )</p></div>
+            <div style="width: 200px;"><p>Checked by,</p><div style="height: 70px;"></div><p>( QC Inspector )</p></div>
+            <div style="width: 200px;"><p>Approved by,</p><div style="height: 70px;"></div><p>( Supervisor )</p></div>
         </div>
-        <p style="text-align: right; font-size: 10px; margin-top: 30px;">Report Generated: {{ now() }} // System User: {{ Auth::user()->name }}</p>
+        <p style="text-align: right; font-size: 10px; margin-top: 30px;">Authenticated Report // {{ now() }} // System: {{ Auth::user()->name }}</p>
     </div>
 
     <div class="text-center no-print mt-4 mb-5">
@@ -197,12 +198,12 @@
     </div>
 </div>
 
-{{-- MODAL --}}
-<div class="modal fade" id="detailModal" tabindex="-1">
+{{-- MODAL DETAIL --}}
+<div class="modal fade animate__animated animate__zoomIn" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content shadow-2xl border-0" style="border-radius: 35px;">
             <div class="modal-header bg-dark text-white border-0 py-4 px-5">
-                <h6 class="modal-title font-weight-black uppercase"><i class="fas fa-shield-alt mr-2 text-primary"></i>Audit_Deep_Dive</h6>
+                <h6 class="modal-title font-weight-black uppercase tracking-widest"><i class="fas fa-shield-alt mr-2 text-primary"></i>Audit_Deep_Dive</h6>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body p-5 bg-white text-left">
@@ -227,7 +228,7 @@
 </div>
 
 <script>
-    // 📊 DRAGON SPLINE CHART (Cacing Naga Flow)
+    // 📊 DRAGON SPLINE CHART (Liukan Naga)
     const chartData = @json($history->take(15)->reverse()->values());
     const options = {
         series: [{
@@ -246,7 +247,7 @@
         fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.05, stops: [0, 90, 100] } },
         xaxis: { categories: chartData.map(h => h.no_produksi.substr(-6)), labels: { style: { fontSize: '10px', fontWeight: 800 } } },
         yaxis: { labels: { style: { fontWeight: 800 }, formatter: (val) => val.toFixed(0) } },
-        markers: { size: 4, colors: ['#fff'], strokeColors: '#4361ee', strokeWidth: 3 },
+        markers: { size: 5, colors: ['#fff'], strokeColors: '#4361ee', strokeWidth: 3 },
         grid: { borderColor: '#f1f5f9', strokeDashArray: 4 }
     };
     new ApexCharts(document.querySelector("#trendChart"), options).render();
@@ -279,7 +280,7 @@
                     </div>`;
             });
         } else {
-            listDiv.innerHTML = '<div class="text-center text-muted small py-2 font-weight-bold">ZERO_DEFECTS_DETECTED</div>';
+            listDiv.innerHTML = '<div class="text-center text-muted small py-2 font-weight-bold">ZERO DEFECTS RECORDED</div>';
         }
 
         if(donut) donut.destroy();
