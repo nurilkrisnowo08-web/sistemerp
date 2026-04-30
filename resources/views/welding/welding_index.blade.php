@@ -52,10 +52,11 @@
             <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-satellite-dish text-primary mr-2"></i> Quality Assurance Command Center</p>
         </div>
         <div class="d-flex align-items-center">
+            <!-- 🏦 Tombol Vault Permutasian Stok -->
             <a href="{{ route('welding.history') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm">VAULT</a>
             
-            {{-- ✨ KOTAK BARU DI SAMPING VAULT ✨ --}}
-            <a href="{{ route('welding.history') }}" class="btn btn-white border shadow-sm mr-2" style="width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--brand-primary); text-decoration: none;">
+            <!-- 📜 Tombol Kotak: Link ke History Produksi (welding_history_weldig) -->
+            <a href="{{ route('welding.historyWelding') }}" class="btn btn-white border shadow-sm mr-2" style="width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--brand-primary); text-decoration: none;" title="History Produksi">
                 <i class="fas fa-history"></i>
             </a>
 
@@ -162,7 +163,6 @@
                 @csrf @method('PUT')
                 <div class="modal-body p-5">
                     <div class="row">
-                        {{-- LEFT SIDE: TARGET & OK --}}
                         <div class="col-md-4 text-center border-right pr-5">
                             <div class="p-4 bg-light rounded-3xl mb-4 border">
                                 <h1 class="font-weight-black text-dark mb-0" style="font-family: 'Orbitron'; font-size: 50px;">{{ number_format($aw->qty_masuk) }}</h1>
@@ -181,7 +181,6 @@
                             </div>
                         </div>
                         
-                        {{-- RIGHT SIDE: RETURN & NG --}}
                         <div class="col-md-8 pl-5">
                             <div class="row">
                                 <div class="col-md-6 mb-4">
@@ -264,11 +263,8 @@
         $(`#total_ng_${batchId}`).val(totalNg);
 
         let ret = parseInt($(`#modalFinish${batchId} #input_ret_${batchId}`).val()) || 0;
-        
         let okAuto = target - totalNg - ret;
-        
         $(`#input_ok_${batchId}`).val(okAuto < 0 ? 0 : okAuto);
-
         refreshSecurityUI(batchId, target);
     }
 
