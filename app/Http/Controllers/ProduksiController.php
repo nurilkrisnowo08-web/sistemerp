@@ -295,9 +295,10 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
-    public function history(Request $request) 
+  public function history(Request $request) 
 {
-    // ✨ 1. Ambil input tanggal, default ke hari ini
+    // ✨ 1. Ambil input tanggal, jika kosong default ke HARI INI
+    // Kalau Bapak mau default-nya muncul semua, hapus default date('Y-m-d')-nya
     $startDate = $request->start_date ?? date('Y-m-d');
     $endDate = $request->end_date ?? date('Y-m-d');
 
@@ -309,18 +310,18 @@ class ProduksiController extends Controller
             'produksi_batches.shift',
             'produksi_batches.status',
             'produksi_batches.keterangan',
-            // ✨ Kunci agar jam tidak berubah: Ambil MIN created_at (Jam Lahir Produksi)
+            // ✨ Kunci Jam: Ambil created_at pertama (saat deploy batch)
             DB::raw('MIN(produksi_batches.created_at) as created_at'), 
             DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
             DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
             DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
             DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
-            DB::raw('SUM(produksi_batches.qty_return_warehouse) as qty_return_warehouse'), // Data Return
+            DB::raw('SUM(produksi_batches.qty_return_warehouse) as qty_return_warehouse'),
             DB::raw('MIN(produksi_batches.id) as id'),
             DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
         )
         ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-        // ✨ Filter Range Tanggal rill sesuai pilihan user
+        // ✨ Filter Range berdasarkan created_at (Bukan updated_at QC)
         ->whereBetween('produksi_batches.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
         ->groupBy(
             'produksi_batches.no_produksi', 
@@ -332,7 +333,6 @@ class ProduksiController extends Controller
         ->orderBy('created_at', 'desc')
         ->get();
 
-    // ✨ Wajib kirim startDate dan endDate balik ke View agar input kalender terisi rill
     return view('Produksi.history', compact('history', 'startDate', 'endDate'));
 }
 
