@@ -62,7 +62,7 @@
                     <td style="width: 100px;"><div style="width: 80px; height: 80px; background: #000; color: #fff; text-align: center; line-height: 80px; font-weight: 900; border-radius: 15px; font-size: 28px;">AMA</div></td>
                     <td>
                         <h1 style="margin: 0; font-family: 'Orbitron'; font-weight: 900; font-size: 32px;">PT ASALTA MANDIRI AGUNG</h1>
-                        <p style="margin: 0; font-size: 16px; font-weight: 800;">Dragon Engine v9.0 // Official Production Audit Report</p>
+                        <p style="margin: 0; font-size: 16px; font-weight: 800;"> Official Production Audit Report</p>
                     </td>
                     <td style="text-align: right;">
                         <div style="border: 3px solid #000; padding: 15px; border-radius: 10px;">
