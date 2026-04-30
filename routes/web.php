@@ -279,10 +279,10 @@ Route::prefix('welding-master')->group(function () {
     Route::delete('/ng/destroy/{id}', [WeldingMasterController::class, 'ngDestroy'])->name('welding.master.ng.destroy');
    // Tambahkan di routes/web.php
 Route::get('/ppic/get-batch-ng-details/{no_produksi}', [App\Http\Controllers\PPICController::class, 'getBatchNGDetails']);
-// Tambahkan ini di web.php
-Route::get('/welding/history-production', [App\Http\Controllers\WeldingStockController::class, 'historyWelding'])->name('welding.historyWelding');
-Route::get('/welding/history-production', function () {
-    return view('welding.welding_history_weldig'); // Sesuai nama file blade Bapak
+// Pastikan ->name(...) sama persis dengan yang dipanggil di Blade
+Route::get('/history-welding', [NamaControllerBapak::class, 'historyWelding'])->name('welding.historyWelding');
+Route::get('/history-welding', function () {
+    return view('welding.welding_history_weldig'); // Ingat, ini panggil file "weldig" Bapak
 })->name('welding.historyWelding');
 });
 });
