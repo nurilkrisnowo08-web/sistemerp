@@ -1,7 +1,7 @@
 @extends('layout.admin')
 
 @section('content')
-{{-- ✨ HITUNGAN GLOBAL (WAJIB DI ATAS) ✨ --}}
+{{-- ✨ PERHITUNGAN GLOBAL --}}
 @php
     $totalTake = $history->sum('qty_ambil_pcs');
     $totalOk = $history->sum('qty_hasil_ok');
@@ -18,53 +18,118 @@
     :root { 
         --dragon-blue: #4361ee; --dragon-green: #10b981; 
         --dragon-red: #ef4444; --dragon-gold: #f59e0b; --dragon-sky: #3a86ff;
-        --dragon-dark: #0f172a; --dragon-border: rgba(67, 97, 238, 0.1);
+        --dragon-dark: #0f172a; --dragon-glass: rgba(255, 255, 255, 0.8);
     }
     
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
     .heading-cyber { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
 
-    /* 📊 STAT CARDS UI v8.0 */
-    .stat-card { background: #fff; border-radius: 24px; padding: 25px; border: 1px solid var(--dragon-border); transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; height: 100%; }
-    .stat-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(67, 97, 238, 0.15); }
+    /* 📊 CYBER STAT CARDS */
+    .stat-card { background: var(--dragon-glass); backdrop-filter: blur(10px); border-radius: 24px; padding: 25px; border: 1px solid rgba(67, 97, 238, 0.1); transition: 0.4s; position: relative; overflow: hidden; height: 100%; }
+    .stat-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 20px 40px rgba(67, 97, 238, 0.15); }
     .stat-label { font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; }
-    .stat-value { font-family: 'Orbitron'; font-size: 28px; font-weight: 900; line-height: 1.2; }
+    .stat-value { font-family: 'Orbitron'; font-size: 30px; font-weight: 900; line-height: 1.2; }
     .card-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; }
 
-    /* 🏛️ TERMINAL TABLE STYLE */
-    .terminal-card { background: #fff; border-radius: 30px; box-shadow: 0 15px 50px rgba(0,0,0,0.04); border: 1px solid #eef2f6; overflow: hidden; }
+    /* 📈 GLOWING WAVE ANIMATION FOR CHART */
+    #trendChart { filter: drop-shadow(0px 10px 10px rgba(67, 97, 238, 0.1)); }
+
+    /* 🏛️ TERMINAL HUD TABLE */
+    .terminal-card { background: #fff; border-radius: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.03); border: 1px solid #eef2f6; overflow: hidden; }
     .table-hud thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; padding: 22px; border: none; font-weight: 800; }
-    .row-clickable { transition: 0.3s; }
-    .row-clickable:hover { background: #f8fafc !important; cursor: pointer; box-shadow: inset 6px 0 0 var(--dragon-blue); }
+    .row-clickable:hover { background: #f8fafc !important; cursor: pointer; box-shadow: inset 8px 0 0 var(--dragon-blue); }
 
-    /* 🔴 NG BREAKDOWN BADGES */
-    .ng-mini-pill { background: #fee2e2; color: var(--dragon-red); font-size: 9px; padding: 4px 10px; border-radius: 8px; border: 1px solid #fecdd3; font-family: 'JetBrains Mono'; font-weight: 800; display: inline-block; margin: 2px; }
-
-    /* 🛡️ MODAL DEEP DIVE v8.0 */
-    .modal-content { border-radius: 40px !important; border: none !important; box-shadow: 0 25px 80px rgba(0,0,0,0.2) !important; overflow: hidden; }
-    .modal-header-cyber { background: var(--dragon-dark); color: white; padding: 30px 45px; border: none; }
-    .deep-dive-box { background: #f8fafc; border-radius: 25px; padding: 20px; border: 1px solid #e2e8f0; }
-    
-    /* NG Compartment (The Kamar) */
-    .ng-kamar { background: white; border-radius: 20px; padding: 15px; border: 1px solid #f1f5f9; box-shadow: 0 4px 6px rgba(0,0,0,0.02); height: 100%; }
-    .kamar-label { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; padding: 5px 10px; border-radius: 6px; display: inline-block; margin-bottom: 10px; }
+    /* 🖨️ ADVANCED PRINT TEMPLATE (PDF QUALITY) */
+    .print-template { display: none; color: #000 !important; }
+    @media print {
+        .screen-only, .no-print, .main-sidebar, .main-header, .btn, .filter-bar, .modal { display: none !important; }
+        .print-template { display: block !important; width: 100% !important; padding: 20px; }
+        .print-header { border-bottom: 4px solid #000; padding-bottom: 15px; margin-bottom: 30px; }
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 10px; font-size: 12px; text-align: center; }
+        .print-table th { background: #f0f0f0 !important; font-weight: 900; }
+        @page { size: A4 landscape; margin: 15mm; }
+    }
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
 
+    {{-- 🏛️ PDF/PRINT HIDDEN TEMPLATE --}}
+    <div class="print-template">
+        <div class="print-header">
+            <table style="width: 100%;">
+                <tr>
+                    <td style="width: 100px;"><div style="width: 80px; height: 80px; background: #000; color: #fff; text-align: center; line-height: 80px; font-weight: 900; border-radius: 15px; font-size: 28px;">AMA</div></td>
+                    <td>
+                        <h1 style="margin: 0; font-family: 'Orbitron'; font-weight: 900; font-size: 32px;">PT ASALTA MANDIRI AGUNG</h1>
+                        <p style="margin: 0; font-size: 16px; font-weight: 800;">Dragon Engine v9.0 // Official Production Audit Report</p>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="border: 3px solid #000; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 10px; font-weight: 900;">AUDIT TIMEFRAME:</div>
+                            <div style="font-size: 14px; font-weight: 900;">{{ date('d M Y', strtotime($startDate)) }} - {{ date('d M Y', strtotime($endDate)) }}</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+            <div style="width: 19%; border: 2px solid #000; padding: 20px; text-align: center; border-radius: 15px;"><b>TOTAL TAKE</b><br><span style="font-size: 20px;">{{ number_format($totalTake) }}</span></div>
+            <div style="width: 19%; border: 2px solid #000; padding: 20px; text-align: center; border-radius: 15px;"><b>VERIFIED OK</b><br><span style="font-size: 20px;">{{ number_format($totalOk) }}</span></div>
+            <div style="width: 19%; border: 2px solid #000; padding: 20px; text-align: center; border-radius: 15px;"><b>TOTAL NG</b><br><span style="font-size: 20px;">{{ number_format($totalNg) }}</span></div>
+            <div style="width: 19%; border: 2px solid #000; padding: 20px; text-align: center; border-radius: 15px;"><b>RETURN RM</b><br><span style="font-size: 20px;">{{ number_format($totalRet) }}</span></div>
+            <div style="width: 19%; border: 2px solid #000; padding: 20px; text-align: center; border-radius: 15px;"><b>PERF. ACC</b><br><span style="font-size: 20px;">{{ number_format($performance, 1) }}%</span></div>
+        </div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Batch</th>
+                    <th>Part No</th>
+                    <th>Take</th>
+                    <th>OK</th>
+                    <th>NG</th>
+                    <th>RET</th>
+                    <th>Yield</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($history as $h)
+                @php
+                    $ok = (float)$h->qty_hasil_ok;
+                    $ng = (float)$h->qty_hasil_ng;
+                    $yld = ($ok + $ng) > 0 ? ($ok / ($ok + $ng)) * 100 : 0;
+                @endphp
+                <tr>
+                    <td>{{ date('d/m/y', strtotime($h->updated_at)) }}</td>
+                    <td>{{ $h->no_produksi }}</td>
+                    <td>{{ $h->material_code }}</td>
+                    <td>{{ number_format($h->qty_ambil_pcs) }}</td>
+                    <td>{{ number_format($ok) }}</td>
+                    <td>{{ number_format($ng) }}</td>
+                    <td>{{ number_format($h->qty_return_warehouse) }}</td>
+                    <td>{{ number_format($yld, 1) }}%</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
     {{-- 🛰️ SCREEN UI HEADER --}}
     <div class="screen-only">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5 no-print">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
             <div>
-                <h2 class="heading-cyber m-0">DRAGON_AUDIT <span class="text-primary">v8.0</span></h2>
-                <p class="text-muted small font-weight-bold mb-0 uppercase tracking-widest"><i class="fas fa-dragon text-primary mr-2"></i> Performance Matrix // PT AMA</p>
+                <h2 class="heading-cyber m-0">PRODUCTION_AUDIT <span class="text-primary">v9.0</span></h2>
+                <p class="text-muted small font-weight-bold mb-0 uppercase tracking-widest"><i class="fas fa-dragon text-primary mr-2"></i> Dragon Engine Traceability</p>
             </div>
-            <form action="{{ route('produksi.history') }}" method="GET" class="filter-bar d-flex align-items-center shadow-sm p-3 bg-white rounded-2xl border">
-                <i class="fas fa-calendar-alt text-primary mr-3 ml-2"></i>
-                <input type="date" name="start_date" value="{{ $startDate }}" class="form-control form-control-sm border-0 mr-3 shadow-none bg-light rounded-pill px-3">
-                <input type="date" name="end_date" value="{{ $endDate }}" class="form-control form-control-sm border-0 shadow-none bg-light rounded-pill px-3">
-                <button type="submit" class="btn btn-primary rounded-pill px-4 font-weight-bold ml-4">SYNC_CORE</button>
-            </form>
+            <div class="d-flex align-items-center">
+                <form action="{{ route('produksi.history') }}" method="GET" class="filter-bar d-flex align-items-center shadow-sm p-3 bg-white rounded-2xl border mr-3">
+                    <input type="date" name="start_date" value="{{ $startDate }}" class="form-control form-control-sm border-0 mr-2 bg-light rounded-pill px-3 shadow-none">
+                    <input type="date" name="end_date" value="{{ $endDate }}" class="form-control form-control-sm border-0 mr-2 bg-light rounded-pill px-3 shadow-none">
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 font-weight-bold">SYNC</button>
+                </form>
+                <button onclick="window.print()" class="btn btn-dark rounded-2xl p-3 shadow-lg"><i class="fas fa-print"></i></button>
+            </div>
         </div>
 
         {{-- 📊 MAIN STATS --}}
@@ -72,132 +137,105 @@
             <div class="col-md-3 col-6 mb-3"><div class="stat-card"><div class="card-strip bg-primary"></div><div class="stat-label">Material Take</div><div class="stat-value text-primary">{{ number_format($totalTake) }}</div></div></div>
             <div class="col-md-2 col-4 mb-3"><div class="stat-card"><div class="card-strip bg-success"></div><div class="stat-label">Verified OK</div><div class="stat-value text-success">{{ number_format($totalOk) }}</div></div></div>
             <div class="col-md-2 col-4 mb-3"><div class="stat-card"><div class="card-strip bg-danger"></div><div class="stat-label">Total Reject</div><div class="stat-value text-danger">{{ number_format($totalNg) }}</div></div></div>
-            <div class="col-md-2 col-4 mb-3"><div class="stat-card"><div class="card-strip bg-info"></div><div class="stat-label">Returned RM</div><div class="stat-value text-info">{{ number_format($totalRet) }}</div></div></div>
-            <div class="col-md-3 col-12 mb-3"><div class="stat-card bg-dark text-white"><div class="stat-label text-white-50">Performance Accuracy</div><div class="stat-value text-white">{{ number_format($performance, 1) }}%</div></div></div>
+            <div class="col-md-2 col-4 mb-3"><div class="stat-card"><div class="card-strip bg-info"></div><div class="stat-label">Return RM</div><div class="stat-value text-info">{{ number_format($totalRet) }}</div></div></div>
+            <div class="col-md-3 col-12 mb-3"><div class="stat-card bg-dark text-white"><div class="stat-label text-white-50">Performance</div><div class="stat-value text-white">{{ number_format($performance, 1) }}%</div></div></div>
         </div>
-    </div>
 
-    {{-- 📈 THE ULTIMATE 5-AXIS DRAGON CHART --}}
-    <div class="terminal-card p-4 mb-5 shadow-xl no-print animate__animated animate__zoomIn">
-        <h6 class="font-weight-black text-muted small uppercase mb-4 tracking-widest ml-2"><i class="fas fa-wave-square mr-2 text-primary"></i> Dragon Spline Flow (Take, OK, NG, RET, PERF)</h6>
-        <div id="trendChart"></div>
-    </div>
+        {{-- 📈 THE ULTIMATE 5-AXIS WAVE CHART --}}
+        <div class="terminal-card p-4 mb-5 shadow-xl animate__animated animate__zoomIn">
+            <h6 class="font-weight-black text-muted small uppercase mb-4 tracking-widest"><i class="fas fa-wave-square mr-2 text-primary"></i> 5-Axis Dragon Spline Matrix</h6>
+            <div id="trendChart"></div>
+        </div>
 
-    {{-- 📋 TABLE HUD --}}
-    <div class="terminal-card shadow-lg mb-5 animate__animated animate__fadeInUp">
-        <div class="table-responsive">
-            <table class="table table-hud mb-0 text-center print-table-final">
-                <thead>
-                    <tr>
-                        <th class="text-left pl-5">Finish Date (QC)</th>
-                        <th>Batch_No</th>
-                        <th class="text-left">Part Identification</th>
-                        <th>Take</th>
-                        <th class="text-success">OK</th>
-                        <th class="text-danger">NG</th>
-                        <th class="text-info">RET</th>
-                        <th>Yield</th>
-                        <th class="text-left">NG Breakdown (Kumulatif)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($history as $h)
-                    @php 
-                        // 🔥 Ambil Semua Log NG (Prod + QC) rill
-                        $allLogs = DB::table('production_ng_logs')->where('no_produksi', $h->no_produksi)->get();
-                        
-                        // Kelompokkan buat rincian kamar di modal
-                        $rincianProd = $allLogs->where('created_at', '<', $h->qc_at ?? now())->values();
-                        $rincianQC   = $allLogs->where('created_at', '>=', $h->qc_at ?? now())->values();
-
-                        // Ringkasan kumulatif buat tabel
-                        $summary = $allLogs->groupBy('ng_type')->map(fn($group) => $group->sum('qty'));
-
-                        $batchOk = (float)$h->qty_hasil_ok;
-                        $batchNg = (float)$h->qty_hasil_ng;
-                        $yield = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk + $batchNg)) * 100 : 0;
-                        $color = ($yield >= 95) ? '#10b981' : (($yield >= 85) ? '#f59e0b' : '#ef4444');
-                    @endphp
-                    <tr class="row-clickable" onclick="showDeepDive({{ json_encode($h) }}, {{ json_encode($rincianProd) }}, {{ json_encode($rincianQC) }})">
-                        <td class="text-left pl-5">
-                            <div class="font-weight-black text-dark" style="font-size: 12px;">{{ date('d/m/y', strtotime($h->updated_at)) }}</div>
-                            <div class="small text-primary font-weight-bold" style="font-family: 'JetBrains Mono';">{{ date('H:i', strtotime($h->updated_at)) }}</div>
-                        </td>
-                        <td class="small font-weight-bold text-muted">{{ $h->no_produksi }}</td>
-                        <td class="text-left font-weight-black text-dark pl-4">> {{ $h->material_code }}</td>
-                        <td class="bg-light font-weight-black">{{ number_format($h->qty_ambil_pcs) }}</td>
-                        <td class="text-success font-weight-black">{{ number_format($batchOk) }}</td>
-                        <td class="text-danger font-weight-black">{{ number_format($batchNg) }}</td>
-                        <td class="text-info font-weight-black">{{ number_format($h->qty_return_warehouse) }}</td>
-                        <td><b style="color: {{ $color }}; font-family: 'JetBrains Mono'; font-size: 13px;">{{ number_format($yield, 1) }}%</b></td>
-                        <td class="text-left">
-                            @foreach($summary as $type => $qty)
-                                <span class="ng-mini-pill">{{ strtoupper($type) }}({{ $qty }})</span>
-                            @endforeach
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+        {{-- 📋 TABLE LOG --}}
+        <div class="terminal-card shadow-lg mb-5 animate__animated animate__fadeInUp">
+            <div class="table-responsive">
+                <table class="table table-hud mb-0 text-center">
+                    <thead>
+                        <tr>
+                            <th class="text-left pl-5">Timestamp</th>
+                            <th>Batch</th>
+                            <th>Part Identification</th>
+                            <th>Take</th>
+                            <th class="text-success">OK</th>
+                            <th class="text-danger">NG</th>
+                            <th>Yield</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($history as $h)
+                        @php 
+                            $allLogs = DB::table('production_ng_logs')->where('no_produksi', $h->no_produksi)->get();
+                            $rProd = $allLogs->where('created_at', '<', $h->qc_at ?? now())->values();
+                            $rQC = $allLogs->where('created_at', '>=', $h->qc_at ?? now())->values();
+                            $ok = (float)$h->qty_hasil_ok;
+                            $ng = (float)$h->qty_hasil_ng;
+                            $yld = ($ok + $ng) > 0 ? ($ok / ($ok + $ng)) * 100 : 0;
+                        @endphp
+                        <tr class="row-clickable" onclick="showDeepDive({{ json_encode($h) }}, {{ json_encode($rProd) }}, {{ json_encode($rQC) }})">
+                            <td class="text-left pl-5">
+                                <div class="font-weight-black text-dark">{{ date('d/m/y', strtotime($h->updated_at)) }}</div>
+                                <div class="small text-primary font-weight-bold">{{ date('H:i', strtotime($h->updated_at)) }}</div>
+                            </td>
+                            <td class="small font-weight-bold text-muted">{{ $h->no_produksi }}</td>
+                            <td class="text-left font-weight-black">> {{ $h->material_code }}</td>
+                            <td class="bg-light font-weight-black">{{ number_format($h->qty_ambil_pcs) }}</td>
+                            <td class="text-success">{{ number_format($ok) }}</td>
+                            <td class="text-danger">{{ number_format($ng) }}</td>
+                            <td><b class="font-family-jetbrains">{{ number_format($yld, 1) }}%</b></td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
-{{-- 🛡️ MODAL DEEP DIVE v8.0 --}}
+{{-- 🛡️ REFINED DEEP DIVE MODAL --}}
 <div class="modal fade" id="deepDiveModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content animate__animated animate__zoomIn">
-            <div class="modal-header-cyber d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="heading-cyber m-0">Audit_Batch_Deep_Dive</h5>
-                    <p class="text-primary small font-weight-bold mb-0 uppercase tracking-widest">Cumulative Data Integrity Report</p>
-                </div>
+        <div class="modal-content animate__animated animate__zoomIn" style="border-radius: 40px; border: none;">
+            <div class="modal-header bg-dark text-white border-0 py-4 px-5" style="border-radius: 40px 40px 0 0;">
+                <h6 class="modal-title heading-cyber m-0">Audit_Deep_Dive</h6>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <div class="modal-body p-5 bg-white">
-                {{-- Header Section: Donut + Info --}}
-                <div class="row align-items-center mb-5">
-                    <div class="col-md-4 text-center border-right">
-                        <div id="modal-donut-yield" style="min-height: 180px;"></div>
-                        <h4 class="font-weight-black mt-2 mb-0" id="det-yield-val" style="font-family: 'Orbitron';">0%</h4>
-                        <small class="stat-label">Yield Accuracy</small>
+            <div class="modal-body p-5">
+                <div class="row align-items-center mb-5 text-left">
+                    <div class="col-md-5 text-center border-right">
+                        <div id="modal-donut-yield" style="min-height: 200px;"></div>
+                        <h2 class="heading-cyber m-0" id="det-yield-val">0%</h2>
+                        <small class="stat-label">Production Yield</small>
                     </div>
-                    <div class="col-md-8 pl-md-5 text-left">
-                        <h4 class="font-weight-black text-primary mb-3" id="det-batch" style="font-family: 'JetBrains Mono'; letter-spacing: -1px;"></h4>
+                    <div class="col-md-7 pl-md-5">
+                        <div class="stat-label mb-1">Batch Identifier</div>
+                        <h4 class="font-weight-black text-primary mb-3" id="det-batch" style="font-family: 'JetBrains Mono';"></h4>
                         <div class="row">
                             <div class="col-6"><small class="stat-label">Part Identification</small><div class="font-weight-bold h5" id="det-part">-</div></div>
-                            <div class="col-6"><small class="stat-label">Production Start</small><div class="font-weight-bold small text-muted" id="det-time">-</div></div>
+                            <div class="col-6"><small class="stat-label">Start Time</small><div class="font-weight-bold small" id="det-time">-</div></div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Statistics Grid --}}
-                <div class="row mb-5 text-left">
-                    <div class="col-3"><div class="deep-dive-box text-center"><small class="stat-label">Take</small><div class="h5 font-weight-black m-0" id="det-take">0</div></div></div>
-                    <div class="col-3"><div class="deep-dive-box text-center border-success"><small class="stat-label text-success">Passed OK</small><div class="h5 font-weight-black text-success m-0" id="det-ok">0</div></div></div>
-                    <div class="col-3"><div class="deep-dive-box text-center border-danger"><small class="stat-label text-danger">Total Reject</small><div class="h5 font-weight-black text-danger m-0" id="det-ng">0</div></div></div>
-                    <div class="col-3"><div class="deep-dive-box text-center border-info"><small class="stat-label text-info">Return RM</small><div class="h5 font-weight-black text-info m-0" id="det-ret">0</div></div></div>
-                </div>
-
-                {{-- ✨ NG COMPARISON (KAMAR PRODUKSI vs QC) ✨ --}}
+                {{-- Kamar NG --}}
                 <div class="row mb-4 text-left">
                     <div class="col-md-6 mb-3">
-                        <div class="ng-kamar border-primary">
-                            <span class="kamar-label bg-primary text-white"><i class="fas fa-industry mr-2"></i>Found by Production</span>
+                        <div class="p-4 bg-light rounded-3xl border border-primary" style="height: 100%;">
+                            <span class="badge badge-primary px-3 py-2 rounded-pill mb-3 uppercase font-weight-black">Found by Production</span>
                             <div id="det-ng-prod-list"></div>
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="ng-kamar border-warning">
-                            <span class="kamar-label bg-warning text-dark"><i class="fas fa-search mr-2"></i>Found by Quality (Escape)</span>
+                        <div class="p-4 bg-light rounded-3xl border border-warning" style="height: 100%;">
+                            <span class="badge badge-warning px-3 py-2 rounded-pill mb-3 uppercase font-weight-black">Found by QC (Escape)</span>
                             <div id="det-ng-qc-list"></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-4 bg-light rounded-3xl border text-left">
-                    <small class="stat-label d-block mb-1"><i class="fas fa-info-circle mr-2"></i>Traceability Note</small>
-                    <p class="mb-0 font-weight-bold text-dark small" id="det-remark">-</p>
+                <div class="p-4 bg-dark text-white rounded-3xl text-left shadow-lg">
+                    <small class="stat-label text-white-50 d-block mb-1">Audit Traceability Note</small>
+                    <p class="mb-0 font-weight-bold" id="det-remark">-</p>
                 </div>
             </div>
         </div>
@@ -205,41 +243,43 @@
 </div>
 
 <script>
-    // 📊 DRAGON SPLINE 5-AXIS CHART
-    const chartData = @json($history->take(15)->reverse()->values());
+    // 📊 DRAGON SPLINE 5-AXIS WITH WAVE ANIMATION
+    const historyData = @json($history->take(15)->reverse()->values());
     new ApexCharts(document.querySelector("#trendChart"), {
         series: [
-            { name: 'Perf %', type: 'line', data: chartData.map(h => {
-                let total = (parseFloat(h.qty_hasil_ok)||0) + (parseFloat(h.qty_hasil_ng)||0);
-                return total > 0 ? ((h.qty_hasil_ok/total)*100).toFixed(1) : 0;
+            { name: 'Perf %', type: 'line', data: historyData.map(h => {
+                let t = (parseFloat(h.qty_hasil_ok)||0) + (parseFloat(h.qty_hasil_ng)||0);
+                return t > 0 ? ((h.qty_hasil_ok/t)*100).toFixed(1) : 0;
             })},
-            { name: 'Material Take', type: 'area', data: chartData.map(h => h.qty_ambil_pcs) },
-            { name: 'Passed OK', type: 'area', data: chartData.map(h => h.qty_hasil_ok) },
-            { name: 'Reject NG', type: 'area', data: chartData.map(h => h.qty_hasil_ng) },
-            { name: 'Return RM', type: 'line', data: chartData.map(h => h.qty_return_warehouse) }
+            { name: 'Material Take', type: 'area', data: historyData.map(h => h.qty_ambil_pcs) },
+            { name: 'Passed OK', type: 'area', data: historyData.map(h => h.qty_hasil_ok) },
+            { name: 'Reject NG', type: 'area', data: historyData.map(h => h.qty_hasil_ng) },
+            { name: 'Return RM', type: 'line', data: historyData.map(h => h.qty_return_warehouse) }
         ],
-        chart: { height: 380, type: 'line', toolbar: { show: false }, animations: { speed: 1000 } },
+        chart: { 
+            height: 380, 
+            type: 'line', 
+            toolbar: { show: false }, 
+            animations: { enabled: true, easing: 'easeinout', speed: 1200, dynamicAnimation: { enabled: true, speed: 600 } } 
+        },
         stroke: { width: [5, 2, 2, 2, 3], curve: 'smooth', dashArray: [0, 0, 0, 0, 5] },
         colors: ['#4361ee', '#cbd5e1', '#10b981', '#ef4444', '#f59e0b'],
         fill: { type: 'gradient', gradient: { opacityFrom: [1, 0.4, 0.4, 0.4, 0], opacityTo: [1, 0.1, 0.1, 0.1, 0] } },
-        xaxis: { categories: chartData.map(h => h.no_produksi.substr(-6)), labels: { style: { fontWeight: 800 } } },
-        yaxis: [
-            { title: { text: "Performance %" }, min: 0, max: 100 },
-            { opposite: true, title: { text: "Units (PCS)" } }
-        ],
+        xaxis: { categories: historyData.map(h => h.no_produksi.substr(-6)), labels: { style: { fontWeight: 800 } } },
+        yaxis: [{ title: { text: "Performance %" }, min: 0, max: 100 }, { opposite: true, title: { text: "Units (PCS)" } }],
         legend: { position: 'top', horizontalAlign: 'right', fontWeight: 800 }
     }).render();
 
-    // 🛡️ MODAL DETAIL LOGIC v8.0
+    // 🛡️ MODAL LOGIC
     let donut = null;
-    let currentData = { ok: 0, ng: 0 };
+    let currentDonutData = { ok: 0, ng: 0 };
 
     function showDeepDive(h, rProd, rQC) {
         const ok = parseInt(h.qty_hasil_ok) || 0;
         const ng = parseInt(h.qty_hasil_ng) || 0;
         const total = ok + ng;
-        const yieldVal = total > 0 ? Math.round((ok/total)*100) : 0;
-        currentData = { ok: ok, ng: ng };
+        const yld = total > 0 ? Math.round((ok/total)*100) : 0;
+        currentDonutData = { ok: ok, ng: ng };
 
         document.getElementById('det-batch').innerText = h.no_produksi;
         document.getElementById('det-part').innerText = h.material_code;
@@ -248,42 +288,33 @@
         document.getElementById('det-ok').innerText = ok;
         document.getElementById('det-ng').innerText = ng;
         document.getElementById('det-ret').innerText = h.qty_return_warehouse;
-        document.getElementById('det-yield-val').innerText = yieldVal + "%";
-        document.getElementById('det-yield-val').style.color = yieldVal >= 85 ? '#10b981' : '#ef4444';
+        document.getElementById('det-yield-val').innerText = yld + "%";
+        document.getElementById('det-yield-val').style.color = yld >= 85 ? '#10b981' : '#ef4444';
         document.getElementById('det-remark').innerText = h.keterangan || 'AUTOMATED_SYSTEM_TRACE_LOG';
 
-        // Render Kamar Produksi
-        renderNGList('det-ng-prod-list', rProd, 'text-primary');
-        // Render Kamar QC
-        renderNGList('det-ng-qc-list', rQC, 'text-warning');
+        renderList('det-ng-prod-list', rProd, 'text-primary');
+        renderList('det-ng-qc-list', rQC, 'text-warning');
 
         $('#deepDiveModal').modal('show');
     }
 
-    function renderNGList(id, data, colorClass) {
-        const div = document.getElementById(id);
-        div.innerHTML = '';
+    function renderList(id, data, cls) {
+        const d = document.getElementById(id);
+        d.innerHTML = '';
         if (data.length > 0) {
-            data.forEach(item => {
-                div.innerHTML += `
-                    <div class="d-flex justify-content-between align-items-center mb-2 bg-light p-2 rounded-lg border-0">
-                        <span class="small font-weight-bold uppercase ${colorClass}">• ${item.ng_type}</span>
-                        <span class="badge badge-dark rounded-pill px-3 font-weight-bold">${item.qty}</span>
-                    </div>`;
+            data.forEach(i => {
+                d.innerHTML += `<div class="d-flex justify-content-between mb-2 bg-white p-3 rounded-2xl border shadow-sm"><span class="small font-weight-black ${cls}">${i.ng_type}</span><span class="badge badge-dark rounded-pill px-3">${i.qty}</span></div>`;
             });
-        } else {
-            div.innerHTML = '<div class="text-center text-muted small py-3 italic">No NG Identified</div>';
-        }
+        } else { d.innerHTML = '<div class="text-center text-muted small py-4">No Defects Found</div>'; }
     }
 
-    // ✨ FIX DONUT: Render after modal animations rill
     $('#deepDiveModal').on('shown.bs.modal', function () {
         if(donut) donut.destroy();
         donut = new ApexCharts(document.querySelector("#modal-donut-yield"), {
-            series: [currentData.ok, currentData.ng],
-            chart: { type: 'donut', width: 180, animations: { enabled: true } },
+            series: [currentDonutData.ok, currentDonutData.ng],
+            chart: { type: 'donut', width: 220, animations: { enabled: true, speed: 1000 } },
             colors: ['#10b981', '#ef4444'],
-            labels: ['Good', 'Reject'],
+            labels: ['Good', 'NG'],
             legend: { show: false },
             plotOptions: { pie: { donut: { size: '75%' } } }
         });
