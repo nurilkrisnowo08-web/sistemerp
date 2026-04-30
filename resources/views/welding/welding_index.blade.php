@@ -48,15 +48,15 @@
     .table-vault thead th { background: #fff; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 15px 22px; border-bottom: 1px solid #f1f5f9; border-top: none; }
     .badge-sync { background: #ede9fe; color: #6366f1; font-weight: 800; font-size: 10px; padding: 5px 15px; border-radius: 20px; border: 1px solid #ddd6fe; text-transform: uppercase; }
 
-    /* ✨ TOMBOL KOTAK STYLE ✨ */
-    .btn-square-history {
-        width: 45px; height: 45px; border-radius: 12px; border: 2px solid #e2e8f0;
-        background: #fff; color: var(--brand-primary); display: flex; align-items: center;
-        justify-content: center; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    /* ✨ TOMBOL KOTAK STYLE (Sesuai gambar DEPLOY) ✨ */
+    .btn-action-square {
+        width: 45px; height: 45px; border-radius: 12px; border: none;
+        background: #ebf0ff; color: var(--brand-primary); display: flex; align-items: center;
+        justify-content: center; transition: 0.3s; 
     }
-    .btn-square-history:hover {
-        background: var(--brand-primary); color: #fff; border-color: var(--brand-primary);
-        transform: translateY(-3px); box-shadow: 0 10px 20px rgba(67, 97, 238, 0.2);
+    .btn-action-square:hover {
+        background: var(--brand-primary); color: #fff;
+        transform: scale(1.1); box-shadow: 0 10px 20px rgba(67, 97, 238, 0.2);
     }
 </style>
 
@@ -70,9 +70,9 @@
         <div class="d-flex align-items-center">
             <a href="{{ route('welding.history') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm">VAULT</a>
             
-            {{-- ✨ TOMBOL FUNGSI KOTAK ✨ --}}
-            <button onclick="scrollToArchive()" class="btn-square-history mr-2" title="Jump to Archive">
-                <i class="fas fa-history fa-lg"></i>
+            {{-- ✨ TOMBOL FUNGSI KOTAK (JUMP TO ARCHIVE) ✨ --}}
+            <button onclick="scrollToArchive()" class="btn-action-square mr-2" title="View Recent Archive">
+                <i class="fas fa-history"></i>
             </button>
 
             <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg" data-toggle="modal" data-target="#modalDeployWelding"><i class="fas fa-plus-circle mr-1"></i> DEPLOY</button>
@@ -164,95 +164,38 @@
         @endforeach
     </div>
 
-    {{-- ✨ PRODUCTION_ARCHIVE (DITAMBAHKAN ID AGAR BISA DI-JUMP) ✨ --}}
-    @php
-        $vaultData = DB::table('welding_batches')
-            ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
-            ->where('status', 'COMPLETED')
-            ->whereDate('welding_batches.updated_at', $date ?? date('Y-m-d'))
-            ->select('welding_batches.*', 'line_welding.nama_line')
-            ->orderBy('updated_at', 'desc')
-            ->limit(5)
-            ->get();
-    @endphp
-
-    <div id="archiveSection" class="mt-5 animate__animated animate__fadeIn">
+    {{-- ✨ PRODUCTION_ARCHIVE SECTION ✨ --}}
+    <div id="productionArchiveSection" class="mt-5 animate__animated animate__fadeIn">
         <div class="d-flex justify-content-between align-items-center mb-3 px-2">
             <h5 class="heading-hub m-0" style="font-size: 1.1rem; -webkit-text-fill-color: var(--dark-surface);">PRODUCTION_ARCHIVE <span style="color: #64748b; font-family: 'Plus Jakarta Sans'">(RECENT)</span></h5>
             <span class="badge-sync">LIVE_SYNC_ACTIVE</span>
         </div>
 
-        <div class="vault-container">
-            <div class="table-responsive">
-                <table class="table table-vault mb-0 text-center">
-                    <thead>
-                        <tr>
-                            <th class="text-left pl-5">TIMESTAMP</th>
-                            <th>BATCH ID</th>
-                            <th class="text-left">PART IDENTIFICATION</th>
-                            <th class="text-success">OK</th>
-                            <th class="text-danger">NG</th>
-                            <th style="color: var(--brand-return);">RET</th>
-                            <th style="color: #f59e0b">EFFICIENCY</th>
-                            <th>STATUS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($vaultData as $vd)
-                        @php
-                            $totalProcess = $vd->qty_masuk - $vd->qty_return;
-                            $eff = $totalProcess > 0 ? round(($vd->qty_ok / $totalProcess) * 100, 1) : 0;
-                        @endphp
-                        <tr>
-                            <td class="text-left pl-5">
-                                <div class="text-muted" style="font-size: 10px;">{{ date('H:i', strtotime($vd->updated_at)) }}</div>
-                                <div class="text-muted" style="font-size: 11px; font-weight: 800;">{{ date('d M Y', strtotime($vd->updated_at)) }}</div>
-                            </td>
-                            <td><span class="text-primary font-mono" style="font-size: 12px;">{{ $vd->no_produksi_stamping }}</span></td>
-                            <td class="text-left">
-                                <div class="font-weight-black">> {{ $vd->part_no }}</div>
-                                <small class="text-muted uppercase" style="font-size: 8px;">{{ $vd->nama_line ?? 'WELDING AREA' }}</small>
-                            </td>
-                            <td class="text-success font-weight-black">{{ number_format($vd->qty_ok) }}</td>
-                            <td class="text-danger font-weight-black">{{ number_format($vd->qty_ng) }}</td>
-                            <td style="color: var(--brand-return);">{{ number_format($vd->qty_return) }}</td>
-                            <td style="color: #f59e0b; font-family: 'JetBrains Mono'">{{ $eff }}%</td>
-                            <td><span class="badge badge-success rounded-pill px-3" style="font-size: 9px;">COMPLETED</span></td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="8" class="py-4 text-muted small">No recent activity found.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+        <div class="ledger-container p-4">
+            {{-- Manggil file history Bapak rill --}}
+            @include('welding.welding_history_weldig')
         </div>
     </div>
 </div>
 
-{{-- MODALS TETAP SAMA --}}
-@foreach($activeWelding as $aw)
-<div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1" data-backdrop="static">
-    <!-- Isi Modal Sama... -->
-</div>
-@endforeach
-
+{{-- SCRIPT TETAP DI SINI --}}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // ✨ FUNGSI SCROLL OTOMATIS RILL ✨
+    // ✨ FUNGSI JUMP OTOMATIS RILL ✨
     function scrollToArchive() {
-        document.getElementById('archiveSection').scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
+        const element = document.getElementById('productionArchiveSection');
+        const offset = 40; // Jarak aman agar header tidak tertutup rill
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = element.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        const offsetPosition = elementPosition - offset;
+
+        window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
         });
     }
 
-    // Fungsi-fungsi lain tetap di sini...
-    const listPenyakit = @json($listNG->pluck('ng_name'));
-    function addNgRow(batchId, target) { /* ... */ }
-    function removeNgRow(rowId, batchId, target) { /* ... */ }
-    function calculateTotal(batchId, target) { /* ... */ }
-    function manualOkCheck(batchId, target) { /* ... */ }
-    function refreshSecurityUI(batchId, target) { /* ... */ }
-    function quickTake(partNo) { /* ... */ }
+    // Fungsi-fungsi lain Bapak (calculateTotal, addNgRow, dll) jangan dihapus rill!
 </script>
 @endsection
