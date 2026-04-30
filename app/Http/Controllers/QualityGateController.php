@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
-        // ✨ FIX GROUPING: Grouping berdasarkan no_produksi saja agar tidak pecah rill
+        // ✨ FIX GROUPING: Grouping berdasarkan no_produksi agar tidak pecah rill
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
@@ -49,14 +49,12 @@ class QualityGateController extends Controller {
                 $batchNo = $ref->no_produksi;
                 $partNo  = $ref->material_code;
 
-                // Hitung total dari semua line batch ini
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
                 
                 $qc_verified_ok = (int)$request->qty_ok_final;
                 $qc_verified_ng = (int)$request->qty_ng_final;
 
-                // Update baris pertama untuk selisih NG jika ada
                 if ($qc_verified_ok < $total_ok_prod) {
                     $selisih = $total_ok_prod - $qc_verified_ok;
                     $firstLine = $lines->first();
@@ -66,7 +64,6 @@ class QualityGateController extends Controller {
                     ]);
                 }
 
-                // Selesaikan semua batch terkait
                 DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                     'status'     => 'COMPLETED',
                     'qc_at'      => now(),
@@ -101,7 +98,10 @@ class QualityGateController extends Controller {
                 $origin   = 'WELDING';
             }
 
-            // ✨ 1. SIMPAN RINCIAN NG KE LOGS ✨
+            // ✨ 1. UPDATE DASHBOARD DULU (Dapetin ID-nya buat NG Logs) ✨
+            $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
+
+            // ✨ 2. SIMPAN RINCIAN NG KE LOGS ✨
             DB::table('production_ng_logs')->where('no_produksi', $batchNo)->delete();
             $all_ng_names = [];
             if ($request->has('ng_details')) {
@@ -109,6 +109,7 @@ class QualityGateController extends Controller {
                     if ((int)$qty > 0) {
                         $all_ng_names[] = "$ng_name ($qty)";
                         DB::table('production_ng_logs')->insert([
+                            'actual_id'   => $actual_id, // Wajib diisi rill!
                             'no_produksi' => $batchNo,
                             'ng_type'     => $ng_name,
                             'qty'         => $qty,
@@ -119,7 +120,7 @@ class QualityGateController extends Controller {
             }
             $summary_reason = !empty($all_ng_names) ? implode(', ', $all_ng_names) : 'OK GOODS';
 
-            // ✨ 2. SIMPAN KE QUALITY_INSPECTIONS (Data image_2824e5.png) ✨
+            // ✨ 3. SIMPAN KE QUALITY_INSPECTIONS ✨
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -134,7 +135,7 @@ class QualityGateController extends Controller {
                 'updated_at'    => now()
             ]);
 
-            // ✨ 3. UPDATE STOK FG (Gunakan pengecekan aman) ✨
+            // ✨ 4. UPDATE STOK FG (Gunakan pengecekan aman) ✨
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -148,9 +149,6 @@ class QualityGateController extends Controller {
                 ]);
             }
 
-            // Update Dashboard
-            $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
-
             DB::commit();
             return back()->with('success', "Batch $batchNo Lulus Verifikasi QC rill!");
 
@@ -160,7 +158,6 @@ class QualityGateController extends Controller {
         }
     }
 
-    // ✨ FIX SAKTI: Pengecekan Eksistensi Sebelum Update Dashboard rill ✨
     private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
         $today = date('Y-m-d');
@@ -168,7 +165,7 @@ class QualityGateController extends Controller {
         $exist = DB::table('production_actuals')
             ->where('part_no', $partNo)
             ->where('line_code', $lineCode)
-            ->where('created_at', $today)
+            ->whereDate('created_at', $today)
             ->first();
 
         if ($exist) {
@@ -177,11 +174,12 @@ class QualityGateController extends Controller {
                 'qty_ng' => ($exist->qty_ng + $qtyNg),
                 'updated_at' => now()
             ]);
+            return $exist->id;
         } else {
-            DB::table('production_actuals')->insert([
+            return DB::table('production_actuals')->insertGetId([
                 'part_no' => $partNo,
                 'line_code' => $lineCode,
-                'created_at' => $today,
+                'created_at' => now(),
                 'qty_ok' => $qtyOk,
                 'qty_ng' => $qtyNg,
                 'updated_at' => now()
