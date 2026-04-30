@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
-        // ✨ ANTI-DOUBLE: Menggabungkan batch yang terpecah di banyak line menjadi satu tampilan
+        // Fungsi index tetap sama sesuai kode Bapak
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
@@ -28,7 +28,6 @@ class QualityGateController extends Controller {
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // ✨ KAMAR NG: Memisahkan alasan NG agar tidak bercampur
         $ngStamping = DB::table('master_ngs')
             ->whereIn('category', ['STAMPING', 'GENERAL'])
             ->get();
@@ -40,7 +39,7 @@ class QualityGateController extends Controller {
         return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
 
-   public function approve(Request $request, $type, $id) {
+    public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
         try {
             if ($type == 'stamping') {
@@ -53,9 +52,7 @@ class QualityGateController extends Controller {
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
                 $qc_verified_ok = (int)$request->qty_ok_final;
-                $qc_verified_ng = (int)$request->qty_ng_final; // Ambil input NG dari QC rill
 
-                // 1. Logika penyesuaian selisih NG di tabel Produksi
                 if ($qc_verified_ok < $total_ok_prod) {
                     $selisih = $total_ok_prod - $qc_verified_ok;
                     $firstLine = $lines->first();
@@ -74,12 +71,11 @@ class QualityGateController extends Controller {
                 ]);
                 
                 $final_ok = $qc_verified_ok;
-                $final_ng = $qc_verified_ng;
+                $final_ng = (int)$request->qty_ng_final;
                 $origin   = 'STAMPING';
                 $qty_awal = $total_ok_prod;
 
             } else {
-                // Logika Welding
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
                 if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
 
@@ -109,9 +105,28 @@ class QualityGateController extends Controller {
 
             if (!$fg) throw new \Exception("Part No [$partNo] tidak terdaftar di Finished Goods.");
 
-            // ✨ 2. SIMPAN INSPEKSI (Persis Gambar image_2824e5.png)
-            $ng_reason = ($final_ng > 0) ? ($request->ng_reason ?? 'OTHER_DEFECT') : 'OK_GOODS';
-            
+            // ✨ 1. PROSES RINCIAN NG (LOOPING ARRAY) ✨
+            $all_ng_names = [];
+            if ($request->has('ng_details')) {
+                foreach ($request->ng_details as $ng_name => $qty) {
+                    if ((int)$qty > 0) {
+                        $all_ng_names[] = $ng_name; // Simpan nama defect untuk summary
+                        
+                        // Masukkan ke log detail agar muncul warna merah di history
+                        DB::table('production_ng_logs')->insert([
+                            'no_produksi' => $batchNo,
+                            'ng_type'     => $ng_name,
+                            'qty'         => $qty,
+                            'created_at'  => now()
+                        ]);
+                    }
+                }
+            }
+
+            // Gabungkan nama-nama defect jadi satu string untuk quality_inspections
+            $summary_reason = !empty($all_ng_names) ? implode(', ', $all_ng_names) : 'OK_GOODS';
+
+            // ✨ 2. SIMPAN INSPEKSI FINAL
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -119,32 +134,12 @@ class QualityGateController extends Controller {
                 'qty_from_prod' => $qty_awal,
                 'qty_ok'        => $final_ok,
                 'qty_ng'        => $final_ng, 
-                'ng_reason'     => $ng_reason,
+                'ng_reason'     => $summary_reason, 
                 'inspector'     => $request->inspector_name ?? Auth::user()?->name ?? 'QC_OFFICER',
                 'status'        => 'APPROVED',
                 'created_at'    => now(), 
                 'updated_at'    => now()
             ]);
-
-            // ✨ 3. SINKRONISASI KE PRODUCTION_NG_LOGS (Agar Breakdown Merah di History Muncul rill!)
-            if ($final_ng > 0) {
-                // Pastikan ada row di production_actuals dulu
-                $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
-                $actualId = DB::table('production_actuals')
-                            ->where('part_no', $partNo)
-                            ->whereDate('created_at', date('Y-m-d'))
-                            ->value('id');
-
-                if ($actualId) {
-                    DB::table('production_ng_logs')->insert([
-                        'actual_id'   => $actualId,
-                        'no_produksi' => $batchNo,
-                        'ng_type'     => "QC_FINDING: " . $ng_reason, // Tandai kalau ini temuan QC
-                        'qty'         => $final_ng,
-                        'created_at'  => now()
-                    ]);
-                }
-            }
 
             // Update Stok FG
             DB::table('finished_goods')->where('id', $fg->id)->update([
@@ -158,7 +153,6 @@ class QualityGateController extends Controller {
                 'part_no' => $partNo, 'qty' => $final_ok, 'process_type' => 'FG', 'created_at' => now()
             ]);
 
-            // Jalankan update Dashboard (Sudah dipanggil di atas juga tapi aman rill)
             $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             DB::commit();
@@ -170,11 +164,16 @@ class QualityGateController extends Controller {
         }
     }
 
+    // ✨ PERBAIKAN: Menambah data qty_ok dan qty_ng pada dashboard rill
     private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
         DB::table('production_actuals')->updateOrInsert(
             ['part_no' => $partNo, 'line_code' => $lineCode, 'created_at' => date('Y-m-d')],
-            ['updated_at' => now()]
+            [
+                'qty_ok' => DB::raw("qty_ok + $qtyOk"),
+                'qty_ng' => DB::raw("qty_ng + $qtyNg"),
+                'updated_at' => now()
+            ]
         );
     }
 

@@ -17,16 +17,17 @@
     .welding-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--ind-amber); }
     .qty-badge { font-family: 'Orbitron'; font-size: 2.2rem; font-weight: 900; }
     
+    /* NG List Style */
     .ng-breakdown-box { background: #fff1f2; border-radius: 18px; padding: 15px; border: 1px solid #fee2e2; }
-    .ng-item { background: white; border-radius: 12px; padding: 8px 12px; margin-bottom: 6px; border: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
-    .ng-input-sm { width: 70px; text-align: center; font-weight: 800; border-radius: 8px; border: 2px solid #e2e8f0; transition: 0.3s; }
+    .ng-item { background: white; border-radius: 12px; padding: 10px 15px; margin-bottom: 8px; border: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    .ng-input-sm { width: 80px; text-align: center; font-weight: 800; border-radius: 10px; border: 2px solid #e2e8f0; padding: 5px; transition: 0.3s; }
     .ng-input-sm:focus { border-color: var(--ind-rose); outline: none; background: #fff1f2; }
     
     .input-ind { background: #f8fafc; border: 2px solid #edf2f7; border-radius: 14px; font-weight: 700; padding: 12px 16px; width: 100%; }
     .input-qty-hero { font-size: 24px; height: 60px; text-align: center; font-family: 'Orbitron'; border: 2px solid #e2e8f0; }
     .btn-action { font-family: 'Orbitron'; font-size: 0.85rem; padding: 18px; border-radius: 14px; text-transform: uppercase; font-weight: 800; border: none; transition: 0.3s; }
     
-    .empty-placeholder { text-align: center; padding: 40px; color: #94a3b8; font-family: 'JetBrains Mono'; font-weight: 700; border: 2px dashed #cbd5e1; border-radius: 20px; }
+    .empty-placeholder { text-align: center; padding: 60px; color: #94a3b8; font-family: 'JetBrains Mono'; font-weight: 700; border: 2px dashed #cbd5e1; border-radius: 24px; background: #fff; }
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
@@ -70,12 +71,11 @@
                             </div>
                         </div>
 
-                        {{-- ✨ NG BREAKDOWN LIST (Sesuai database master_ngs) --}}
                         <div class="ng-breakdown-box mb-4">
                             <label class="label-ind text-danger font-weight-bold mb-2 d-block">Defect Category Verification:</label>
-                            <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                            <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
                                 @foreach($ngStamping as $ng)
-                                <div class="ng-item shadow-sm">
+                                <div class="ng-item">
                                     <span class="small font-weight-bold text-dark">{{ strtoupper($ng->ng_name) }}</span>
                                     <input type="number" name="ng_details[{{ $ng->ng_name }}]" 
                                            class="ng-input-sm ng-val-{{ $p->id }}" 
@@ -85,9 +85,6 @@
                                 @endforeach
                             </div>
                         </div>
-
-                        {{-- ✨ Hidden field untuk ng_reason (Sesuai image_2824e5.png) --}}
-                        <input type="hidden" name="ng_reason" id="reason-stamping-{{ $p->id }}" value="OK GOODS">
 
                         <div class="form-group mb-4">
                             <label class="label-ind small font-weight-black uppercase">Authorized Inspector</label>
@@ -99,7 +96,7 @@
                 </div>
             </div>
             @empty
-            <div class="empty-placeholder">NO_STAMPING_QUEUE_FOUND</div>
+            <div class="empty-placeholder">STAMPING_QUEUE_CLEAR</div>
             @endforelse
         </div>
 
@@ -136,7 +133,7 @@
 
                         <div class="ng-breakdown-box mb-4" style="background: #fffbeb; border-color: #fef3c7;">
                             <label class="label-ind text-warning font-weight-bold mb-2 d-block">Welding Defect Verification:</label>
-                            <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                            <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
                                 @foreach($ngWelding as $ng)
                                 <div class="ng-item shadow-sm">
                                     <span class="small font-weight-bold text-dark">{{ strtoupper($ng->ng_name) }}</span>
@@ -149,8 +146,6 @@
                             </div>
                         </div>
 
-                        <input type="hidden" name="ng_reason" id="reason-welding-{{ $w->id }}" value="OK GOODS">
-
                         <div class="form-group mb-4">
                             <label class="label-ind small font-weight-black uppercase">Authorized Inspector</label>
                             <input type="text" name="inspector_name" class="form-control input-ind" value="{{ Auth::user()->name }}" readonly>
@@ -161,26 +156,19 @@
                 </div>
             </div>
             @empty
-            <div class="empty-placeholder">NO_WELDING_QUEUE_FOUND</div>
+            <div class="empty-placeholder">WELDING_QUEUE_CLEAR</div>
             @endforelse
         </div>
     </div>
 </div>
 
 <script>
-    // Perhitungan Otomatis STAMPING rill
     function calculateNG(id) {
         let incoming = parseInt(document.getElementById('incoming-' + id).innerText);
         let totalNG = 0;
-        let mainReason = "OK GOODS";
 
         document.querySelectorAll('.ng-val-' + id).forEach(input => {
-            let val = parseInt(input.value) || 0;
-            totalNG += val;
-            if (val > 0) {
-                // Ambil nama defect pertama yang ditemukan untuk ng_reason
-                mainReason = input.getAttribute('name').replace('ng_details[', '').replace(']', '');
-            }
+            totalNG += (parseInt(input.value) || 0);
         });
 
         if (totalNG > incoming) {
@@ -191,21 +179,14 @@
 
         document.getElementById('total-ng-stamping-' + id).value = totalNG;
         document.getElementById('ok-stamping-' + id).value = incoming - totalNG;
-        document.getElementById('reason-stamping-' + id).value = (totalNG > 0) ? mainReason : "OK GOODS";
     }
 
-    // Perhitungan Otomatis WELDING rill
     function calculateNGWelding(id) {
         let incoming = parseInt(document.getElementById('incoming-w-' + id).innerText);
         let totalNG = 0;
-        let mainReason = "OK GOODS";
 
         document.querySelectorAll('.ng-val-w-' + id).forEach(input => {
-            let val = parseInt(input.value) || 0;
-            totalNG += val;
-            if (val > 0) {
-                mainReason = input.getAttribute('name').replace('ng_details[', '').replace(']', '');
-            }
+            totalNG += (parseInt(input.value) || 0);
         });
 
         if (totalNG > incoming) {
@@ -216,7 +197,6 @@
 
         document.getElementById('total-ng-welding-' + id).value = totalNG;
         document.getElementById('ok-welding-' + id).value = incoming - totalNG;
-        document.getElementById('reason-welding-' + id).value = (totalNG > 0) ? mainReason : "OK GOODS";
     }
 </script>
 @endsection
