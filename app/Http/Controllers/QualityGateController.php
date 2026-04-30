@@ -71,19 +71,23 @@ class QualityGateController extends Controller {
                 ]);
             }
 
-            // 1. Sinkronisasi Dashboard Harian (Grafik Naga)
+            // 1. Sinkronisasi Dashboard Harian
             $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
-            // 2. Simpan Detail NG agar muncul di Verification Report rill
-            DB::table('production_ng_logs')->where('no_produksi', $batchNo)->delete();
+            // 2. Simpan Detail NG (VERSI KUMULATIF RILL)
+            // ✨ PERBAIKAN: Baris delete() saya hapus agar temuan Produksi TIDAK TERHAPUS oleh QC ✨
+            
             $all_ng_names = [];
             if ($request->has('ng_details')) {
                 foreach ($request->ng_details as $name => $qty) {
                     if ((int)$qty > 0) {
                         $all_ng_names[] = "$name ($qty)";
                         DB::table('production_ng_logs')->insert([
-                            'actual_id' => $actual_id, 'no_produksi' => $batchNo,
-                            'ng_type' => $name, 'qty' => $qty, 'created_at' => now()
+                            'actual_id'   => $actual_id, 
+                            'no_produksi' => $batchNo,
+                            'ng_type'     => $name, 
+                            'qty'         => $qty, 
+                            'created_at'  => now()
                         ]);
                     }
                 }
@@ -98,7 +102,7 @@ class QualityGateController extends Controller {
                 'created_at' => now(), 'updated_at' => now()
             ]);
 
-            // 4. UPDATE STOK FG & LOG MUTASI
+            // 4. Update Stok FG & Log Mutasi
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -111,11 +115,10 @@ class QualityGateController extends Controller {
                     'updated_at'   => now()
                 ]);
 
-                // ✨ KUNCI SUKSES: Pakai 'FG' supaya masuk ke Dashboard Inventory Bapak rill! ✨
                 DB::table('production_logs')->insert([
                     'part_no'      => $partNo,
                     'qty'          => $final_ok,
-                    'process_type' => 'FG', // Harus 'FG' agar kebaca di Image 1
+                    'process_type' => 'FG', 
                     'created_at'   => now()
                 ]);
             }
