@@ -53,6 +53,12 @@
         </div>
         <div class="d-flex align-items-center">
             <a href="{{ route('welding.history') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm">VAULT</a>
+            
+            {{-- ✨ KOTAK BARU DI SAMPING VAULT ✨ --}}
+            <a href="{{ route('welding.history') }}" class="btn btn-white border shadow-sm mr-2" style="width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--brand-primary); text-decoration: none;">
+                <i class="fas fa-history"></i>
+            </a>
+
             <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg" data-toggle="modal" data-target="#modalDeployWelding"><i class="fas fa-plus-circle mr-1"></i> DEPLOY</button>
         </div>
     </div>
@@ -250,7 +256,6 @@
         if ($(`#ng_container_${batchId}`).children('.ng-row-item').length === 0) $(`#no_ng_msg_${batchId}`).show();
     }
 
-    // ✨ LOGIKA AUTO-REDUCE OK (SISTEM OTOMATIS NGURANG SENDIRI)
     function calculateTotal(batchId, target) {
         let totalNg = 0;
         $(`#modalFinish${batchId} .ng-qty-input`).each(function() { 
@@ -260,10 +265,8 @@
 
         let ret = parseInt($(`#modalFinish${batchId} #input_ret_${batchId}`).val()) || 0;
         
-        // RUMUS: OK = TARGET - NG - RETURN
         let okAuto = target - totalNg - ret;
         
-        // Update input OK otomatis (Jika hasilnya negatif, set 0)
         $(`#input_ok_${batchId}`).val(okAuto < 0 ? 0 : okAuto);
 
         refreshSecurityUI(batchId, target);
