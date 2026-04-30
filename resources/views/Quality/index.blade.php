@@ -11,22 +11,20 @@
     }
     body { background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif; }
     .heading-cyber { font-family: 'Orbitron'; font-weight: 800; text-transform: uppercase; }
-    .qc-card { background: #fff; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); overflow: hidden; transition: 0.3s; border: 1px solid #eef2f6; }
-    .card-header-ind { padding: 1.5rem; border-bottom: 1px solid #f1f5f9; position: relative; }
+    .qc-card { background: #fff; border-radius: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.04); overflow: hidden; transition: 0.3s; border: 1px solid #eef2f6; position: relative; }
+    .card-header-ind { padding: 1.5rem; border-bottom: 1px solid #f1f5f9; }
     .stamping-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--ind-blue); }
     .welding-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--ind-amber); }
     .qty-badge { font-family: 'Orbitron'; font-size: 2.2rem; font-weight: 900; }
     
-    /* NG List Style */
     .ng-breakdown-box { background: #fff1f2; border-radius: 18px; padding: 15px; border: 1px solid #fee2e2; }
-    .ng-item { background: white; border-radius: 12px; padding: 10px 15px; margin-bottom: 8px; border: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-    .ng-input-sm { width: 80px; text-align: center; font-weight: 800; border-radius: 10px; border: 2px solid #e2e8f0; padding: 5px; transition: 0.3s; }
+    .ng-item { background: white; border-radius: 12px; padding: 10px 15px; margin-bottom: 8px; border: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+    .ng-input-sm { width: 80px; text-align: center; font-weight: 800; border-radius: 10px; border: 2px solid #e2e8f0; transition: 0.3s; }
     .ng-input-sm:focus { border-color: var(--ind-rose); outline: none; background: #fff1f2; }
     
     .input-ind { background: #f8fafc; border: 2px solid #edf2f7; border-radius: 14px; font-weight: 700; padding: 12px 16px; width: 100%; }
     .input-qty-hero { font-size: 24px; height: 60px; text-align: center; font-family: 'Orbitron'; border: 2px solid #e2e8f0; }
     .btn-action { font-family: 'Orbitron'; font-size: 0.85rem; padding: 18px; border-radius: 14px; text-transform: uppercase; font-weight: 800; border: none; transition: 0.3s; }
-    
     .empty-placeholder { text-align: center; padding: 60px; color: #94a3b8; font-family: 'JetBrains Mono'; font-weight: 700; border: 2px dashed #cbd5e1; border-radius: 24px; background: #fff; }
 </style>
 
@@ -34,35 +32,36 @@
     <div class="d-flex align-items-center justify-content-between mb-5 bg-white p-4 rounded-3xl border shadow-sm">
         <div>
             <h2 class="heading-cyber m-0 text-primary">QC_GATE <span class="text-dark">v4.5</span></h2>
-            <p class="text-muted small font-weight-bold mb-0 uppercase">Verified Quality Inspection Terminal</p>
+            <p class="text-muted small font-weight-bold mb-0 uppercase">Verified Verification Terminal</p>
         </div>
-        <a href="{{ route('quality.history') }}" class="btn btn-dark rounded-pill px-4 font-weight-bold shadow-sm">VIEW_AUDIT_LOG</a>
+        <a href="{{ route('quality.history') }}" class="btn btn-dark rounded-pill px-4 font-weight-bold shadow-sm">VIEW_HISTORY</a>
     </div>
 
     <div class="row">
         {{-- 🚛 STAMPING CHAMBER --}}
         <div class="col-lg-6 mb-4">
-            <h5 class="font-weight-black mb-4 px-3 uppercase tracking-tighter"><i class="fas fa-microchip mr-2 text-primary"></i> Stamping Incoming</h5>
+            <h5 class="font-weight-black mb-4 px-3 uppercase tracking-tighter"><i class="fas fa-microchip mr-2 text-primary"></i> Stamping Queue</h5>
             @forelse($produksiQueue as $p)
             <div class="qc-card mb-4 animate__animated animate__fadeInLeft">
                 <div class="stamping-strip"></div>
                 <div class="card-header-ind d-flex justify-content-between align-items-center">
                     <div>
-                        <div class="small font-weight-bold text-muted uppercase">ID: {{ $p->no_produksi }}</div>
+                        <div class="small font-weight-bold text-muted uppercase">BATCH: {{ $p->no_produksi }}</div>
                         <div class="h5 font-weight-black text-primary mb-0">{{ $p->material_code }}</div>
                     </div>
                     <div class="text-right">
                         <div class="qty-badge text-primary" id="incoming-{{ $p->id }}">{{ $p->qty_hasil_ok }}</div>
-                        <label class="small font-weight-black text-muted uppercase mb-0">Total Inbound</label>
+                        <label class="small font-weight-black text-muted uppercase mb-0">Inbound Qty</label>
                     </div>
                 </div>
 
                 <div class="card-body p-4">
+                    {{-- ✨ FIX: Memastikan route mengirim type 'stamping' dan ID rill --}}
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST">
                         @csrf
                         <div class="row mb-4">
                             <div class="col-6">
-                                <label class="label-ind text-emerald small font-weight-black uppercase">Final OK</label>
+                                <label class="label-ind text-emerald small font-weight-black uppercase">Verified OK</label>
                                 <input type="number" name="qty_ok_final" id="ok-stamping-{{ $p->id }}" class="form-control input-ind input-qty-hero text-emerald" value="{{ $p->qty_hasil_ok }}" readonly>
                             </div>
                             <div class="col-6">
@@ -72,14 +71,14 @@
                         </div>
 
                         <div class="ng-breakdown-box mb-4">
-                            <label class="label-ind text-danger font-weight-bold mb-2 d-block">Defect Category Verification:</label>
-                            <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                            <label class="label-ind text-danger font-weight-bold mb-2 d-block">Breakdown NG (Auto-Calculate):</label>
+                            <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
                                 @foreach($ngStamping as $ng)
                                 <div class="ng-item">
                                     <span class="small font-weight-bold text-dark">{{ strtoupper($ng->ng_name) }}</span>
+                                    {{-- ✨ FIX: Name input harus ng_details[NAMA] agar Controller bisa meloop --}}
                                     <input type="number" name="ng_details[{{ $ng->ng_name }}]" 
                                            class="ng-input-sm ng-val-{{ $p->id }}" 
-                                           data-parent="{{ $p->id }}" 
                                            value="0" min="0" oninput="calculateNG('{{ $p->id }}')">
                                 </div>
                                 @endforeach
@@ -91,7 +90,7 @@
                             <input type="text" name="inspector_name" class="form-control input-ind" value="{{ Auth::user()->name }}" readonly>
                         </div>
 
-                        <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-lg">APPROVE & RELEASE BATCH <i class="fas fa-check-circle ml-2"></i></button>
+                        <button type="submit" class="btn btn-block btn-action bg-dark text-white shadow-lg">COMMIT & RELEASE <i class="fas fa-check-circle ml-2"></i></button>
                     </form>
                 </div>
             </div>
@@ -113,7 +112,7 @@
                     </div>
                     <div class="text-right">
                         <div class="qty-badge text-warning" id="incoming-w-{{ $w->id }}">{{ $w->qty_ok }}</div>
-                        <label class="small font-weight-black text-muted uppercase mb-0">Total Inbound</label>
+                        <label class="small font-weight-black text-muted uppercase mb-0">Inbound Qty</label>
                     </div>
                 </div>
 
@@ -122,7 +121,7 @@
                         @csrf
                         <div class="row mb-4">
                             <div class="col-6">
-                                <label class="label-ind text-emerald small font-weight-black uppercase">Final OK</label>
+                                <label class="label-ind text-emerald small font-weight-black uppercase">Verified OK</label>
                                 <input type="number" name="qty_ok_final" id="ok-welding-{{ $w->id }}" class="form-control input-ind input-qty-hero text-emerald" value="{{ $w->qty_ok }}" readonly>
                             </div>
                             <div class="col-6">
@@ -132,14 +131,13 @@
                         </div>
 
                         <div class="ng-breakdown-box mb-4" style="background: #fffbeb; border-color: #fef3c7;">
-                            <label class="label-ind text-warning font-weight-bold mb-2 d-block">Welding Defect Verification:</label>
-                            <div style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                            <label class="label-ind text-warning font-weight-bold mb-2 d-block">Breakdown NG (Welding):</label>
+                            <div style="max-height: 250px; overflow-y: auto; padding-right: 5px;">
                                 @foreach($ngWelding as $ng)
                                 <div class="ng-item shadow-sm">
                                     <span class="small font-weight-bold text-dark">{{ strtoupper($ng->ng_name) }}</span>
                                     <input type="number" name="ng_details[{{ $ng->ng_name }}]" 
                                            class="ng-input-sm ng-val-w-{{ $w->id }}" 
-                                           data-parent="{{ $w->id }}" 
                                            value="0" min="0" oninput="calculateNGWelding('{{ $w->id }}')">
                                 </div>
                                 @endforeach
@@ -151,7 +149,7 @@
                             <input type="text" name="inspector_name" class="form-control input-ind" value="{{ Auth::user()->name }}" readonly>
                         </div>
 
-                        <button type="submit" class="btn btn-block btn-action bg-warning text-dark shadow-lg">VERIFY & STORE FG <i class="fas fa-database ml-2"></i></button>
+                        <button type="submit" class="btn btn-block btn-action bg-warning text-dark shadow-lg">COMMIT & STORE FG <i class="fas fa-database ml-2"></i></button>
                     </form>
                 </div>
             </div>
@@ -167,12 +165,14 @@
         let incoming = parseInt(document.getElementById('incoming-' + id).innerText);
         let totalNG = 0;
 
+        // Ambil semua input dalam card ini saja rill
         document.querySelectorAll('.ng-val-' + id).forEach(input => {
             totalNG += (parseInt(input.value) || 0);
         });
 
         if (totalNG > incoming) {
-            alert("⚠️ WARNING: NG melebihi total barang datang rill!");
+            alert("🚨 GAGAL: Total NG ("+totalNG+") tidak boleh melebihi Inbound ("+incoming+")!");
+            // Cari input yang baru saja diubah dan nol kan rill
             event.target.value = 0;
             return calculateNG(id);
         }
@@ -190,7 +190,7 @@
         });
 
         if (totalNG > incoming) {
-            alert("⚠️ WARNING: NG melebihi total barang datang rill!");
+            alert("🚨 GAGAL: Total NG ("+totalNG+") tidak boleh melebihi Inbound ("+incoming+")!");
             event.target.value = 0;
             return calculateNGWelding(id);
         }
