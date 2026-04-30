@@ -48,6 +48,7 @@ class QualityGateController extends Controller {
 
                 $batchNo = $ref->no_produksi;
                 $partNo  = $ref->material_code;
+                $origin  = 'STAMPING';
 
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
@@ -73,7 +74,6 @@ class QualityGateController extends Controller {
                 
                 $final_ok = $qc_verified_ok;
                 $final_ng = $qc_verified_ng;
-                $origin   = 'STAMPING';
                 $qty_awal = $total_ok_prod;
 
             } else {
@@ -82,6 +82,7 @@ class QualityGateController extends Controller {
 
                 $batchNo = $batch->no_produksi_stamping;
                 $partNo  = $batch->part_no;
+                $origin  = 'WELDING';
                 $final_ok = (int)$request->qty_ok_final;
                 $final_ng = (int)$request->qty_ng_final;
 
@@ -95,10 +96,9 @@ class QualityGateController extends Controller {
                 ]);
                 
                 $qty_awal = $batch->qty_ok;
-                $origin   = 'WELDING';
             }
 
-            // ✨ 1. UPDATE DASHBOARD DULU (Dapetin ID-nya buat NG Logs) ✨
+            // ✨ 1. UPDATE DASHBOARD HARI INI ✨
             $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             // ✨ 2. SIMPAN RINCIAN NG KE LOGS ✨
@@ -109,7 +109,7 @@ class QualityGateController extends Controller {
                     if ((int)$qty > 0) {
                         $all_ng_names[] = "$ng_name ($qty)";
                         DB::table('production_ng_logs')->insert([
-                            'actual_id'   => $actual_id, // Wajib diisi rill!
+                            'actual_id'   => $actual_id,
                             'no_produksi' => $batchNo,
                             'ng_type'     => $ng_name,
                             'qty'         => $qty,
@@ -120,7 +120,7 @@ class QualityGateController extends Controller {
             }
             $summary_reason = !empty($all_ng_names) ? implode(', ', $all_ng_names) : 'OK GOODS';
 
-            // ✨ 3. SIMPAN KE QUALITY_INSPECTIONS ✨
+            // ✨ 3. SIMPAN KE QUALITY_INSPECTIONS (Data Archive) ✨
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -135,22 +135,32 @@ class QualityGateController extends Controller {
                 'updated_at'    => now()
             ]);
 
-            // ✨ 4. UPDATE STOK FG (Gunakan pengecekan aman) ✨
+            // ✨ 4. UPDATE STOK & INSERT LOG INVENTORY (AGAR KEBACA DI DASHBOARD INVENTORY) ✨
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->first();
 
             if ($fg) {
+                // Update Angka Stok
                 DB::table('finished_goods')->where('id', $fg->id)->update([
                     'actual_stock' => ($fg->actual_stock + $final_ok),
                     'act_stock'    => (($fg->act_stock ?? 0) + $final_ok),
                     'updated_at'   => now()
                 ]);
+
+                // ✨ BARIS INI YANG BIKIN DATA MUNCUL DI image_1d957c.png ✨
+                DB::table('production_logs')->insert([
+                    'part_no'      => $partNo,
+                    'qty'          => $final_ok,
+                    'process_type' => ($origin == 'STAMPING' ? 'STP' : 'WLD'),
+                    'no_produksi'  => $batchNo,
+                    'created_at'   => now()
+                ]);
             }
 
             DB::commit();
-            return back()->with('success', "Batch $batchNo Lulus Verifikasi QC rill!");
+            return back()->with('success', "Batch $batchNo Lulus Verifikasi QC & Masuk Inventory rill!");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
