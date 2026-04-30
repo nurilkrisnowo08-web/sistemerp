@@ -43,7 +43,6 @@ class ProduksiController extends Controller
 
         $activeProductions = $query->orderBy('batch_id', 'desc')->get();
         
-        // ✨ FIX image_4d22f8 & image_4bcd7c: Gunakan GroupBy & Aggregation agar SAI tidak double & tidak Error 500
         $materials = DB::table('rm_stocks')
             ->where('stock_pcs', '>', 0)
             ->select(
@@ -85,11 +84,10 @@ class ProduksiController extends Controller
             
             DB::table('rm_stocks')->where('id', $request->rm_stock_id)->decrement('stock_pcs', $request->qty_ambil_pcs);
 
-            // ✨ FIX image_4ca6bb: Catat ke log mutasi RM agar kolom OUT di RM HUB terisi rill
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
                 'material_code' => $request->material_code,
-                'pcs_used'      => $request->qty_ambil_pcs, // Pastikan kolom ini 'pcs_used' di database Bapak
+                'pcs_used'      => $request->qty_ambil_pcs, 
                 'no_produksi'   => $no_produksi,
                 'created_at'    => now(),
                 'updated_at'    => now()
@@ -128,7 +126,6 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
             } else {
-                // ✨ FIX image_5aca17: Gunakan actual_stock
                 DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('actual_stock', $request->qty_ok, ['updated_at' => now()]);
             }
 
@@ -173,7 +170,6 @@ class ProduksiController extends Controller
                         'no_produksi' => $p->no_produksi, 'created_at' => now()
                     ]);
                     
-                    // ✨ Update log produksi jika ada barang kembali agar Out di HUB sinkron
                     $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
                     if($currentLog) {
                         DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)
@@ -188,7 +184,6 @@ class ProduksiController extends Controller
 
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok'         => $qty_ok, 
-                'qty_ng_material'      => 0, 
                 'qty_ng_process'       => $total_ng_spesifik, 
                 'qty_hasil_ng'         => $total_ng_spesifik,
                 'qty_return_warehouse' => (int)$request->qty_return_warehouse,
@@ -199,23 +194,20 @@ class ProduksiController extends Controller
 
             if ($target == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
-                DB::table('production_logs')->insert([
-                    'part_no'      => $p->material_code,
-                    'qty'          => $qty_ok,
-                    'process_type' => 'WELDING',
-                    'created_at'   => now(),
-                    'updated_at'   => now()
-                ]);
-            } else {
+            } else if($status_akhir == 'COMPLETED') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
             }
 
             $this->syncToActual($id);
 
+            // ✨ LOGIC NG: Simpan rincian dari Produksi rill
             if (!empty($ng_details)) {
                 $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
                              ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
                 if ($actual) {
+                    // Hapus rincian lama batch ini agar tidak double jika di-save ulang
+                    DB::table('production_ng_logs')->where('no_produksi', $p->no_produksi)->delete();
+                    
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert([
                             'actual_id'   => $actual->id,
@@ -252,6 +244,68 @@ class ProduksiController extends Controller
         );
     }
 
+    // ✨ FUNGSI BARU: Deep Dive Kumulatif (Prod + QC) rill ✨
+    public function getBatchDeepDive($no_produksi)
+    {
+        // 1. Ambil data batch utama
+        $batch = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->select('produksi_batches.*', 'line.kode_Line')
+            ->where('no_produksi', $no_produksi)
+            ->first();
+
+        // 2. 🔥 GABUNGKAN NG PRODUKSI & NG QC rill
+        // Kita SUM qty berdasarkan ng_type agar rinciannya jadi 6 pcs
+        $defects = DB::table('production_ng_logs')
+            ->where('no_produksi', $no_produksi)
+            ->select('ng_type', DB::raw('SUM(qty) as total_qty'))
+            ->groupBy('ng_type')
+            ->get();
+
+        return response()->json([
+            'batch' => $batch,
+            'defects' => $defects,
+            'total_reject' => $defects->sum('total_qty')
+        ]);
+    }
+
+    public function history(Request $request) 
+    {
+        $startDate = $request->start_date ?? date('Y-m-d');
+        $endDate = $request->end_date ?? date('Y-m-d');
+
+        $history = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->select(
+                'produksi_batches.no_produksi',
+                'produksi_batches.material_code',
+                'produksi_batches.shift',
+                'produksi_batches.status',
+                'produksi_batches.keterangan',
+                DB::raw('MIN(produksi_batches.created_at) as created_at'), 
+                DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
+                DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
+                DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
+                DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
+                DB::raw('SUM(produksi_batches.qty_return_warehouse) as qty_return_warehouse'),
+                DB::raw('MIN(produksi_batches.id) as id'),
+                DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
+            )
+            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+            ->whereBetween('produksi_batches.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->groupBy(
+                'produksi_batches.no_produksi', 
+                'produksi_batches.material_code', 
+                'produksi_batches.shift',
+                'produksi_batches.status',
+                'produksi_batches.keterangan'
+            )
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('Produksi.history', compact('history', 'startDate', 'endDate'));
+    }
+
     // --- RECOVERY FUNCTIONS & HELPERS ---
     public function getSpecsByCustomer($customer) {
         $specs = DB::table('rm_stocks')->where('customer', trim($customer))->where('stock_pcs', '>', 0)
@@ -268,74 +322,6 @@ class ProduksiController extends Controller
         return response()->json($parts);
     }
 
-    public function indexRM(Request $request) {
-        $customer = trim($request->customer);
-        $startDate = $request->start_date ?? date('Y-m-d'); $endDate = $request->end_date ?? date('Y-m-d');
-        $materials = DB::table('rm_stocks')
-            ->leftJoin('master_materials as mm', function($join) {
-                $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
-                     ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
-            })
-            ->select('rm_stocks.*', 'mm.alias_code', 'mm.std_qty_batch')
-            ->where('rm_stocks.stock_pcs', '>', 0)
-            ->when($customer, fn($q)=>$q->where('rm_stocks.customer', $customer))->get();
-
-        $groupedMaterials = $materials->groupBy(function($item) {
-            return $item->alias_code ?? (trim($item->spec) . ' (' . str_replace(' ', '', $item->size) . ')');
-        })->map(function($group) use ($startDate, $endDate) {
-            $uniqueCoils = $group->unique('coil_id'); $ids = $group->pluck('id')->toArray();
-            $totalLive = $uniqueCoils->sum('stock_pcs');
-            $rep = $group->first();
-            return (object)[
-                'group_key' => $rep->alias_code ?? $rep->spec, 'total_live' => $totalLive, 'details' => $uniqueCoils,
-                'combined_logs' => DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)->get()->concat(DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)->get())->sortByDesc('created_at')
-            ];
-        });
-        $availableCustomers = DB::table('customers')->get();
-        return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
-    }
-
-  public function history(Request $request) 
-{
-    // ✨ 1. Ambil input tanggal, jika kosong default ke HARI INI
-    // Kalau Bapak mau default-nya muncul semua, hapus default date('Y-m-d')-nya
-    $startDate = $request->start_date ?? date('Y-m-d');
-    $endDate = $request->end_date ?? date('Y-m-d');
-
-    $history = DB::table('produksi_batches')
-        ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-        ->select(
-            'produksi_batches.no_produksi',
-            'produksi_batches.material_code',
-            'produksi_batches.shift',
-            'produksi_batches.status',
-            'produksi_batches.keterangan',
-            // ✨ Kunci Jam: Ambil created_at pertama (saat deploy batch)
-            DB::raw('MIN(produksi_batches.created_at) as created_at'), 
-            DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
-            DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
-            DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
-            DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
-            DB::raw('SUM(produksi_batches.qty_return_warehouse) as qty_return_warehouse'),
-            DB::raw('MIN(produksi_batches.id) as id'),
-            DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
-        )
-        ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-        // ✨ Filter Range berdasarkan created_at (Bukan updated_at QC)
-        ->whereBetween('produksi_batches.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
-        ->groupBy(
-            'produksi_batches.no_produksi', 
-            'produksi_batches.material_code', 
-            'produksi_batches.shift',
-            'produksi_batches.status',
-            'produksi_batches.keterangan'
-        )
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-    return view('Produksi.history', compact('history', 'startDate', 'endDate'));
-}
-
     public function returnToRM($id) {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
         $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
@@ -343,7 +329,6 @@ class ProduksiController extends Controller
         try {
             if ($p && $rmInfo) { 
                 DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $p->qty_ambil_pcs); 
-                // ✨ FIX: Hapus juga log produksinya agar Out di RM HUB kembali normal
                 DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->delete();
             }
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->delete();
