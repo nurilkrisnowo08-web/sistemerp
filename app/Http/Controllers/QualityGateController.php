@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
-        // Grouping batch agar tidak double di tampilan terminal QC
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
@@ -34,7 +33,7 @@ class QualityGateController extends Controller {
 
             if ($type == 'stamping') {
                 $ref = DB::table('produksi_batches')->where('id', $id)->first();
-                if (!$ref) throw new \Exception("Batch Stamping tidak ditemukan.");
+                if (!$ref) throw new \Exception("Batch tidak ditemukan.");
 
                 $batchNo = $ref->no_produksi;
                 $partNo  = $ref->material_code;
@@ -75,7 +74,7 @@ class QualityGateController extends Controller {
             // 1. Sinkronisasi Dashboard Harian (Grafik Naga)
             $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
-            // 2. Simpan Detail NG
+            // 2. Simpan Detail NG agar muncul di Verification Report rill
             DB::table('production_ng_logs')->where('no_produksi', $batchNo)->delete();
             $all_ng_names = [];
             if ($request->has('ng_details')) {
@@ -99,7 +98,7 @@ class QualityGateController extends Controller {
                 'created_at' => now(), 'updated_at' => now()
             ]);
 
-            // 4. Update Stok FG & Log Mutasi
+            // 4. UPDATE STOK FG & LOG MUTASI
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -112,21 +111,21 @@ class QualityGateController extends Controller {
                     'updated_at'   => now()
                 ]);
 
-                // ✨ FIX: Menghapus kolom 'no_produksi' karena rill gak ada di tabel production_logs Bapak! ✨
+                // ✨ KUNCI SUKSES: Pakai 'FG' supaya masuk ke Dashboard Inventory Bapak rill! ✨
                 DB::table('production_logs')->insert([
                     'part_no'      => $partNo,
                     'qty'          => $final_ok,
-                    'process_type' => ($origin == 'STAMPING' ? 'STP' : 'WLD'),
+                    'process_type' => 'FG', // Harus 'FG' agar kebaca di Image 1
                     'created_at'   => now()
                 ]);
             }
 
             DB::commit();
-            return back()->with('success', "VERIFIKASI BERHASIL rill! Data sudah masuk ke Inventory.");
+            return back()->with('success', "COMMIT SUKSES rill! Angka masuk ke Dashboard & FG.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
-            return back()->with('error', "GAGAL SISTEM: " . $e->getMessage()); 
+            return back()->with('error', "GAGAL: " . $e->getMessage()); 
         }
     }
 
@@ -161,7 +160,7 @@ class QualityGateController extends Controller {
             } else {
                 DB::table('welding_batches')->where('id', $id)->delete();
             }
-            return back()->with('success', 'Batch antrean berhasil dihapus.');
-        } catch (\Exception $e) { return back()->with('error', 'Gagal: ' . $e->getMessage()); }
+            return back()->with('success', 'Batch dihapus.');
+        } catch (\Exception $e) { return back()->with('error', $e->getMessage()); }
     }
 }
