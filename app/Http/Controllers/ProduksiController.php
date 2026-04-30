@@ -295,36 +295,46 @@ class ProduksiController extends Controller
         return view('Gudang.rm_store', compact('groupedMaterials', 'availableCustomers', 'customer', 'startDate', 'endDate'));
     }
 
-    public function history() 
-    {
-        $history = DB::table('produksi_batches')
-            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-            ->select(
-                'produksi_batches.no_produksi',
-                'produksi_batches.material_code',
-                'produksi_batches.shift',
-                'produksi_batches.status',
-                'produksi_batches.keterangan',
-                DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
-                DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
-                DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
-                DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
-                DB::raw('MIN(produksi_batches.id) as id'),
-                DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
-            )
-            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
-            ->groupBy(
-                'produksi_batches.no_produksi', 
-                'produksi_batches.material_code', 
-                'produksi_batches.shift',
-                'produksi_batches.status',
-                'produksi_batches.keterangan'
-            )
-            ->orderBy('updated_at', 'desc')
-            ->get();
+    public function history(Request $request) 
+{
+    // ✨ 1. Ambil input tanggal, default ke hari ini
+    $startDate = $request->start_date ?? date('Y-m-d');
+    $endDate = $request->end_date ?? date('Y-m-d');
 
-        return view('Produksi.history', compact('history'));
-    }
+    $history = DB::table('produksi_batches')
+        ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+        ->select(
+            'produksi_batches.no_produksi',
+            'produksi_batches.material_code',
+            'produksi_batches.shift',
+            'produksi_batches.status',
+            'produksi_batches.keterangan',
+            // ✨ Kunci agar jam tidak berubah: Ambil MIN created_at (Jam Lahir Produksi)
+            DB::raw('MIN(produksi_batches.created_at) as created_at'), 
+            DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
+            DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'),
+            DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
+            DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'),
+            DB::raw('SUM(produksi_batches.qty_return_warehouse) as qty_return_warehouse'), // Data Return
+            DB::raw('MIN(produksi_batches.id) as id'),
+            DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names')
+        )
+        ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])
+        // ✨ Filter Range Tanggal rill sesuai pilihan user
+        ->whereBetween('produksi_batches.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+        ->groupBy(
+            'produksi_batches.no_produksi', 
+            'produksi_batches.material_code', 
+            'produksi_batches.shift',
+            'produksi_batches.status',
+            'produksi_batches.keterangan'
+        )
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    // ✨ Wajib kirim startDate dan endDate balik ke View agar input kalender terisi rill
+    return view('Produksi.history', compact('history', 'startDate', 'endDate'));
+}
 
     public function returnToRM($id) {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
