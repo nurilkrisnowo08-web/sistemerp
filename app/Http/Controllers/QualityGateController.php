@@ -40,7 +40,7 @@ class QualityGateController extends Controller {
         return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
 
-    public function approve(Request $request, $type, $id) {
+   public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
         try {
             if ($type == 'stamping') {
@@ -53,8 +53,9 @@ class QualityGateController extends Controller {
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
                 $qc_verified_ok = (int)$request->qty_ok_final;
+                $qc_verified_ng = (int)$request->qty_ng_final; // Ambil input NG dari QC rill
 
-                // Logika penyesuaian selisih NG baru
+                // 1. Logika penyesuaian selisih NG di tabel Produksi
                 if ($qc_verified_ok < $total_ok_prod) {
                     $selisih = $total_ok_prod - $qc_verified_ok;
                     $firstLine = $lines->first();
@@ -73,7 +74,7 @@ class QualityGateController extends Controller {
                 ]);
                 
                 $final_ok = $qc_verified_ok;
-                $final_ng = (int)$request->qty_ng_final;
+                $final_ng = $qc_verified_ng;
                 $origin   = 'STAMPING';
                 $qty_awal = $total_ok_prod;
 
@@ -108,7 +109,9 @@ class QualityGateController extends Controller {
 
             if (!$fg) throw new \Exception("Part No [$partNo] tidak terdaftar di Finished Goods.");
 
-            // ✨ SIMPAN INSPEKSI: Pastikan ng_reason menangkap data dari dropdown
+            // ✨ 2. SIMPAN INSPEKSI (Persis Gambar image_2824e5.png)
+            $ng_reason = ($final_ng > 0) ? ($request->ng_reason ?? 'OTHER_DEFECT') : 'OK_GOODS';
+            
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -116,13 +119,32 @@ class QualityGateController extends Controller {
                 'qty_from_prod' => $qty_awal,
                 'qty_ok'        => $final_ok,
                 'qty_ng'        => $final_ng, 
-                // Jika tidak ada NG, set 'OK'
-                'ng_reason'     => ($final_ng > 0) ? ($request->ng_reason ?? 'OTHER_DEFECT') : 'OK_GOODS',
-                'inspector'     => $request->inspector_name ?? 'QC_OFFICER',
+                'ng_reason'     => $ng_reason,
+                'inspector'     => $request->inspector_name ?? Auth::user()?->name ?? 'QC_OFFICER',
                 'status'        => 'APPROVED',
                 'created_at'    => now(), 
                 'updated_at'    => now()
             ]);
+
+            // ✨ 3. SINKRONISASI KE PRODUCTION_NG_LOGS (Agar Breakdown Merah di History Muncul rill!)
+            if ($final_ng > 0) {
+                // Pastikan ada row di production_actuals dulu
+                $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
+                $actualId = DB::table('production_actuals')
+                            ->where('part_no', $partNo)
+                            ->whereDate('created_at', date('Y-m-d'))
+                            ->value('id');
+
+                if ($actualId) {
+                    DB::table('production_ng_logs')->insert([
+                        'actual_id'   => $actualId,
+                        'no_produksi' => $batchNo,
+                        'ng_type'     => "QC_FINDING: " . $ng_reason, // Tandai kalau ini temuan QC
+                        'qty'         => $final_ng,
+                        'created_at'  => now()
+                    ]);
+                }
+            }
 
             // Update Stok FG
             DB::table('finished_goods')->where('id', $fg->id)->update([
@@ -136,6 +158,7 @@ class QualityGateController extends Controller {
                 'part_no' => $partNo, 'qty' => $final_ok, 'process_type' => 'FG', 'created_at' => now()
             ]);
 
+            // Jalankan update Dashboard (Sudah dipanggil di atas juga tapi aman rill)
             $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             DB::commit();
