@@ -42,6 +42,10 @@
     .status-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; border-left-color: var(--brand-danger); }
 
     .return-box { background: rgba(99, 102, 241, 0.05); border: 2px dashed var(--brand-return); border-radius: 26px; padding: 24px; transition: 0.3s; }
+
+    /* 📜 TAMBAHAN: HISTORY BADGE & TABLE */
+    .badge-history { background: rgba(131, 56, 236, 0.1); color: var(--brand-return); border: 1px solid rgba(131, 56, 236, 0.2); font-family: 'JetBrains Mono'; font-weight: 800; font-size: 10px; }
+    .table-history td { font-size: 13px; font-weight: 600; padding: 15px 20px !important; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -141,6 +145,84 @@
         </div>
         @endforeach
     </div>
+
+    {{-- ✨ TAMBAHAN FITUR: PRODUCTION ARCHIVE ✨ --}}
+    @php
+        // Ambil data dari database jika Controller belum mengirim variabel $historyData
+        // Saya letakkan DB::table di sini agar aman dan Bapak tidak perlu mengubah controller rill.
+        $recentHistory = DB::table('welding_batches')
+            ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
+            ->where('status', 'COMPLETED')
+            ->whereDate('welding_batches.updated_at', $date)
+            ->select('welding_batches.*', 'line_welding.nama_line')
+            ->orderBy('welding_batches.updated_at', 'desc')
+            ->limit(5)
+            ->get();
+    @endphp
+
+    <div class="mt-5 animate__animated animate__fadeIn">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="heading-hub m-0" style="font-size: 1.2rem;">Production_Archive <span style="-webkit-text-fill-color: #64748b;">(Recent)</span></h3>
+            <span class="badge badge-history rounded-pill px-3 py-2">LIVE_SYNC_ACTIVE</span>
+        </div>
+
+        <div class="ledger-container">
+            <div class="table-responsive">
+                <table class="table table-ledger table-history mb-0 text-center">
+                    <thead>
+                        <tr>
+                            <th class="text-left pl-5">Timestamp</th>
+                            <th>Batch ID</th>
+                            <th class="text-left">Part Identification</th>
+                            <th class="text-success">OK</th>
+                            <th class="text-danger">NG</th>
+                            <th style="color: var(--brand-return);">RET</th>
+                            <th>Efficiency</th>
+                            <th class="text-right pr-5">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentHistory as $hd)
+                        @php 
+                            $hdTotal = ($hd->qty_masuk - $hd->qty_return);
+                            $hdYield = $hdTotal > 0 ? ($hd->qty_ok / $hdTotal) * 100 : 0;
+                            $hdColor = ($hdYield >= 95) ? 'var(--brand-success)' : (($hdYield >= 85) ? '#f59e0b' : 'var(--brand-danger)');
+                        @endphp
+                        <tr>
+                            <td class="text-left pl-5">
+                                <div class="text-muted small" style="font-family: 'JetBrains Mono';">{{ date('H:i', strtotime($hd->updated_at)) }}</div>
+                                <div style="font-size: 11px;">{{ date('d M Y', strtotime($hd->updated_at)) }}</div>
+                            </td>
+                            <td><span class="text-primary font-mono">{{ $hd->no_produksi_stamping }}</span></td>
+                            <td class="text-left">
+                                <div class="font-weight-black">> {{ $hd->part_no }}</div>
+                                <small class="text-muted uppercase" style="font-size: 9px;">{{ $hd->nama_line ?? 'WELDING AREA' }}</small>
+                            </td>
+                            <td class="text-success font-weight-black">{{ number_format($hd->qty_ok) }}</td>
+                            <td class="text-danger font-weight-black">{{ number_format($hd->qty_ng) }}</td>
+                            <td style="color: var(--brand-return);">{{ number_format($hd->qty_return) }}</td>
+                            <td>
+                                <b style="color: {{ $hdColor }}; font-family: 'JetBrains Mono';">{{ number_format($hdYield, 1) }}%</b>
+                            </td>
+                            <td class="text-right pr-5">
+                                <span class="badge badge-success rounded-pill px-3">COMPLETED</span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="8" class="py-5 text-center text-muted font-weight-bold">
+                                <i class="fas fa-box-open fa-2x d-block mb-3 opacity-20"></i>
+                                NO_COMPLETED_SESSIONS_TODAY
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{-- ✨ AKHIR DARI TAMBAHAN FITUR ✨ --}}
+
 </div>
 
 {{-- 🏁 MODAL FINISH (AUTO-CALCULATION ENABLED) --}}

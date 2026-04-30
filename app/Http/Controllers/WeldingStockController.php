@@ -307,15 +307,31 @@ class WeldingStockController extends Controller
     /**
      * 6. RIWAYAT PRODUKSI WELDING (Tetap Sama)
      */
-    public function historyWelding()
+    /**
+     * 6. RIWAYAT PRODUKSI WELDING (Enhanced: Cyber Industrial Version)
+     * Menampilkan performa produksi welding per batch rill.
+     */
+    public function historyWelding(Request $request)
     {
+        // Filter Tanggal
+        $startDate = $request->start_date ?? date('Y-m-d');
+        $endDate = $request->end_date ?? date('Y-m-d');
+
         $historyData = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
             ->where('status', 'COMPLETED')
+            ->whereBetween(DB::raw('DATE(welding_batches.updated_at)'), [$startDate, $endDate])
             ->select('welding_batches.*', 'line_welding.kode_line', 'line_welding.nama_line')
-            ->orderBy('created_at', 'desc')
-            ->get();
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(function($h) {
+                // Ambil detail NG untuk modal nanti rill
+                $h->ng_details = DB::table('welding_ng_logs')
+                                    ->where('no_produksi', $h->no_produksi_stamping)
+                                    ->get();
+                return $h;
+            });
 
-        return view('welding.welding_history_weldig', compact('historyData'));
+        return view('welding.welding_history_weldig', compact('historyData', 'startDate', 'endDate'));
     }
 }
