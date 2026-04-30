@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
-        // Fungsi index tetap sama persis sesuai kodingan lama Bapak
+        // Fungsi index tetap sama persis sesuai kodingan Bapak
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
@@ -42,6 +42,8 @@ class QualityGateController extends Controller {
     public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
         try {
+            $inspector = $request->inspector_name ?? Auth::user()?->name ?? 'QC_OFFICER';
+
             if ($type == 'stamping') {
                 $ref = DB::table('produksi_batches')->where('id', $id)->first();
                 if (!$ref) throw new \Exception("Batch tidak ditemukan.");
@@ -51,12 +53,16 @@ class QualityGateController extends Controller {
 
                 $lines = DB::table('produksi_batches')->where('no_produksi', $batchNo)->get();
                 $total_ok_prod = $lines->sum('qty_hasil_ok');
-                $qc_verified_ok = (int)$request->qty_ok_final;
+                
+                $final_ok = (int)$request->qty_ok_final;
+                $final_ng = (int)$request->qty_ng_final;
+                $qty_awal = $total_ok_prod;
+                $origin   = 'STAMPING';
 
-                if ($qc_verified_ok < $total_ok_prod) {
-                    $selisih = $total_ok_prod - $qc_verified_ok;
+                // Logika penyesuaian selisih NG ke record produksi rill
+                if ($final_ok < $total_ok_prod) {
+                    $selisih = $total_ok_prod - $final_ok;
                     $firstLine = $lines->first();
-                    
                     DB::table('produksi_batches')->where('id', $firstLine->id)->update([
                         'qty_hasil_ok' => ($firstLine->qty_hasil_ok - $selisih),
                         'qty_hasil_ng' => ($firstLine->qty_hasil_ng + $selisih),
@@ -66,16 +72,12 @@ class QualityGateController extends Controller {
                 DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                     'status'     => 'COMPLETED',
                     'qc_at'      => now(),
-                    'qc_by'      => $request->inspector_name ?? Auth::user()?->name,
+                    'qc_by'      => $inspector,
                     'updated_at' => now()
                 ]);
-                
-                $final_ok = $qc_verified_ok;
-                $final_ng = (int)$request->qty_ng_final;
-                $origin   = 'STAMPING';
-                $qty_awal = $total_ok_prod;
 
             } else {
+                // Logika Welding
                 $batch = DB::table('welding_batches')->where('id', $id)->first();
                 if (!$batch) throw new \Exception("Batch Welding tidak ditemukan.");
 
@@ -83,42 +85,30 @@ class QualityGateController extends Controller {
                 $partNo  = $batch->part_no;
                 $final_ok = (int)$request->qty_ok_final;
                 $final_ng = (int)$request->qty_ng_final;
+                $qty_awal = $batch->qty_ok;
+                $origin   = 'WELDING';
 
                 DB::table('welding_batches')->where('id', $id)->update([
                     'qty_ok'     => $final_ok,
                     'qty_ng'     => $batch->qty_ng + $final_ng,
                     'status'     => 'COMPLETED',
                     'qc_at'      => now(),
-                    'qc_by'      => $request->inspector_name ?? Auth::user()?->name,
+                    'qc_by'      => $inspector,
                     'updated_at' => now()
                 ]);
-                
-                $qty_awal = $batch->qty_ok;
-                $origin   = 'WELDING';
             }
 
-            // Validasi Stok FG
-            $cleanPart = str_replace([' ', '-'], '', trim($partNo));
-            $fg = DB::table('finished_goods')
-                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                ->first();
-
-            if (!$fg) throw new \Exception("Part No [$partNo] tidak terdaftar di Finished Goods.");
-
-            // ✨ BAGIAN PERBAIKAN: LOOPING NG DETAILS ✨
-            // Ini yang bikin rincian NG (Burry, Dented, dll) tersimpan semua rill!
-            $ngBreakdownSummary = [];
-            
-            // 1. Pastikan data harian di Dashboard Actual sudah ada untuk ambil ID-nya
+            // ✨ 1. UPDATE DASHBOARD HARI INI (Dapetin ID rill untuk detail NG)
             $actualId = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
+            // ✨ 2. SIMPAN RINCIAN NG DETAIL (Looping)
+            $ngBreakdownSummary = [];
             if ($request->has('ng_details')) {
-                // Hapus log lama batch ini jika ada (agar tidak double)
+                // Bersihkan log lama batch ini agar tidak double rill
                 DB::table('production_ng_logs')->where('no_produksi', $batchNo)->delete();
 
                 foreach ($request->ng_details as $ngName => $ngQty) {
                     if ((int)$ngQty > 0) {
-                        // Simpan ke log detail (agar muncul di history rincian)
                         DB::table('production_ng_logs')->insert([
                             'actual_id'   => $actualId,
                             'no_produksi' => $batchNo,
@@ -126,16 +116,15 @@ class QualityGateController extends Controller {
                             'qty'         => $ngQty,
                             'created_at'  => now()
                         ]);
-                        // Masukkan ke array untuk string summary di quality_inspections
                         $ngBreakdownSummary[] = "$ngName ($ngQty)";
                     }
                 }
             }
 
-            // Gabungkan semua alasan NG jadi satu kalimat rill
+            // Gabungkan alasan jadi string untuk archive history
             $finalNgReason = count($ngBreakdownSummary) > 0 ? implode(', ', $ngBreakdownSummary) : 'OK_GOODS';
 
-            // ✨ SIMPAN INSPEKSI: Sekarang ng_reason berisi rincian lengkap
+            // ✨ 3. SIMPAN KE QUALITY_INSPECTIONS (Archive History)
             DB::table('quality_inspections')->insert([
                 'batch_no'      => $batchNo,
                 'origin'        => $origin,
@@ -143,40 +132,53 @@ class QualityGateController extends Controller {
                 'qty_from_prod' => $qty_awal,
                 'qty_ok'        => $final_ok,
                 'qty_ng'        => $final_ng, 
-                'ng_reason'     => $finalNgReason, // Contoh: "BURRY (2), DENTED (1)"
-                'inspector'     => $request->inspector_name ?? Auth::user()?->name ?? 'QC_OFFICER',
+                'ng_reason'     => $finalNgReason, 
+                'inspector'     => $inspector,
                 'status'        => 'APPROVED',
                 'created_at'    => now(), 
                 'updated_at'    => now()
             ]);
 
-            // Update Stok FG (Logic lama Bapak yang sudah jalan rill)
-            DB::table('finished_goods')->where('id', $fg->id)->update([
-                'actual_stock' => $fg->actual_stock + $final_ok,
-                'act_stock'    => ($fg->act_stock ?? 0) + $final_ok,
-                'updated_at'   => now()
-            ]);
+            // ✨ 4. UPDATE STOK FG (Logic lama Bapak yang diperkuat)
+            $cleanPart = str_replace([' ', '-'], '', trim($partNo));
+            $fg = DB::table('finished_goods')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->first();
 
-            // Log Mutasi (Logic lama Bapak)
-            DB::table('production_logs')->insert([
-                'part_no' => $partNo, 'qty' => $final_ok, 'process_type' => ($origin == 'STAMPING' ? 'STP' : 'WLD'), 'no_produksi' => $batchNo, 'created_at' => now()
-            ]);
+            if ($fg) {
+                // Update KEDUA kolom stok Bapak sesuai struktur database rill
+                DB::table('finished_goods')->where('id', $fg->id)->update([
+                    'actual_stock' => ($fg->actual_stock + $final_ok),
+                    'act_stock'    => (($fg->act_stock ?? 0) + $final_ok),
+                    'updated_at'   => now()
+                ]);
+
+                // ✨ 5. INSERT LOG MUTASI (Agar angka +IN muncul di Dashboard Inventory Bapak!)
+                DB::table('production_logs')->insert([
+                    'part_no'      => $partNo,
+                    'qty'          => $final_ok,
+                    'process_type' => ($origin == 'STAMPING' ? 'STP' : 'WLD'),
+                    'no_produksi'  => $batchNo,
+                    'created_at'   => now()
+                ]);
+            } else {
+                throw new \Exception("Part No [$partNo] Gak Ada di Finished Goods. Data dibatalkan rill!");
+            }
 
             DB::commit();
             return back()->with('success', "Barang $partNo Berhasil Lulus Verifikasi QC.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
-            return back()->with('error', $e->getMessage()); 
+            return back()->with('error', "GAGAL: " . $e->getMessage()); 
         }
     }
 
-    // ✨ PERBAIKAN: Fungsi Dashboard Actual sekarang mengembalikan ID untuk kebutuhan Log NG
+    // ✨ FUNGSI SAKTI: Kembalikan ID untuk sinkronisasi Log NG rill
     private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
         $today = date('Y-m-d');
 
-        // Cek apakah sudah ada data hari ini
         $exist = DB::table('production_actuals')
             ->where('part_no', $partNo)
             ->where('line_code', $lineCode)
@@ -191,7 +193,6 @@ class QualityGateController extends Controller {
             ]);
             return $exist->id;
         } else {
-            // Jika belum ada, buat baru dan ambil ID-nya
             return DB::table('production_actuals')->insertGetId([
                 'part_no' => $partNo,
                 'line_code' => $lineCode,
@@ -204,7 +205,6 @@ class QualityGateController extends Controller {
     }
 
     public function destroy($type, $id) {
-        // Fungsi destroy tetap sama persis
         try {
             if ($type == 'stamping') {
                 $batch = DB::table('produksi_batches')->where('id', $id)->first();
@@ -219,7 +219,6 @@ class QualityGateController extends Controller {
     }
 
     public function history() {
-        // Fungsi history tetap sama persis
         $historyData = DB::table('quality_inspections')->orderBy('created_at', 'desc')->get();
         return view('Quality.history', compact('historyData'));
     }
