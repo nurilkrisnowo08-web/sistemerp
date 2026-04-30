@@ -26,10 +26,14 @@ class QualityGateController extends Controller {
         return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
 
-    public function approve(Request $request, $type, $id) {
+   public function approve(Request $request, $type, $id) {
         DB::beginTransaction();
         try {
             $inspector = $request->inspector_name ?? Auth::user()->name ?? 'QC_OFFICER';
+
+            // ✨ KUNCI SAKTI: Kita buat dua variabel waktu agar ada selisih 1 detik rill
+            $now = now(); 
+            $qcThreshold = $now->copy()->subSecond(); // Waktu pembatas (1 detik sebelum simpan NG)
 
             if ($type == 'stamping') {
                 $ref = DB::table('produksi_batches')->where('id', $id)->first();
@@ -54,7 +58,10 @@ class QualityGateController extends Controller {
                 }
 
                 DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
-                    'status' => 'COMPLETED', 'qc_at' => now(), 'qc_by' => $inspector, 'updated_at' => now()
+                    'status' => 'COMPLETED', 
+                    'qc_at' => $qcThreshold, // Pakai threshold sebagai pembatas rill
+                    'qc_by' => $inspector, 
+                    'updated_at' => $now
                 ]);
 
             } else {
@@ -66,8 +73,12 @@ class QualityGateController extends Controller {
                 $final_ng = (int)$request->qty_ng_final;
 
                 DB::table('welding_batches')->where('id', $id)->update([
-                    'qty_ok' => $final_ok, 'qty_ng' => $ref->qty_ng + $final_ng,
-                    'status' => 'COMPLETED', 'qc_at' => now(), 'qc_by' => $inspector, 'updated_at' => now()
+                    'qty_ok' => $final_ok, 
+                    'qty_ng' => $ref->qty_ng + $final_ng,
+                    'status' => 'COMPLETED', 
+                    'qc_at' => $qcThreshold, // Pakai threshold rill
+                    'qc_by' => $inspector, 
+                    'updated_at' => $now
                 ]);
             }
 
@@ -75,8 +86,6 @@ class QualityGateController extends Controller {
             $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             // 2. Simpan Detail NG (VERSI KUMULATIF RILL)
-            // ✨ PERBAIKAN: Baris delete() saya hapus agar temuan Produksi TIDAK TERHAPUS oleh QC ✨
-            
             $all_ng_names = [];
             if ($request->has('ng_details')) {
                 foreach ($request->ng_details as $name => $qty) {
@@ -87,7 +96,7 @@ class QualityGateController extends Controller {
                             'no_produksi' => $batchNo,
                             'ng_type'     => $name, 
                             'qty'         => $qty, 
-                            'created_at'  => now()
+                            'created_at'  => $now // Waktu input QC (Pasti lebih baru dari qcThreshold)
                         ]);
                     }
                 }
@@ -99,7 +108,7 @@ class QualityGateController extends Controller {
                 'batch_no' => $batchNo, 'origin' => $origin, 'part_no' => $partNo,
                 'qty_from_prod' => ($final_ok + $final_ng), 'qty_ok' => $final_ok, 'qty_ng' => $final_ng, 
                 'ng_reason' => $summary_reason, 'inspector' => $inspector, 'status' => 'APPROVED',
-                'created_at' => now(), 'updated_at' => now()
+                'created_at' => $now, 'updated_at' => $now
             ]);
 
             // 4. Update Stok FG & Log Mutasi
@@ -119,12 +128,12 @@ class QualityGateController extends Controller {
                     'part_no'      => $partNo,
                     'qty'          => $final_ok,
                     'process_type' => 'FG', 
-                    'created_at'   => now()
+                    'created_at'   => $now
                 ]);
             }
 
             DB::commit();
-            return back()->with('success', "COMMIT SUKSES rill! Angka masuk ke Dashboard & FG.");
+            return back()->with('success', "COMMIT SUKSES rill! Data sudah terpisah di Deep Dive.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
