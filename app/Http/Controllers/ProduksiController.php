@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class ProduksiController extends Controller
 {
-    public function index()
+  public function index()
     {
         $customerFilter = request('customer');
 
@@ -21,6 +21,7 @@ class ProduksiController extends Controller
                 'produksi_batches.shift',
                 'produksi_batches.material_code',
                 'produksi_batches.status',
+                'produksi_batches.qty_return', // ✨ TAMBAHKAN INI: Agar Badge REWORK bisa muncul di Blade
                 'produksi_batches.created_at',
                 'rm_stocks.coil_id',
                 'rm_stocks.customer',
@@ -33,7 +34,7 @@ class ProduksiController extends Controller
             )
             ->where('produksi_batches.status', 'PROSES')
             ->groupBy(
-                'no_produksi', 'shift', 'material_code', 'status', 
+                'no_produksi', 'shift', 'material_code', 'status', 'qty_return',
                 'created_at', 'coil_id', 'customer', 'size', 'spec', 'material_name'
             );
 
@@ -137,102 +138,99 @@ class ProduksiController extends Controller
         }
     }
 
-   public function updateResult(Request $request, $id)
-{
-    $p = DB::table('produksi_batches')->where('id', $id)->first();
-    if (!$p) return redirect()->back()->with('error', 'Batch tidak ditemukan!');
+  public function updateResult(Request $request, $id)
+    {
+        $p = DB::table('produksi_batches')->where('id', $id)->first();
+        if (!$p) return redirect()->back()->with('error', 'Batch tidak ditemukan!');
 
-    $qty_ok = (int)$request->qty_hasil_ok;
+        $qty_ok = (int)$request->qty_hasil_ok;
 
-    $total_ng_spesifik = 0;
-    $ng_details = [];
-    if ($request->has('ng_detail_type')) {
-        foreach ($request->ng_detail_type as $idx => $type) {
-            $q = (int)$request->ng_detail_qty[$idx];
-            if ($q > 0) {
-                $total_ng_spesifik += $q;
-                $ng_details[] = ['type' => $type, 'qty' => $q];
-            }
-        }
-    }
-
-    $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
-
-    DB::beginTransaction();
-    try {
-        // 1. Logika Return ke Warehouse (RM Stock) - Tetap rill
-        if ((int)$request->qty_return_warehouse > 0) {
-            $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
-            if ($rmInfo) {
-                DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', (int)$request->qty_return_warehouse);
-                DB::table('rm_incoming_logs')->insert([
-                    'rm_stock_id' => $p->rm_stock_id, 'material_code' => $p->material_code,
-                    'pcs_in' => (int)$request->qty_return_warehouse, 'source' => 'return',
-                    'no_produksi' => $p->no_produksi, 'created_at' => now()
-                ]);
-
-                $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
-                if($currentLog) {
-                    DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)
-                        ->update(['pcs_used' => ($currentLog->pcs_used - (int)$request->qty_return_warehouse)]);
+        $total_ng_spesifik = 0;
+        $ng_details = [];
+        if ($request->has('ng_detail_type')) {
+            foreach ($request->ng_detail_type as $idx => $type) {
+                $q = (int)$request->ng_detail_qty[$idx];
+                if ($q > 0) {
+                    $total_ng_spesifik += $q;
+                    $ng_details[] = ['type' => $type, 'qty' => $q];
                 }
             }
         }
 
-        // 2. Penentuan Status Akhir
-        $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
-        $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
+        $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
 
-        // ✨ PENYESUAIAN: Jika request datang dengan status (misal: 'PROSES' dari QC), pakai itu.
-        // Jika tidak ada, baru pakai logika otomatis (WELDING = COMPLETED, lainnya = WAITING_QC)
-        $status_akhir = $request->status ?? (($target == 'WELDING' || $qty_ok == 0) ? 'COMPLETED' : 'WAITING_QC');
-
-        DB::table('produksi_batches')->where('id', $id)->update([
-            'qty_hasil_ok'         => $qty_ok,
-            'qty_ng_process'       => $total_ng_spesifik,
-            'qty_hasil_ng'         => $total_ng_spesifik,
-            'qty_return_warehouse' => (int)$request->qty_return_warehouse,
-            'keterangan'           => $request->keterangan,
-            'status'               => $status_akhir,
-            'updated_at'           => now()
-        ]);
-
-        // 3. Update Stok Berdasarkan Target
-        if ($target == 'WELDING') {
-            DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
-        } else if($status_akhir == 'COMPLETED') {
-            DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
-        }
-
-        $this->syncToActual($id);
-
-        // 4. ✨ LOGIC NG: Simpan rincian dengan pengaman delete-first (mencegah duplikat rill)
-        if (!empty($ng_details)) {
-            $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
-                         ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
-            if ($actual) {
-                // Hapus rincian lama batch ini agar tidak double jika di-save ulang oleh QC
-                DB::table('production_ng_logs')->where('no_produksi', $p->no_produksi)->delete();
-                
-                foreach ($ng_details as $detail) {
-                    DB::table('production_ng_logs')->insert([
-                        'actual_id'   => $actual->id,
-                        'no_produksi' => $p->no_produksi,
-                        'ng_type'     => $detail['type'],
-                        'qty'         => $detail['qty'],
-                        'created_at'  => now()
+        DB::beginTransaction();
+        try {
+            // 1. Logika Return ke Warehouse tetap sama
+            if ((int)$request->qty_return_warehouse > 0) {
+                $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
+                if ($rmInfo) {
+                    DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', (int)$request->qty_return_warehouse);
+                    DB::table('rm_incoming_logs')->insert([
+                        'rm_stock_id' => $p->rm_stock_id, 'material_code' => $p->material_code,
+                        'pcs_in' => (int)$request->qty_return_warehouse, 'source' => 'return',
+                        'no_produksi' => $p->no_produksi, 'created_at' => now()
                     ]);
+
+                    $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
+                    if($currentLog) {
+                        DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)
+                            ->update(['pcs_used' => ($currentLog->pcs_used - (int)$request->qty_return_warehouse)]);
+                    }
                 }
             }
-        }
 
-        DB::commit();
-        return redirect()->route('produksi.index')->with('success', 'Data Berhasil Disimpan & Transmitted!');
-    } catch (\Exception $e) { 
-        DB::rollback(); 
-        return back()->with('error', $e->getMessage()); 
+            // 2. Penentuan Status Akhir
+            $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
+            $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
+            $status_akhir = ($target == 'WELDING' || $qty_ok == 0) ? 'COMPLETED' : 'WAITING_QC';
+
+            DB::table('produksi_batches')->where('id', $id)->update([
+                'qty_hasil_ok'         => $qty_ok,
+                'qty_ng_process'       => $total_ng_spesifik,
+                'qty_hasil_ng'         => $total_ng_spesifik,
+                'qty_return_warehouse' => (int)$request->qty_return_warehouse,
+                'qty_return'           => 0, // ✨ TAMBAHKAN INI: Riset angka return dari QC karena proses Rework sudah selesai rill
+                'keterangan'           => $request->keterangan,
+                'status'               => $status_akhir,
+                'updated_at'           => now()
+            ]);
+
+            // 3. Update Stok Berdasarkan Target tetap sama
+            if ($target == 'WELDING') {
+                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
+            } else if($status_akhir == 'COMPLETED') {
+                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
+            }
+
+            $this->syncToActual($id);
+
+            // 4. LOGIC NG tetap sama (dengan pengaman delete-first rill)
+            if (!empty($ng_details)) {
+                $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
+                             ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
+                if ($actual) {
+                    DB::table('production_ng_logs')->where('no_produksi', $p->no_produksi)->delete();
+                    
+                    foreach ($ng_details as $detail) {
+                        DB::table('production_ng_logs')->insert([
+                            'actual_id'   => $actual->id,
+                            'no_produksi' => $p->no_produksi,
+                            'ng_type'     => $detail['type'],
+                            'qty'         => $detail['qty'],
+                            'created_at'  => now()
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+            return redirect()->route('produksi.index')->with('success', 'Data Berhasil Disimpan & Transmitted!');
+        } catch (\Exception $e) { 
+            DB::rollback(); 
+            return back()->with('error', $e->getMessage()); 
+        }
     }
-}
     private function syncToActual($batchId)
     {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first();

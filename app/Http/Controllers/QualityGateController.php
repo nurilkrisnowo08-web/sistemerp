@@ -54,15 +54,17 @@ class QualityGateController extends Controller {
                 $already_checked = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('total_checked');
                 $total_after_this = $already_checked + $checked_now;
 
-                // ✨ UPDATE STAMPING: Sync progress dan kirim balik Return ke produksi rill
+                // ✨ UPDATE STAMPING: Sync progress dan Reset status ke PROSES jika ada Return
                 DB::table('produksi_batches')->where('id', $id)->update([
                     'total_checked' => $ref->total_checked + $checked_now,
                     'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng,
-                    'qty_return'    => ($ref->qty_return ?? 0) + $final_ret, // Kirim ke IN (RETURN) Stamping
+                    'qty_return'    => ($ref->qty_return ?? 0) + $final_ret,
+                    // Jika ada return, status balik ke PROSES agar muncul di terminal operator
+                    'status'        => ($final_ret > 0) ? 'PROSES' : $ref->status, 
                     'updated_at'    => $now
                 ]);
 
-                if ($total_after_this >= $total_target) {
+                if ($total_after_this >= $total_target && $final_ret == 0) {
                     DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                         'status' => 'COMPLETED',
                         'qc_at'  => $qcThreshold,
@@ -81,15 +83,17 @@ class QualityGateController extends Controller {
                 $already_checked = $ref->total_checked ?? 0;
                 $total_after_this = $already_checked + $checked_now;
 
-                // ✨ UPDATE WELDING: Sync progress dan kirim balik Return ke terminal welding rill
+                // ✨ UPDATE WELDING: Sync progress dan Reset status ke PROSES jika ada Return
                 DB::table('welding_batches')->where('id', $id)->update([
                     'qty_ng'        => $ref->qty_ng + $final_ng,
-                    'qty_return'    => ($ref->qty_return ?? 0) + $final_ret, // Kirim ke IN (RETURN) Welding
+                    'qty_return'    => ($ref->qty_return ?? 0) + $final_ret,
                     'total_checked' => $already_checked + $checked_now,
+                    // Jika ada return, status balik ke PROSES agar muncul di terminal operator
+                    'status'        => ($final_ret > 0) ? 'PROSES' : $ref->status,
                     'updated_at'    => $now
                 ]);
 
-                if ($total_after_this >= $total_target) {
+                if ($total_after_this >= $total_target && $final_ret == 0) {
                     DB::table('welding_batches')->where('id', $id)->update([
                         'status' => 'COMPLETED', 
                         'qc_at'  => $qcThreshold,
@@ -131,18 +135,18 @@ class QualityGateController extends Controller {
                 'total_checked' => $checked_now,
                 'ng_reason' => $summary_reason, 
                 'inspector' => $inspector, 
-                'status' => ($total_after_this >= $total_target) ? 'COMPLETED' : 'PARTIAL',
+                'status' => ($total_after_this >= $total_target && $final_ret == 0) ? 'COMPLETED' : 'PARTIAL',
                 'created_at' => $now, 
                 'updated_at' => $now
             ]);
 
-            // 4. Update Stok FG
+            // 4. Update Stok FG (Hanya jika OK)
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                 ->first();
 
-            if ($fg) {
+            if ($fg && $final_ok > 0) {
                 DB::table('finished_goods')->where('id', $fg->id)->update([
                     'actual_stock' => ($fg->actual_stock + $final_ok),
                     'act_stock'    => (($fg->act_stock ?? 0) + $final_ok),
@@ -158,7 +162,7 @@ class QualityGateController extends Controller {
             }
 
             DB::commit();
-            return back()->with('success', ($total_after_this >= $total_target) ? "Batch Selesai Penuh!" : "Partial Sukses! Return " . $final_ret . " pcs dikirim balik.");
+            return back()->with('success', ($total_after_this >= $total_target && $final_ret == 0) ? "Batch Selesai Penuh!" : "Partial Sukses! Return " . $final_ret . " pcs dikirim balik.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
