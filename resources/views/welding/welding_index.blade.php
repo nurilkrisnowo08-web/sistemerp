@@ -14,34 +14,21 @@
     
     .heading-hub { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(135deg, var(--brand-primary), #7209b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    /* 📈 LEDGER TABLE */
+    /* 📈 LEDGER TABLE (Flow Mutation) */
     .ledger-container { background: #fff; border-radius: 30px; border: 1px solid var(--ind-border); overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.04); margin-bottom: 35px; }
     .table-ledger thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 22px; border: none; }
     .table-ledger td { padding: 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
     
-    /* 🏷️ PT NAVIGATION */
+    /* Indikator Rework di Kartu */
+    .rework-indicator { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 4px 12px; border-radius: 8px; font-size: 9px; font-weight: 800; display: inline-block; margin-left: 10px; }
+    .badge-rework { background: var(--brand-return); color: white; padding: 5px 10px; border-radius: 8px; font-size: 10px; margin-bottom: 8px; display: inline-block; }
+
     .nav-section { background: #fff; padding: 8px; border-radius: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 30px; border: 1px solid #e2e8f0; display: inline-flex; }
     .nav-pills .nav-link { border-radius: 16px; padding: 12px 28px; font-weight: 800; font-size: 0.75rem; transition: 0.3s; color: #64748b !important; position: relative; }
     .nav-pills .nav-link.active { background: var(--dark-surface) !important; color: #fff !important; box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2); }
-    .count-badge { position: absolute; top: -5px; right: -5px; background: var(--brand-danger); color: white; font-size: 9px; padding: 2px 6px; border-radius: 20px; border: 2px solid #fff; }
-
-    /* 🛠️ WORK CARDS */
-    .work-card { background: #fff; border-radius: 28px; border: 1px solid #eef2f6; padding: 28px; margin-bottom: 20px; transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); display: flex; align-items: center; position: relative; overflow: hidden; }
-    .work-card:hover { transform: scale(1.015); box-shadow: 0 25px 60px rgba(67, 97, 238, 0.12); border-color: var(--brand-primary); }
     
-    .station-tag { background: #f1f5f9; color: var(--dark-surface); font-family: 'JetBrains Mono'; font-size: 10px; padding: 5px 12px; border-radius: 10px; font-weight: 800; margin-bottom: 10px; display: inline-block; border: 1px solid #e2e8f0; }
-    .qty-display { font-family: 'Orbitron'; font-weight: 900; font-size: 42px; color: var(--dark-surface); line-height: 1; }
-
-    /* FORM & INPUTS */
+    .work-card { background: #fff; border-radius: 28px; border: 1px solid #eef2f6; padding: 28px; margin-bottom: 20px; transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); display: flex; align-items: center; position: relative; overflow: hidden; }
     .tech-input-lg { border-radius: 20px; border: 2.5px solid #eef2f6; font-weight: 800; transition: 0.3s; height: 80px; background: #f8fafc; text-align: center; font-family: 'Orbitron'; font-size: 32px; }
-    .tech-input-lg:focus { border-color: var(--brand-primary); outline: none; background: #fff; box-shadow: 0 0 0 8px rgba(67, 97, 238, 0.1); }
-
-    /* SECURITY GATE */
-    .security-status { border-radius: 20px; padding: 18px; font-weight: 800; font-size: 12px; text-align: center; transition: 0.3s; margin-top: 25px; border-left: 8px solid transparent; }
-    .status-match { background: #dcfce7; color: #166534; border-color: #bbf7d0; border-left-color: var(--brand-success); }
-    .status-error { background: #fee2e2; color: #991b1b; border-color: #fecaca; border-left-color: var(--brand-danger); }
-
-    .return-box { background: rgba(99, 102, 241, 0.05); border: 2px dashed var(--brand-return); border-radius: 26px; padding: 24px; transition: 0.3s; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -52,19 +39,15 @@
             <p class="text-muted font-weight-bold small uppercase mb-0"><i class="fas fa-satellite-dish text-primary mr-2"></i> Quality Assurance Command Center</p>
         </div>
         <div class="d-flex align-items-center">
-            <!-- 🏦 Tombol Vault Permutasian Stok -->
             <a href="{{ route('welding.history') }}" class="btn btn-white rounded-pill px-4 font-weight-extrabold border mr-2 shadow-sm">VAULT</a>
-            
-            <!-- 📜 Tombol Kotak: Link ke History Produksi (welding_history_weldig) -->
             <a href="{{ route('welding.historyWelding') }}" class="btn btn-white border shadow-sm mr-2" style="width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--brand-primary); text-decoration: none;" title="History Produksi">
                 <i class="fas fa-history"></i>
             </a>
-
             <button class="btn btn-primary rounded-pill px-4 font-weight-extrabold shadow-lg" data-toggle="modal" data-target="#modalDeployWelding"><i class="fas fa-plus-circle mr-1"></i> DEPLOY</button>
         </div>
     </div>
 
-    {{-- 📊 LEDGER TABLE --}}
+    {{-- 📊 LEDGER TABLE (SINKRONISASI MUTASI STOK RILL) --}}
     <div class="ledger-container">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
@@ -73,8 +56,8 @@
                         <th class="text-left pl-5">Part Identification</th>
                         <th>Opening</th>
                         <th class="text-success">In (Stamp)</th>
-                        <th style="color: var(--brand-return);">In (Return)</th>
-                        <th class="text-danger">Out (Weld)</th>
+                        <th style="color: var(--brand-return);">In (Ret QC)</th>
+                        <th class="text-danger">Out (Deploy)</th>
                         <th class="bg-light text-primary">Live Stock</th>
                         <th class="text-right pr-5">Control</th>
                     </tr>
@@ -88,7 +71,7 @@
                         </td>
                         <td class="text-muted font-mono">{{ number_format($inv->init) }}</td>
                         <td class="text-success">+{{ number_format($inv->in_s) }}</td>
-                        <td style="color: var(--brand-return);">+{{ number_format($inv->in_r ?? 0) }}</td>
+                        <td style="color: var(--brand-return);">+{{ number_format($inv->in_r) }}</td>
                         <td class="text-danger">-{{ number_format($inv->out) }}</td>
                         <td class="bg-light text-primary font-weight-black" style="font-size: 22px;">{{ number_format($inv->live_stock) }}</td>
                         <td class="text-right pr-5">
@@ -108,7 +91,7 @@
             @php $slugPT = Str::slug($customer); $count = $activeWelding->where('customer', $customer)->count(); @endphp
             <li class="nav-item">
                 <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ $slugPT }}">
-                    {{ strtoupper($customer) }} @if($count > 0) <span class="count-badge animate__animated animate__pulse animate__infinite">{{ $count }}</span> @endif
+                    {{ strtoupper($customer) }} @if($count > 0) <span class="count-badge">{{ $count }}</span> @endif
                 </a>
             </li>
             @endforeach
@@ -122,7 +105,10 @@
             @foreach($activeWelding->where('customer', $customer) as $aw)
             <div class="work-card shadow-sm animate__animated animate__fadeInUp">
                 <div class="col-md-3">
-                    <span class="station-tag">{{ $aw->kode_line ?? 'STANDBY' }}</span>
+                    @if($aw->qty_return > 0)
+                        <span class="badge-rework"><i class="fas fa-redo-alt mr-1"></i> REWORK (QC RETURN)</span>
+                    @endif
+                    <span class="station-tag d-block">{{ $aw->kode_line ?? 'STANDBY' }}</span>
                     <div class="font-weight-black text-primary font-mono">{{ $aw->no_produksi_stamping }}</div>
                 </div>
                 <div class="col-md-4 border-left pl-4">
@@ -130,11 +116,12 @@
                     <small class="text-muted font-weight-bold uppercase">{{ $aw->part_name }}</small>
                 </div>
                 <div class="col-md-2 text-center">
-                    <div class="qty-display">{{ number_format($aw->qty_masuk) }}</div>
-                    <small class="text-muted font-weight-black uppercase" style="font-size: 9px;">Target</small>
+                    {{-- ✨ Logika Target: Jika rework, targetnya adalah qty_return --}}
+                    <div class="qty-display">{{ number_format($aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk) }}</div>
+                    <small class="text-muted font-weight-black uppercase" style="font-size: 9px;">Target Unit</small>
                 </div>
                 <div class="col-md-3 text-right">
-                    @if($aw->batch_status == 'PENDING')
+                    @if($aw->status == 'PENDING')
                         <form action="{{ route('welding.start', $aw->id) }}" method="POST">
                             @csrf @method('PUT')
                             <button class="btn btn-primary rounded-pill py-3 px-5 font-weight-black shadow-lg">START OPERATION</button>
@@ -150,13 +137,14 @@
     </div>
 </div>
 
-{{-- 🏁 MODAL FINISH (AUTO-CALCULATION ENABLED) --}}
+{{-- 🏁 MODAL FINISH (LOGIKA TARGET DISESUAIKAN RILL) --}}
 @foreach($activeWelding as $aw)
+@php $currentTarget = $aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk; @endphp
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1" data-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 45px; overflow: hidden;">
             <div class="modal-header bg-dark text-white p-4 border-0">
-                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron';">Quality_Inspection_Gate</h5>
+                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron';">Quality_Gate_Auth</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
@@ -165,15 +153,14 @@
                     <div class="row">
                         <div class="col-md-4 text-center border-right pr-5">
                             <div class="p-4 bg-light rounded-3xl mb-4 border">
-                                <h1 class="font-weight-black text-dark mb-0" style="font-family: 'Orbitron'; font-size: 50px;">{{ number_format($aw->qty_masuk) }}</h1>
-                                <small class="text-muted font-weight-black uppercase">Batch Target</small>
+                                <h1 class="font-weight-black text-dark mb-0" style="font-family: 'Orbitron'; font-size: 50px;">{{ number_format($currentTarget) }}</h1>
+                                <small class="text-muted font-weight-black uppercase">Required Output</small>
                             </div>
                             
                             <div class="form-group mb-4">
-                                <label class="small font-weight-black text-success uppercase mb-2"><i class="fas fa-check-circle mr-1"></i> Quality Passed (OK)</label>
+                                <label class="small font-weight-black text-success uppercase mb-2"><i class="fas fa-check-circle mr-1"></i> Verified OK</label>
                                 <input type="number" name="qty_ok" id="input_ok_{{ $aw->id }}" class="form-control tech-input-lg text-success border-success" 
-                                       value="{{ $aw->qty_masuk }}" required oninput="manualOkCheck({{ $aw->id }}, {{ $aw->qty_masuk }})">
-                                <small class="text-muted font-weight-bold d-block mt-2">Otomatis berkurang jika Return/NG diisi.</small>
+                                       value="{{ $currentTarget }}" required oninput="manualOkCheck({{ $aw->id }}, {{ $currentTarget }})">
                             </div>
 
                             <div id="sec_msg_{{ $aw->id }}" class="security-status status-match animate__animated">
@@ -186,42 +173,40 @@
                                 <div class="col-md-6 mb-4">
                                     <div class="return-box">
                                         <label class="small font-weight-black text-primary uppercase d-block mb-3">
-                                            <i class="fas fa-undo-alt mr-2"></i> WIP_Return_To_Rack
+                                            <i class="fas fa-undo-alt mr-2"></i> Return_To_WIP_Rack
                                         </label>
                                         <input type="number" name="qty_return" id="input_ret_{{ $aw->id }}" class="form-control tech-input-lg border-primary" 
-                                               style="color: var(--brand-primary); height: 70px;" value="0" oninput="calculateTotal({{ $aw->id }}, {{ $aw->qty_masuk }})">
+                                               style="color: var(--brand-primary); height: 70px;" value="0" oninput="calculateTotal({{ $aw->id }}, {{ $currentTarget }})">
                                     </div>
                                 </div>
-
                                 <div class="col-md-6 mb-4">
                                     <div class="p-4 bg-white border-danger border rounded-3xl" style="border-width: 2px;">
-                                        <label class="small font-weight-black text-danger uppercase d-block mb-3">Total Rejected (NG)</label>
+                                        <label class="small font-weight-black text-danger uppercase d-block mb-3">Defect Accumulation (NG)</label>
                                         <input type="number" name="qty_ng" id="total_ng_{{ $aw->id }}" class="form-control tech-input-lg border-0 bg-transparent text-danger" 
                                                style="height: 70px;" value="0" readonly>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
-                                <h6 class="font-weight-black text-dark mb-0 uppercase"><i class="fas fa-bug mr-2 text-danger"></i>Defect_Breakdown</h6>
-                                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-4 font-weight-black" onclick="addNgRow({{ $aw->id }}, {{ $aw->qty_masuk }})">+ ADD NG</button>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="font-weight-black text-dark mb-0 uppercase"><i class="fas fa-bug mr-2 text-danger"></i>NG_Breakdown</h6>
+                                <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-4 font-weight-black" onclick="addNgRow({{ $aw->id }}, {{ $currentTarget }})">+ ADD NG</button>
                             </div>
                             
                             <div id="ng_container_{{ $aw->id }}" class="pr-2" style="max-height: 180px; overflow-y: auto;">
-                                <div class="text-center text-muted py-4 border rounded-2xl border-dashed" id="no_ng_msg_{{ $aw->id }}">Zero Defect.</div>
+                                <div class="text-center text-muted py-4 border rounded-2xl border-dashed" id="no_ng_msg_{{ $aw->id }}">No defects reported.</div>
                             </div>
 
                             <div class="mt-4">
-                                <label class="small font-weight-black text-dark uppercase mb-2">Operator Notes</label>
-                                <textarea name="keterangan" class="form-control" style="border-radius: 20px; border: 2px solid #f1f5f9;" placeholder="Input issues..."></textarea>
+                                <label class="small font-weight-black text-dark uppercase mb-2">Process Notes</label>
+                                <textarea name="keterangan" class="form-control" style="border-radius: 20px; border: 2px solid #f1f5f9;"></textarea>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-5 pt-0">
-                    <input type="hidden" name="part_no" value="{{ $aw->part_no }}">
                     <button type="submit" id="btn_submit_{{ $aw->id }}" class="btn btn-success btn-block py-4 font-weight-black rounded-3xl shadow-xl uppercase" style="font-size: 1.3rem; letter-spacing: 2px;">
-                        Authorize & Submit Batch
+                        Finalize Batch Entry
                     </button>
                 </div>
             </form>
@@ -241,9 +226,9 @@
         const id = Date.now();
         let options = listPenyakit.map(p => `<option value="${p}">${p.toUpperCase()}</option>`).join('');
         const html = `
-            <div class="ng-row-item animate__animated animate__fadeInDown d-flex align-items-center mb-2 p-3 bg-light rounded-2xl border" id="row-${id}">
+            <div class="ng-row-item d-flex align-items-center mb-2 p-3 bg-light rounded-2xl border" id="row-${id}">
                 <select name="ng_detail_type[]" class="form-control border-0 bg-transparent font-weight-bold flex-grow-1">${options}</select>
-                <input type="number" name="ng_detail_qty[]" class="form-control tech-input ng-qty-input mx-3 text-center font-weight-black" style="width: 100px; height: 45px; border-radius: 10px;" placeholder="0" required oninput="calculateTotal(${batchId}, ${target})">
+                <input type="number" name="ng_detail_qty[]" class="form-control tech-input ng-qty-input mx-3 text-center font-weight-black" style="width: 100px; height: 45px; border-radius: 10px;" value="0" oninput="calculateTotal(${batchId}, ${target})">
                 <button type="button" class="btn btn-link text-danger p-0" onclick="removeNgRow(${id}, ${batchId}, ${target})"><i class="fas fa-times-circle fa-lg"></i></button>
             </div>`;
         $(`#ng_container_${batchId}`).append(html);

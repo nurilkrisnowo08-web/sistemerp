@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class WeldingStockController extends Controller
 {
     /**
-     * 1. TERMINAL HUB LIVE (Fixed: Accurate Return Calculation)
+     * 1. TERMINAL HUB LIVE (Fixed: Auto-Show Return Process & Sync Stamping)
      */
     public function index(Request $request)
     {
@@ -30,27 +31,28 @@ class WeldingStockController extends Controller
             ->map(function($item) use ($date) {
                 $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
-                // 1. IN (Stamping): Hasil produksi Stamping
+                // 1. ✨ IN (Stamping): Diambil dari Log Produksi Stamping
                 $in_stamping = DB::table('production_logs')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                    ->where('process_type', 'WELDING')
+                    ->where('process_type', 'WELDING') // Pastikan tipenya kiriman ke Welding
                     ->whereDate('created_at', $date)
                     ->sum('qty') ?? 0;
 
-                // 2. ✨ IN (Return): Rill dari tabel welding_batches kolom qty_return
-                $in_return = DB::table('welding_batches')
+                // 2. IN (Return): Barang yang masuk kembali dari QC (Rework)
+                // Kita hitung berdasarkan transaksi inspection yang masuk hari ini
+                $in_return = DB::table('quality_inspections')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                    ->where('status', 'COMPLETED')
-                    ->whereDate('updated_at', $date) // Return dihitung saat batch SELESAI
-                    ->sum('qty_return') ?? 0;
+                    ->where('origin', 'WELDING')
+                    ->whereDate('created_at', $date)
+                    ->sum('qty_ret') ?? 0;
 
-                // 3. OUT (Welding): Barang yang dideploy/diambil dari rak
+                // 3. OUT (Welding): Barang yang keluar dari rak WIP (Deploy)
                 $out_welding = DB::table('welding_batches')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->whereDate('created_at', $date)
                     ->sum('qty_masuk') ?? 0;
 
-                // RUMUS: Live - (In_Stamp + In_Ret) + Out_Masuk = Opening
+                // RUMUS MUTASI RILL: Opening + In - Out = Live Stock
                 $item->init = $item->live_stock - ($in_stamping + $in_return) + $out_welding;
                 $item->in_s = $in_stamping;
                 $item->in_r = $in_return; 
@@ -63,6 +65,7 @@ class WeldingStockController extends Controller
         $weldingLines = DB::table('line_welding')->get();
         $listNG = DB::table('master_ngs')->whereIn('category', ['WELDING', 'GENERAL'])->orderBy('ng_name', 'asc')->get();
 
+        // 🚀 LIVE PROCESS: Otomatis nampilin kartu kalau ada PENDING, PROSES, atau RETURN QC
         $activeWelding = DB::table('welding_batches')
             ->leftJoin('finished_goods', function($join) {
                 $join->on(DB::raw("REPLACE(welding_batches.part_no, ' ', '')"), '=', DB::raw("REPLACE(finished_goods.part_no, ' ', '')"));
@@ -73,10 +76,12 @@ class WeldingStockController extends Controller
                 'finished_goods.customer', 
                 'finished_goods.part_name', 
                 'line_welding.nama_line as nama_mesin',
-                'line_welding.kode_line',
-                'welding_batches.status as batch_status'
+                'line_welding.kode_line'
             )
-            ->whereIn('welding_batches.status', ['PENDING', 'PROSES'])
+            ->where(function($q) {
+                $q->whereIn('welding_batches.status', ['PENDING', 'PROSES'])
+                  ->orWhere('welding_batches.qty_return', '>', 0); // ✨ Tampilkan kartu jika ada Return QC rill!
+            })
             ->get();
 
         $availableCustomers = $inventoryWelding->pluck('customer')->unique()->filter();
@@ -139,7 +144,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4. FINISH WELDING (Fixed: Accurate Return Handling)
+     * 4. FINISH WELDING (Fixed: Handling Return QC & WIP Return)
      */
     public function finishWelding(Request $request, $id)
     {
@@ -148,30 +153,39 @@ class WeldingStockController extends Controller
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $qty_ret = (int)$request->qty_return; 
+        
+        // qty_return di sini adalah sisa material yang dibalikin ke rak rill
+        $qty_sisa_ke_rak = (int)$request->qty_return; 
 
-        if (($qty_ok + $qty_ng + $qty_ret) != $batch->qty_masuk) {
-            return back()->with('error', "Total input tidak sesuai dengan target deployment!");
+        // Jika ini adalah proses REWORK (punya qty_return dari QC)
+        // Maka targetnya adalah qty_return tersebut
+        $target = ($batch->qty_return > 0) ? $batch->qty_return : $batch->qty_masuk;
+
+        if (($qty_ok + $qty_ng + $qty_sisa_ke_rak) != $target) {
+            return back()->with('error', "Total input ($qty_ok + $qty_ng + $qty_sisa_ke_rak) tidak sesuai target ($target)!");
         }
 
         DB::beginTransaction();
         try {
+            // Update data batch
             DB::table('welding_batches')->where('id', $id)->update([
-                'qty_ok'     => $qty_ok, 
-                'qty_ng'     => $qty_ng,
-                'qty_return' => $qty_ret, 
+                'qty_ok'     => $batch->qty_ok + $qty_ok, 
+                'qty_ng'     => $batch->qty_ng + $qty_ng,
+                'qty_return' => 0, // Reset angka return dari QC karena sudah dikerjakan rill
                 'status'     => 'COMPLETED', 
                 'keterangan' => $request->keterangan,
                 'updated_at' => now()
             ]);
 
-            if ($qty_ret > 0) {
+            // Kalau ada sisa material dibalikin ke rak, stok WIP nambah lagi
+            if ($qty_sisa_ke_rak > 0) {
                 DB::table('finished_goods')
                     ->where('part_no', $batch->part_no)
-                    ->increment('welding_stock', $qty_ret);
+                    ->increment('welding_stock', $qty_sisa_ke_rak);
             }
 
-            $actualId = $this->syncToQualityGate($id);
+            // Sinkronisasi ke dashboard QC
+            $actualId = $this->syncToQualityGate($id, $qty_ok, $qty_ng);
 
             if ($request->has('ng_detail_type') && $actualId) {
                 foreach ($request->ng_detail_type as $key => $type) {
@@ -189,7 +203,7 @@ class WeldingStockController extends Controller
             }
 
             DB::commit();
-            return back()->with('success', 'Batch Selesai & Sisa material dikembalikan ke rak WIP.');
+            return back()->with('success', 'Batch Berhasil Diselesaikan.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
             return back()->with('error', 'Gagal: ' . $e->getMessage()); 
@@ -197,9 +211,9 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 4.1 ROBOT SINKRONISASI (Tetap Sama)
+     * 4.1 ROBOT SINKRONISASI (Fixed: Support Partial/Incremental)
      */
-    private function syncToQualityGate($weldingId)
+    private function syncToQualityGate($weldingId, $qtyOk, $qtyNg)
     {
         $batch = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
@@ -209,7 +223,7 @@ class WeldingStockController extends Controller
 
         if (!$batch) return null;
 
-        $dateOnly = date('Y-m-d', strtotime($batch->updated_at));
+        $dateOnly = date('Y-m-d');
         $lineName = $batch->kode_line ?? 'WELDING AREA';
 
         $actual = DB::table('welding_actuals')
@@ -220,8 +234,8 @@ class WeldingStockController extends Controller
 
         if ($actual) {
             DB::table('welding_actuals')->where('id', $actual->id)->update([
-                'qty_ok' => $actual->qty_ok + $batch->qty_ok,
-                'qty_ng' => $actual->qty_ng + $batch->qty_ng,
+                'qty_ok' => $actual->qty_ok + $qtyOk,
+                'qty_ng' => $actual->qty_ng + $qtyNg,
                 'updated_at' => now()
             ]);
             return $actual->id;
@@ -230,90 +244,78 @@ class WeldingStockController extends Controller
                 'part_no'    => $batch->part_no,
                 'line_code'  => $lineName,
                 'shift'      => 'N/A', 
-                'qty_ok'     => $batch->qty_ok,
-                'qty_ng'     => $batch->qty_ng,
-                'created_at' => $batch->updated_at,
+                'qty_ok'     => $qtyOk,
+                'qty_ng'     => $qtyNg,
+                'created_at' => now(),
                 'updated_at' => now()
             ]);
         }
     }
 
     /**
-     * 5. HISTORY MUTASI STOK (Fixed: Accurate Stock History with Return)
+     * 5. HISTORY MUTASI STOK (Fixed)
      */
     public function history(Request $request)
-{
-    $customerFilter = $request->customer;
-    $startDate = $request->start_date ?? date('Y-m-d');
-    $endDate = $request->end_date ?? date('Y-m-d');
-    $clients = DB::table('customers')->get();
+    {
+        $customerFilter = $request->customer;
+        $startDate = $request->start_date ?? date('Y-m-d');
+        $endDate = $request->end_date ?? date('Y-m-d');
+        $clients = DB::table('customers')->get();
 
-    $query = DB::table('finished_goods')
-        ->select('part_no', 'part_name', 'customer', 'welding_stock');
+        $query = DB::table('finished_goods')
+            ->select('part_no', 'part_name', 'customer', 'welding_stock');
 
-    if ($customerFilter && $customerFilter != 'ALL') {
-        $query->where('customer', trim($customerFilter));
+        if ($customerFilter && $customerFilter != 'ALL') {
+            $query->where('customer', trim($customerFilter));
+        }
+
+        $historyData = $query->get()->map(function($item) use ($startDate, $endDate) {
+            $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
+
+            // IN: Dari Stamping
+            $in_stamp = DB::table('production_logs')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('process_type', 'WELDING')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty') ?? 0;
+
+            // IN: Return dari QC (Rework)
+            $in_ret = DB::table('quality_inspections')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('origin', 'WELDING')
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty_ret') ?? 0;
+
+            // OUT: Qty Deployed
+            $out_period = DB::table('welding_batches')
+                ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->sum('qty_masuk') ?? 0;
+
+            $item->in_s = $in_stamp;
+            $item->in_r = $in_ret;
+            $item->total_in = $in_stamp + $in_ret;
+            $item->total_out = $out_period;
+            
+            // Backtracking logic tetap sama untuk hitung opening
+            $future_in = DB::table('production_logs')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->where('process_type', 'WELDING')->whereDate('created_at', '>', $endDate)->sum('qty') ?? 0;
+            $future_out = DB::table('welding_batches')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
+                ->whereDate('created_at', '>', $endDate)->sum('qty_masuk') ?? 0;
+
+            $item->stock_akhir = ($item->welding_stock ?? 0) + $future_out - $future_in;
+            $item->stock_awal = $item->stock_akhir - $item->total_in + $item->total_out;
+
+            return $item;
+        })->filter(function($i) {
+            return ($i->stock_awal != 0 || $i->total_in > 0 || $i->total_out > 0 || $i->stock_akhir != 0);
+        });
+
+        return view('welding.welding_history', compact('historyData', 'clients', 'customerFilter', 'startDate', 'endDate'));
     }
 
-    $historyData = $query->get()->map(function($item) use ($startDate, $endDate) {
-        $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
-
-        // 1. IN Periode: Stamping
-        $in_stamp = DB::table('production_logs')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('process_type', 'WELDING')
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-            ->sum('qty') ?? 0;
-
-        // 2. IN Periode: Return (WIP Balik dari Mesin)
-        $in_ret = DB::table('welding_batches')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('status', 'COMPLETED')
-            ->whereBetween(DB::raw('DATE(updated_at)'), [$startDate, $endDate])
-            ->sum('qty_return') ?? 0;
-
-        // 3. OUT Periode: Qty Deployed (Barang Keluar dari Rak)
-        $out_period = DB::table('welding_batches')
-            ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
-            ->sum('qty_masuk') ?? 0;
-
-        // --- BACKTRACKING AREA ---
-        $future_in_stamp = DB::table('production_logs')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('process_type', 'WELDING')->whereDate('created_at', '>', $endDate)->sum('qty') ?? 0;
-
-        $future_in_ret = DB::table('welding_batches')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->where('status', 'COMPLETED')->whereDate('updated_at', '>', $endDate)->sum('qty_return') ?? 0;
-
-        $future_out = DB::table('welding_batches')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-            ->whereDate('created_at', '>', $endDate)->sum('qty_masuk') ?? 0;
-
-        // ✨ SIMPAN KE OBJECT AGAR BISA DIPANGGIL DI VIEW
-        $item->in_s = $in_stamp;
-        $item->in_r = $in_ret; // Ini yang bikin Return kelihatan di History
-        $item->total_in = $in_stamp + $in_ret;
-        $item->total_out = $out_period;
-        
-        $item->stock_akhir = ($item->welding_stock ?? 0) + $future_out - ($future_in_stamp + $future_in_ret);
-        $item->stock_awal = $item->stock_akhir - $item->total_in + $item->total_out;
-
-        return $item;
-    })->filter(function($i) {
-        return ($i->stock_awal != 0 || $i->total_in > 0 || $i->total_out > 0 || $i->stock_akhir != 0);
-    });
-
-    return view('welding.welding_history', compact('historyData', 'clients', 'customerFilter', 'startDate', 'endDate'));
-}
-    /**
-     * 6. RIWAYAT PRODUKSI WELDING (Tetap Sama)
-     */
-    /**
-     * 6. RIWAYAT PRODUKSI WELDING (Enhanced: Cyber Industrial Version)
-     * Menampilkan performa produksi welding per batch rill.
-     */
     public function historyWelding(Request $request)
     {
-        // Filter Tanggal
         $startDate = $request->start_date ?? date('Y-m-d');
         $endDate = $request->end_date ?? date('Y-m-d');
 
@@ -325,7 +327,6 @@ class WeldingStockController extends Controller
             ->orderBy('updated_at', 'desc')
             ->get()
             ->map(function($h) {
-                // Ambil detail NG untuk modal nanti rill
                 $h->ng_details = DB::table('welding_ng_logs')
                                     ->where('no_produksi', $h->no_produksi_stamping)
                                     ->get();
