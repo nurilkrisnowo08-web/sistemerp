@@ -20,7 +20,8 @@
     .batch-header { background: #f8fafc; padding: 20px 30px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
     
     .table-history td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #f8fafc; font-weight: 700; font-size: 13px; }
-    .phase-badge { background: var(--ind-navy); color: white; padding: 4px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-size: 10px; }
+    /* Warna Badge Phase Dinamis */
+    .phase-badge { background: var(--ind-navy); color: white; padding: 4px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; }
     
     .ng-pill { background: #fee2e2; color: var(--ind-rose); font-size: 9px; padding: 2px 8px; border-radius: 6px; border: 1px solid #fecdd3; font-family: 'JetBrains Mono'; font-weight: 700; margin: 2px; display: inline-block; }
 </style>
@@ -37,15 +38,19 @@
     </div>
 
     @php
+        // Mengurutkan data berdasarkan Batch
         $groupedHistory = $historyData->groupBy('batch_no');
     @endphp
 
     @forelse($groupedHistory as $batchNo => $records)
         @php
-            $batchPart = $records->first()->part_no;
-            $batchOrigin = $records->first()->origin;
-            $batchTarget = $records->first()->qty_from_prod;
-            $batchChecked = $records->sum('total_checked');
+            // Urutkan records secara kronologis (lama ke baru) untuk menghitung progress total
+            $sortedRecords = $records->sortBy('created_at');
+            
+            $batchPart = $sortedRecords->first()->part_no;
+            $batchOrigin = $sortedRecords->first()->origin;
+            $batchTarget = $sortedRecords->first()->qty_from_prod;
+            $batchChecked = $sortedRecords->sum('total_checked');
             $percent = ($batchTarget > 0) ? ($batchChecked / $batchTarget) * 100 : 0;
         @endphp
 
@@ -79,27 +84,34 @@
                         <tr class="bg-light">
                             <th style="font-size: 10px; text-transform: uppercase;">Phase</th>
                             <th style="font-size: 10px; text-transform: uppercase;">Inspector</th>
-                            <th style="font-size: 10px; text-transform: uppercase;">OK</th>
-                            <th style="font-size: 10px; text-transform: uppercase;">NG</th>
+                            <th style="font-size: 10px; text-transform: uppercase;" class="text-success">OK</th>
+                            <th style="font-size: 10px; text-transform: uppercase;" class="text-danger">NG</th>
+                            <th style="font-size: 10px; text-transform: uppercase;" class="text-primary">Return</th>
                             <th style="font-size: 10px; text-transform: uppercase;">Timestamp</th>
-                            <th style="font-size: 10px; text-transform: uppercase;" class="text-left">Defects</th>
+                            <th style="font-size: 10px; text-transform: uppercase;" class="text-left">Defects Summary</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($records as $index => $h)
+                        {{-- Membalik urutan display: TERBARU di ATAS, tapi nomor urut tetap akurat --}}
+                        @php $totalRecords = $records->count(); @endphp
+                        @foreach($records->sortByDesc('created_at') as $index => $h)
                         <tr onclick="showDetail({{ json_encode($h) }})">
-                            <td><span class="phase-badge">CHECK #{{ $index + 1 }}</span></td>
-                            <td class="font-weight-black uppercase">{{ $h->inspector }}</td>
-                            <td class="text-success">+{{ number_format($h->qty_ok) }}</td>
-                            <td class="text-danger">+{{ number_format($h->qty_ng) }}</td>
-                            <td class="text-muted small">{{ date('d/m/Y H:i', strtotime($h->created_at)) }}</td>
+                            <td>
+                                {{-- Logika: Jika ada 3 data, baris paling atas (terbaru) jadi CHECK #3 --}}
+                                <span class="phase-badge">CHECK #{{ $totalRecords - $loop->index }}</span>
+                            </td>
+                            <td class="font-weight-black uppercase text-dark">{{ $h->inspector }}</td>
+                            <td class="text-success font-weight-black">+{{ number_format($h->qty_ok) }}</td>
+                            <td class="text-danger font-weight-black">+{{ number_format($h->qty_ng) }}</td>
+                            <td class="text-primary font-weight-black">+{{ number_format($h->qty_ret ?? 0) }}</td>
+                            <td class="text-muted small font-weight-bold">{{ date('d/m/Y H:i', strtotime($h->created_at)) }}</td>
                             <td class="text-left">
                                 @if($h->ng_reason && $h->ng_reason != 'OK GOODS')
                                     @foreach(explode(', ', $h->ng_reason) as $pill)
                                         <span class="ng-pill">{{ $pill }}</span>
                                     @endforeach
                                 @else
-                                    <small class="text-muted italic">ZERO_DEFECTS</small>
+                                    <small class="text-muted italic font-weight-bold">ZERO_DEFECTS</small>
                                 @endif
                             </td>
                         </tr>
@@ -115,7 +127,7 @@
     @endforelse
 </div>
 
-{{-- 🚀 MODAL DETAIL (PASTE LANGSUNG DI SINI RILL) --}}
+{{-- MODAL DETAIL (DI-UPDATE UNTUK RETURN) --}}
 <div class="modal fade animate__animated animate__zoomIn" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 35px; border: none; overflow: hidden;">
@@ -134,7 +146,12 @@
                     <div class="col-6 mb-4"><small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">Origin</small><div class="font-weight-black h6" id="det-origin"></div></div>
                     <div class="col-4 border-right"><small class="text-success font-weight-bold uppercase" style="font-size: 9px;">OK</small><div class="text-success font-weight-black h4" id="det-ok"></div></div>
                     <div class="col-4 border-right"><small class="text-danger font-weight-bold uppercase" style="font-size: 9px;">NG</small><div class="text-danger font-weight-black h4" id="det-ng"></div></div>
-                    <div class="col-4"><small class="text-primary font-weight-bold uppercase" style="font-size: 9px;">Yield</small><div class="text-primary font-weight-black h4" id="det-yield"></div></div>
+                    <div class="col-4"><small class="text-primary font-weight-bold uppercase" style="font-size: 9px;">Return</small><div class="text-primary font-weight-black h4" id="det-ret"></div></div>
+                </div>
+
+                <div class="mb-4 text-center">
+                    <small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">Batch Efficiency (Yield)</small>
+                    <div class="text-dark font-weight-black h4" id="det-yield"></div>
                 </div>
 
                 <div class="mb-4">
@@ -153,14 +170,16 @@
 
 <script>
     function showDetail(data) {
-        const total = parseFloat(data.qty_ok) + parseFloat(data.qty_ng);
-        const yieldVal = total > 0 ? ((data.qty_ok / total) * 100).toFixed(1) : 0;
+        // Yield dihitung dari OK / (OK+NG) rill
+        const totalChecked = parseFloat(data.qty_ok) + parseFloat(data.qty_ng);
+        const yieldVal = totalChecked > 0 ? ((data.qty_ok / totalChecked) * 100).toFixed(1) : 0;
 
         document.getElementById('det-batch').innerText = data.batch_no;
         document.getElementById('det-part').innerText = data.part_no;
         document.getElementById('det-origin').innerText = data.origin;
         document.getElementById('det-ok').innerText = data.qty_ok;
         document.getElementById('det-ng').innerText = data.qty_ng;
+        document.getElementById('det-ret').innerText = data.qty_ret ?? 0;
         document.getElementById('det-yield').innerText = yieldVal + "%";
         document.getElementById('det-inspector').innerText = data.inspector;
 
@@ -185,7 +204,7 @@
                 }
             });
         } else {
-            ngListDiv.innerHTML = '<div class="text-center py-2 text-muted font-weight-bold italic">ZERO_DEFECTS</div>';
+            ngListDiv.innerHTML = '<div class="text-center py-2 text-muted font-weight-bold italic">ZERO_DEFECTS_DETECTED</div>';
         }
         
         $('#detailModal').modal('show');
