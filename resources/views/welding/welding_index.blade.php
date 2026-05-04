@@ -57,7 +57,7 @@
                 <thead>
                     <tr>
                         <th class="text-left pl-5">Part Identification</th>
-                        <th>Opening</th>
+                        <th>STOCK AWAL</th>
                         <th class="text-success">In (Stamp)</th>
                         <th style="color: var(--brand-return);">In (Ret QC)</th>
                         <th class="text-danger">Out (Deploy)</th>

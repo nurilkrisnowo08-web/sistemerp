@@ -91,7 +91,7 @@
                 <thead>
                     <tr>
                         <th class="text-left pl-5">Material Identification</th>
-                        <th>Opening</th>
+                        <th>STOCK AWAL</th>
                         <th class="text-success">In (Supplier)</th>
                         <th style="color: var(--brand-return);">In (Return)</th>
                         <th class="text-danger">Out (Prod)</th>
