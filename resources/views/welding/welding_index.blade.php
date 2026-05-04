@@ -14,14 +14,15 @@
     
     .heading-hub { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(135deg, var(--brand-primary), #7209b7); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    /* 📈 LEDGER TABLE (Flow Mutation) */
+    /* 📈 LEDGER TABLE */
     .ledger-container { background: #fff; border-radius: 30px; border: 1px solid var(--ind-border); overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.04); margin-bottom: 35px; }
     .table-ledger thead th { background: #f8fafc; color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; padding: 22px; border: none; }
     .table-ledger td { padding: 20px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; transition: 0.3s; }
     
-    /* Indikator Rework di Kartu */
-    .rework-indicator { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 4px 12px; border-radius: 8px; font-size: 9px; font-weight: 800; display: inline-block; margin-left: 10px; }
-    .badge-rework { background: var(--brand-return); color: white; padding: 5px 10px; border-radius: 8px; font-size: 10px; margin-bottom: 8px; display: inline-block; }
+    /* Indikator Rework & Shift */
+    .badge-rework { background: var(--brand-return); color: white; padding: 5px 12px; border-radius: 8px; font-size: 10px; margin-bottom: 8px; display: inline-block; font-weight: 800; }
+    .badge-shift-pagi { background: #e0e7ff; color: #4361ee; padding: 5px 12px; border-radius: 8px; font-size: 10px; margin-bottom: 8px; display: inline-block; font-weight: 800; border: 1px solid #c7d2fe; }
+    .badge-shift-malam { background: #1e293b; color: #f8fafc; padding: 5px 12px; border-radius: 8px; font-size: 10px; margin-bottom: 8px; display: inline-block; font-weight: 800; }
 
     .nav-section { background: #fff; padding: 8px; border-radius: 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 30px; border: 1px solid #e2e8f0; display: inline-flex; }
     .nav-pills .nav-link { border-radius: 16px; padding: 12px 28px; font-weight: 800; font-size: 0.75rem; transition: 0.3s; color: #64748b !important; position: relative; }
@@ -29,6 +30,8 @@
     
     .work-card { background: #fff; border-radius: 28px; border: 1px solid #eef2f6; padding: 28px; margin-bottom: 20px; transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1); display: flex; align-items: center; position: relative; overflow: hidden; }
     .tech-input-lg { border-radius: 20px; border: 2.5px solid #eef2f6; font-weight: 800; transition: 0.3s; height: 80px; background: #f8fafc; text-align: center; font-family: 'Orbitron'; font-size: 32px; }
+    .qty-display { font-family: 'Orbitron'; font-size: 28px; font-weight: 900; color: var(--dark-surface); }
+    .station-tag { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
 </style>
 
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
@@ -47,7 +50,7 @@
         </div>
     </div>
 
-    {{-- 📊 LEDGER TABLE (SINKRONISASI MUTASI STOK RILL) --}}
+    {{-- 📊 LEDGER TABLE --}}
     <div class="ledger-container">
         <div class="table-responsive">
             <table class="table table-ledger mb-0 text-center">
@@ -84,14 +87,14 @@
         </div>
     </div>
 
-    {{-- 📑 PT NAVIGATION & ACTIVE BATCHES --}}
+    {{-- 📑 PT NAVIGATION --}}
     <div class="nav-section animate__animated animate__fadeIn">
         <ul class="nav nav-pills" id="ptTab">
             @foreach($availableCustomers as $index => $customer)
             @php $slugPT = Str::slug($customer); $count = $activeWelding->where('customer', $customer)->count(); @endphp
             <li class="nav-item">
                 <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ $slugPT }}">
-                    {{ strtoupper($customer) }} @if($count > 0) <span class="count-badge">{{ $count }}</span> @endif
+                    {{ strtoupper($customer) }} @if($count > 0) <span class="badge badge-pill badge-danger ml-2">{{ $count }}</span> @endif
                 </a>
             </li>
             @endforeach
@@ -105,6 +108,13 @@
             @foreach($activeWelding->where('customer', $customer) as $aw)
             <div class="work-card shadow-sm animate__animated animate__fadeInUp">
                 <div class="col-md-3">
+                    {{-- ✨ INDICATOR SHIFT RILL --}}
+                    @if($aw->shift == 'Malam')
+                        <span class="badge-shift-malam"><i class="fas fa-moon mr-1"></i> SHIFT 2 - MALAM</span>
+                    @else
+                        <span class="badge-shift-pagi"><i class="fas fa-sun mr-1"></i> SHIFT 1 - PAGI</span>
+                    @endif
+                    <br>
                     @if($aw->qty_return > 0)
                         <span class="badge-rework"><i class="fas fa-redo-alt mr-1"></i> REWORK (QC RETURN)</span>
                     @endif
@@ -116,7 +126,6 @@
                     <small class="text-muted font-weight-bold uppercase">{{ $aw->part_name }}</small>
                 </div>
                 <div class="col-md-2 text-center">
-                    {{-- ✨ Logika Target: Jika rework, targetnya adalah qty_return --}}
                     <div class="qty-display">{{ number_format($aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk) }}</div>
                     <small class="text-muted font-weight-black uppercase" style="font-size: 9px;">Target Unit</small>
                 </div>
@@ -137,14 +146,16 @@
     </div>
 </div>
 
-{{-- 🏁 MODAL FINISH (LOGIKA TARGET DISESUAIKAN RILL) --}}
+{{-- 🏁 MODAL FINISH --}}
 @foreach($activeWelding as $aw)
 @php $currentTarget = $aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk; @endphp
 <div class="modal fade" id="modalFinish{{ $aw->id }}" tabindex="-1" data-backdrop="static">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 45px; overflow: hidden;">
             <div class="modal-header bg-dark text-white p-4 border-0">
-                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron';">Quality_Gate_Auth</h5>
+                <h5 class="modal-title font-weight-black text-uppercase" style="font-family: 'Orbitron';">
+                    Quality_Gate_Auth <span class="text-warning ml-3" style="font-size: 14px;">[{{ strtoupper($aw->shift ?? 'Pagi') }}]</span>
+                </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form action="{{ route('welding.finish', $aw->id) }}" method="POST">
@@ -163,7 +174,7 @@
                                        value="{{ $currentTarget }}" required oninput="manualOkCheck({{ $aw->id }}, {{ $currentTarget }})">
                             </div>
 
-                            <div id="sec_msg_{{ $aw->id }}" class="security-status status-match animate__animated">
+                            <div id="sec_msg_{{ $aw->id }}" class="p-3 rounded-2xl bg-success text-white font-weight-black animate__animated">
                                 <i class="fas fa-shield-check mr-2"></i>INTEGRITY_VERIFIED
                             </div>
                         </div>
@@ -267,12 +278,12 @@
         let btnSubmit = $(`#btn_submit_${batchId}`);
 
         if (grandTotal === target && ok >= 0 && ret >= 0) {
-            msgBox.removeClass('status-error animate__headShake').addClass('status-match')
+            msgBox.removeClass('bg-danger animate__headShake').addClass('bg-success')
                   .html('<i class="fas fa-shield-check mr-2"></i>DATA_INTEGRITY_MATCHED');
             btnSubmit.prop('disabled', false).css('opacity', '1').css('cursor', 'pointer');
         } else {
             let gap = target - grandTotal;
-            msgBox.removeClass('status-match').addClass('status-error animate__headShake')
+            msgBox.removeClass('bg-success').addClass('bg-danger animate__headShake')
                   .html(`<i class="fas fa-triangle-exclamation mr-2"></i>GAP DETECTED: ${gap > 0 ? '+'+gap : gap} PCS`);
             btnSubmit.prop('disabled', true).css('opacity', '0.5').css('cursor', 'not-allowed');
         }
