@@ -39,7 +39,7 @@ class WeldingStockController extends Controller
                     ->whereDate('created_at', $date)
                     ->sum('qty') ?? 0;
 
-                // IN: Dari Return QC (Cek Riwayat Inspeksi)
+                // IN: Dari Return QC & Return Sisa Material (Cek Riwayat Inspeksi)
                 $in_return = DB::table('quality_inspections')
                     ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
                     ->where('origin', 'WELDING')
@@ -52,7 +52,8 @@ class WeldingStockController extends Controller
                     ->whereDate('created_at', $date)
                     ->sum('qty_masuk') ?? 0;
 
-                // RUMUS OPENING FIXED RILL
+                // ✨ RUMUS OPENING FIXED RILL (ANTI-LONCAT)
+                // Opening = Stok Sekarang - (Semua yang Masuk Hari Ini) + (Semua yang Keluar Hari Ini)
                 $item->init = $item->live_stock - ($in_stamping + $in_return) + $out_welding;
                 
                 $item->in_s = $in_stamping;
@@ -155,7 +156,7 @@ class WeldingStockController extends Controller
 
         $qty_ok = (int)$request->qty_ok;
         $qty_ng = (int)$request->qty_ng;
-        $qty_sisa_ke_rak = (int)$request->qty_return; 
+        $qty_sisa_ke_rak = (int)$request->qty_return; // Input dari box biru "Return_To_WIP_Rack" rill
 
         $target = ($batch->qty_return > 0) ? $batch->qty_return : $batch->qty_masuk;
 
@@ -176,9 +177,25 @@ class WeldingStockController extends Controller
             ]);
 
             if ($qty_sisa_ke_rak > 0) {
+                // 1. Tambah stok fisik di rak WIP
                 DB::table('finished_goods')
                     ->where('part_no', $batch->part_no)
                     ->increment('welding_stock', $qty_sisa_ke_rak);
+
+                // 2. ✨ WAJIB: Tulis Log ke quality_inspections agar Dashboard terbaca rill!
+                DB::table('quality_inspections')->insert([
+                    'batch_no'      => $batch->no_produksi_stamping,
+                    'origin'        => 'WELDING',
+                    'part_no'       => $batch->part_no,
+                    'qty_from_prod' => $target,
+                    'qty_ok'        => 0,
+                    'qty_ng'        => 0,
+                    'qty_ret'       => $qty_sisa_ke_rak, // Ini kunci agar masuk kolom biru (IN RET QC)
+                    'inspector'     => 'OPERATOR_FINISH',
+                    'status'        => 'RETURN_TO_RACK',
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
             }
 
             $actualId = $this->syncToQualityGate($id, $qty_ok, $qty_ng);
@@ -290,7 +307,6 @@ class WeldingStockController extends Controller
             $item->total_in = $in_stamp + $in_ret;
             $item->total_out = $out_period;
             
-            // Backtracking logic for history
             $future_in = DB::table('production_logs')->whereRaw("REPLACE(part_no, ' ', '') = ?", [$cleanPart])
                 ->where('process_type', 'WELDING')->whereDate('created_at', '>', $endDate)->sum('qty') ?? 0;
             $future_out = DB::table('welding_batches')->whereRaw("REPLACE(part_no, ' ', '') = ?", [$cleanPart])
