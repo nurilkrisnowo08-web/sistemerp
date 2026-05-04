@@ -21,7 +21,7 @@ class ProduksiController extends Controller
                 'produksi_batches.shift',
                 'produksi_batches.material_code',
                 'produksi_batches.status',
-                'produksi_batches.qty_return', // ✨ Badge REWORK rill
+                'produksi_batches.qty_return', 
                 'produksi_batches.created_at',
                 'rm_stocks.coil_id',
                 'rm_stocks.customer',
@@ -32,7 +32,6 @@ class ProduksiController extends Controller
                 DB::raw('SUM(produksi_batches.qty_ambil_pcs) as total_qty_batch'),
                 DB::raw('MIN(produksi_batches.id) as batch_id')
             )
-            // ✨ PERBAIKAN FILTER: Tampilkan jika status PROSES ATAU ada kiriman Return dari QC
             ->where(function($q) {
                 $q->where('produksi_batches.status', 'PROSES')
                   ->orWhere('produksi_batches.qty_return', '>', 0);
@@ -165,7 +164,6 @@ class ProduksiController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Logika Return ke Warehouse tetap rill
             if ((int)$request->qty_return_warehouse > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -184,26 +182,32 @@ class ProduksiController extends Controller
                 }
             }
 
-            // 2. Penentuan Status Akhir
             $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
             $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
-            
-            // ✨ PERBAIKAN RILL: Gunakan status dinamis (default WAITING_QC agar muncul lagi di QC terminal)
             $status_akhir = $request->status ?? (($target == 'WELDING' || ($p->qty_hasil_ok + $qty_ok_new) == 0) ? 'COMPLETED' : 'WAITING_QC');
 
-            // ✨ AKUMULASI DATA: Gunakan + untuk OK dan NG agar angka lama tidak hilang rill!
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok'         => $p->qty_hasil_ok + $qty_ok_new,
                 'qty_ng_process'       => $p->qty_ng_process + $total_ng_spesifik,
                 'qty_hasil_ng'         => $p->qty_hasil_ng + $total_ng_spesifik,
                 'qty_return_warehouse' => $p->qty_return_warehouse + (int)$request->qty_return_warehouse,
-                'qty_return'           => 0, // Riset sisa perbaikan rill
+                'qty_return'           => 0, 
                 'keterangan'           => $request->keterangan,
                 'status'               => $status_akhir,
                 'updated_at'           => now()
             ]);
 
-            // 3. Update Stok Berdasarkan Target (Gunakan pertambahan qty_ok_new saja)
+            // ✨ TAMBAHKAN LOGGING DI SINI RILL: Biar terminal Welding bisa baca "IN (STAMP)"
+            if ($qty_ok_new > 0) {
+                DB::table('production_logs')->insert([
+                    'part_no'      => $p->material_code,
+                    'qty'          => $qty_ok_new,
+                    'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG',
+                    'created_at'   => now(),
+                    'updated_at'   => now()
+                ]);
+            }
+
             if ($target == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
             } else if($status_akhir == 'COMPLETED') {
@@ -212,12 +216,10 @@ class ProduksiController extends Controller
 
             $this->syncToActual($id);
 
-            // 4. ✨ LOGIC NG: Simpan rincian per kejadian
             if (!empty($ng_details)) {
                 $actual = DB::table('production_actuals')->where('part_no', $p->material_code)
                              ->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
                 if ($actual) {
-                    // Jangan delete lama, tapi tambahkan rincian baru rill
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert([
                             'actual_id'   => $actual->id,
@@ -246,19 +248,17 @@ class ProduksiController extends Controller
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $dateOnly = date('Y-m-d', strtotime($batch->created_at));
 
-        // ✨ UPDATE TOTAL AKUMULASI KE DASHBOARD
         DB::table('production_actuals')->updateOrInsert(
             ['part_no' => $batch->material_code, 'line_code' => $lineCode, 'created_at' => $dateOnly],
             [
                 'shift'      => $batch->shift,
-                'qty_ok'     => $batch->qty_hasil_ok, // Ini sudah akumulasi rill
+                'qty_ok'     => $batch->qty_hasil_ok, 
                 'qty_ng'     => $batch->qty_hasil_ng,
                 'updated_at' => now()
             ]
         );
     }
 
-    // --- FUNGSI LAINNYA TETAP SAMA RILL ---
     public function getBatchDeepDive($no_produksi)
     {
         $batch = DB::table('produksi_batches')->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')->select('produksi_batches.*', 'line.kode_Line')->where('no_produksi', $no_produksi)->first();
