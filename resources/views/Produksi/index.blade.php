@@ -78,14 +78,30 @@
             <tbody>
                 @forelse($activeProductions as $p)
                 <tr>
-                    <td><span class="id-tag">{{ $p->no_produksi }}</span></td>
+                    <td>
+                        @if($p->qty_return > 0)
+                            <span class="badge mb-1 animate__animated animate__pulse animate__infinite" style="background: #6366f1; color: #fff; font-size: 9px; padding: 4px 8px; border-radius: 4px;">
+                                <i class="fas fa-redo-alt mr-1"></i> REWORK QC
+                            </span><br>
+                        @endif
+                        <span class="id-tag">{{ $p->no_produksi }}</span>
+                    </td>
                     <td><div class="font-weight-bold text-dark">{{ $p->material_code }}</div><small class="text-muted">{{ $p->coil_id }}</small></td>
                     <td>
                         @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
                         @if(strtoupper($route) == 'WELDING') <span class="badge badge-warning">WELDING</span> @else <span class="badge badge-success">FG / QC</span> @endif
                     </td>
                     <td><span class="font-weight-bold text-primary">{{ $p->line_names }}</span></td>
-                    <td class="text-center">{{ number_format($p->total_qty_batch) }}</td>
+                    
+                    <td class="text-center font-weight-black">
+                        @if($p->qty_return > 0)
+                            <span class="text-primary" style="font-size: 16px;">{{ number_format($p->qty_return) }}</span>
+                            <div style="font-size: 8px; color: #64748b;">PCS REWORK</div>
+                        @else
+                            {{ number_format($p->total_qty_batch) }}
+                        @endif
+                    </td>
+
                     <td class="text-center">
                         @if($p->status == 'PROBLEM')
                             <span class="badge badge-danger px-3 animate__animated animate__flash animate__infinite"><i class="fas fa-exclamation-triangle mr-1"></i> {{ $p->status }}</span>
@@ -109,12 +125,16 @@
 </div>
 
 @foreach($activeProductions as $p)
-{{-- 🛡️ MODAL INPUT HASIL (Sinkron dengan updateResult) --}}
+@php $currentTarget = ($p->qty_return > 0) ? $p->qty_return : $p->total_qty_batch; @endphp
+{{-- 🛡️ MODAL INPUT HASIL --}}
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
             <div class="modal-header bg-success text-white py-4 border-0">
-                <h6 class="modal-title font-weight-bold"><i class="fas fa-microchip mr-2"></i> FINISH BATCH: [{{ $p->no_produksi }}]</h6>
+                <h6 class="modal-title font-weight-bold">
+                    <i class="fas fa-microchip mr-2"></i> 
+                    {{ $p->qty_return > 0 ? 'REWORK PROCESS' : 'FINISH BATCH' }}: [{{ $p->no_produksi }}]
+                </h6>
             </div>
             <form action="{{ route('produksi.update_result', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
@@ -123,8 +143,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
-                            <!-- Nama input harus qty_hasil_ok sesuai Controller -->
-                            <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
+                            <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="{{ $currentTarget }}">
                         </div>
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-danger uppercase">Return (Sisa Material)</label>
@@ -147,9 +166,9 @@
 
                     <div class="p-3 bg-light mt-4 rounded-xl border text-center">
                         <small class="text-muted font-weight-bold uppercase">Gap Status (Must be 0):</small>
-                        <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ number_format($p->total_qty_batch) }}</h4>
+                        <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ number_format($currentTarget) }}</h4>
                         <div class="progress-lite mt-2"><div class="progress-bar-fill" id="bar_{{ $p->batch_id }}" style="width: 0%"></div></div>
-                        <input type="hidden" class="target-val" data-id="{{ $p->batch_id }}" value="{{ $p->total_qty_batch }}">
+                        <input type="hidden" class="target-val" data-id="{{ $p->batch_id }}" value="{{ $currentTarget }}">
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-5 bg-light">
@@ -171,7 +190,7 @@
                 @csrf @method('PUT')
                 <div class="modal-body p-4">
                     <label class="small font-weight-bold uppercase">Detail Kendala (Dies Rusak, Pin Patah, dll)</label>
-                    <textarea name="problem_note" class="form-control" rows="4" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" required placeholder="Jelaskan kondisi dies/kendala saat ini..."></textarea>
+                    <textarea name="problem_note" class="form-control" rows="4" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" required placeholder="Jelaskan kondisi dies/kendala saat ini secara detail..."></textarea>
                 </div>
                 <div class="modal-footer border-0 p-4 bg-light text-right">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-dismiss="modal">CANCEL</button>
@@ -183,7 +202,7 @@
 </div>
 @endforeach
 
-{{-- MODAL INITIALIZE BATCH (Sinkron dengan store) --}}
+{{-- MODAL INITIALIZE BATCH --}}
 <div class="modal fade" id="modalAmbilMaterial" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius:24px;">
@@ -204,21 +223,16 @@
                         </div>
                         <div class="col-6">
                             <label class="small font-weight-bold text-primary">03. LINE</label>
-                            <!-- Sinkron dengan Controller: mesin_id (bukan line_ids[]) -->
                             <select name="mesin_id" class="input-tactical mb-3 border-primary" required>
                                 <option value="" disabled selected>-- SELECT --</option>
-                                @foreach($lines as $l) 
-                                    <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> 
-                                @endforeach
+                                @foreach($lines as $l) <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> @endforeach
                             </select>
                         </div>
                     </div>
                     <label class="small font-weight-bold">04. CUSTOMER</label>
                     <select id="sel_customer" class="input-tactical mb-3" required>
                         <option value="" disabled selected>-- SELECT --</option>
-                        @foreach($customers as $c) 
-                            <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> 
-                        @endforeach
+                        @foreach($customers as $c) <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> @endforeach
                     </select>
                     <div class="row">
                         <div class="col-6"><label class="small font-weight-bold">05. SPEC</label><select id="sel_spec" class="input-tactical mb-3" disabled required></select></div>
@@ -250,7 +264,8 @@
                     <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold">${options}</select>
                 </div>
                 <div class="col-3 pr-1">
-                    <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" placeholder="Qty" min="1" required data-id="${batchId}">
+                    <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" 
+                    placeholder="Qty" min="1" required data-id="${batchId}">
                 </div>
                 <div class="col-2">
                     <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})"><i class="fas fa-times"></i></button>
@@ -273,6 +288,7 @@
         $(document).on('input', '.calc-input, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
+            
             let dynamicNgSum = 0;
             $(`#ng_container_${id} .ng-qty-input`).each(function() {
                 dynamicNgSum += parseInt($(this).val()) || 0;
@@ -281,12 +297,15 @@
             let okVal = parseInt($(`#ok_${id}`).val()) || 0;
             let retVal = parseInt($(`#return_${id}`).val()) || 0;
             let accounted = okVal + retVal + dynamicNgSum;
-            let gap = target - accounted;
 
+            let gap = target - accounted;
             $(`#gap_${id}`).text(gap.toLocaleString());
-            $(`#bar_${id}`).css('width', ((accounted / target) * 100) + '%');
+            
+            let progress = (accounted / target) * 100;
+            $(`#bar_${id}`).css('width', progress + '%');
             
             let btn = $(`#btn_${id}`), msg = $(`#police_msg_${id}`);
+            
             if (gap === 0) { 
                 msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC! Ready to commit.'); 
                 btn.prop('disabled', false); 
