@@ -50,10 +50,21 @@
                         </select>
                     </div>
 
-                    {{-- 03. QUANTITY INPUT --}}
+                    {{-- ✨ 03. SHIFT SELECTION (Tambahan Baru Rill) --}}
+                    <div class="form-group mb-4">
+                        <label class="small font-weight-black text-muted uppercase mb-2 d-block">
+                            <i class="fas fa-clock mr-2 text-primary"></i> 03. Active_Operation_Shift
+                        </label>
+                        <select name="shift" class="form-control tech-input-lg" style="height: 65px; font-size: 18px;" required>
+                            <option value="Pagi">SHIFT 1 - PAGI</option>
+                            <option value="Malam">SHIFT 2 - MALAM</option>
+                        </select>
+                    </div>
+
+                    {{-- 04. QUANTITY INPUT --}}
                     <div class="form-group mb-0">
                         <label class="small font-weight-black text-primary uppercase mb-2 d-block">
-                            <i class="fas fa-box-open mr-2"></i> 03. Deployment_Quantity
+                            <i class="fas fa-box-open mr-2"></i> 04. Deployment_Quantity
                         </label>
                         <input type="number" name="qty_ambil" class="form-control tech-input-lg font-weight-black text-primary"
                                required style="font-size: 48px; height: 110px;" placeholder="0" min="1">
