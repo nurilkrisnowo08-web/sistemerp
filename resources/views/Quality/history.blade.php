@@ -13,11 +13,9 @@
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
     .industrial-header { font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
     
-    /* Progress Bar Custom */
     .progress-custom { height: 8px; border-radius: 10px; background: #e2e8f0; overflow: hidden; margin-top: 5px; }
     .progress-bar-fill { height: 100%; transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
 
-    /* Grouping Card */
     .batch-group-card { background: white; border-radius: 30px; margin-bottom: 2rem; border: 1px solid #eef2f6; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.02); }
     .batch-header { background: #f8fafc; padding: 20px 30px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
     
@@ -28,51 +26,35 @@
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
-    {{-- 1. HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-5 bg-white p-4 rounded-3xl border shadow-sm">
         <div>
-            <h2 class="industrial-header m-0 text-primary">Quality_Audit <span class="text-dark">Timeline</span></h2>
-            <p class="text-muted small font-weight-bold mb-0 uppercase">Batch History & Partial Inspection Tracking</p>
+            <h2 class="industrial-header m-0 text-primary uppercase">Quality_Audit <span class="text-dark">Timeline</span></h2>
+            <p class="text-muted small font-weight-bold mb-0 uppercase tracking-widest">Partial Inspection Tracking System</p>
         </div>
         <a href="{{ route('quality.index') }}" class="btn btn-dark rounded-pill px-4 font-weight-black shadow-sm">
             <i class="fas fa-arrow-left mr-2"></i> QC TERMINAL
         </a>
     </div>
 
-    {{-- 2. STATS (Global) --}}
     @php
-        $totalOk = $historyData->sum('qty_ok');
-        $totalNg = $historyData->sum('qty_ng');
-        $grandTotal = $totalOk + $totalNg;
-        $avgYield = $grandTotal > 0 ? ($totalOk / $grandTotal) * 100 : 0;
-        
-        // Grouping data by Batch Number
         $groupedHistory = $historyData->groupBy('batch_no');
     @endphp
 
-    <div class="row mb-5">
-        <div class="col-md-3"><div class="stat-card p-4 bg-white rounded-3xl border shadow-sm"><small class="stat-label d-block text-muted mb-1">Total Verified OK</small><h3 class="font-weight-black text-emerald m-0" style="font-family:'Orbitron'">{{ number_format($totalOk) }}</h3></div></div>
-        <div class="col-md-3"><div class="stat-card p-4 bg-white rounded-3xl border shadow-sm"><small class="stat-label d-block text-muted mb-1">Total Verified NG</small><h3 class="font-weight-black text-rose m-0" style="font-family:'Orbitron'">{{ number_format($totalNg) }}</h3></div></div>
-        <div class="col-md-3"><div class="stat-card p-4 bg-white rounded-3xl border shadow-sm"><small class="stat-label d-block text-muted mb-1">Global Yield</small><h3 class="font-weight-black text-primary m-0" style="font-family:'Orbitron'">{{ number_format($avgYield, 1) }}%</h3></div></div>
-        <div class="col-md-3"><div class="stat-card p-4 bg-white rounded-3xl border shadow-sm"><small class="stat-label d-block text-muted mb-1">Active Batches</small><h3 class="font-weight-black text-dark m-0" style="font-family:'Orbitron'">{{ $groupedHistory->count() }}</h3></div></div>
-    </div>
-
-    {{-- 3. GROUPED TIMELINE --}}
     @forelse($groupedHistory as $batchNo => $records)
         @php
             $batchPart = $records->first()->part_no;
             $batchOrigin = $records->first()->origin;
-            $batchTarget = $records->first()->qty_from_prod; // Target awal 200
+            $batchTarget = $records->first()->qty_from_prod;
             $batchChecked = $records->sum('total_checked');
-            $percent = ($batchChecked / $batchTarget) * 100;
+            $percent = ($batchTarget > 0) ? ($batchChecked / $batchTarget) * 100 : 0;
         @endphp
 
-        <div class="batch-group-card animate__animated animate__fadeInUp">
+        <div class="batch-group-card shadow-sm animate__animated animate__fadeInUp">
             <div class="batch-header">
                 <div class="d-flex align-items-center">
                     <div class="mr-4 text-center">
-                        <small class="stat-label">Origin</small>
-                        <div class="badge {{ $batchOrigin == 'WELDING' ? 'bg-warning text-dark' : 'bg-primary text-white' }} d-block px-3 rounded-pill" style="font-size:10px">{{ $batchOrigin }}</div>
+                        <small class="font-weight-bold text-muted uppercase" style="font-size: 9px;">Origin</small>
+                        <div class="badge {{ $batchOrigin == 'WELDING' ? 'bg-warning text-dark' : 'bg-primary text-white' }} d-block px-3 rounded-pill">{{ $batchOrigin }}</div>
                     </div>
                     <div>
                         <h4 class="m-0 font-weight-black text-dark" style="font-family: 'JetBrains Mono';">{{ $batchNo }}</h4>
@@ -80,10 +62,10 @@
                     </div>
                 </div>
 
-                <div style="width: 300px">
+                <div style="width: 250px">
                     <div class="d-flex justify-content-between mb-1">
-                        <small class="font-weight-black small uppercase">Inspection Progress</small>
-                        <small class="font-weight-black text-primary">{{ number_format($batchChecked) }} / {{ number_format($batchTarget) }} PCS</small>
+                        <small class="font-weight-black uppercase" style="font-size: 9px;">Progress</small>
+                        <small class="font-weight-black text-primary" style="font-size: 10px;">{{ number_format($batchChecked) }} / {{ number_format($batchTarget) }} PCS</small>
                     </div>
                     <div class="progress-custom">
                         <div class="progress-bar-fill {{ $percent >= 100 ? 'bg-success' : 'bg-primary' }}" style="width: {{ $percent }}%"></div>
@@ -93,27 +75,23 @@
 
             <div class="table-responsive">
                 <table class="table table-history mb-0 text-center">
-                    <thead class="bg-white">
-                        <tr>
-                            <th style="width: 150px">Phase</th>
-                            <th class="text-left">Inspector</th>
-                            <th>Verified OK</th>
-                            <th>Verified NG</th>
-                            <th>Return</th>
-                            <th>Timestamp</th>
-                            <th class="text-left">NG Summary</th>
+                    <thead>
+                        <tr class="bg-light">
+                            <th style="font-size: 10px; text-transform: uppercase;">Phase</th>
+                            <th style="font-size: 10px; text-transform: uppercase;">Inspector</th>
+                            <th style="font-size: 10px; text-transform: uppercase;">OK</th>
+                            <th style="font-size: 10px; text-transform: uppercase;">NG</th>
+                            <th style="font-size: 10px; text-transform: uppercase;">Timestamp</th>
+                            <th style="font-size: 10px; text-transform: uppercase;" class="text-left">Defects</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($records->reverse() as $index => $h) {{-- reverse supaya urutan 1, 2, 3 rill --}}
+                        @foreach($records as $index => $h)
                         <tr onclick="showDetail({{ json_encode($h) }})">
-                            <td><span class="phase-badge">CHECK #{{ $records->count() - $index }}</span></td>
-                            <td class="text-left">
-                                <div class="font-weight-black text-uppercase">{{ $h->inspector }}</div>
-                            </td>
-                            <td class="text-success font-weight-black">+{{ number_format($h->qty_ok) }}</td>
-                            <td class="text-danger font-weight-black">+{{ number_format($h->qty_ng) }}</td>
-                            <td class="text-primary font-weight-black">+{{ number_format($h->qty_ret ?? 0) }}</td>
+                            <td><span class="phase-badge">CHECK #{{ $index + 1 }}</span></td>
+                            <td class="font-weight-black uppercase">{{ $h->inspector }}</td>
+                            <td class="text-success">+{{ number_format($h->qty_ok) }}</td>
+                            <td class="text-danger">+{{ number_format($h->qty_ng) }}</td>
                             <td class="text-muted small">{{ date('d/m/Y H:i', strtotime($h->created_at)) }}</td>
                             <td class="text-left">
                                 @if($h->ng_reason && $h->ng_reason != 'OK GOODS')
@@ -132,12 +110,85 @@
         </div>
     @empty
         <div class="text-center py-5 bg-white rounded-3xl border shadow-sm">
-            <h5 class="text-muted">No inspection history available.</h5>
+            <h5 class="text-muted">No inspection records found.</h5>
         </div>
     @endforelse
 </div>
 
-{{-- MODAL DETAIL (Tetap sama kodenya) --}}
-@include('Quality.partials.modal_detail') {{-- Atau paste modal detail Bapak di sini --}}
+{{-- 🚀 MODAL DETAIL (PASTE LANGSUNG DI SINI RILL) --}}
+<div class="modal fade animate__animated animate__zoomIn" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg" style="border-radius: 35px; border: none; overflow: hidden;">
+            <div class="modal-header bg-dark text-white px-4 py-4 border-0">
+                <h6 class="modal-title font-weight-black uppercase tracking-widest"><i class="fas fa-shield-alt mr-2 text-primary"></i>Verification_Report</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-5">
+                <div class="text-center mb-5">
+                    <small class="text-muted font-weight-bold uppercase" style="font-size: 10px;">Batch Identifier</small>
+                    <div class="h3 font-weight-black text-primary mt-1" id="det-batch" style="font-family: 'Orbitron';"></div>
+                </div>
+                
+                <div class="row mb-5 text-center">
+                    <div class="col-6 mb-4"><small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">Part ID</small><div class="font-weight-black h6" id="det-part"></div></div>
+                    <div class="col-6 mb-4"><small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">Origin</small><div class="font-weight-black h6" id="det-origin"></div></div>
+                    <div class="col-4 border-right"><small class="text-success font-weight-bold uppercase" style="font-size: 9px;">OK</small><div class="text-success font-weight-black h4" id="det-ok"></div></div>
+                    <div class="col-4 border-right"><small class="text-danger font-weight-bold uppercase" style="font-size: 9px;">NG</small><div class="text-danger font-weight-black h4" id="det-ng"></div></div>
+                    <div class="col-4"><small class="text-primary font-weight-bold uppercase" style="font-size: 9px;">Yield</small><div class="text-primary font-weight-black h4" id="det-yield"></div></div>
+                </div>
 
+                <div class="mb-4">
+                    <label class="font-weight-black text-muted small uppercase mb-3 d-block"><i class="fas fa-list-ul mr-2"></i>Defect Breakdown</label>
+                    <div id="det-ng-list" style="background: #f8fafc; border: 2px dashed #e2e8f0; border-radius: 20px; padding: 20px;"></div>
+                </div>
+
+                <div class="bg-light p-4 rounded-3xl border" style="border-radius: 20px;">
+                    <small class="text-muted font-weight-bold uppercase d-block mb-1" style="font-size: 9px;">Assigned Inspector</small>
+                    <div class="font-weight-bold text-dark text-uppercase" id="det-inspector" style="letter-spacing: 1px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showDetail(data) {
+        const total = parseFloat(data.qty_ok) + parseFloat(data.qty_ng);
+        const yieldVal = total > 0 ? ((data.qty_ok / total) * 100).toFixed(1) : 0;
+
+        document.getElementById('det-batch').innerText = data.batch_no;
+        document.getElementById('det-part').innerText = data.part_no;
+        document.getElementById('det-origin').innerText = data.origin;
+        document.getElementById('det-ok').innerText = data.qty_ok;
+        document.getElementById('det-ng').innerText = data.qty_ng;
+        document.getElementById('det-yield').innerText = yieldVal + "%";
+        document.getElementById('det-inspector').innerText = data.inspector;
+
+        const ngListDiv = document.getElementById('det-ng-list');
+        ngListDiv.innerHTML = ''; 
+
+        if (data.ng_reason && data.ng_reason !== 'OK GOODS') {
+            const defects = data.ng_reason.split(', ');
+            defects.forEach(defect => {
+                const match = defect.match(/(.+?)\s*\((\d+)\)/);
+                if (match) {
+                    ngListDiv.innerHTML += `
+                        <div class="d-flex justify-content-between align-items-center mb-2 bg-white p-3 rounded-xl shadow-sm border">
+                            <span class="font-weight-black text-danger uppercase" style="font-size:10px;">• ${match[1].trim()}</span>
+                            <span class="badge badge-danger rounded-pill px-3 font-weight-black">${match[2]} PCS</span>
+                        </div>`;
+                } else {
+                    ngListDiv.innerHTML += `
+                        <div class="d-flex justify-content-between align-items-center mb-2 bg-white p-3 rounded-xl shadow-sm border">
+                            <span class="font-weight-black text-danger uppercase" style="font-size:10px;">• ${defect}</span>
+                        </div>`;
+                }
+            });
+        } else {
+            ngListDiv.innerHTML = '<div class="text-center py-2 text-muted font-weight-bold italic">ZERO_DEFECTS</div>';
+        }
+        
+        $('#detailModal').modal('show');
+    }
+</script>
 @endsection
