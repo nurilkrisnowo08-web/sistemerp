@@ -14,7 +14,7 @@ class QualityGateController extends Controller {
                 'no_produksi', 'material_code', 'keterangan',
                 DB::raw('MIN(created_at) as created_at'),
                 DB::raw('SUM(qty_hasil_ok) as qty_hasil_ok'), 
-                DB::raw('SUM(total_checked) as total_checked_so_far'), // Ambil total yang sudah dicek sebelumnya
+                DB::raw('SUM(total_checked) as total_checked_so_far'), // Akumulasi pengecekan dari semua shift
                 DB::raw('MIN(id) as id') 
             )
             ->groupBy('no_produksi', 'material_code', 'keterangan')
@@ -37,7 +37,7 @@ class QualityGateController extends Controller {
             // Ambil Input dari UI
             $final_ok  = (int)$request->qty_ok_final;
             $final_ng  = (int)$request->qty_ng_final;
-            $final_ret = (int)($request->qty_return_final ?? 0); // Tambahan kolom return
+            $final_ret = (int)($request->qty_return_final ?? 0); 
             $checked_now = $final_ok + $final_ng + $final_ret;
 
             if ($type == 'stamping') {
@@ -48,21 +48,20 @@ class QualityGateController extends Controller {
                 $partNo  = $ref->material_code;
                 $origin  = 'STAMPING';
 
-                // Hitung total target dari semua line di batch ini
+                // Target tetap (jangan diubah)
                 $total_target = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('qty_hasil_ok');
                 $already_checked = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('total_checked');
                 
                 $total_after_this = $already_checked + $checked_now;
 
-                // Update Progress di Tabel Produksi (Rak QC Logic)
-                // Kita update di baris pertama batch ini sebagai penanda progress
+                // ✨ Update Progress: Tambahkan hasil cek ke total_checked yang sudah ada
                 DB::table('produksi_batches')->where('id', $id)->update([
                     'total_checked' => $ref->total_checked + $checked_now,
-                    'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng,
+                    'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng, // Akumulasi NG di batch
                     'updated_at'    => $now
                 ]);
 
-                // Kapan COMPLETED? Hanya jika sudah memenuhi target
+                // Hanya COMPLETED jika sisa sudah 0
                 if ($total_after_this >= $total_target) {
                     DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                         'status' => 'COMPLETED',
@@ -72,18 +71,19 @@ class QualityGateController extends Controller {
                 }
 
             } else {
-                // LOGIKA WELDING (PARTIAL)
+                // --- LOGIKA WELDING (PARTIAL) ---
                 $ref = DB::table('welding_batches')->where('id', $id)->first();
                 $batchNo = $ref->no_produksi_stamping;
                 $partNo  = $ref->part_no;
                 $origin  = 'WELDING';
 
-                $total_target = $ref->qty_masuk;
+                // qty_ok di welding_batches adalah Target rill dari line welding
+                $total_target = $ref->qty_ok; 
                 $already_checked = $ref->total_checked ?? 0;
                 $total_after_this = $already_checked + $checked_now;
 
+                // ✨ PERBAIKAN: Jangan nambah qty_ok, tapi nambah total_checked
                 DB::table('welding_batches')->where('id', $id)->update([
-                    'qty_ok'        => $ref->qty_ok + $final_ok, 
                     'qty_ng'        => $ref->qty_ng + $final_ng,
                     'total_checked' => $already_checked + $checked_now,
                     'updated_at'    => $now
@@ -98,7 +98,7 @@ class QualityGateController extends Controller {
                 }
             }
 
-            // 1. Sinkronisasi Dashboard Harian (Tetap cumulative)
+            // 1. Dashboard Harian (Menambah qty yang baru saja dicek)
             $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             // 2. Simpan Detail NG
@@ -119,17 +119,16 @@ class QualityGateController extends Controller {
             }
             $summary_reason = !empty($all_ng_names) ? implode(', ', $all_ng_names) : 'OK GOODS';
 
-            // 3. Simpan ke Riwayat Inspeksi (Archive)
-            // Di sini kita catat qty_ret dan total_checked rill
+            // 3. Simpan ke Riwayat Inspeksi (Log setiap sesi pengecekan)
             DB::table('quality_inspections')->insert([
                 'batch_no' => $batchNo, 
                 'origin' => $origin, 
                 'part_no' => $partNo,
-                'qty_from_prod' => $total_target, // Target awal
+                'qty_from_prod' => $total_target, 
                 'qty_ok' => $final_ok, 
                 'qty_ng' => $final_ng, 
-                'qty_ret' => $final_ret, // Kolom baru rill
-                'total_checked' => $checked_now, // Yang dicek di sesi ini
+                'qty_ret' => $final_ret,
+                'total_checked' => $checked_now,
                 'ng_reason' => $summary_reason, 
                 'inspector' => $inspector, 
                 'status' => ($total_after_this >= $total_target) ? 'COMPLETED' : 'PARTIAL',
@@ -137,7 +136,7 @@ class QualityGateController extends Controller {
                 'updated_at' => $now
             ]);
 
-            // 4. Update Stok FG (Barang OK langsung masuk gudang meskipun partial)
+            // 4. Update Stok FG (Langsung nambah stok sesuai jumlah OK saat ini)
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -167,7 +166,6 @@ class QualityGateController extends Controller {
         }
     }
 
-    // Fungsi updateDashboardActual, history, dan destroy TIDAK DIUBAH (Sesuai Permintaan)
     private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
         $today = date('Y-m-d');
