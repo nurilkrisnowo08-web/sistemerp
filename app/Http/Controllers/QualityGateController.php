@@ -54,10 +54,11 @@ class QualityGateController extends Controller {
                 $already_checked = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('total_checked');
                 $total_after_this = $already_checked + $checked_now;
 
-                // Update Progress (Hanya update total_checked, jangan qty_hasil_ok!)
+                // ✨ UPDATE STAMPING: Sync progress dan kirim balik Return ke produksi rill
                 DB::table('produksi_batches')->where('id', $id)->update([
                     'total_checked' => $ref->total_checked + $checked_now,
                     'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng,
+                    'qty_return'    => ($ref->qty_return ?? 0) + $final_ret, // Kirim ke IN (RETURN) Stamping
                     'updated_at'    => $now
                 ]);
 
@@ -76,15 +77,14 @@ class QualityGateController extends Controller {
                 $partNo  = $ref->part_no;
                 $origin  = 'WELDING';
 
-                // Target aslinya adalah qty_ok yang masuk dari terminal welding
                 $total_target = $ref->qty_ok; 
                 $already_checked = $ref->total_checked ?? 0;
                 $total_after_this = $already_checked + $checked_now;
 
-                // ✨ KUNCI PERBAIKAN: JANGAN TAMBAH $ref->qty_ok! 
-                // Cukup tambahkan akumulasi di total_checked saja.
+                // ✨ UPDATE WELDING: Sync progress dan kirim balik Return ke terminal welding rill
                 DB::table('welding_batches')->where('id', $id)->update([
                     'qty_ng'        => $ref->qty_ng + $final_ng,
+                    'qty_return'    => ($ref->qty_return ?? 0) + $final_ret, // Kirim ke IN (RETURN) Welding
                     'total_checked' => $already_checked + $checked_now,
                     'updated_at'    => $now
                 ]);
@@ -158,7 +158,7 @@ class QualityGateController extends Controller {
             }
 
             DB::commit();
-            return back()->with('success', ($total_after_this >= $total_target) ? "Batch Selesai Penuh!" : "Partial Sukses! Sisa " . ($total_target - $total_after_this) . " pcs.");
+            return back()->with('success', ($total_after_this >= $total_target) ? "Batch Selesai Penuh!" : "Partial Sukses! Return " . $final_ret . " pcs dikirim balik.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
@@ -166,7 +166,6 @@ class QualityGateController extends Controller {
         }
     }
 
-    // Fungsi lain (updateDashboardActual, history, destroy) tetap sama rill
     private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
         $today = date('Y-m-d');
