@@ -14,6 +14,45 @@ class WeldingMasterController extends Controller
         return view('welding.master_line', compact('lines'));
     }
 
+    /**
+     * ✨ TAMBAHAN RILL: Fungsi untuk menyimpan Station/Line baru
+     * Ini yang tadi bikin error 500 karena fungsinya belum ada.
+     */
+    public function lineStore(Request $request)
+    {
+        // 1. Validasi agar input tidak kosong
+        $request->validate([
+            'kode_line' => 'required|max:255',
+            'nama_line' => 'required|max:255',
+        ]);
+
+        try {
+            // 2. Simpan ke database (Tanpa timestamps karena database Bapak tidak pakai itu)
+            DB::table('line_welding')->insert([
+                'kode_line' => strtoupper(trim($request->kode_line)),
+                'nama_line' => strtoupper(trim($request->nama_line)),
+            ]);
+
+            return redirect()->back()->with('success', 'Welding Station Baru Berhasil Didaftarkan!');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal Simpan Station: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * ✨ TAMBAHAN RILL: Fungsi untuk hapus Line (Agar master data bisa dikelola)
+     */
+    public function lineDestroy($id)
+    {
+        try {
+            DB::table('line_welding')->where('id', $id)->delete();
+            return redirect()->back()->with('success', 'Station Berhasil Dihapus!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal Hapus Station: ' . $e->getMessage());
+        }
+    }
+
     public function ngIndex()
     {
         // ✨ PERBAIKAN: Ambil SEMUA kategori (Welding, Stamping, General) 
