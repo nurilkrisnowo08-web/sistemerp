@@ -1,183 +1,342 @@
 @extends('layout.admin')
 
 @section('content')
+<!-- Fonts & Animation -->
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
 <style>
     :root {
-        --ind-blue: #4361ee; --ind-navy: #0f172a; --ind-success: #10b981;
-        --ind-danger: #ef4444; --ind-warning: #f59e0b; --bg-soft: #f1f5f9;
+        --ind-navy: #0f172a;
+        --ind-blue: #3b82f6;
+        --ind-slate: #64748b;
+        --ind-success: #10b981;
+        --ind-danger: #f43f5e;
+        --ind-border: #e2e8f0;
+        --bg-glass: rgba(255, 255, 255, 0.9);
     }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-soft); color: #334155; }
-    
-    /* 🛰️ Header & Typography */
-    .heading-tech { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; color: var(--ind-navy); }
-    
-    /* 📊 Stat Card Style v5.0 */
-    .stat-card { 
-        background: #fff; border-radius: 25px; padding: 25px; border: none; transition: 0.3s; 
-        box-shadow: 0 10px 25px rgba(0,0,0,0.02); height: 100%; border-bottom: 5px solid transparent;
+
+    body { 
+        background-color: #f8fafc; 
+        font-family: 'Plus Jakarta Sans', sans-serif; 
+        color: var(--ind-navy);
     }
-    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.05); }
-    .stat-value { font-family: 'Orbitron'; font-weight: 900; line-height: 1; font-size: 2.2rem; }
-    .stat-label { font-weight: 800; color: #64748b; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
 
-    /* 📋 Main Table Styling */
-    .main-ledger-card { background: #fff; border-radius: 30px; border: none; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.03); }
-    .table-tech thead th { 
-        background: #f8fafc; color: #64748b; font-size: 10px; font-weight: 800; 
-        text-transform: uppercase; letter-spacing: 1.5px; border: none; padding: 20px;
+    /* 🛰️ Industrial Header */
+    .header-container {
+        background: linear-gradient(to right, #ffffff, #f1f5f9);
+        border-radius: 24px;
+        padding: 30px;
+        border: 1px solid var(--ind-border);
+        margin-bottom: 30px;
     }
-    .table-tech td { padding: 20px; vertical-align: middle; font-weight: 700; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
 
-    /* ⏱️ Time & Badges */
-    .time-badge { background: #fff3cd; color: #856404; padding: 5px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-weight: 800; font-size: 12px; border: 1px solid #ffeeba; }
-    .balance-warn { background: #fee2e2; color: var(--ind-danger); padding: 6px 12px; border-radius: 10px; border: 1px solid #fecaca; display: inline-flex; align-items: center; }
+    .heading-title {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        color: var(--ind-navy);
+        text-transform: uppercase;
+    }
 
-    /* 🤖 Modal & Inputs */
-    .modal-content { border-radius: 40px; border: none; }
-    .tech-input { border-radius: 15px; border: 2px solid #f1f5f9; font-weight: 700; background: #f8fafc; padding: 12px 20px; height: auto; }
-    .tech-input:focus { border-color: var(--ind-blue); background: #fff; box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.1); }
+    /* 📊 KPI Stat Cards */
+    .kpi-card {
+        background: white;
+        border-radius: 24px;
+        padding: 24px;
+        border: 1px solid var(--ind-border);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .kpi-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.05);
+    }
+
+    .kpi-card::after {
+        content: "";
+        position: absolute;
+        bottom: 0; left: 0; right: 0; height: 4px;
+        background: var(--accent-color, var(--ind-blue));
+    }
+
+    .kpi-label {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--ind-slate);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+
+    .kpi-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        font-size: 1.8rem;
+        color: var(--ind-navy);
+    }
+
+    /* 📋 Modern Table */
+    .table-container {
+        background: white;
+        border-radius: 28px;
+        border: 1px solid var(--ind-border);
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-mps thead th {
+        background: #f8fafc;
+        color: var(--ind-slate);
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        padding: 20px;
+        border: none;
+    }
+
+    .table-mps tbody td {
+        padding: 18px 20px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        font-size: 13.5px;
+    }
+
+    /* ⏱️ Badges & Indicators */
+    .shift-toggle {
+        background: #e2e8f0;
+        border-radius: 50px;
+        padding: 5px;
+    }
+
+    .shift-btn {
+        border-radius: 50px;
+        padding: 8px 24px;
+        font-weight: 800;
+        font-size: 12px;
+        transition: 0.3s;
+        border: none;
+    }
+
+    .shift-btn.active {
+        background: var(--ind-navy);
+        color: white;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    }
+
+    .progress-micro {
+        height: 6px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        margin-top: 8px;
+        width: 100px;
+    }
+
+    .time-chip {
+        font-family: 'JetBrains Mono';
+        background: #f1f5f9;
+        color: var(--ind-navy);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        border: 1px solid var(--ind-border);
+    }
+
+    /* 🤖 Modal Customization */
+    .modal-industrial {
+        border-radius: 32px;
+        border: none;
+    }
+
+    .tech-input-group {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid var(--ind-border);
+    }
 </style>
 
-<div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
+<div class="container-fluid py-4 px-lg-5 animate__animated animate__fadeIn">
     
-    {{-- 🛰️ HEADER SECTION --}}
-    <div class="d-flex justify-content-between align-items-center mb-5">
+    {{-- 🛰️ TOP NAVIGATION & HEADER --}}
+    <div class="header-container d-flex flex-column flex-md-row justify-content-between align-items-center">
         <div>
-            <h1 class="heading-tech mb-1">Welding_MPS <span class="text-primary">v5.0</span></h1>
-            <p class="text-muted small font-weight-bold uppercase mb-0">
-                <i class="fas fa-microchip text-primary mr-2"></i> Operational Date: {{ date('d F Y', strtotime($date)) }}
-            </p>
-        </div>
-        <div class="d-flex align-items-center">
-            <div class="btn-group bg-white rounded-pill p-1 shadow-sm mr-3 border">
-                <a href="?date={{$date}}&shift=S1" class="btn rounded-pill px-4 font-weight-bold {{ $shift == 'S1' ? 'btn-primary' : 'btn-light' }}">SHIFT_01</a>
-                <a href="?date={{$date}}&shift=S2" class="btn rounded-pill px-4 font-weight-bold {{ $shift == 'S2' ? 'btn-primary' : 'btn-light' }}">SHIFT_02</a>
+            <h2 class="heading-title mb-1">MPS_WELDING <span class="text-primary">ENGINE</span></h2>
+            <div class="d-flex align-items-center">
+                <span class="badge badge-dark px-3 py-2 rounded-pill mr-3">SYSTEM_ACTIVE</span>
+                <span class="text-muted font-weight-bold small"><i class="far fa-calendar-alt mr-1"></i> {{ date('D, d M Y', strtotime($date)) }}</span>
             </div>
-            <input type="date" class="form-control rounded-pill border-0 shadow-sm font-weight-bold px-4 mr-3" value="{{ $date }}" onchange="location.href='?date='+this.value+'&shift={{$shift}}'">
+        </div>
+
+        <div class="d-flex align-items-center mt-3 mt-md-0">
+            <!-- Shift Selector -->
+            <div class="shift-toggle d-flex mr-3">
+                <a href="?date={{$date}}&shift=S1" class="shift-btn {{ $shift == 'S1' ? 'active' : 'text-muted' }}">SHIFT_01</a>
+                <a href="?date={{$date}}&shift=S2" class="shift-btn {{ $shift == 'S2' ? 'active' : 'text-muted' }}">SHIFT_02</a>
+            </div>
+            
+            <input type="date" class="form-control border-0 shadow-sm rounded-pill font-weight-bold px-4 mr-3" 
+                   value="{{ $date }}" style="width: 180px;"
+                   onchange="location.href='?date='+this.value+'&shift={{$shift}}'">
+            
             <button class="btn btn-primary rounded-pill px-4 font-weight-black shadow-lg" data-toggle="modal" data-target="#modalRegisterPlan">
-                <i class="fas fa-plus-circle mr-2"></i> REGISTER PLAN
+                <i class="fas fa-plus mr-2"></i> NEW_PLAN
             </button>
         </div>
     </div>
 
-    {{-- 📊 HUD KPI CARDS --}}
-    <div class="row mb-5">
+    {{-- 📊 HUD KPI SECTION --}}
+    <div class="row mb-4">
         <div class="col-md-3">
-            <div class="stat-card border-primary">
-                <p class="stat-label">Total Target (Qty)</p>
-                <h2 class="stat-value text-primary">{{ number_format($totalPlanQty ?? 0) }}</h2>
+            <div class="kpi-card" style="--accent-color: var(--ind-blue)">
+                <div class="kpi-label">Volume Target</div>
+                <div class="kpi-value text-primary">{{ number_format($totalPlanQty) }}<small class="ml-1 text-muted" style="font-size: 12px">PCS</small></div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stat-card border-info">
-                <p class="stat-label">Workload (Hours)</p>
-                <h2 class="stat-value text-info">{{ number_format($totalWorkingHours ?? 0, 1) }}<small style="font-size: 14px;">H</small></h2>
+            <div class="kpi-card" style="--accent-color: #8b5cf6">
+                <div class="kpi-label">Load Capacity</div>
+                <div class="kpi-value" style="color: #8b5cf6">{{ number_format($totalWorkingHours, 1) }}<small class="ml-1 text-muted" style="font-size: 12px">HRS</small></div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stat-card border-warning">
-                <p class="stat-label">Switch Loss (Dandory)</p>
-                <h2 class="stat-value text-warning">{{ $totalDandory ?? 0 }}<small style="font-size: 14px;">M</small></h2>
+            <div class="kpi-card" style="--accent-color: var(--ind-warning)">
+                <div class="kpi-label">Switching Loss</div>
+                <div class="kpi-value text-warning">{{ $totalDandory }}<small class="ml-1 text-muted" style="font-size: 12px">MIN</small></div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="stat-card bg-dark text-white text-center border-0">
-                <p class="stat-label text-info">Current Shift</p>
-                <h2 class="stat-value text-warning uppercase" style="font-size: 1.8rem;">{{ $shift == 'S1' ? 'DAY_OPS' : 'NIGHT_OPS' }}</h2>
+            <div class="kpi-card bg-dark text-white border-0">
+                <div class="kpi-label text-info">Operational Shift</div>
+                <div class="kpi-value text-white">{{ $shift == 'S1' ? 'DAY_OPS' : 'NIGHT_OPS' }}</div>
             </div>
         </div>
     </div>
 
-    {{-- 📋 MAIN SCHEDULE TABLE --}}
-    <div class="main-ledger-card">
+    {{-- 📋 MAIN DATA TABLE --}}
+    <div class="table-container animate__animated animate__fadeInUp">
         <div class="table-responsive">
-            <table class="table table-hover mb-0 text-center table-tech">
+            <table class="table table-mps mb-0">
                 <thead>
                     <tr>
-                        <th style="width: 50px;">#</th>
-                        <th class="text-left">Identification</th>
-                        <th>MP</th>
-                        <th>Target</th>
-                        <th>Actual</th>
-                        <th>Balance</th>
-                        <th>Start</th>
-                        <th>Finish</th>
-                        <th>Dandory</th>
-                        <th>Remark</th>
+                        <th class="text-center">Pos</th>
+                        <th>Part Identification</th>
+                        <th class="text-center">M/P</th>
+                        <th class="text-center">Quota</th>
+                        <th class="text-center">Actual</th>
+                        <th class="text-center">Gap</th>
+                        <th class="text-center">T-Start</th>
+                        <th class="text-center">T-Finish</th>
+                        <th class="text-center">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($plans as $index => $plan)
+                    @php 
+                        $percent = ($plan->total_target > 0) ? ($plan->total_actual / $plan->total_target) * 100 : 0;
+                    @endphp
                     <tr>
-                        <td class="text-muted small">{{ $index + 1 }}</td>
-                        <td class="text-left">
-                            <div class="text-dark font-weight-black" style="font-size: 14px;">{{ $plan->part_no }}</div>
-                            <small class="text-muted font-weight-bold uppercase">{{ $plan->part_name }}</small>
-                        </td>
-                        <td><span class="badge badge-light border px-2 py-1">{{ $plan->manpower }}P</span></td>
-                        <td class="font-weight-black text-dark" style="font-size: 15px;">{{ number_format($plan->total_target) }}</td>
-                        <td class="text-success font-weight-black" style="font-size: 15px;">{{ number_format($plan->total_actual) }}</td>
+                        <td class="text-center text-muted font-mono">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</td>
                         <td>
-                            @if($plan->balance > 0)
-                                <div class="balance-warn">
-                                    <i class="fas fa-exclamation-triangle mr-2"></i> {{ number_format($plan->balance) }}
+                            <div class="font-weight-black text-dark">{{ $plan->part_no }}</div>
+                            <div class="text-muted small font-weight-bold" style="font-size: 10px">{{ $plan->part_name }}</div>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-light border px-2 py-1">{{ $plan->manpower }}P</span>
+                        </td>
+                        <td class="text-center font-mono font-weight-bold">{{ number_format($plan->total_target) }}</td>
+                        <td class="text-center">
+                            <div class="d-flex flex-column align-items-center">
+                                <span class="font-mono text-success font-weight-bold">{{ number_format($plan->total_actual) }}</span>
+                                <div class="progress-micro">
+                                    <div class="progress-bar bg-success" style="width: {{ min($percent, 100) }}%"></div>
                                 </div>
+                            </div>
+                        </td>
+                        <td class="text-center font-mono">
+                            @if($plan->balance > 0)
+                                <span class="text-danger">-{{ number_format($plan->balance) }}</span>
                             @else
-                                <span class="badge badge-success px-3 py-2 rounded-pill"><i class="fas fa-check-circle mr-1"></i> OK</span>
+                                <span class="text-success font-weight-bold">+{{ abs($plan->balance) }}</span>
                             @endif
                         </td>
-                        <td><span class="time-badge">{{ $plan->start_time ?? '--:--' }}</span></td>
-                        <td><span class="time-badge" style="background:#e0e7ff; color:#3730a3; border-color:#c7d2fe;">{{ $plan->ahir_time ?? '--:--' }}</span></td>
-                        <td class="text-muted font-weight-bold">{{ $plan->dandory_time }}m</td>
-                        <td class="text-muted small">-</td>
+                        <td class="text-center">
+                            <span class="time-chip">{{ $plan->start_time }}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="time-chip" style="background: #e0f2fe; color: #0369a1">{{ $plan->ahir_time }}</span>
+                        </td>
+                        <td class="text-center">
+                            @if($percent >= 100)
+                                <i class="fas fa-check-circle text-success" title="Completed"></i>
+                            @elseif($percent > 0)
+                                <div class="spinner-grow spinner-grow-sm text-primary" role="status"></div>
+                            @else
+                                <i class="far fa-clock text-muted"></i>
+                            @endif
+                        </td>
                     </tr>
                     @empty
-                    <tr><td colspan="10" class="py-5 text-muted font-weight-bold">-- NO PRODUCTION DATA FOR {{ $shift }} --</td></tr>
+                    <tr>
+                        <td colspan="9" class="py-5 text-center">
+                            <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="60" class="opacity-25 mb-3" style="filter: grayscale(1)">
+                            <p class="text-muted font-weight-bold">NO SCHEDULED DATA DETECTED FOR {{ $shift == 'S1' ? 'SHIFT 1' : 'SHIFT 2' }}</p>
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
         
-        {{-- GREEN FOOTER SUMMARY --}}
-        <div class="bg-success p-4 text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 font-weight-black uppercase" style="letter-spacing: 1px;">Daily Summary Total : {{ number_format($totalPlanQty ?? 0) }}</h5>
-            <h5 class="mb-0 font-weight-black uppercase text-light" style="letter-spacing: 1px;">Total Est. Work : {{ number_format($totalWorkingHours ?? 0, 1) }} HOURS</h5>
+        <!-- Summary Footer -->
+        <div class="bg-dark p-4 text-white d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <div class="mr-4">
+                    <span class="text-info small font-weight-black uppercase d-block">TOTAL_DAILY_TARGET</span>
+                    <span class="font-mono h4 mb-0">{{ number_format($totalPlanQty) }}</span>
+                </div>
+                <div>
+                    <span class="text-info small font-weight-black uppercase d-block">ESTIMATED_RUN_TIME</span>
+                    <span class="font-mono h4 mb-0">{{ number_format($totalWorkingHours, 1) }} HRS</span>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="badge badge-primary px-4 py-2">ENGINE_V5_STABLE</span>
+            </div>
         </div>
     </div>
 </div>
 
-{{-- 🛡️ MODAL: REGISTER PLAN (ELEGAN) --}}
-<div class="modal fade animate__animated animate__zoomIn" id="modalRegisterPlan" tabindex="-1">
+{{-- 🛡️ MODAL: REGISTER PLAN --}}
+<div class="modal fade animate__animated animate__fadeIn" id="modalRegisterPlan" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content shadow-2xl">
+        <div class="modal-content modal-industrial shadow-2xl">
             <div class="modal-header bg-dark text-white p-4 border-0">
-                <h5 class="modal-title heading-tech" style="color: white; font-size: 1.1rem;">
-                    <i class="fas fa-plus-circle mr-2 text-primary"></i> Register_Plan_System
-                </h5>
+                <h5 class="modal-title font-weight-black" style="font-family: 'Orbitron'">REGISTER_PRODUCTION_PLAN</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-5">
-                    <div class="row mb-4">
+                    <div class="row">
+                        <!-- Group 1: Part Info -->
                         <div class="col-md-4">
-                            <div class="p-4 rounded-3xl h-100" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                <label class="small font-weight-black text-muted uppercase mb-3 d-block">01. Product_Identity</label>
-                                <div class="form-group mb-3">
-                                    <label class="small font-weight-bold">Select Station</label>
-                                    <select name="line_code" class="form-control tech-input" required>
+                            <div class="tech-input-group h-100">
+                                <h6 class="font-weight-black mb-3"><i class="fas fa-tag mr-2 text-primary"></i> 01. PRODUCT_ID</h6>
+                                <div class="form-group">
+                                    <label class="small font-weight-bold">Station Code</label>
+                                    <select name="line_code" class="form-control rounded-pill border-0 shadow-sm" required>
                                         @foreach($availableLines as $line)
                                             <option value="{{ $line->kode_line }}">{{ $line->kode_line }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label class="small font-weight-bold">Part Identification</label>
-                                    <select name="part_no" class="form-control tech-input" required>
-                                        <option value="" disabled selected>-- SELECT PART --</option>
+                                    <label class="small font-weight-bold">Part No</label>
+                                    <select name="part_no" class="form-control rounded-pill border-0 shadow-sm" required>
                                         @foreach($availableParts as $p)
                                             <option value="{{ $p->part_no }}">[{{ $p->customer_code }}] {{ $p->part_no }}</option>
                                         @endforeach
@@ -185,42 +344,48 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Group 2: Performance -->
                         <div class="col-md-4">
-                            <div class="p-4 rounded-3xl h-100" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                <label class="small font-weight-black text-muted uppercase mb-3 d-block">02. Performance_Metrics</label>
+                            <div class="tech-input-group h-100">
+                                <h6 class="font-weight-black mb-3"><i class="fas fa-bolt mr-2 text-warning"></i> 02. CAP_METRICS</h6>
                                 <div class="row">
                                     <div class="col-6">
                                         <label class="small font-weight-bold">Manpower</label>
-                                        <input type="number" name="manpower" id="inp_mp" class="form-control tech-input" value="1" oninput="autoCalc()">
+                                        <input type="number" name="manpower" id="inp_mp" class="form-control rounded-pill border-0 shadow-sm" value="1" oninput="autoCalc()">
                                     </div>
                                     <div class="col-6">
-                                        <label class="small font-weight-bold">Cap/Hour</label>
-                                        <input type="number" name="cap_per_hour" id="inp_cap" class="form-control tech-input" value="100" oninput="autoCalc()">
+                                        <label class="small font-weight-bold">Cap/Hr</label>
+                                        <input type="number" name="cap_per_hour" id="inp_cap" class="form-control rounded-pill border-0 shadow-sm" value="100" oninput="autoCalc()">
                                     </div>
                                 </div>
-                                <div class="mt-4 p-3 bg-white rounded-xl border text-center">
-                                    <label class="small font-weight-black text-muted uppercase mb-1 d-block">Calculated M/C Load</label>
-                                    <h3 class="font-weight-black text-primary mb-0" id="display_hours" style="font-family: 'Orbitron';">0.0H</h3>
+                                <div class="mt-4 p-3 bg-white rounded-xl border text-center shadow-sm">
+                                    <label class="small font-weight-black text-muted uppercase d-block">Expected Machine Load</label>
+                                    <h3 class="font-weight-black text-primary mb-0" id="display_hours">0.0H</h3>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Group 3: Shift Target -->
                         <div class="col-md-4">
-                            <div class="p-4 rounded-3xl h-100" style="background: #f8fafc; border: 1px solid #e2e8f0;">
-                                <label class="small font-weight-black text-muted uppercase mb-3 d-block">03. Quantity_Planning</label>
+                            <div class="tech-input-group h-100">
+                                <h6 class="font-weight-black mb-3"><i class="fas fa-layer-group mr-2 text-info"></i> 03. QUANTITY_ALLOC</h6>
                                 <div class="form-group">
-                                    <label class="small font-weight-bold text-primary">Shift 1 Target</label>
-                                    <input type="number" name="s1_plan_reg" id="inp_s1" class="form-control tech-input border-primary" value="0" oninput="autoCalc()">
+                                    <label class="small font-weight-bold text-primary">Shift 1 (Day) Target</label>
+                                    <input type="number" name="s1_plan_reg" id="inp_s1" class="form-control rounded-pill border-0 shadow-sm" value="0" oninput="autoCalc()">
                                 </div>
                                 <div class="form-group">
-                                    <label class="small font-weight-bold text-danger">Shift 2 Target</label>
-                                    <input type="number" name="s2_plan_reg" id="inp_s2" class="form-control tech-input border-danger" value="0" oninput="autoCalc()">
+                                    <label class="small font-weight-bold text-danger">Shift 2 (Night) Target</label>
+                                    <input type="number" name="s2_plan_reg" id="inp_s2" class="form-control rounded-pill border-0 shadow-sm" value="0" oninput="autoCalc()">
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="modal-footer border-0 p-5 pt-0">
                     <input type="hidden" name="plan_date" value="{{ $date }}">
-                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-2xl shadow-xl" style="font-size: 1.2rem;">
-                        AUTHORIZE & DEPLOY PLAN
+                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-pill shadow-xl" style="font-size: 1.1rem; letter-spacing: 1px;">
+                        EXECUTE PRODUCTION PLAN
                     </button>
                 </div>
             </form>
