@@ -8,18 +8,20 @@ use Illuminate\Support\Facades\Auth;
 class QualityGateController extends Controller {
 
     public function index() {
+        // 🏗️ STAMPING QUEUE
         $produksiQueue = DB::table('produksi_batches')
             ->where('status', 'WAITING_QC')
             ->select(
                 'no_produksi', 'material_code', 'keterangan',
                 DB::raw('MIN(created_at) as created_at'),
                 DB::raw('SUM(qty_hasil_ok) as qty_hasil_ok'), 
-                DB::raw('SUM(total_checked) as total_checked_so_far'), // Akumulasi pengecekan dari semua shift
+                DB::raw('SUM(total_checked) as total_checked_so_far'), 
                 DB::raw('MIN(id) as id') 
             )
             ->groupBy('no_produksi', 'material_code', 'keterangan')
             ->get();
         
+        // 👨‍🏭 WELDING QUEUE
         $weldingQueue = DB::table('welding_batches')->where('status', 'COMPLETED')->whereNull('qc_at')->get();
         $ngStamping = DB::table('master_ngs')->whereIn('category', ['STAMPING', 'GENERAL'])->get();
         $ngWelding = DB::table('master_ngs')->whereIn('category', ['WELDING', 'GENERAL'])->get();
@@ -48,20 +50,17 @@ class QualityGateController extends Controller {
                 $partNo  = $ref->material_code;
                 $origin  = 'STAMPING';
 
-                // Target tetap (jangan diubah)
                 $total_target = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('qty_hasil_ok');
                 $already_checked = DB::table('produksi_batches')->where('no_produksi', $batchNo)->sum('total_checked');
-                
                 $total_after_this = $already_checked + $checked_now;
 
-                // ✨ Update Progress: Tambahkan hasil cek ke total_checked yang sudah ada
+                // Update Progress (Hanya update total_checked, jangan qty_hasil_ok!)
                 DB::table('produksi_batches')->where('id', $id)->update([
                     'total_checked' => $ref->total_checked + $checked_now,
-                    'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng, // Akumulasi NG di batch
+                    'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng,
                     'updated_at'    => $now
                 ]);
 
-                // Hanya COMPLETED jika sisa sudah 0
                 if ($total_after_this >= $total_target) {
                     DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                         'status' => 'COMPLETED',
@@ -71,18 +70,19 @@ class QualityGateController extends Controller {
                 }
 
             } else {
-                // --- LOGIKA WELDING (PARTIAL) ---
+                // 👨‍🏭 LOGIKA WELDING (PARTIAL FIX RILL)
                 $ref = DB::table('welding_batches')->where('id', $id)->first();
                 $batchNo = $ref->no_produksi_stamping;
                 $partNo  = $ref->part_no;
                 $origin  = 'WELDING';
 
-                // qty_ok di welding_batches adalah Target rill dari line welding
+                // Target aslinya adalah qty_ok yang masuk dari terminal welding
                 $total_target = $ref->qty_ok; 
                 $already_checked = $ref->total_checked ?? 0;
                 $total_after_this = $already_checked + $checked_now;
 
-                // ✨ PERBAIKAN: Jangan nambah qty_ok, tapi nambah total_checked
+                // ✨ KUNCI PERBAIKAN: JANGAN TAMBAH $ref->qty_ok! 
+                // Cukup tambahkan akumulasi di total_checked saja.
                 DB::table('welding_batches')->where('id', $id)->update([
                     'qty_ng'        => $ref->qty_ng + $final_ng,
                     'total_checked' => $already_checked + $checked_now,
@@ -98,7 +98,7 @@ class QualityGateController extends Controller {
                 }
             }
 
-            // 1. Dashboard Harian (Menambah qty yang baru saja dicek)
+            // 1. Dashboard Harian
             $actual_id = $this->updateDashboardActual($partNo, $final_ok, $final_ng, $origin);
 
             // 2. Simpan Detail NG
@@ -119,7 +119,7 @@ class QualityGateController extends Controller {
             }
             $summary_reason = !empty($all_ng_names) ? implode(', ', $all_ng_names) : 'OK GOODS';
 
-            // 3. Simpan ke Riwayat Inspeksi (Log setiap sesi pengecekan)
+            // 3. Simpan ke Riwayat Inspeksi (Archive)
             DB::table('quality_inspections')->insert([
                 'batch_no' => $batchNo, 
                 'origin' => $origin, 
@@ -136,7 +136,7 @@ class QualityGateController extends Controller {
                 'updated_at' => $now
             ]);
 
-            // 4. Update Stok FG (Langsung nambah stok sesuai jumlah OK saat ini)
+            // 4. Update Stok FG
             $cleanPart = str_replace([' ', '-'], '', trim($partNo));
             $fg = DB::table('finished_goods')
                 ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
@@ -166,6 +166,7 @@ class QualityGateController extends Controller {
         }
     }
 
+    // Fungsi lain (updateDashboardActual, history, destroy) tetap sama rill
     private function updateDashboardActual($partNo, $qtyOk, $qtyNg, $origin) {
         $lineCode = ($origin == 'STAMPING') ? 'LINE A' : 'WELDING AREA';
         $today = date('Y-m-d');
