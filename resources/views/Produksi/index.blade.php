@@ -1,8 +1,9 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Core Assets -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
 <style>
     :root {
@@ -93,7 +94,6 @@
                         @endif
                     </td>
                     <td class="text-right d-flex justify-content-end align-items-center">
-                        {{-- ✨ TOMBOL LAPOR KENDALA (DIES RUSAK) --}}
                         <button class="btn btn-danger btn-sm px-3 mr-2" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" style="border-radius: 10px;" title="REPORT PROBLEM">
                             <i class="fas fa-radiation-alt"></i>
                         </button>
@@ -109,7 +109,7 @@
 </div>
 
 @foreach($activeProductions as $p)
-{{-- 🛡️ MODAL INPUT HASIL --}}
+{{-- 🛡️ MODAL INPUT HASIL (Sinkron dengan updateResult) --}}
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
@@ -123,6 +123,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
+                            <!-- Nama input harus qty_hasil_ok sesuai Controller -->
                             <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
                         </div>
                         <div class="col-md-6">
@@ -131,11 +132,9 @@
                         </div>
                     </div>
 
-                    {{-- 🛠️ RINCIAN NG SPESIFIK --}}
                     <div class="mt-2 border-top pt-3">
                         <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
-                        <div id="ng_container_{{ $p->batch_id }}">
-                            </div>
+                        <div id="ng_container_{{ $p->batch_id }}"></div>
                         <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" onclick="addNgRow({{ $p->batch_id }})">
                             <i class="fas fa-plus mr-1"></i> TAMBAH JENIS NG
                         </button>
@@ -161,7 +160,7 @@
     </div>
 </div>
 
-{{-- 🚨 MODAL LAPOR MASALAH (DIES RUSAK / KENDALA) --}}
+{{-- 🚨 MODAL LAPOR MASALAH --}}
 <div class="modal fade" id="modalProblem{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
@@ -171,11 +170,8 @@
             <form action="{{ route('produksi.report_problem', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-4">
-                    <div class="alert alert-warning border-0 small font-weight-bold mb-3">
-                        <i class="fas fa-info-circle mr-1"></i> Laporan ini akan langsung memicu notifikasi di Dashboard PPIC.
-                    </div>
                     <label class="small font-weight-bold uppercase">Detail Kendala (Dies Rusak, Pin Patah, dll)</label>
-                    <textarea name="problem_note" class="form-control" rows="4" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" required placeholder="Jelaskan kondisi dies/kendala saat ini secara detail..."></textarea>
+                    <textarea name="problem_note" class="form-control" rows="4" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" required placeholder="Jelaskan kondisi dies/kendala saat ini..."></textarea>
                 </div>
                 <div class="modal-footer border-0 p-4 bg-light text-right">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-dismiss="modal">CANCEL</button>
@@ -187,7 +183,7 @@
 </div>
 @endforeach
 
-{{-- MODAL INITIALIZE BATCH --}}
+{{-- MODAL INITIALIZE BATCH (Sinkron dengan store) --}}
 <div class="modal fade" id="modalAmbilMaterial" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius:24px;">
@@ -198,13 +194,34 @@
                     <label class="small font-weight-bold">01. BATCH ID</label>
                     <input type="text" name="no_produksi" class="input-tactical bg-light mb-3" value="PROD-{{ date('Ymd-His') }}" readonly>
                     <div class="row">
-                        <div class="col-6"><label class="small font-weight-bold">02. SHIFT</label><select name="shift" class="input-tactical mb-3" required><option value="" disabled selected>-- SELECT --</option><option value="Pagi">PAGI (S1)</option><option value="Malam">MALAM (S2)</option></select></div>
-                        <div class="col-6"><label class="small font-weight-bold text-primary">03. LINES</label><select name="line_ids[]" class="input-tactical mb-3 border-primary" style="height: 100px;" multiple required>@foreach($lines as $l) <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> @endforeach</select></div>
+                        <div class="col-6">
+                            <label class="small font-weight-bold">02. SHIFT</label>
+                            <select name="shift" class="input-tactical mb-3" required>
+                                <option value="" disabled selected>-- SELECT --</option>
+                                <option value="Pagi">PAGI (S1)</option>
+                                <option value="Malam">MALAM (S2)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="small font-weight-bold text-primary">03. LINE</label>
+                            <!-- Sinkron dengan Controller: mesin_id (bukan line_ids[]) -->
+                            <select name="mesin_id" class="input-tactical mb-3 border-primary" required>
+                                <option value="" disabled selected>-- SELECT --</option>
+                                @foreach($lines as $l) 
+                                    <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> 
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
                     <label class="small font-weight-bold">04. CUSTOMER</label>
-                    <select id="sel_customer" name="customer_code" class="input-tactical mb-3" required><option value="" disabled selected>-- SELECT --</option>@foreach($customers as $c) <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> @endforeach</select>
+                    <select id="sel_customer" class="input-tactical mb-3" required>
+                        <option value="" disabled selected>-- SELECT --</option>
+                        @foreach($customers as $c) 
+                            <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> 
+                        @endforeach
+                    </select>
                     <div class="row">
-                        <div class="col-6"><label class="small font-weight-bold">05. SPEC</label><select id="sel_spec" name="spec" class="input-tactical mb-3" disabled required></select></div>
+                        <div class="col-6"><label class="small font-weight-bold">05. SPEC</label><select id="sel_spec" class="input-tactical mb-3" disabled required></select></div>
                         <div class="col-6"><label class="small font-weight-bold">06. PART NO</label><select id="sel_part" name="material_code" class="input-tactical mb-3" disabled required></select></div>
                     </div>
                     <label class="small font-weight-bold text-primary">07. PHYSICAL COIL</label>
@@ -230,21 +247,15 @@
         const html = `
             <div class="row no-gutters mb-2 animate__animated animate__fadeInDown" id="row-${id}">
                 <div class="col-7 pr-1">
-                    <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold">
-                        ${options}
-                    </select>
+                    <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold">${options}</select>
                 </div>
                 <div class="col-3 pr-1">
-                    <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" 
-                    placeholder="Qty" min="1" required data-id="${batchId}">
+                    <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" placeholder="Qty" min="1" required data-id="${batchId}">
                 </div>
                 <div class="col-2">
-                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})"><i class="fas fa-times"></i></button>
                 </div>
-            </div>
-        `;
+            </div>`;
         $(`#ng_container_${batchId}`).append(html);
         triggerCalc(batchId);
     }
@@ -262,7 +273,6 @@
         $(document).on('input', '.calc-input, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
-            
             let dynamicNgSum = 0;
             $(`#ng_container_${id} .ng-qty-input`).each(function() {
                 dynamicNgSum += parseInt($(this).val()) || 0;
@@ -271,15 +281,12 @@
             let okVal = parseInt($(`#ok_${id}`).val()) || 0;
             let retVal = parseInt($(`#return_${id}`).val()) || 0;
             let accounted = okVal + retVal + dynamicNgSum;
-
             let gap = target - accounted;
+
             $(`#gap_${id}`).text(gap.toLocaleString());
-            
-            let progress = (accounted / target) * 100;
-            $(`#bar_${id}`).css('width', progress + '%');
+            $(`#bar_${id}`).css('width', ((accounted / target) * 100) + '%');
             
             let btn = $(`#btn_${id}`), msg = $(`#police_msg_${id}`);
-            
             if (gap === 0) { 
                 msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC! Ready to commit.'); 
                 btn.prop('disabled', false); 
@@ -317,11 +324,11 @@
             });
         });
 
-        $('#sel_bandel, #qty_ambil_pcs, select[name="line_ids[]"]').on('change input', function() {
+        $('#sel_bandel, #qty_ambil_pcs, select[name="mesin_id"]').on('change input', function() {
             let maxStok = parseInt($('#sel_bandel option:selected').data('qty')) || 0;
             let inputQty = parseInt($('#qty_ambil_pcs').val()) || 0;
-            let lines = $('select[name="line_ids[]"] :selected').length;
-            $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && inputQty <= maxStok && lines > 0));
+            let mesinSelected = $('select[name="mesin_id"]').val();
+            $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && inputQty <= maxStok && mesinSelected));
         });
     });
 </script>
