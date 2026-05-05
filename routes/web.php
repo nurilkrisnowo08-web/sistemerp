@@ -146,7 +146,7 @@ Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
     Route::get('/rm-log-print', [RmController::class, 'recapLogPrint'])->name('rm.log_print');
     Route::get('/rm-recap-print', [RmController::class, 'recapPrint'])->name('rm.recap_print');
     Route::get('/ppic-planning', [PPICController::class, 'index'])->name('ppic.index');
-    Route::get('/production/get-parts/{customer}', [RmController::class, 'getPartsAndSpecs'])->name('production.get_parts');
+    Route::get('/production/get-parts/{customer}', [App\Http\Controllers\RmController::class, 'getPartsAndSpecs']);
     });
 
 /*
