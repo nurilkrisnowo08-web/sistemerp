@@ -26,7 +26,6 @@
                         <select name="customer" id="customer_select_fg" class="form-control border-primary shadow-sm font-weight-bold" required>
                             <option value="">-- PILIH CUSTOMER --</option>
                             @foreach($customers as $c)
-                                {{-- SAKTI: Gunakan Code untuk filter AJAX agar sinkron --}}
                                 <option value="{{ $c->code }}">{{ $c->code }} - {{ $c->name }}</option>
                             @endforeach
                         </select>
@@ -52,7 +51,6 @@
 
                 <hr class="my-4">
 
-                {{-- BARIS BARU: STOK, TARGET, & LIMIT --}}
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="small font-weight-bold text-primary text-uppercase">Actual Stock Awal</label>
@@ -64,7 +62,6 @@
                         <input type="number" name="needs_per_day" class="form-control border-primary text-center font-weight-bold shadow-sm" placeholder="Target per Hari" min="1" required>
                     </div>
 
-                    {{-- FIX SQL ERROR: Tambahkan Qty / Pallet agar tidak Error 1364 lagi! --}}
                     <div class="col-md-4 form-group">
                         <label class="small font-weight-bold text-dark text-uppercase">Qty / Pallet</label>
                         <input type="number" name="qty_per_pallet" class="form-control border-dark text-center font-weight-bold shadow-sm" value="50" required>
@@ -96,7 +93,6 @@
 @section('scripts')
 <script>
 $(document).ready(function() {
-    // 1. AJAX: Munculkan List Part saat Customer dipilih
     $('#customer_select_fg').on('change', function() {
         var customer = $(this).val();
         var partSelect = $('#part_no_select_fg');
@@ -112,8 +108,12 @@ $(document).ready(function() {
                 dataType: 'json',
                 success: function(data) {
                     partSelect.html('<option value="">-- PILIH PART NUMBER --</option>');
-                    if(data.length > 0) {
-                        $.each(data, function(key, value) {
+                    
+                    // ✨ PENYESUAIAN RILL: Cek apakah data langsung array atau dibungkus objek 'parts'
+                    var parts = (data.parts) ? data.parts : data;
+
+                    if(parts && parts.length > 0) {
+                        $.each(parts, function(key, value) {
                             partSelect.append('<option value="'+ value.part_no +'" data-name="'+ value.part_name +'">'+ value.part_no + ' - ' + value.part_name +'</option>');
                         });
                     } else {
@@ -121,9 +121,8 @@ $(document).ready(function() {
                     }
                 },
                 error: function() {
-                    // SAKTI: Jika masih "Memuat", biasanya Route atau Fungsi di Controller Belum Dibuat!
                     partSelect.html('<option value="">-- EROR: ROUTE TIDAK DITEMUKAN --</option>');
-                    alert('Guru, pastikan Route /production/get-parts sudah ada di web.php!');
+                    alert('Gagal memuat data. Pastikan Route /production/get-parts/' + customer + ' sudah benar di web.php rill!');
                 }
             });
         } else {
@@ -132,7 +131,6 @@ $(document).ready(function() {
         }
     });
 
-    // 2. Pas Part No dipilih, otomatis isi Nama Part-nya
     $('#part_no_select_fg').on('change', function() {
         var selectedName = $(this).find(':selected').data('name');
         $('#part_name_fg').val(selectedName || '');

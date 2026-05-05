@@ -20,7 +20,7 @@ class FgController extends Controller
             $allFG = DB::table('finished_goods')->where('customer', $customer)->get();
             
             foreach ($allFG as $fg) {
-                // ✨ IN: Filter murni barang masuk gudang FG
+                // ✨ IN: Filter murni barang masuk gudang FG pada tanggal tersebut
                 $fg->in_stp = DB::table('production_logs')
                     ->where('part_no', $fg->part_no)
                     ->where('process_type', 'FG') 
@@ -28,13 +28,13 @@ class FgController extends Controller
                     ->where('qty', '>', 0) 
                     ->sum('qty');
 
-                // ✨ OUT: Pengiriman ke customer
+                // ✨ OUT: Pengiriman ke customer pada tanggal tersebut
                 $fg->out_delv = DB::table('deliveries')
                     ->where('part_no', $fg->part_no)
                     ->whereDate('created_at', $date)
                     ->sum('qty_delivery');
 
-                // ✨ Backtracking Logic: Menghitung stok pada tanggal terpilih
+                // ✨ Backtracking Logic: Hitung mundur dari stok aktual sekarang
                 $total_in_setelah = DB::table('production_logs')
                     ->where('part_no', $fg->part_no)
                     ->where('process_type', 'FG')
@@ -47,7 +47,7 @@ class FgController extends Controller
                     ->whereDate('created_at', '>', $date)
                     ->sum('qty_delivery');
 
-                // Rumus: Stok Sekarang - (Total Masuk ke Depan) + (Total Keluar ke Depan)
+                // Rumus Rill: Stok Sekarang - (Total Masuk Besok-besok) + (Total Keluar Besok-besok)
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $total_in_setelah + $total_out_setelah;
                 $fg->stock_awal = $fg->stock_akhir - $fg->in_stp + $fg->out_delv;
                 
@@ -163,27 +163,19 @@ class FgController extends Controller
         return redirect()->route('fg.index', ['customer' => $request->customer])->with('success', 'Data Berhasil Diupdate!');
     }
 
-    /**
-     * ✨ PERBAIKAN: Fungsi hapus log yang lebih aman rill!
-     */
     public function destroyLog($id)
     {
         DB::beginTransaction();
         try {
             $log = DB::table('production_logs')->where('id', $id)->first();
             if ($log) {
-                // Hanya kurangi stok gudang FG jika log yang dihapus memang bertipe 'FG'
                 if ($log->process_type == 'FG') {
                     DB::table('finished_goods')->where('part_no', $log->part_no)->decrement('actual_stock', $log->qty);
                 }
                 DB::table('production_logs')->where('id', $id)->delete();
             }
-            DB::commit(); 
-            return redirect()->back()->with('success', 'Log berhasil dihapus!');
-        } catch (\Exception $e) { 
-            DB::rollBack(); 
-            return redirect()->back()->with('error', 'Gagal hapus log rill!'); 
-        }
+            DB::commit(); return redirect()->back()->with('success', 'Log berhasil dihapus!');
+        } catch (\Exception $e) { DB::rollBack(); return redirect()->back()->with('error', 'Gagal!'); }
     }
 
     public function printRecap(Request $request)
@@ -242,9 +234,16 @@ class FgController extends Controller
     {
         $customers = DB::table('customers')->get();
         $customer = $request->customer;
-        $query = DB::table('purchase_orders')->where('status', 'closed'); // Pakai DB agar konsisten rill!
-        if ($customer) { $query->where('customer_code', $customer); }
+        
+        // ✨ FIX: Konsisten menggunakan DB::table rill!
+        $query = DB::table('purchase_orders')->where('status', 'closed');
+        
+        if ($customer) { 
+            $query->where('customer_code', $customer); 
+        }
+        
         $purchaseOrders = $query->orderBy('updated_at', 'desc')->get();
+        
         return view('finished_goods.history', compact('purchaseOrders', 'customers'));
     }
 }
