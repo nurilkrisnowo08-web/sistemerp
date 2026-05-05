@@ -20,23 +20,24 @@ class FgController extends Controller
             $allFG = DB::table('finished_goods')->where('customer', $customer)->get();
             
             foreach ($allFG as $fg) {
-                // ✨ FIX IN: Cuma ambil log yang tujuannya 'FG' rill!
+                // ✨ IN: Filter murni barang masuk gudang FG
                 $fg->in_stp = DB::table('production_logs')
                     ->where('part_no', $fg->part_no)
-                    ->where('process_type', 'FG') // <-- Filter Anti-Bocor
+                    ->where('process_type', 'FG') 
                     ->whereDate('created_at', $date)
                     ->where('qty', '>', 0) 
                     ->sum('qty');
 
+                // ✨ OUT: Pengiriman ke customer
                 $fg->out_delv = DB::table('deliveries')
                     ->where('part_no', $fg->part_no)
                     ->whereDate('created_at', $date)
                     ->sum('qty_delivery');
 
-                // ✨ Backtracking Logic (Filter FG juga rill!)
+                // ✨ Backtracking Logic: Menghitung stok pada tanggal terpilih
                 $total_in_setelah = DB::table('production_logs')
                     ->where('part_no', $fg->part_no)
-                    ->where('process_type', 'FG') // <-- Filter Anti-Bocor
+                    ->where('process_type', 'FG')
                     ->whereDate('created_at', '>', $date)
                     ->where('qty', '>', 0)
                     ->sum('qty');
@@ -46,18 +47,20 @@ class FgController extends Controller
                     ->whereDate('created_at', '>', $date)
                     ->sum('qty_delivery');
 
+                // Rumus: Stok Sekarang - (Total Masuk ke Depan) + (Total Keluar ke Depan)
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $total_in_setelah + $total_out_setelah;
                 $fg->stock_awal = $fg->stock_akhir - $fg->in_stp + $fg->out_delv;
+                
+                // Days of Inventory
                 $fg->stock_day = ($fg->needs_per_day > 0) ? round($fg->stock_akhir / $fg->needs_per_day, 1) : 0;
             }
 
             $stockOut = DB::table('deliveries')->where('customer_code', $customer)->whereDate('created_at', $date)->orderBy('created_at', 'desc')->get();
             
-            // ✨ LOG MASUK: Filter murni tujuannya 'FG' rill!
             $stockIn = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                 ->where('finished_goods.customer', $customer)
-                ->where('production_logs.process_type', 'FG') // <-- Filter Anti-Bocor
+                ->where('production_logs.process_type', 'FG')
                 ->where('production_logs.qty', '>', 0)
                 ->whereDate('production_logs.created_at', $date)
                 ->select('production_logs.*')
@@ -111,7 +114,6 @@ class FgController extends Controller
             $endOfMonth = date('Y-m-t', strtotime("$year-$month-01"));
 
             foreach ($recap as $fg) {
-                // ✨ Filter FG rill!
                 $fg->total_in = DB::table('production_logs')->where('part_no', $fg->part_no)
                     ->where('process_type', 'FG') 
                     ->where('qty', '>', 0)
@@ -136,7 +138,7 @@ class FgController extends Controller
 
             $in_logs = DB::table('production_logs')->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                 ->where('finished_goods.customer', $customer)
-                ->where('production_logs.process_type', 'FG') // filter rill!
+                ->where('production_logs.process_type', 'FG')
                 ->where('production_logs.qty', '>', 0)
                 ->whereDate('production_logs.created_at', $daily_date)
                 ->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
@@ -161,17 +163,27 @@ class FgController extends Controller
         return redirect()->route('fg.index', ['customer' => $request->customer])->with('success', 'Data Berhasil Diupdate!');
     }
 
+    /**
+     * ✨ PERBAIKAN: Fungsi hapus log yang lebih aman rill!
+     */
     public function destroyLog($id)
     {
         DB::beginTransaction();
         try {
             $log = DB::table('production_logs')->where('id', $id)->first();
             if ($log) {
-                DB::table('finished_goods')->where('part_no', $log->part_no)->decrement('actual_stock', $log->qty);
+                // Hanya kurangi stok gudang FG jika log yang dihapus memang bertipe 'FG'
+                if ($log->process_type == 'FG') {
+                    DB::table('finished_goods')->where('part_no', $log->part_no)->decrement('actual_stock', $log->qty);
+                }
                 DB::table('production_logs')->where('id', $id)->delete();
             }
-            DB::commit(); return redirect()->back()->with('success', 'Log berhasil dihapus!');
-        } catch (\Exception $e) { DB::rollBack(); return redirect()->back()->with('error', 'Gagal!'); }
+            DB::commit(); 
+            return redirect()->back()->with('success', 'Log berhasil dihapus!');
+        } catch (\Exception $e) { 
+            DB::rollBack(); 
+            return redirect()->back()->with('error', 'Gagal hapus log rill!'); 
+        }
     }
 
     public function printRecap(Request $request)
@@ -188,7 +200,7 @@ class FgController extends Controller
 
             foreach ($recap as $fg) {
                 $fg->total_in = DB::table('production_logs')->where('part_no', $fg->part_no)
-                    ->where('process_type', 'FG') // filter rill!
+                    ->where('process_type', 'FG') 
                     ->where('qty', '>', 0)
                     ->whereMonth('created_at', $month)->whereYear('created_at', $year)
                     ->sum('qty');
@@ -211,7 +223,7 @@ class FgController extends Controller
             if ($daily_date) {
                 $in_logs = DB::table('production_logs')->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                     ->where('finished_goods.customer', $customer)
-                    ->where('production_logs.process_type', 'FG') // filter rill!
+                    ->where('production_logs.process_type', 'FG') 
                     ->where('production_logs.qty', '>', 0)
                     ->whereDate('production_logs.created_at', $daily_date)
                     ->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
@@ -230,7 +242,7 @@ class FgController extends Controller
     {
         $customers = DB::table('customers')->get();
         $customer = $request->customer;
-        $query = \App\Models\PurchaseOrder::with('deliveries')->where('status', 'closed');
+        $query = DB::table('purchase_orders')->where('status', 'closed'); // Pakai DB agar konsisten rill!
         if ($customer) { $query->where('customer_code', $customer); }
         $purchaseOrders = $query->orderBy('updated_at', 'desc')->get();
         return view('finished_goods.history', compact('purchaseOrders', 'customers'));
