@@ -5,8 +5,7 @@
     <title>Cetak SJ - {{ $no_sj }}</title> 
     <style>
         @page { 
-            /* ✨ GANTI KE PORTRAIT rill */
-            size: 16.5cm 21.5cm; 
+            size: 16.5cm 21.5cm; /* Portrait rill */
             margin: 0; 
         }
 
@@ -17,12 +16,12 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ TANGGAL: DI ATAS PT ICHII (KANAN) rill */
+        /* TANGGAL: TETAP DI ATAS PT ICHII (KANAN) */
         .date-area { 
             position: absolute; 
-            top: 2.0cm;      /* Posisi atas */
-            right: 0.8cm;    /* Sisi kanan kertas portrait */
-            width: 7.5cm;    /* Lebar kotak teks dipersempit rill */
+            top: 2.0cm;      
+            right: 0.8cm;    
+            width: 7.5cm;    
             text-align: left; 
             font-weight: bold; 
         }
@@ -37,17 +36,17 @@
         }
         .customer-name { font-size: 11pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* ✨ BAGIAN 2 (PO & SJ): TETAP RATA KIRI SEJAJAR ANGKA 50 rill */
+        /* ✨ PERBAIKAN: KEKIRIIN & KEBAWAHAN rill */
         .header-info { 
             position: absolute; 
-            top: 4.5cm; 
-            left: 1.0cm;    /* Menyesuaikan lebar portrait rill */
+            top: 4.8cm;     /* Diturunkan dari 4.5cm ke 4.8cm */
+            left: 0.5cm;    /* Digeser ke kiri dari 1.0cm ke 0.5cm */
             font-weight: bold; 
         }
         .header-row { height: 0.6cm; }
 
-        /* POSISI DAFTAR BARANG (DITURUNKAN SEDIKIT) rill */
-        .content-area { position: absolute; top: 8.5cm; width: 100%; }
+        /* DAFTAR BARANG: IKUT TURUN SEDIKIT rill */
+        .content-area { position: absolute; top: 8.8cm; width: 100%; }
         .item-table { width: 100%; border-collapse: collapse; }
         .item-table td { height: 0.8cm; vertical-align: middle; font-weight: bold; }
     </style>
@@ -78,9 +77,9 @@
             <tbody>
                 @foreach($items as $item)
                 <tr>
-                    <td style="width: 15%; text-align: center; font-size: 12pt;">{{ number_format($item->qty_delivery) }}</td>
+                    <td style="width: 12%; text-align: center; font-size: 12pt;">{{ number_format($item->qty_delivery) }}</td>
                     <td style="width: 10%; text-align: center;">PCS</td>
-                    <td style="width: 45%; text-align: left; padding-left: 0.5cm;">{{ $item->part_no }}</td>
+                    <td style="width: 48%; text-align: left; padding-left: 0.3cm;">{{ $item->part_no }}</td>
                     <td style="width: 10%;"></td>
                     <td style="width: 20%;"></td>
                 </tr>
