@@ -17,23 +17,23 @@
         /* Navigasi layar biar gak ikut ke-print rill */
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ PERBAIKAN POSISI TANGGAL rill */
+        /* ✨ TANGGAL: DI ATAS PT ICHII & SEJAJAR DENGAN ANGKA 50 rill */
         .date-area { 
             position: absolute; 
-            top: 3.2cm;  /* Disamakan dengan top customer-area biar sejajar PT ICHII */
-            left: 1.3cm; /* Digeser ke kiri supaya sejajar dengan kolom Qty (50 PCS) */
+            top: 2.4cm;  /* Di atas area customer (3.2cm) */
+            left: 1.3cm; /* Sejajar dengan kolom Qty (50) */
             font-weight: bold; 
         }
 
-        /* POSISI CUSTOMER */
+        /* POSISI CUSTOMER (PT ICHII) */
         .customer-area { position: absolute; top: 3.2cm; right: 1.2cm; width: 9.5cm; line-height: 1.2; }
         .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* POSISI NOMOR PO & SJ */
+        /* ✨ BAGIAN 2 (PO & SJ): DIGESER KE KIRI SEJAJAR DENGAN ANGKA 50 rill */
         .header-info { 
             position: absolute; 
             top: 4.1cm; 
-            left: 4.5cm; 
+            left: 1.3cm; /* DISAMAKAN dengan date-area agar lurus ke angka 50 */
             font-weight: bold; 
         }
         .header-row { height: 0.7cm; }
@@ -52,7 +52,7 @@
     </div>
 
     <div class="date-area">
-        Bogor, {{ date('d F Y', strtotime($sj->created_at)) }}
+        {{ date('d F Y', strtotime($sj->created_at)) }}
     </div>
 
     <div class="customer-area">
