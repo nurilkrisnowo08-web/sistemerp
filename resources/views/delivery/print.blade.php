@@ -17,24 +17,28 @@
         /* Navigasi layar biar gak ikut ke-print rill */
         @media print { .no-print { display: none !important; } }
 
-        /* POSISI TANGGAL */
-        .date-area { position: absolute; top: 0.8cm; right: 1.5cm; font-weight: bold; }
+        /* ✨ PERBAIKAN POSISI TANGGAL rill */
+        .date-area { 
+            position: absolute; 
+            top: 3.2cm;  /* Disamakan dengan top customer-area biar sejajar PT ICHII */
+            left: 1.3cm; /* Digeser ke kiri supaya sejajar dengan kolom Qty (50 PCS) */
+            font-weight: bold; 
+        }
 
         /* POSISI CUSTOMER */
         .customer-area { position: absolute; top: 3.2cm; right: 1.2cm; width: 9.5cm; line-height: 1.2; }
         .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* ✨ PERBAIKAN BAGIAN 2 (NOMOR PO & SJ) rill */
-        /* top ditambah (turun) | left dikurangi (geser kiri) */
+        /* POSISI NOMOR PO & SJ */
         .header-info { 
             position: absolute; 
-            top: 4.1cm; /* Diturunkan dari 3.2cm ke 4.1cm biar sejajar tulisan Karawang */
-            left: 4.5cm; /* Digeser ke kiri dari 5.2cm ke 4.5cm */
+            top: 4.1cm; 
+            left: 4.5cm; 
             font-weight: bold; 
         }
-        .header-row { height: 0.7cm; } /* Jarak baris sedikit dirapatkan rill */
+        .header-row { height: 0.7cm; }
 
-        /* POSISI DAFTAR BARANG (PAS DI GARIS) rill */
+        /* POSISI DAFTAR BARANG rill */
         .content-area { position: absolute; top: 7.7cm; width: 100%; }
         .item-table { width: 100%; border-collapse: collapse; }
         .item-table td { height: 0.94cm; vertical-align: middle; font-weight: bold; }
@@ -48,7 +52,7 @@
     </div>
 
     <div class="date-area">
-         {{ date('d F Y', strtotime($sj->created_at)) }}
+        Bogor, {{ date('d F Y', strtotime($sj->created_at)) }}
     </div>
 
     <div class="customer-area">
@@ -56,7 +60,6 @@
         <div class="customer-address">{{ $customer->address ?? '-' }}</div>
     </div>
 
-    {{-- ✨ POSISI BARU: Sejajar dengan baris kedua alamat --}}
     <div class="header-info">
         <div class="header-row">: {{ $po->po_number ?? '-' }}</div>
         <div class="header-row" style="margin-top: 1px;">: {{ $no_sj }}</div>
