@@ -17,11 +17,13 @@
         /* Navigasi layar biar gak ikut ke-print rill */
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ TANGGAL SEJAJAR DENGAN NAMA PT (Sama-sama top 3.2cm) rill */
+        /* ✨ TANGGAL: DI ATAS PT ICHII (KANAN) & SEJAJAR rill */
         .date-area { 
             position: absolute; 
-            top: 3.2cm;  /* DISAMAKAN dengan customer-area biar sejajar horizontal */
-            left: 1.3cm; /* Tetap lurus rata kiri dengan angka 50 di bawahnya */
+            top: 2.5cm;      /* Di atas PT Ichii (PT ada di 3.2cm) */
+            right: 1.2cm;    /* Sama dengan posisi kanan PT */
+            width: 9.5cm;    /* Lebar disamakan dengan area PT */
+            text-align: left; /* Agar tulisan tanggal mulai lurus dengan tulisan PT */
             font-weight: bold; 
         }
 
@@ -35,11 +37,11 @@
         }
         .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* ✨ BAGIAN 2 (PO & SJ): TETAP RATA KIRI DENGAN TANGGAL & ANGKA 50 rill */
+        /* ✨ BAGIAN 2 (PO & SJ): SEJAJAR DENGAN ANGKA 50 (KIRI) rill */
         .header-info { 
             position: absolute; 
             top: 4.1cm; 
-            left: 1.3cm; 
+            left: 1.3cm; /* Lurus dengan kolom angka 50 di bawah */
             font-weight: bold; 
         }
         .header-row { height: 0.7cm; }
