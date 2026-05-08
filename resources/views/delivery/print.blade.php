@@ -22,11 +22,17 @@
 
         /* POSISI CUSTOMER */
         .customer-area { position: absolute; top: 3.2cm; right: 1.2cm; width: 9.5cm; line-height: 1.2; }
-        .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; }
+        .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* POSISI NOMOR PO & SJ */
-        .header-info { position: absolute; top: 3.2cm; left: 5.2cm; font-weight: bold; }
-        .header-row { height: 0.75cm; }
+        /* ✨ PERBAIKAN BAGIAN 2 (NOMOR PO & SJ) rill */
+        /* top ditambah (turun) | left dikurangi (geser kiri) */
+        .header-info { 
+            position: absolute; 
+            top: 4.1cm; /* Diturunkan dari 3.2cm ke 4.1cm biar sejajar tulisan Karawang */
+            left: 4.5cm; /* Digeser ke kiri dari 5.2cm ke 4.5cm */
+            font-weight: bold; 
+        }
+        .header-row { height: 0.7cm; } /* Jarak baris sedikit dirapatkan rill */
 
         /* POSISI DAFTAR BARANG (PAS DI GARIS) rill */
         .content-area { position: absolute; top: 7.7cm; width: 100%; }
@@ -50,9 +56,10 @@
         <div class="customer-address">{{ $customer->address ?? '-' }}</div>
     </div>
 
+    {{-- ✨ POSISI BARU: Sejajar dengan baris kedua alamat --}}
     <div class="header-info">
         <div class="header-row">: {{ $po->po_number ?? '-' }}</div>
-        <div class="header-row" style="margin-top: 2px;">: {{ $no_sj }}</div>
+        <div class="header-row" style="margin-top: 1px;">: {{ $no_sj }}</div>
     </div>
 
     <div class="content-area">
