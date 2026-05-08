@@ -17,23 +17,29 @@
         /* Navigasi layar biar gak ikut ke-print rill */
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ TANGGAL: DI ATAS PT ICHII & SEJAJAR DENGAN ANGKA 50 rill */
+        /* ✨ TANGGAL SEJAJAR DENGAN NAMA PT (Sama-sama top 3.2cm) rill */
         .date-area { 
             position: absolute; 
-            top: 2.4cm;  /* Di atas area customer (3.2cm) */
-            left: 1.3cm; /* Sejajar dengan kolom Qty (50) */
+            top: 3.2cm;  /* DISAMAKAN dengan customer-area biar sejajar horizontal */
+            left: 1.3cm; /* Tetap lurus rata kiri dengan angka 50 di bawahnya */
             font-weight: bold; 
         }
 
         /* POSISI CUSTOMER (PT ICHII) */
-        .customer-area { position: absolute; top: 3.2cm; right: 1.2cm; width: 9.5cm; line-height: 1.2; }
+        .customer-area { 
+            position: absolute; 
+            top: 3.2cm; 
+            right: 1.2cm; 
+            width: 9.5cm; 
+            line-height: 1.2; 
+        }
         .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* ✨ BAGIAN 2 (PO & SJ): DIGESER KE KIRI SEJAJAR DENGAN ANGKA 50 rill */
+        /* ✨ BAGIAN 2 (PO & SJ): TETAP RATA KIRI DENGAN TANGGAL & ANGKA 50 rill */
         .header-info { 
             position: absolute; 
             top: 4.1cm; 
-            left: 1.3cm; /* DISAMAKAN dengan date-area agar lurus ke angka 50 */
+            left: 1.3cm; 
             font-weight: bold; 
         }
         .header-row { height: 0.7cm; }
