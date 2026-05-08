@@ -5,57 +5,57 @@
     <title>Cetak SJ - {{ $no_sj }}</title> 
     <style>
         @page { 
-            size: 21.5cm 16.5cm; /* 1/2 F4 Landscape rill */
+            /* ✨ GANTI KE PORTRAIT rill */
+            size: 16.5cm 21.5cm; 
             margin: 0; 
         }
 
         body { 
             font-family: 'Courier New', Courier, monospace; 
-            font-size: 11pt; margin: 0; padding: 0; color: #000; 
+            font-size: 10pt; margin: 0; padding: 0; color: #000; 
         }
 
-        /* Navigasi layar biar gak ikut ke-print rill */
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ TANGGAL: DI ATAS PT ICHII (KANAN) & SEJAJAR rill */
+        /* ✨ TANGGAL: DI ATAS PT ICHII (KANAN) rill */
         .date-area { 
             position: absolute; 
-            top: 2.5cm;      /* Di atas PT Ichii (PT ada di 3.2cm) */
-            right: 1.2cm;    /* Sama dengan posisi kanan PT */
-            width: 9.5cm;    /* Lebar disamakan dengan area PT */
-            text-align: left; /* Agar tulisan tanggal mulai lurus dengan tulisan PT */
+            top: 2.0cm;      /* Posisi atas */
+            right: 0.8cm;    /* Sisi kanan kertas portrait */
+            width: 7.5cm;    /* Lebar kotak teks dipersempit rill */
+            text-align: left; 
             font-weight: bold; 
         }
 
         /* POSISI CUSTOMER (PT ICHII) */
         .customer-area { 
             position: absolute; 
-            top: 3.2cm; 
-            right: 1.2cm; 
-            width: 9.5cm; 
+            top: 2.8cm; 
+            right: 0.8cm; 
+            width: 7.5cm; 
             line-height: 1.2; 
         }
-        .customer-name { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
+        .customer-name { font-size: 11pt; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; }
 
-        /* ✨ BAGIAN 2 (PO & SJ): SEJAJAR DENGAN ANGKA 50 (KIRI) rill */
+        /* ✨ BAGIAN 2 (PO & SJ): TETAP RATA KIRI SEJAJAR ANGKA 50 rill */
         .header-info { 
             position: absolute; 
-            top: 4.1cm; 
-            left: 1.3cm; /* Lurus dengan kolom angka 50 di bawah */
+            top: 4.5cm; 
+            left: 1.0cm;    /* Menyesuaikan lebar portrait rill */
             font-weight: bold; 
         }
-        .header-row { height: 0.7cm; }
+        .header-row { height: 0.6cm; }
 
-        /* POSISI DAFTAR BARANG rill */
-        .content-area { position: absolute; top: 7.7cm; width: 100%; }
+        /* POSISI DAFTAR BARANG (DITURUNKAN SEDIKIT) rill */
+        .content-area { position: absolute; top: 8.5cm; width: 100%; }
         .item-table { width: 100%; border-collapse: collapse; }
-        .item-table td { height: 0.94cm; vertical-align: middle; font-weight: bold; }
+        .item-table td { height: 0.8cm; vertical-align: middle; font-weight: bold; }
     </style>
 </head>
 <body onload="window.print()">
 
     <div class="no-print" style="position: fixed; top: 10px; right: 10px; background: #fff; padding: 15px; border: 2px solid #4361ee; border-radius: 12px; box-shadow: 0 10px 20px rgba(0,0,0,0.2); z-index: 9999;">
-        <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SEKARANG rill!</button>
+        <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK PORTRAIT rill!</button>
         <a href="{{ route('delivery.index') }}" style="display: block; text-align: center; color: #64748b; margin-top: 10px; font-weight: bold; text-decoration: none;">← KEMBALI</a>
     </div>
 
@@ -65,7 +65,7 @@
 
     <div class="customer-area">
         <div class="customer-name">{{ $customer->name ?? $sj->customer_code }}</div>
-        <div class="customer-address">{{ $customer->address ?? '-' }}</div>
+        <div class="customer-address" style="font-size: 9pt;">{{ $customer->address ?? '-' }}</div>
     </div>
 
     <div class="header-info">
@@ -78,11 +78,11 @@
             <tbody>
                 @foreach($items as $item)
                 <tr>
-                    <td style="width: 14%; text-align: center; font-size: 13pt;">{{ number_format($item->qty_delivery) }}</td>
+                    <td style="width: 15%; text-align: center; font-size: 12pt;">{{ number_format($item->qty_delivery) }}</td>
                     <td style="width: 10%; text-align: center;">PCS</td>
-                    <td style="width: 45%; text-align: left; padding-left: 1.5cm;">{{ $item->part_no }}</td>
-                    <td style="width: 13%;"></td>
-                    <td style="width: 18%;"></td>
+                    <td style="width: 45%; text-align: left; padding-left: 0.5cm;">{{ $item->part_no }}</td>
+                    <td style="width: 10%;"></td>
+                    <td style="width: 20%;"></td>
                 </tr>
                 @endforeach
             </tbody>
