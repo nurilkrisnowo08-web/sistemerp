@@ -48,7 +48,7 @@
     </div>
 
     <div class="date-area">
-        Bogor, {{ date('d F Y', strtotime($sj->created_at)) }}
+         {{ date('d F Y', strtotime($sj->created_at)) }}
     </div>
 
     <div class="customer-area">
