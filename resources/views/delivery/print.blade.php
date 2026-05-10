@@ -16,7 +16,7 @@
             width: 16.5cm;
             height: 21.5cm;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 9pt; /* Ukuran kompak rill */
+            font-size: 9pt;
             background-color: white;
         }
 
@@ -29,7 +29,7 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ 1. TANGGAL: PALING ATAS KANAN rill */
+        /* TANGGAL: PALING ATAS KANAN rill */
         .date-area { 
             position: absolute; 
             top: 0.4cm;      
@@ -39,7 +39,7 @@
             text-align: left;
         }
 
-        /* ✨ 2. CUSTOMER: DI BAWAH TANGGAL rill */
+        /* CUSTOMER: DI BAWAH TANGGAL rill */
         .customer-area { 
             position: absolute; 
             top: 1.4cm;      
@@ -49,20 +49,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ 3. BAGIAN PO & SJ: TURUN KE BAWAH (SEJAJAR KARAWANG) rill */
-        /* Sesuai permintaan: Posisinya turun (top ditambah) dan ke kiri sejajar angka 50 */
+        /* ✨ PERBAIKAN: SEBELAHAN SAMA KARAWANG (TENGAH-KIRI) rill */
         .header-info { 
             position: absolute; 
-            top: 3.4cm;      /* Diturunkan agar sejajar baris 'Karawang' di alamat rill */
-            left: 0.5cm;     /* Mepet kiri sejajar angka 50 */
+            top: 3.4cm;      /* Sejajar baris Karawang rill */
+            left: 5.2cm;     /* Digeser ke tengah agar "sebelahan" sama alamat */
             font-weight: bold; 
         }
         .header-row { height: 0.5cm; }
 
-        /* ✨ 4. DAFTAR BARANG rill */
+        /* DAFTAR BARANG rill */
         .content-area { 
             position: absolute; 
-            top: 6.5cm;      /* Jarak aman di bawah header rill */
+            top: 6.5cm;      
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
