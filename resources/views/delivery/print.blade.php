@@ -6,11 +6,10 @@
     <style>
         /* 1. Kunci Ukuran Kertas rill */
         @page { 
-            size: 16.5cm 21.5cm; /* Portrait murni rill */
-            margin: 0 !important; /* Paksa margin nol biar gak lari ke tengah */
+            size: 16.5cm 21.5cm; 
+            margin: 0 !important; 
         }
 
-        /* 2. Reset Body agar nempel ke pojok kiri atas rill */
         html, body {
             margin: 0;
             padding: 0;
@@ -21,56 +20,53 @@
             background-color: white;
         }
 
-        /* 3. Container Utama untuk mengunci posisi rill */
         .print-wrapper {
             position: relative;
             width: 16.5cm;
             height: 21.5cm;
-            overflow: hidden; /* Biar gak nambah halaman kosong rill */
+            overflow: hidden;
         }
 
-        @media print { 
-            .no-print { display: none !important; } 
-            body { -webkit-print-color-adjust: exact; }
-        }
+        @media print { .no-print { display: none !important; } }
 
-        /* ✨ POSISI TANGGAL: ME PET KE ATAS & KANAN rill */
+        /* TANGGAL: DI ATAS PT ICHII rill */
         .date-area { 
             position: absolute; 
-            top: 0.4cm;      
-            right: 1.0cm;    
-            width: 7.0cm;    
+            top: 0.5cm;      
+            right: 0.8cm;    
+            width: 7.5cm;    
+            text-align: left; 
             font-weight: bold; 
         }
 
-        /* ✨ POSISI CUSTOMER rill */
+        /* CUSTOMER AREA rill */
         .customer-area { 
             position: absolute; 
-            top: 1.4cm;      
-            right: 1.0cm; 
-            width: 7.0cm; 
+            top: 1.5cm;      
+            right: 0.8cm; 
+            width: 7.5cm; 
             line-height: 1.1; 
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ POSISI NO PO & SJ rill */
+        /* ✨ PERBAIKAN POSISI: SEJAJAR PT ICHII & BARIS KARAWANG rill */
         .header-info { 
             position: absolute; 
-            top: 1.4cm;      
-            left: 0.5cm;    
+            top: 3.0cm;      /* Diturunkan agar sejajar baris Karawang di form Bapak */
+            left: 8.2cm;     /* Digeser ke kanan agar lurus dengan tulisan PT ICHII */
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* ✨ POSISI DAFTAR BARANG rill */
+        /* DAFTAR BARANG rill */
         .content-area { 
             position: absolute; 
-            top: 5.5cm;      
+            top: 5.8cm;      
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
         .item-table td { 
-            height: 0.65cm;   
+            height: 0.7cm;   
             vertical-align: middle; 
             font-weight: bold; 
         }
@@ -78,7 +74,7 @@
 </head>
 <body onload="window.print()">
 
-    <div class="print-wrapper"> {{-- Container Pengunci rill --}}
+    <div class="print-wrapper">
         
         <div class="no-print" style="position: fixed; top: 10px; right: 10px; background: #fff; padding: 15px; border: 2px solid #4361ee; border-radius: 12px; z-index: 9999;">
             <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ rill!</button>
@@ -114,7 +110,7 @@
             </table>
         </div>
 
-    </div> {{-- End print-wrapper rill --}}
+    </div>
 
     <script>
         window.onafterprint = function() {
