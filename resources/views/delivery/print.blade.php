@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title> 
     <style>
-        /* Pengaturan Kertas rill */
         @page { 
             size: 16.5cm 21.5cm; 
             margin: 0 !important; 
@@ -29,7 +28,7 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* TANGGAL: PALING ATAS KANAN rill */
+        /* TANGGAL rill */
         .date-area { 
             position: absolute; 
             top: 0.4cm;      
@@ -39,7 +38,7 @@
             text-align: left;
         }
 
-        /* CUSTOMER: DI BAWAH TANGGAL rill */
+        /* CUSTOMER AREA (Tinggi PT Ichii di 1.4cm) rill */
         .customer-area { 
             position: absolute; 
             top: 1.4cm;      
@@ -49,19 +48,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ PERBAIKAN: SEBELAHAN SAMA KARAWANG (TENGAH-KIRI) rill */
+        /* ✨ PERBAIKAN: SEJAJAR DENGAN BARIS KARAWANG (Line 2 Alamat) rill */
         .header-info { 
             position: absolute; 
-            top: 3.4cm;      /* Sejajar baris Karawang rill */
-            left: 5.2cm;     /* Digeser ke tengah agar "sebelahan" sama alamat */
+            top: 1.9cm;      /* NAIK: Sejajar dengan baris "Karawang..." rill */
+            left: 4.0cm;     /* JARAK: Tidak terlalu mepet ke alamat rill */
             font-weight: bold; 
         }
-        .header-row { height: 0.5cm; }
+        .header-row { height: 0.45cm; }
 
         /* DAFTAR BARANG rill */
         .content-area { 
             position: absolute; 
-            top: 6.5cm;      
+            top: 6.0cm;      
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
@@ -91,7 +90,7 @@
 
         <div class="header-info">
             <div class="header-row">: {{ $po->po_number ?? '-' }}</div>
-            <div class="header-row" style="margin-top: 2px;">: {{ $no_sj }}</div>
+            <div class="header-row" style="margin-top: 1px;">: {{ $no_sj }}</div>
         </div>
 
         <div class="content-area">
