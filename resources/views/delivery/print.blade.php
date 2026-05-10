@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title> 
     <style>
-        /* 1. Kunci Ukuran Kertas rill */
+        /* Pengaturan Kertas rill */
         @page { 
             size: 16.5cm 21.5cm; 
             margin: 0 !important; 
@@ -16,7 +16,7 @@
             width: 16.5cm;
             height: 21.5cm;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 9pt;
+            font-size: 9pt; /* Ukuran kompak rill */
             background-color: white;
         }
 
@@ -29,39 +29,40 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* TANGGAL: DI ATAS PT ICHII rill */
+        /* ✨ 1. TANGGAL: PALING ATAS KANAN rill */
         .date-area { 
             position: absolute; 
-            top: 0.5cm;      
+            top: 0.4cm;      
             right: 0.8cm;    
-            width: 7.5cm;    
-            text-align: left; 
+            width: 7.0cm;    
             font-weight: bold; 
+            text-align: left;
         }
 
-        /* CUSTOMER AREA rill */
+        /* ✨ 2. CUSTOMER: DI BAWAH TANGGAL rill */
         .customer-area { 
             position: absolute; 
-            top: 1.5cm;      
+            top: 1.4cm;      
             right: 0.8cm; 
-            width: 7.5cm; 
-            line-height: 1.1; 
+            width: 7.0cm; 
+            line-height: 1.2; 
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ PERBAIKAN POSISI: SEJAJAR PT ICHII & BARIS KARAWANG rill */
+        /* ✨ 3. BAGIAN PO & SJ: TURUN KE BAWAH (SEJAJAR KARAWANG) rill */
+        /* Sesuai permintaan: Posisinya turun (top ditambah) dan ke kiri sejajar angka 50 */
         .header-info { 
             position: absolute; 
-            top: 3.0cm;      /* Diturunkan agar sejajar baris Karawang di form Bapak */
-            left: 8.2cm;     /* Digeser ke kanan agar lurus dengan tulisan PT ICHII */
+            top: 3.4cm;      /* Diturunkan agar sejajar baris 'Karawang' di alamat rill */
+            left: 0.5cm;     /* Mepet kiri sejajar angka 50 */
             font-weight: bold; 
         }
-        .header-row { height: 0.45cm; }
+        .header-row { height: 0.5cm; }
 
-        /* DAFTAR BARANG rill */
+        /* ✨ 4. DAFTAR BARANG rill */
         .content-area { 
             position: absolute; 
-            top: 5.8cm;      
+            top: 6.5cm;      /* Jarak aman di bawah header rill */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
@@ -91,7 +92,7 @@
 
         <div class="header-info">
             <div class="header-row">: {{ $po->po_number ?? '-' }}</div>
-            <div class="header-row" style="margin-top: 1px;">: {{ $no_sj }}</div>
+            <div class="header-row" style="margin-top: 2px;">: {{ $no_sj }}</div>
         </div>
 
         <div class="content-area">
