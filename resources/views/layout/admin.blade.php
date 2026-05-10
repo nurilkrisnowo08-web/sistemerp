@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
     
-    {{-- ✨ SWEETALERT2 LIBRARY rill --}}
+    {{-- ✨ SWEETALERT2 LIBRARY --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
@@ -33,7 +33,7 @@
             left: 0;
             top: 0;
             width: 280px !important;
-            transform: translateX(-100%); /* Sembunyi rill di HP */
+            transform: translateX(-100%); 
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             overflow-y: auto;
             box-shadow: 15px 0 30px rgba(0,0,0,0.2);
@@ -277,7 +277,7 @@
             }
         });
 
-        // ✨ SWEETALERT2 ANIMATION LOGIC rill
+        // ✨ SWEETALERT2 ANIMATION LOGIC
         @if(session('success'))
             Swal.fire({
                 icon: 'success',
