@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title> 
     <style>
+        /* Pengaturan Kertas rill */
         @page { 
             size: 16.5cm 21.5cm; 
             margin: 0 !important; 
@@ -38,7 +39,7 @@
             text-align: left;
         }
 
-        /* CUSTOMER AREA (Tinggi PT Ichii di 1.4cm) rill */
+        /* CUSTOMER AREA rill */
         .customer-area { 
             position: absolute; 
             top: 1.4cm;      
@@ -48,11 +49,11 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ PERBAIKAN: SEJAJAR DENGAN BARIS KARAWANG (Line 2 Alamat) rill */
+        /* ✨ PERBAIKAN: DIGESER KE KIRI BIAR SEBARIS SAMA KOLOM 'PCS' rill */
         .header-info { 
             position: absolute; 
-            top: 1.9cm;      /* NAIK: Sejajar dengan baris "Karawang..." rill */
-            left: 4.0cm;     /* JARAK: Tidak terlalu mepet ke alamat rill */
+            top: 1.9cm;      /* Tetap sejajar baris Karawang rill */
+            left: 2.5cm;     /* DIGESER KE KIRI: Dari 4.0cm ke 2.5cm rill */
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
