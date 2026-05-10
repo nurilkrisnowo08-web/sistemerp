@@ -9,6 +9,9 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link href="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/css/sb-admin-2.min.css" rel="stylesheet">
+    
+    {{-- ✨ SWEETALERT2 LIBRARY rill --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         :root { 
@@ -273,6 +276,32 @@
                 $("#accordionSidebar").toggleClass("toggled");
             }
         });
+
+        // ✨ SWEETALERT2 ANIMATION LOGIC rill
+        @if(session('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'DATA BERHASIL DISIMPAN!',
+                text: "{{ session('success') }}",
+                showConfirmButton: false,
+                timer: 2500,
+                showClass: {
+                    popup: 'animate__animated animate__zoomIn'
+                },
+                hideClass: {
+                    popup: 'animate__animated animate__zoomOut'
+                }
+            });
+        @endif
+
+        @if(session('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'GAGAL!',
+                text: "{{ session('error') }}",
+                confirmButtonColor: '#4361ee'
+            });
+        @endif
     </script>
     @yield('scripts')
 </body>
