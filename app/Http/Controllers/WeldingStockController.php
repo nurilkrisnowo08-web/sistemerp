@@ -91,7 +91,7 @@ class WeldingStockController extends Controller
         $qty_ambil = (int)$request->qty_ambil;
         $part_no = $request->part_no;
         $line_id = $request->line_id;
-        $shift = $request->shift; // ✨ Tambahkan Shift rill
+        $shift = $request->shift; // ✨ Tambahkan Shift 
         $cleanPart = str_replace(' ', '', trim($part_no));
 
         DB::beginTransaction();
@@ -101,7 +101,7 @@ class WeldingStockController extends Controller
                 ->first();
 
             if (!$fg || $fg->welding_stock < $qty_ambil) {
-                throw new \Exception("Stok tidak mencukupi rill! Tersedia: " . ($fg->welding_stock ?? 0));
+                throw new \Exception("Stok tidak mencukupi ! Tersedia: " . ($fg->welding_stock ?? 0));
             }
 
             DB::table('finished_goods')
@@ -209,7 +209,7 @@ class WeldingStockController extends Controller
             return back()->with('success', 'Batch Berhasil Diselesaikan.');
         } catch (\Exception $e) { 
             DB::rollBack(); 
-            return back()->with('error', 'Gagal rill: ' . $e->getMessage()); 
+            return back()->with('error', 'Gagal: ' . $e->getMessage()); 
         }
     }
 
@@ -228,7 +228,7 @@ class WeldingStockController extends Controller
 
         $dateOnly = date('Y-m-d');
         $lineName = $batch->kode_line ?? 'WELDING AREA';
-        $shift = $batch->shift ?? 'Pagi'; // ✨ Ambil shift dari batch rill
+        $shift = $batch->shift ?? 'Pagi'; // ✨ Ambil shift dari batch 
 
         $actual = DB::table('welding_actuals')
             ->whereRaw("REPLACE(part_no, ' ', '') = REPLACE(?, ' ', '')", [$batch->part_no])

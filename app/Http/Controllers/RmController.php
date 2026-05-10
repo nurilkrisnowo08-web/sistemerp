@@ -27,7 +27,7 @@ class RmController extends Controller
                 $join->on(DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
                      ->on(DB::raw("REPLACE(rm_stocks.size, ' ', '')"), '=', DB::raw("REPLACE(CONCAT(mm.thickness, 'X', mm.size), ' ', '')"));
             })
-            // ✨ FIX: Hanya ambil data yang stoknya rill masih ada (> 0)
+            // ✨ FIX: Hanya ambil data yang stoknya  masih ada (> 0)
             ->where('rm_stocks.stock_pcs', '>', 0)
             ->select('rm_stocks.*', 'customers.code as customer_code', 'mm.alias_code', 'mm.std_qty_batch');
 
@@ -148,7 +148,7 @@ class RmController extends Controller
         $request->validate(['customer_code' => 'required', 'spec' => 'required', 'size' => 'required', 'coil_id' => 'required', 'stock_pcs' => 'required|numeric', 'min_stock' => 'required|numeric', 'max_stock' => 'required|numeric', 'std_qty_batch' => 'required|numeric', 'part_nos' => 'required|array']);
         DB::beginTransaction();
         try {
-            $logInserted = false; // ✨ Kunci agar log hanya masuk 1 kali rill
+            $logInserted = false; // ✨ Kunci agar log hanya masuk 1 kali 
             foreach ($request->part_nos as $partNo) {
                 $pData = DB::table('parts')->where('part_no', $partNo)->first();
                 $rmId = DB::table('rm_stocks')->insertGetId([
@@ -175,7 +175,7 @@ class RmController extends Controller
                     $logInserted = true;
                 }
             }
-            DB::commit(); return redirect()->back()->with('success', 'Coil Registered rill!');
+            DB::commit(); return redirect()->back()->with('success', 'Coil Registered !');
         } catch (\Exception $e) { DB::rollback(); return redirect()->back()->with('error', $e->getMessage()); }
     }
 
@@ -272,7 +272,7 @@ class RmController extends Controller
             $specTarget = trim($m->material_type); $sizeTarget = trim($m->thickness) . ' X ' . trim($m->size);
             $previousMapping = DB::table('rm_stocks')->where('spec', $specTarget)->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))->where('customer', trim($m->customer_code))->select('material_code', 'material_name')->distinct()->get();
             
-            $logCreated = false; // ✨ Kunci log rill
+            $logCreated = false; // ✨ Kunci log 
             if ($previousMapping->isEmpty()) {
                 $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $m->alias_code, 'material_name' => $m->material_type, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => strtoupper(trim($request->coil_id)), 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
                 DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $m->alias_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => strtoupper(trim($request->coil_id)), 'created_at' => now()]);
@@ -289,7 +289,7 @@ class RmController extends Controller
             $totalItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->count(); 
             $doneItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->whereRaw('qty_received >= qty_order')->count();
             DB::table('supplier_pos')->where('id', $id)->update(['status' => ($doneItems == $totalItems) ? 'COMPLETED' : 'PARTIAL', 'updated_at' => now()]);
-            DB::commit(); return redirect()->back()->with('success', 'Inbound processed rill!');
+            DB::commit(); return redirect()->back()->with('success', 'Inbound processed !');
         } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
     }
 
@@ -311,7 +311,7 @@ class RmController extends Controller
                     DB::table('supplier_po_items')->insert(['supplier_po_id' => $poId, 'material_code' => $item['spec'], 'qty_order' => $item['qty'], 'qty_received' => 0, 'created_at' => now(), 'updated_at' => now()]); 
                 }
             } 
-            DB::commit(); return redirect()->back()->with('success', 'PO Initialized rill!'); 
+            DB::commit(); return redirect()->back()->with('success', 'PO Initialized !'); 
         } catch (\Exception $e) { DB::rollBack(); return back()->with('error', $e->getMessage()); } 
     }
 
@@ -340,7 +340,7 @@ class RmController extends Controller
         $request->validate(['id' => 'required', 'new_qty' => 'required|numeric']);
         try {
             DB::table('rm_stocks')->where('id', $request->id)->update(['stock_pcs' => $request->new_qty, 'updated_at' => now()]);
-            return back()->with('success', 'Stock Adjusted rill!');
+            return back()->with('success', 'Stock Adjusted !');
         } catch (\Exception $e) { return back()->with('error', $e->getMessage()); }
     }
 }

@@ -14,11 +14,11 @@ class LineController extends Controller
     {
         $lines = Line::all();
         
-        // ✨ PENTING RILL: 
+        // ✨ PENTING : 
         // Kalau folder di resources/views namanya 'Line' (L Kapital), 
         // maka tulis 'Line.index'. 
         // Kalau foldernya sudah lu rename jadi 'line' (kecil), pake 'line.index'.
-        // Gue setting 'line.index' (kecil) sesuai standar rill!
+        // Gue setting 'line.index' (kecil) sesuai standar !
         return view('line.index', compact('lines'));
     }
 
@@ -33,7 +33,7 @@ class LineController extends Controller
         ]);
         
         Line::create($request->all());
-        return redirect()->back()->with('success', 'Line Produksi Berhasil Ditambahkan rill!');
+        return redirect()->back()->with('success', 'Line Produksi Berhasil Ditambahkan !');
     }
 
     /**
@@ -44,7 +44,7 @@ class LineController extends Controller
         $line = Line::findOrFail($id);
         
         $request->validate([
-            // Bypass unique check buat ID ini sendiri rill!
+            // Bypass unique check buat ID ini sendiri !
             'kode_Line' => 'required|unique:line,kode_Line,' . $id,
             'nama_Line' => 'required'
         ]);

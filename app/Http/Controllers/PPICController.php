@@ -262,7 +262,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 5. WELDING MPS (PISAH ACTUAL PER SHIFT RILL)
+     * 5. WELDING MPS (PISAH ACTUAL PER SHIFT )
      */
     public function weldingMps(Request $request)
     {

@@ -197,7 +197,7 @@ class ProduksiController extends Controller
                 'updated_at'           => now()
             ]);
 
-            // ✨ TAMBAHKAN LOGGING DI SINI RILL: Biar terminal Welding bisa baca "IN (STAMP)"
+            // ✨ TAMBAHKAN LOGGING DI SINI : Biar terminal Welding bisa baca "IN (STAMP)"
             if ($qty_ok_new > 0) {
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code,

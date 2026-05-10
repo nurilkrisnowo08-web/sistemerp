@@ -73,7 +73,7 @@ class QualityGateController extends Controller {
                 }
 
             } else {
-                // 👨‍🏭 LOGIKA WELDING (PARTIAL FIX RILL)
+                // 👨‍🏭 LOGIKA WELDING (PARTIAL FIX )
                 $ref = DB::table('welding_batches')->where('id', $id)->first();
                 $batchNo = $ref->no_produksi_stamping;
                 $partNo  = $ref->part_no;

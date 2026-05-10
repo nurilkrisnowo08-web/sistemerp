@@ -15,7 +15,7 @@ class WeldingMasterController extends Controller
     }
 
     /**
-     * ✨ TAMBAHAN RILL: Fungsi untuk menyimpan Station/Line baru
+     * ✨ TAMBAHAN : Fungsi untuk menyimpan Station/Line baru
      * Ini yang tadi bikin error 500 karena fungsinya belum ada.
      */
     public function lineStore(Request $request)
@@ -41,7 +41,7 @@ class WeldingMasterController extends Controller
     }
 
     /**
-     * ✨ TAMBAHAN RILL: Fungsi untuk hapus Line (Agar master data bisa dikelola)
+     * ✨ TAMBAHAN: Fungsi untuk hapus Line (Agar master data bisa dikelola)
      */
     public function lineDestroy($id)
     {

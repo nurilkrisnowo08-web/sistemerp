@@ -47,7 +47,7 @@ class FgController extends Controller
                     ->whereDate('created_at', '>', $date)
                     ->sum('qty_delivery');
 
-                // Rumus Rill: Stok Sekarang - (Total Masuk Besok-besok) + (Total Keluar Besok-besok)
+                // Rumus : Stok Sekarang - (Total Masuk Besok-besok) + (Total Keluar Besok-besok)
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $total_in_setelah + $total_out_setelah;
                 $fg->stock_awal = $fg->stock_akhir - $fg->in_stp + $fg->out_delv;
                 
@@ -235,7 +235,7 @@ class FgController extends Controller
         $customers = DB::table('customers')->get();
         $customer = $request->customer;
         
-        // ✨ FIX: Konsisten menggunakan DB::table rill!
+        // ✨ FIX: Konsisten menggunakan DB::table !
         $query = DB::table('purchase_orders')->where('status', 'closed');
         
         if ($customer) { 
