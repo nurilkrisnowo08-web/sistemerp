@@ -119,8 +119,15 @@
                         <td colspan="7" class="p-4">
                             <div class="row">
                                 <div class="col-md-7">
-                                    @foreach($group->details as $p)
-                                    @php $subParts = DB::table('rm_stocks')->where('coil_id', $p->coil_id)->where('customer', $p->customer)->get(); @endphp
+                                    {{-- ✨ FIX: Pastikan perulangan hanya 1 kali per fisik Coil ID --}}
+                                    @foreach($group->details->unique('coil_id') as $p)
+                                    @php 
+                                        // Ambil semua part yang nempel di Coil ini rill
+                                        $subParts = DB::table('rm_stocks')
+                                            ->where('coil_id', trim($p->coil_id))
+                                            ->where('customer', trim($p->customer))
+                                            ->get(); 
+                                    @endphp
                                     <div class="unit-tag-card p-4 bg-white mb-3">
                                         <div class="d-flex justify-content-between align-items-start mb-4">
                                             <div>
@@ -247,7 +254,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // ⚡ LOGIKA OTOMATIS: AMBIL SPEC & PART SAAT PILIH CLIENT (SINKRON DENGAN MODAL BARU)
+    // ⚡ LOGIKA OTOMATIS: AMBIL SPEC & PART SAAT PILIH CLIENT
     $(document).on('change', '#modalFilterCustomer', function() {
         let customerCode = $(this).val();
         if (customerCode) {
@@ -277,19 +284,16 @@
         }
     });
 
-    // ⚡ Logika simpan data spec ke input hidden (Penting untuk Save rill)
     $(document).on('change', '#selectMasterSpec', function() {
         let selected = $(this).find(':selected');
         $('#autoSpec').val(selected.data('spec'));
         $('#autoSize').val(selected.data('size'));
     });
 
-    // Fungsi Sinkronisasi icon panah
     $(document).on('click', '.rm-row-header', function() {
         $(this).find('.transition-icon').toggleClass('fa-rotate-90');
     });
 
-    // Fungsi Edit & Assign
     function openEditUnit(id, coil, qty) { $('#edit_id').val(id); $('#edit_coil').val(coil); $('#edit_qty').val(qty); $('#modalEditUnit').modal('show'); }
     function openAssignPart(id, customer) {
         $('#assign_ref_id').val(id);
