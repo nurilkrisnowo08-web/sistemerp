@@ -211,4 +211,31 @@ class DeliveryController extends Controller
 
         return view('delivery.print_rekap_po', compact('poHeader', 'poItems', 'allDeliveries', 'po_number'));
     }
+
+    /**
+     * ✨ 7. PRINT LABEL (FITUR BARU)
+     */
+    public function printLabel($no_sj)
+    {
+        // Ambil item dari surat jalan ini
+        $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
+
+        if ($items->isEmpty()) {
+            return redirect()->route('delivery.history')->with('error', 'Data SJ tidak ditemukan!');
+        }
+
+        $sj = $items->first();
+
+        // Ambil data customer
+        $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
+
+        // Ambil detail part_name dan blank_size dari Master Part untuk setiap item
+        foreach ($items as $item) {
+            $p = DB::table('parts')->where('part_no', $item->part_no)->first();
+            $item->part_name = $p->part_name ?? 'N/A';
+            $item->blank_size = $p->blank_size ?? '-'; // Sesuaikan kolom blank_size di tabel parts Anda
+        }
+
+        return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));
+    }
 }
