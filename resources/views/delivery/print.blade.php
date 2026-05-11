@@ -49,19 +49,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ PERBAIKAN 1: PO & SJ NAIK & GESER KANAN DRATIS */
+        /* ✨ PERBAIKAN: PO & SJ NAIK & GESER KIRI (BIAR TIDAK TABRAKAN ALAMAT) rill */
         .header-info { 
             position: absolute; 
-            top: 1.8cm;      /* Naik dari 2.2cm rill */
-            left: 6.8cm;     /* Geser kanan dari 5.2cm supaya tidak numpuk rill */
+            top: 2.2cm;      /* NAIK: Biar sejajar baris PO di kertas rill */
+            left: 3.8cm;     /* GESER KIRI: Dari 6.8cm ke 3.8cm biar pas setelah teks "NO. PO :" rill */
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* ✨ PERBAIKAN 2: DAFTAR BARANG (50 PCS) NAIK LAGI */
+        /* ✨ PERBAIKAN: DAFTAR BARANG (50 PCS) NAIK LAGI rill */
         .content-area { 
             position: absolute; 
-            top: 3.6cm;      /* Naik drastis dari 4.1cm rill */
+            top: 3.3cm;      /* NAIK: Dari 3.6cm ke 3.3cm biar pas baris 1 tabel rill */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
