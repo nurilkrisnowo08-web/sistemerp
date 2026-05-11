@@ -29,13 +29,13 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ 1. TANGGAL: KEMBALI KE ATAS & LURUS DENGAN NAMA PT */
+        /* ✨ 1. TANGGAL: DIGESER KE KANAN (LURUS HURUF 'I' INDUSTRIES) */
         .date-area { 
             position: absolute; 
-            top: 0.4cm;      /* Dikembalikan ke atas (tidak turun) */
-            right: 0.8cm;    /* Posisi kanan sama dengan PT */
-            width: 7.5cm;    /* Lebar sama dengan kotak PT */
-            text-align: left; /* Rata kiri agar lurus dengan huruf 'P' di PT. ICHII */
+            top: 0.4cm;      
+            right: 0.8cm;    
+            width: 4.8cm;    /* Dikecilkan lebarnya dari 7.5cm ke 4.8cm untuk mendorong teks ke kanan */
+            text-align: left; 
             font-weight: bold; 
         }
 
@@ -49,19 +49,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ 2. NOMOR PO & SJ: TURUN LAGI DIKIT */
+        /* ✨ 2. NOMOR PO & SJ: KEBATAWHIN LAGI */
         .header-info { 
             position: absolute; 
-            top: 3.5cm;      /* Diturunkan lagi dari 3.2cm ke 3.5cm */
+            top: 4.2cm;      /* Diturunkan dari 3.5cm ke 4.2cm */
             left: 2.5cm;     
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* ✨ 3. DAFTAR BARANG (50 PCS): NAIK LAGI */
+        /* ✨ 3. DAFTAR BARANG (50 PCS): NAIKIN LAGI */
         .content-area { 
             position: absolute; 
-            top: 5.0cm;      /* Dinaikkan lagi dari 5.2cm ke 5.0cm */
+            top: 4.7cm;      /* Dinaikkan dari 5.0cm ke 4.7cm agar mepet ke PO/SJ */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
