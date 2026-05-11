@@ -195,12 +195,10 @@ class RmController extends Controller
         return response()->json(['parts' => $parts, 'specs' => $specs]);
     }
 
-    /**
-     * ✨ FIX: GET COILS FOR MODAL (CEGAH DOBEL DI DROPDOWN NO. 07)
-     */
+    
     public function getAvailableCoils($part_no)
     {
-        // Fungsi ini untuk dipanggil oleh AJAX pada Modal Deploy Batch
+        
         $coils = DB::table('rm_stocks')
             ->where('material_code', trim($part_no))
             ->where('stock_pcs', '>', 0)
