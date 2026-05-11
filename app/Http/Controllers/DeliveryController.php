@@ -217,7 +217,9 @@ class DeliveryController extends Controller
      */
    public function printLabel($no_sj)
 {
-    $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
+    // Gunakan urldecode karena No SJ sering mengandung karakter miring '/'
+    $clean_sj = urldecode($no_sj);
+    $items = DB::table('deliveries')->where('no_sj', $clean_sj)->get();
 
     if ($items->isEmpty()) {
         return redirect()->route('delivery.history')->with('error', 'Data SJ tidak ditemukan!');
@@ -231,16 +233,25 @@ class DeliveryController extends Controller
         $p = DB::table('parts')->where('part_no', $item->part_no)->first();
         $item->part_name = $p->part_name ?? 'N/A';
 
-        // 2. ✨ AMBIL BLANK SIZE DARI KAMUS RM (rm_stocks)
-        // Kita cari spek material berdasarkan part_no ini
+        // 2. AMBIL BLANK SIZE DARI KAMUS RM (rm_stocks)
         $m = DB::table('rm_stocks')->where('material_code', $item->part_no)->first();
         
         if ($m) {
-            // Gabungkan Spec dan Size (Contoh: SCGA590 [1.6 X 532 X 408])
             $item->blank_size = $m->spec . ' [' . $m->size . ']';
         } else {
             $item->blank_size = '-';
         }
+
+        // 3. ✨ DISINI UPDATE-NYA: BUAT ISI QR CODE LENGKAP
+        // Kita gabung data jadi satu kalimat dengan baris baru (\n)
+        $qrText = "PART: " . $item->part_no . "\n" .
+                  "NAME: " . $item->part_name . "\n" .
+                  "QTY: " . number_format($item->qty_delivery) . " PCS\n" .
+                  "LOT: " . date('ymd', strtotime($item->created_at)) . "\n" .
+                  "SJ: " . $clean_sj;
+
+        // Kita simpan ke variabel qr_content dan di-encode rill
+        $item->qr_content = urlencode($qrText);
     }
 
     return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));

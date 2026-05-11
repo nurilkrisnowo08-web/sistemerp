@@ -14,10 +14,11 @@
             padding: 10px;
             background-color: #fff;
         }
+        /* ✨ Grid Layout: 2 Kolom per baris rill */
         .label-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            gap: 10px;
         }
         .label-box {
             border: 2px solid #000;
@@ -26,6 +27,7 @@
             position: relative;
             box-sizing: border-box;
             page-break-inside: avoid;
+            margin-bottom: 5px;
         }
 
         /* Atas: OK & Judul */
@@ -82,7 +84,7 @@
         }
         .qty-header { width: 100%; font-weight: 900; font-size: 11pt; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 10px; }
         
-        /* ✨ QR CODE STYLING */
+        /* QR CODE STYLING */
         .qr-container { 
             width: 100px; 
             height: 100px; 
@@ -158,8 +160,9 @@
                 <div class="qty-side">
                     <div class="qty-header">Qty: {{ number_format($item->qty_delivery) }} PCS</div>
                     
+                    {{-- ✨ FIX: SEKARANG MENGGUNAKAN qr_content UNTUK DETAIL LENGKAP --}}
                     <div class="qr-container">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $item->part_no }}" alt="QR Part">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $item->qr_content }}" alt="QR Detail">
                     </div>
                     <div class="qr-label">{{ $item->part_no }}</div>
                 </div>
