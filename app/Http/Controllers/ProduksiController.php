@@ -47,7 +47,6 @@ class ProduksiController extends Controller
 
         $activeProductions = $query->orderBy('batch_id', 'desc')->get();
         
-        // ✨ FIX: Ambil material unik per Coil ID rill
         $materials = DB::table('rm_stocks')
             ->where('stock_pcs', '>', 0)
             ->select(
@@ -74,9 +73,8 @@ class ProduksiController extends Controller
         DB::beginTransaction();
         try {
             $no_produksi = 'PROD-' . date('Ymd-His');
-
-            // Ambil info coil dulu rill
             $rmInfo = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
+            
             if(!$rmInfo) throw new \Exception("Material Unit not found!");
 
             DB::table('produksi_batches')->insert([
@@ -91,10 +89,8 @@ class ProduksiController extends Controller
                 'updated_at'    => now()
             ]);
             
-            // ✨ FIX: Potong stok untuk SEMUA part yang nempel di Coil yang sama rill
-            DB::table('rm_stocks')
-                ->where('coil_id', trim($rmInfo->coil_id))
-                ->decrement('stock_pcs', $request->qty_ambil_pcs);
+            // Potong stok untuk SEMUA baris yang punya Coil ID yang sama
+            DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
 
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
@@ -113,13 +109,13 @@ class ProduksiController extends Controller
         }
     }
 
-    // ... (fungsi storeResult tetap sama)
     public function storeResult(Request $request, $id)
     {
         DB::beginTransaction();
         try {
             $batch = DB::table('produksi_batches')->where('id', $id)->first();
             DB::table('produksi_batches')->where('id', $id)->update(['qty_hasil_ok' => $request->qty_ok, 'qty_hasil_ng' => $request->qty_ng, 'status' => 'COMPLETED', 'updated_at' => now()]);
+            
             $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
             if ($part && $part->next_process == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('welding_stock', $request->qty_ok, ['updated_at' => now()]);
@@ -128,7 +124,7 @@ class ProduksiController extends Controller
                 DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('actual_stock', $request->qty_ok, ['updated_at' => now()]);
             }
             DB::commit(); return back()->with('success', 'Data Transmitted!');
-        } catch (\Exception $e) { DB::rollBack(); return back()->with('error', $e->getMessage()); }
+        } catch (\Exception $e) { DB::rollBack(); return back()->with('error', 'Transmission Failed: ' . $e->getMessage()); }
     }
 
     public function updateResult(Request $request, $id)
@@ -151,10 +147,8 @@ class ProduksiController extends Controller
             if ((int)$request->qty_return_warehouse > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
-                    // ✨ FIX: Kembalikan stok ke SEMUA part di coil tersebut rill
                     DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', (int)$request->qty_return_warehouse);
                     DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $p->rm_stock_id, 'material_code' => $p->material_code, 'pcs_in' => (int)$request->qty_return_warehouse, 'source' => 'return', 'no_produksi' => $p->no_produksi, 'created_at' => now()]);
-                    
                     $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
                     if($currentLog) { DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->update(['pcs_used' => ($currentLog->pcs_used - (int)$request->qty_return_warehouse)]); }
                 }
@@ -186,32 +180,77 @@ class ProduksiController extends Controller
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
             }
 
-            $this->syncToActual($id);
-            // ... (log ng details tetap sama)
+            $this->syncToActual($id); // ✨ Pemanggilan fungsi yang tadi error
+
+            if (!empty($ng_details)) {
+                $actual = DB::table('production_actuals')->where('part_no', $p->material_code)->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
+                if ($actual) {
+                    foreach ($ng_details as $detail) {
+                        DB::table('production_ng_logs')->insert(['actual_id' => $actual->id, 'no_produksi' => $p->no_produksi, 'ng_type' => $detail['type'], 'qty' => $detail['qty'], 'created_at' => now()]);
+                    }
+                }
+            }
+
             DB::commit(); return redirect()->route('produksi.index')->with('success', 'Update Success!');
         } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
     }
 
-    // ... (fungsi syncToActual, getBatchDeepDive, history tetap sama)
+    // ✨ FUNGSI YANG HILANG TADI:
+    private function syncToActual($batchId)
+    {
+        $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
+        if (!$batch) return;
 
-    /**
-     * ✨ FIX: DROPDOWN NO. 07 (PHYSICAL COIL) BIAR GAK DOBEL RILL
-     */
+        $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+        $dateOnly = date('Y-m-d', strtotime($batch->created_at));
+
+        DB::table('production_actuals')->updateOrInsert(
+            ['part_no' => $batch->material_code, 'line_code' => $lineCode, 'created_at' => $dateOnly],
+            ['shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'updated_at' => now()]
+        );
+    }
+
+    public function getBatchDeepDive($no_produksi)
+    {
+        $batch = DB::table('produksi_batches')->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')->select('produksi_batches.*', 'line.kode_Line')->where('no_produksi', $no_produksi)->first();
+        $defects = DB::table('production_ng_logs')->where('no_produksi', $no_produksi)->select('ng_type', DB::raw('SUM(qty) as total_qty'))->groupBy('ng_type')->get();
+        return response()->json(['batch' => $batch, 'defects' => $defects, 'total_reject' => $defects->sum('total_qty')]);
+    }
+
+    public function history(Request $request) 
+    {
+        $startDate = $request->start_date ?? date('Y-m-d'); $endDate = $request->end_date ?? date('Y-m-d');
+        $history = DB::table('produksi_batches')->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->select('produksi_batches.no_produksi','produksi_batches.material_code','produksi_batches.shift','produksi_batches.status','produksi_batches.keterangan',
+                DB::raw('MIN(produksi_batches.created_at) as created_at'), DB::raw('MAX(produksi_batches.updated_at) as updated_at'), 
+                DB::raw('SUM(produksi_batches.qty_hasil_ok) as qty_hasil_ok'), DB::raw('SUM(produksi_batches.qty_hasil_ng) as qty_hasil_ng'),
+                DB::raw('SUM(produksi_batches.qty_ambil_pcs) as qty_ambil_pcs'), DB::raw('SUM(produksi_batches.qty_return_warehouse) as qty_return_warehouse'),
+                DB::raw('MIN(produksi_batches.id) as id'), DB::raw('GROUP_CONCAT(DISTINCT line.kode_Line SEPARATOR ", ") as line_names'))
+            ->whereIn('produksi_batches.status', ['COMPLETED', 'WAITING_QC'])->whereBetween('produksi_batches.created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->groupBy('produksi_batches.no_produksi', 'produksi_batches.material_code', 'produksi_batches.shift', 'produksi_batches.status', 'produksi_batches.keterangan')
+            ->orderBy('created_at', 'desc')->get();
+        return view('Produksi.history', compact('history', 'startDate', 'endDate'));
+    }
+
+    public function getSpecsByCustomer($customer) {
+        $specs = DB::table('rm_stocks')->where('customer', trim($customer))->where('stock_pcs', '>', 0)->select(DB::raw('TRIM(spec) as spec'), 'size', DB::raw("REPLACE(size, ' ', '') as size_clean"))->groupBy('spec', 'size', 'size_clean')->get();
+        return response()->json($specs);
+    }
+
+    public function getPartsBySpec(Request $request) {
+        $parts = DB::table('rm_stocks')->where('customer', trim($request->customer))->where(DB::raw('TRIM(spec)'), trim($request->spec))->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $request->size)) ->select('material_code', 'material_name')->distinct()->get();
+        return response()->json($parts);
+    }
+
     public function getBundlesByPart($material_code) {
         $current = DB::table('rm_stocks')->where('material_code', trim($material_code))->first();
         if ($current) { 
-            // Kita group by coil_id agar yang muncul cuma satu per nama coil rill
             $bundles = DB::table('rm_stocks')
                 ->where('customer', trim($current->customer))
                 ->where(DB::raw('TRIM(spec)'), trim($current->spec))
                 ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $current->size))
                 ->where('stock_pcs', '>', 0)
-                ->select(
-                    'coil_id', 
-                    DB::raw('MAX(id) as id'), 
-                    DB::raw('MAX(stock_pcs) as stock_pcs'), 
-                    'size'
-                )
+                ->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size')
                 ->groupBy('coil_id', 'size')
                 ->get(); 
             return response()->json($bundles); 
@@ -225,7 +264,6 @@ class ProduksiController extends Controller
         DB::beginTransaction();
         try { 
             if ($p && $rmInfo) { 
-                // ✨ FIX: Kembalikan stok ke seluruh mapping coil rill
                 DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $p->qty_ambil_pcs); 
                 DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->delete(); 
             } 
@@ -234,5 +272,13 @@ class ProduksiController extends Controller
         } catch (\Exception $e) { DB::rollback(); return back(); }
     }
 
-    // ... (fungsi sisanya tetap sama)
+    public function getPartDetail($id) {
+        $rm = DB::table('rm_stocks')->where('id', $id)->first();
+        if ($rm) { $std = ($rm->std_qty_batch > 0) ? $rm->std_qty_batch : 300; return response()->json(['material_code' => $rm->material_code, 'sisa_jalan' => floor($rm->stock_pcs / $std), 'stock_pcs' => $rm->stock_pcs, 'std_batch' => $std]); }
+        return response()->json(['sisa_jalan' => 0, 'stock_pcs' => 0]);
+    }
+
+    public function resolveInterruption(Request $request, $id) { return $this->updateResult($request, $id); }
+    public function gateConfirm(Request $request, $id) { return $this->updateResult($request, $id); }
+    public function reportProblem(Request $request, $id) { DB::table('produksi_batches')->where('id', $id)->update(['status' => 'PROBLEM', 'keterangan' => '⚠️ DIES RUSAK: ' . $request->problem_note, 'updated_at' => now()]); return redirect()->back()->with('error', 'Laporan kendala telah dikirim!'); }
 }
