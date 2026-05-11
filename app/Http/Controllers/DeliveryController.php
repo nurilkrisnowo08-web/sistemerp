@@ -242,16 +242,16 @@ class DeliveryController extends Controller
             $item->blank_size = '-';
         }
 
-        // 3. ✨ DISINI UPDATE-NYA: BUAT ISI QR CODE LENGKAP
-        // Kita gabung data jadi satu kalimat dengan baris baru (\n)
-        $qrText = "PART: " . $item->part_no . "\n" .
-                  "NAME: " . $item->part_name . "\n" .
-                  "QTY: " . number_format($item->qty_delivery) . " PCS\n" .
-                  "LOT: " . date('ymd', strtotime($item->created_at)) . "\n" .
-                  "SJ: " . $clean_sj;
+        // Di dalam foreach printLabel:
+    $qrText = "ITEM DETAIL\n" .
+            "Part: " . $item->part_no . "\n" .
+            "Name: " . $item->part_name . "\n" .
+            "Qty : " . number_format($item->qty_delivery) . " PCS\n" .
+            "Lot : " . date('ymd', strtotime($item->created_at)) . "\n" .
+            "SJ  : " . $clean_sj;
 
-        // Kita simpan ke variabel qr_content dan di-encode rill
-        $item->qr_content = urlencode($qrText);
+    // Gunakan rawurlencode rill!
+    $item->qr_content = rawurlencode($qrText);
     }
 
     return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));

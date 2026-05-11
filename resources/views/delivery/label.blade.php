@@ -84,17 +84,18 @@
         }
         .qty-header { width: 100%; font-weight: 900; font-size: 11pt; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 10px; }
         
-        /* QR CODE STYLING */
+        /* ✨ QR CODE STYLING - DIPERBESAR RILL */
         .qr-container { 
-            width: 100px; 
-            height: 100px; 
+            width: 120px; /* Diperlebar sedikit */
+            height: 120px; 
             border: 1px solid #ddd;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 5px;
+            background: white;
         }
-        .qr-container img { width: 90px; height: 90px; }
+        .qr-container img { width: 110px; height: 110px; } /* Ukuran gambar diperbesar */
         .qr-label { font-size: 7pt; font-weight: bold; }
 
         .qc-side {
@@ -160,9 +161,9 @@
                 <div class="qty-side">
                     <div class="qty-header">Qty: {{ number_format($item->qty_delivery) }} PCS</div>
                     
-                    {{-- ✨ FIX: SEKARANG MENGGUNAKAN qr_content UNTUK DETAIL LENGKAP --}}
+                    {{-- ✨ FIX: MENGGUNAKAN UKURAN 300x300 AGAR TAJAM RILL --}}
                     <div class="qr-container">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $item->qr_content }}" alt="QR Detail">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={{ $item->qr_content }}" alt="QR Detail">
                     </div>
                     <div class="qr-label">{{ $item->part_no }}</div>
                 </div>
