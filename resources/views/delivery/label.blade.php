@@ -25,6 +25,7 @@
             height: auto;
             position: relative;
             box-sizing: border-box;
+            page-break-inside: avoid;
         }
 
         /* Atas: OK & Judul */
@@ -69,7 +70,7 @@
         .middle-section {
             display: flex;
             border-bottom: 2px solid #000;
-            min-height: 150px;
+            min-height: 160px;
         }
         .qty-side {
             width: 40%;
@@ -77,32 +78,35 @@
             padding: 5px;
             display: flex;
             flex-direction: column;
+            align-items: center;
         }
-        .qty-text { font-weight: 900; font-size: 11pt; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 10px; }
-        .qr-placeholder { 
+        .qty-header { width: 100%; font-weight: 900; font-size: 11pt; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 10px; }
+        
+        /* ✨ QR CODE STYLING */
+        .qr-container { 
             width: 100px; 
             height: 100px; 
-            margin: auto;
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 7pt;
-            text-align: center;
+            margin-bottom: 5px;
         }
+        .qr-container img { width: 90px; height: 90px; }
+        .qr-label { font-size: 7pt; font-weight: bold; }
 
         .qc-side {
             width: 60%;
             display: flex;
             flex-direction: column;
         }
-        .qc-header-row { display: flex; border-bottom: 1px solid #000; height: 50%; }
+        .qc-header-row { display: flex; border-bottom: 1px solid #000; height: 50px; }
         .pallet-no { width: 50%; border-right: 1px solid #000; padding: 3px; font-size: 9pt; font-weight: bold; text-align: center; }
         .qc-check-title { width: 50%; padding: 3px; font-size: 9pt; font-weight: bold; text-align: center; }
         
         .qc-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .qc-table th { border: 1px solid #000; font-size: 8pt; padding: 2px; }
-        .qc-table td { border: 1px solid #000; height: 25px; }
+        .qc-table th { border: 1px solid #000; font-size: 8pt; padding: 2px; background: #eee; }
+        .qc-table td { border: 1px solid #000; height: 35px; }
 
         /* Area Bawah: Data Part */
         .footer-data {
@@ -112,7 +116,7 @@
         .data-row {
             border-bottom: 1px solid #000;
             padding: 4px 10px;
-            font-size: 10pt;
+            font-size: 11pt;
             font-weight: 900;
             text-align: center;
             text-transform: uppercase;
@@ -122,13 +126,12 @@
             display: flex;
             justify-content: space-between;
             font-size: 7.5pt;
-            padding: 2px 10px;
+            padding: 4px 10px;
             font-weight: bold;
         }
 
         @media print {
             .no-print { display: none; }
-            .label-box { page-break-inside: avoid; }
         }
     </style>
 </head>
@@ -145,7 +148,7 @@
                 <div class="title-side">
                     <span class="main-title">PRODUCT IDENTIFICATION</span>
                     <span class="sub-info">Del. Date : {{ date('d-m-Y', strtotime($item->created_at)) }}</span>
-                    <span class="sub-info" style="font-size: 8pt;">{{ $no_sj }}</span>
+                    <span class="sub-info" style="font-size: 8.5pt;">{{ $no_sj }}</span>
                 </div>
             </div>
 
@@ -153,13 +156,14 @@
 
             <div class="middle-section">
                 <div class="qty-side">
-                    <div class="qty-text">Qty: {{ number_format($item->qty_delivery) }} PCS</div>
-                    <div class="qr-placeholder">
-                        {{-- QR CODE AREA --}}
-                        [ QR CODE ]<br>
-                        {{ $item->part_no }}
+                    <div class="qty-header">Qty: {{ number_format($item->qty_delivery) }} PCS</div>
+                    
+                    <div class="qr-container">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $item->part_no }}" alt="QR Part">
                     </div>
+                    <div class="qr-label">{{ $item->part_no }}</div>
                 </div>
+
                 <div class="qc-side">
                     <div class="qc-header-row">
                         <div class="pallet-no">Pallet No.<br><span style="font-size: 12pt;">1 / 1</span></div>
@@ -185,11 +189,12 @@
             <div class="footer-data">
                 <div class="data-row" style="background-color: #f0f0f0;">{{ $item->part_no }}</div>
                 <div class="data-row">{{ $item->part_name }}</div>
-                <div class="data-row" style="font-size: 9pt;">Lot : {{ date('ymd', strtotime($item->created_at)) }}</div>
+                <div class="data-row" style="font-size: 10pt;">LOT : {{ date('ymd', strtotime($item->created_at)) }}</div>
+                
                 <div class="meta-info">
                     <span>Created : ASALTA / {{ date('d-m-Y') }}</span>
                 </div>
-                <div class="meta-info" style="border-top: 0.5px solid #000;">
+                <div class="meta-info" style="border-top: 0.5px solid #000; padding-top: 2px;">
                     <span>Printed : {{ date('d-m-Y H:i:s') }}</span>
                 </div>
             </div>
