@@ -1,7 +1,6 @@
 @extends('layout.admin')
 
 @section('content')
-<!-- Core Assets -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
@@ -143,7 +142,8 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
-                            <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="{{ $currentTarget }}">
+                            {{-- ✨ FIX: Nilai default dimulai dari 0 rill --}}
+                            <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
                         </div>
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-danger uppercase">Return (Sisa Material)</label>
@@ -338,7 +338,10 @@
         $('#sel_part').change(function() {
             $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
-                data.forEach(i => { h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; });
+                data.forEach(i => { 
+                    // ✨ Menggunakan i.id yang merupakan MAX(id) dari Controller rill
+                    h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
+                });
                 $('#sel_bandel').prop('disabled', false).html(h);
             });
         });

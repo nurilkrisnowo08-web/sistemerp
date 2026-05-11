@@ -119,12 +119,14 @@
                         <td colspan="7" class="p-4">
                             <div class="row">
                                 <div class="col-md-7">
-                                    {{-- ✨ Logika Unik Coil agar kartu tidak double rill --}}
-                                    @foreach($group->details->unique('coil_id') as $p)
+                                    {{-- ✨ FIX: Pastikan memanggil 'details' yang dikirim Controller --}}
+                                    @foreach($group->details as $p)
                                     @php 
+                                        // Cari semua part yang nempel di fisik Coil ini rill
                                         $subParts = DB::table('rm_stocks')
                                             ->where('coil_id', trim($p->coil_id))
                                             ->where('customer', trim($p->customer))
+                                            ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $p->size))
                                             ->get(); 
                                     @endphp
                                     <div class="unit-tag-card p-4 bg-white mb-3 shadow-sm">
@@ -168,6 +170,7 @@
                                     <div class="card border-0 shadow-sm rounded-3xl p-4 bg-white h-100">
                                         <h6 class="font-weight-black text-dark mb-4 uppercase tracking-widest"><i class="fas fa-stream mr-2 text-primary"></i>Recent_Mutations</h6>
                                         <div class="log-container" style="max-height: 550px; overflow-y:auto;">
+                                            {{-- ✨ FIX: Menampilkan history mutasi lengkap dari Controller rill --}}
                                             @forelse($group->combined_logs as $log)
                                                 @php $isOut = isset($log->pcs_used); $isRet = !$isOut && ($log->source == 'return'); @endphp
                                                 <div class="log-entry {{ $isOut ? 'out' : ($isRet ? 'ret' : 'in') }}">
