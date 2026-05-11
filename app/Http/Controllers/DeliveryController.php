@@ -215,27 +215,34 @@ class DeliveryController extends Controller
     /**
      * ✨ 7. PRINT LABEL (FITUR BARU)
      */
-    public function printLabel($no_sj)
-    {
-        // Ambil item dari surat jalan ini
-        $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
+   public function printLabel($no_sj)
+{
+    $items = DB::table('deliveries')->where('no_sj', $no_sj)->get();
 
-        if ($items->isEmpty()) {
-            return redirect()->route('delivery.history')->with('error', 'Data SJ tidak ditemukan!');
-        }
-
-        $sj = $items->first();
-
-        // Ambil data customer
-        $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
-
-        // Ambil detail part_name dan blank_size dari Master Part untuk setiap item
-        foreach ($items as $item) {
-            $p = DB::table('parts')->where('part_no', $item->part_no)->first();
-            $item->part_name = $p->part_name ?? 'N/A';
-            $item->blank_size = $p->blank_size ?? '-'; // Sesuaikan kolom blank_size di tabel parts Anda
-        }
-
-        return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));
+    if ($items->isEmpty()) {
+        return redirect()->route('delivery.history')->with('error', 'Data SJ tidak ditemukan!');
     }
+
+    $sj = $items->first();
+    $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
+
+    foreach ($items as $item) {
+        // 1. Ambil Nama Part dari tabel parts
+        $p = DB::table('parts')->where('part_no', $item->part_no)->first();
+        $item->part_name = $p->part_name ?? 'N/A';
+
+        // 2. ✨ AMBIL BLANK SIZE DARI KAMUS RM (rm_stocks)
+        // Kita cari spek material berdasarkan part_no ini
+        $m = DB::table('rm_stocks')->where('material_code', $item->part_no)->first();
+        
+        if ($m) {
+            // Gabungkan Spec dan Size (Contoh: SCGA590 [1.6 X 532 X 408])
+            $item->blank_size = $m->spec . ' [' . $m->size . ']';
+        } else {
+            $item->blank_size = '-';
+        }
+    }
+
+    return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));
+}
 }
