@@ -90,7 +90,7 @@
         </div>
 
         <div class="header-info">
-            <div class="header-row">: {{ $po->po_number ?? '-' }}</div>
+            <div class="header-row"> {{ $po->po_number ?? '-' }}</div>
             <div class="header-row" style="margin-top: 1px;">: {{ $no_sj }}</div>
         </div>
 
