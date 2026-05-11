@@ -29,7 +29,7 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* ✨ 1. TANGGAL: TETAP LURUS HURUF 'I' INDUSTRIES */
+        /* TANGGAL: LURUS HURUF 'I' INDUSTRIES */
         .date-area { 
             position: absolute; 
             top: 0.4cm;      
@@ -49,19 +49,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ 2. NOMOR PO & SJ: DINAIKKAN (BIAR TIDAK TUMPUK) */
+        /* ✨ 1. PERBAIKAN: PO & SJ NAIK & GESER KANAN */
         .header-info { 
             position: absolute; 
-            top: 2.8cm;      /* Dinaikkan dari 4.2cm ke 2.8cm */
-            left: 2.5cm;     
+            top: 2.2cm;      /* Naik dari 2.8cm */
+            left: 5.2cm;     /* Geser kanan dari 2.5cm supaya pas di titik-titik */
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* ✨ 3. DAFTAR BARANG (50 PCS): DIATUR JARAKNYA */
+        /* ✨ 2. PERBAIKAN: DAFTAR BARANG (50 PCS) NAIK KE BARIS TABEL */
         .content-area { 
             position: absolute; 
-            top: 4.8cm;      /* Diatur agar mepet tapi di bawah PO/SJ (tidak tumpuk) */
+            top: 4.1cm;      /* Naik drastis dari 4.8cm agar pas di baris pertama */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
