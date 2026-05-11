@@ -2,103 +2,130 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Label Delivery - {{ $no_sj }}</title>
+    <title>Product Identification - {{ $no_sj }}</title>
     <style>
         @page {
             size: A4;
-            margin: 0.5cm; /* Margin diperkecil agar muat lebih banyak rill */
+            margin: 0.5cm;
         }
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             margin: 0;
             padding: 10px;
             background-color: #fff;
         }
-        /* ✨ Grid Layout: 2 Kolom per baris rill */
         .label-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
+            gap: 15px;
         }
         .label-box {
-            border: 2px solid #000; /* Border lebih tebal agar jelas pas dipotong */
-            padding: 0;
+            border: 2px solid #000;
             width: 100%;
-            height: 380px; /* Kunci tinggi agar kotak seragam rill */
+            height: auto;
             position: relative;
-            margin-bottom: 5px;
-            overflow: hidden;
+            box-sizing: border-box;
         }
-        .header {
+
+        /* Atas: OK & Judul */
+        .top-header {
+            display: flex;
             border-bottom: 2px solid #000;
-            padding: 8px;
-            text-align: center;
-            font-weight: 900;
-            font-size: 13pt;
-            letter-spacing: 1px;
         }
-        .table-label {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .table-label td {
-            border-bottom: 1.5px solid #000;
-            padding: 6px 10px;
-            font-size: 10pt;
-            height: 32px;
-            vertical-align: middle;
-        }
-        .label-title {
-            width: 35%;
-            font-weight: bold;
+        .ok-side {
+            width: 80px;
             border-right: 2px solid #000;
-            background-color: #f9f9f9;
-        }
-        .label-value {
-            width: 65%;
-            text-transform: uppercase;
-            font-weight: 800;
-        }
-        .bottom-section {
-            display: flex;
-            width: 100%;
-            height: 120px; /* Tinggi area bawah rill */
-        }
-        .ok-box {
-            width: 55%;
-            border-right: 2px solid #000;
-            display: flex;
-            flex-direction: column;
-        }
-        .remark-box {
-            width: 45%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            padding: 5px;
+        }
+        .ok-side .small-code { font-size: 8pt; font-weight: bold; margin-bottom: 5px; }
+        .ok-side .big-ok { font-size: 28pt; font-weight: 900; margin: 0; }
+        
+        .title-side {
+            flex-grow: 1;
+            text-align: center;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .title-side .main-title { font-size: 14pt; font-weight: 900; letter-spacing: 1px; margin-bottom: 5px; }
+        .title-side .sub-info { font-size: 9pt; font-weight: bold; margin-bottom: 3px; }
+
+        /* Baris Receiving Area */
+        .receiving-bar {
+            background-color: #fff;
+            border-bottom: 2px solid #000;
+            text-align: center;
+            font-weight: 900;
+            font-size: 10pt;
+            padding: 2px 0;
+        }
+
+        /* Area Tengah: Qty & QC Check */
+        .middle-section {
+            display: flex;
+            border-bottom: 2px solid #000;
+            min-height: 150px;
+        }
+        .qty-side {
+            width: 40%;
+            border-right: 2px solid #000;
+            padding: 5px;
+            display: flex;
+            flex-direction: column;
+        }
+        .qty-text { font-weight: 900; font-size: 11pt; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 10px; }
+        .qr-placeholder { 
+            width: 100px; 
+            height: 100px; 
+            margin: auto;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7pt;
             text-align: center;
         }
-        .ok-text {
-            font-size: 45pt; /* Ukuran OK diperbesar sesuai foto rill */
-            font-weight: 900;
-            margin: 0;
-            line-height: 1;
+
+        .qc-side {
+            width: 60%;
+            display: flex;
+            flex-direction: column;
         }
-        .small-table {
-            width: 100%;
-            height: 100%;
-            border-collapse: collapse;
+        .qc-header-row { display: flex; border-bottom: 1px solid #000; height: 50%; }
+        .pallet-no { width: 50%; border-right: 1px solid #000; padding: 3px; font-size: 9pt; font-weight: bold; text-align: center; }
+        .qc-check-title { width: 50%; padding: 3px; font-size: 9pt; font-weight: bold; text-align: center; }
+        
+        .qc-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .qc-table th { border: 1px solid #000; font-size: 8pt; padding: 2px; }
+        .qc-table td { border: 1px solid #000; height: 25px; }
+
+        /* Area Bawah: Data Part */
+        .footer-data {
+            display: flex;
+            flex-direction: column;
         }
-        .small-table td {
-            font-size: 8.5pt;
-            border: none;
+        .data-row {
             border-bottom: 1px solid #000;
-            padding: 3px 8px;
+            padding: 4px 10px;
+            font-size: 10pt;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        .data-row:last-child { border-bottom: none; }
+        .meta-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7.5pt;
+            padding: 2px 10px;
             font-weight: bold;
         }
-        .small-table tr:last-child td {
-            border-bottom: none;
-        }
+
         @media print {
             .no-print { display: none; }
             .label-box { page-break-inside: avoid; }
@@ -110,57 +137,60 @@
     <div class="label-grid">
         @foreach($items as $item)
         <div class="label-box">
-            <div class="header">
-                PT ASALTA MANDIRI AGUNG
+            <div class="top-header">
+                <div class="ok-side">
+                    <span class="small-code">10440</span>
+                    <span class="big-ok">OK</span>
+                </div>
+                <div class="title-side">
+                    <span class="main-title">PRODUCT IDENTIFICATION</span>
+                    <span class="sub-info">Del. Date : {{ date('d-m-Y', strtotime($item->created_at)) }}</span>
+                    <span class="sub-info" style="font-size: 8pt;">{{ $no_sj }}</span>
+                </div>
             </div>
-            <table class="table-label">
-                <tr>
-                    <td class="label-title">CUSTOMER</td>
-                    <td class="label-value">{{ $customer->name ?? $sj->customer_code }}</td>
-                </tr>
-                <tr>
-                    <td class="label-title">PART NUMBER</td>
-                    <td class="label-value" style="font-size: 12pt;">{{ $item->part_no }}</td>
-                </tr>
-                <tr>
-                    <td class="label-title">PART NAME</td>
-                    <td class="label-value" style="font-size: 9pt;">{{ $item->part_name }}</td>
-                </tr>
-                <tr>
-                    <td class="label-title">BLANK SIZE</td>
-                    {{-- Ini otomatis mengambil dari Kamus RM rill --}}
-                    <td class="label-value" style="font-size: 8.5pt; color: #000;">{{ $item->blank_size }}</td>
-                </tr>
-                <tr>
-                    <td class="label-title">PROD DATE</td>
-                    <td class="label-value">{{ date('d-m-Y', strtotime($item->created_at)) }}</td>
-                </tr>
-            </table>
 
-            <div class="bottom-section">
-                <div class="ok-box">
-                    <table class="small-table">
-                        <tr>
-                            <td width="35%">QTY</td>
-                            <td style="font-size: 15pt; font-weight: 900;">{{ number_format($item->qty_delivery) }} PCS</td>
-                        </tr>
-                        <tr>
-                            <td>SHIFT</td>
-                            <td>{{ $item->shift ?? '-' }}</td>
-                        </tr>
-                        <tr>
-                            <td>Q1 DATE</td>
-                            <td style="border-bottom: 1px solid #000;"></td>
-                        </tr>
-                        <tr>
-                            <td>PPC DATE</td>
-                            <td></td>
-                        </tr>
+            <div class="receiving-bar">Receiving Area</div>
+
+            <div class="middle-section">
+                <div class="qty-side">
+                    <div class="qty-text">Qty: {{ number_format($item->qty_delivery) }} PCS</div>
+                    <div class="qr-placeholder">
+                        {{-- QR CODE AREA --}}
+                        [ QR CODE ]<br>
+                        {{ $item->part_no }}
+                    </div>
+                </div>
+                <div class="qc-side">
+                    <div class="qc-header-row">
+                        <div class="pallet-no">Pallet No.<br><span style="font-size: 12pt;">1 / 1</span></div>
+                        <div class="qc-check-title">QC Check</div>
+                    </div>
+                    <table class="qc-table">
+                        <thead>
+                            <tr>
+                                <th>PCS</th>
+                                <th>QC</th>
+                                <th>WH1</th>
+                                <th>WH2</th>
+                                <th>WH3</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td></td><td></td><td></td><td></td><td></td></tr>
+                        </tbody>
                     </table>
                 </div>
-                <div class="remark-box">
-                    <span style="font-size: 9pt; font-weight: bold; margin-bottom: 5px;">REMARK</span>
-                    <h1 class="ok-text">OK</h1>
+            </div>
+
+            <div class="footer-data">
+                <div class="data-row" style="background-color: #f0f0f0;">{{ $item->part_no }}</div>
+                <div class="data-row">{{ $item->part_name }}</div>
+                <div class="data-row" style="font-size: 9pt;">Lot : {{ date('ymd', strtotime($item->created_at)) }}</div>
+                <div class="meta-info">
+                    <span>Created : ASALTA / {{ date('d-m-Y') }}</span>
+                </div>
+                <div class="meta-info" style="border-top: 0.5px solid #000;">
+                    <span>Printed : {{ date('d-m-Y H:i:s') }}</span>
                 </div>
             </div>
         </div>
