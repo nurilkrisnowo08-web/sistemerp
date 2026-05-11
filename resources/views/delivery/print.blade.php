@@ -49,19 +49,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ PERBAIKAN: PO & SJ NAIK & GESER KIRI (BIAR TIDAK TABRAKAN ALAMAT) rill */
+        /* NOMOR PO & SJ */
         .header-info { 
             position: absolute; 
-            top: 2.2cm;      /* NAIK: Biar sejajar baris PO di kertas rill */
-            left: 3.8cm;     /* GESER KIRI: Dari 6.8cm ke 3.8cm biar pas setelah teks "NO. PO :" rill */
+            top: 2.2cm;      
+            left: 3.8cm;     
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* ✨ PERBAIKAN: DAFTAR BARANG (50 PCS) NAIK LAGI rill */
+        /* ✨ PERBAIKAN: DAFTAR BARANG (50 PCS) DIKEBAWAHIN DIKIT */
         .content-area { 
             position: absolute; 
-            top: 3.3cm;      /* NAIK: Dari 3.6cm ke 3.3cm biar pas baris 1 tabel rill */
+            top: 4.0cm;      /* Diubah dari 3.3cm ke 4.0cm agar turun ke baris tabel */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
@@ -77,7 +77,7 @@
     <div class="print-wrapper">
         
         <div class="no-print" style="position: fixed; top: 10px; right: 10px; background: #fff; padding: 15px; border: 2px solid #4361ee; border-radius: 12px; z-index: 9999;">
-            <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ rill!</button>
+            <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ!</button>
         </div>
 
         <div class="date-area">
@@ -114,7 +114,7 @@
 
     <script>
         window.onafterprint = function() {
-            window.location.href = "{{ route('delivery.index') }}";
+            window.location.href = "{{ route('delivery.history') }}";
         };
     </script>
 </body>
