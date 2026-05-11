@@ -123,8 +123,10 @@ Route::middleware(['auth', 'role:staff_ppic,kepala_ppic'])->group(function () {
     Route::get('/delivery/create/{po_number}', [DeliveryController::class, 'create'])->name('delivery.create')->where('po_number', '.*');
     Route::get('/delivery/print/{no_sj}', [DeliveryController::class, 'print'])->name('delivery.print')->where('no_sj', '.*');
     Route::get('/delivery/print-rekap-po/{po_number}', [DeliveryController::class, 'printRekapPO'])->name('delivery.print-rekap-po')->where('po_number', '.*');
-    // Route khusus buat cetak Label Delivery
-Route::get('/delivery/label/{no_sj}', [App\Http\Controllers\DeliveryController::class, 'printLabel'])->name('delivery.label');
+    // Tambahkan ->where('no_sj', '.*') di bagian akhir rill
+Route::get('/delivery/label/{no_sj}', [App\Http\Controllers\DeliveryController::class, 'printLabel'])
+    ->name('delivery.label')
+    ->where('no_sj', '.*');
 
     // --- RAW MATERIAL & SUPPLIER ---
     Route::get('/rm/po-supplier', [RmController::class, 'poSupplierIndex'])->name('rm.po_supplier_index');
