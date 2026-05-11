@@ -101,7 +101,7 @@
                 </thead>
                 <tbody>
                     @foreach($groupedMaterials as $group)
-                    @php $slug = Str::slug($group->group_key); @endphp
+                    @php $slug = Str::slug($group->group_key . $loop->iteration); @endphp
                     <tr class="rm-row-header" data-toggle="collapse" data-target="#det-{{ $slug }}">
                         <td class="pl-5 py-4 text-left">
                             <div class="font-weight-black text-primary" style="font-size: 16px; font-family: 'JetBrains Mono';">{{ $group->alias_code ?? $group->group_key }}</div>
@@ -119,16 +119,15 @@
                         <td colspan="7" class="p-4">
                             <div class="row">
                                 <div class="col-md-7">
-                                    {{-- ✨ FIX: Pastikan perulangan hanya 1 kali per fisik Coil ID --}}
+                                    {{-- ✨ Logika Unik Coil agar kartu tidak double rill --}}
                                     @foreach($group->details->unique('coil_id') as $p)
                                     @php 
-                                        // Ambil semua part yang nempel di Coil ini rill
                                         $subParts = DB::table('rm_stocks')
                                             ->where('coil_id', trim($p->coil_id))
                                             ->where('customer', trim($p->customer))
                                             ->get(); 
                                     @endphp
-                                    <div class="unit-tag-card p-4 bg-white mb-3">
+                                    <div class="unit-tag-card p-4 bg-white mb-3 shadow-sm">
                                         <div class="d-flex justify-content-between align-items-start mb-4">
                                             <div>
                                                 <span class="badge-coil">{{ $p->coil_id }}</span>
@@ -138,9 +137,12 @@
                                                 </div>
                                             </div>
                                             <div class="btn-group shadow-sm rounded-pill overflow-hidden">
-                                                <button class="btn btn-light btn-sm px-3 font-weight-bold border-right" onclick="openAssignPart('{{ $p->id }}', '{{ $p->customer }}')"><i class="fas fa-plus mr-1 text-primary"></i> PART</button>
-                                                <button class="btn btn-light btn-sm px-3 font-weight-bold border-right" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{ $p->stock_pcs }}')"><i class="fas fa-edit mr-1 text-warning"></i> ADJUST</button>
-                                                <form action="{{ route('rm.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Erase this unit?')">@csrf @method('DELETE')<button type="submit" class="btn btn-light btn-sm px-3"><i class="fas fa-trash text-danger"></i></button></form>
+                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openAssignPart('{{ $p->id }}', '{{ $p->customer }}')"><i class="fas fa-plus mr-1 text-primary"></i> PART</button>
+                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{ $p->stock_pcs }}')"><i class="fas fa-edit mr-1 text-warning"></i> ADJUST</button>
+                                                <form action="{{ route('rm.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Erase this physical unit?')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="btn btn-white btn-sm px-3"><i class="fas fa-trash text-danger"></i></button>
+                                                </form>
                                             </div>
                                         </div>
                                         <div class="bg-light p-3 rounded-2xl border" style="border-style: dashed !important;">
@@ -149,8 +151,11 @@
                                                 @foreach($subParts as $sp)
                                                 <div class="col-md-6 mb-2">
                                                     <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-xl border shadow-sm">
-                                                        <span class="font-weight-bold text-dark small">{{ $sp->material_code }} - {{ $sp->material_name }}</span>
-                                                        <form action="{{ route('rm.remove_part_from_unit', $sp->id) }}" method="POST">@csrf @method('DELETE')<button type="submit" class="border-0 bg-transparent p-0"><i class="fas fa-unlink text-danger opacity-50"></i></button></form>
+                                                        <span class="font-weight-bold text-dark small">{{ $sp->material_code }}</span>
+                                                        <form action="{{ route('rm.remove_part_from_unit', $sp->id) }}" method="POST">
+                                                            @csrf @method('DELETE')
+                                                            <button type="submit" class="border-0 bg-transparent p-0"><i class="fas fa-unlink text-danger opacity-50"></i></button>
+                                                        </form>
                                                     </div>
                                                 </div>
                                                 @endforeach
@@ -237,7 +242,7 @@
                     <input type="hidden" name="rm_stock_id" id="assign_ref_id">
                     <div class="alert alert-primary rounded-2xl mb-4 border-0 text-center py-3">
                         <i class="fas fa-info-circle mb-2 d-block fa-2x"></i>
-                        <p class="small font-weight-bold mb-0">Binding a component allows this unit to be used for production.</p>
+                        <p class="small font-weight-bold mb-0">Binding a component allows this unit to be used for production mapping.</p>
                     </div>
                     <div class="form-group mb-0">
                         <label class="small font-weight-black text-primary uppercase mb-2 d-block">Choose Target Component</label>
@@ -254,12 +259,12 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // ⚡ LOGIKA OTOMATIS: AMBIL SPEC & PART SAAT PILIH CLIENT
+    // ⚡ Sinkronisasi Dropdown saat Pilih Client
     $(document).on('change', '#modalFilterCustomer', function() {
         let customerCode = $(this).val();
         if (customerCode) {
-            $('#selectMasterSpec').html('<option>🔄 Loading...</option>').prop('disabled', true);
-            $('#selectPart').html('<option>🔄 Loading...</option>').prop('disabled', true);
+            $('#selectMasterSpec').html('<option>🔄 Syncing Specs...</option>').prop('disabled', true);
+            $('#selectPart').html('<option>🔄 Syncing Parts...</option>').prop('disabled', true);
             $.ajax({
                 url: "/get-parts-and-specs/" + encodeURIComponent(customerCode),
                 type: "GET",
@@ -294,10 +299,16 @@
         $(this).find('.transition-icon').toggleClass('fa-rotate-90');
     });
 
-    function openEditUnit(id, coil, qty) { $('#edit_id').val(id); $('#edit_coil').val(coil); $('#edit_qty').val(qty); $('#modalEditUnit').modal('show'); }
+    function openEditUnit(id, coil, qty) { 
+        $('#edit_id').val(id); 
+        $('#edit_coil').val(coil); 
+        $('#edit_qty').val(qty); 
+        $('#modalEditUnit').modal('show'); 
+    }
+
     function openAssignPart(id, customer) {
         $('#assign_ref_id').val(id);
-        $('#assign_select_part').html('<option>Loading database...</option>');
+        $('#assign_select_part').html('<option>Querying components...</option>');
         $.ajax({
             url: "/get-parts-and-specs/" + encodeURIComponent(customer),
             type: "GET",

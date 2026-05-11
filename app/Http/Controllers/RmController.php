@@ -150,17 +150,17 @@ class RmController extends Controller
         try {
             $logInserted = false; 
             foreach ($request->part_nos as $partNo) {
-                // ✨ FIX: Cek apakah Coil + Part ini sudah ada sebelumnya
+                // ✨ FIX: Gunakan pembersihan spasi saat cek eksistensi
                 $exists = DB::table('rm_stocks')
                             ->where('coil_id', $coilId)
-                            ->where('material_code', $partNo)
+                            ->where('material_code', trim($partNo))
                             ->exists();
                 
                 if($exists) continue; // Skip jika sudah ada agar tidak double baris
 
-                $pData = DB::table('parts')->where('part_no', $partNo)->first();
+                $pData = DB::table('parts')->where('part_no', trim($partNo))->first();
                 $rmId = DB::table('rm_stocks')->insertGetId([
-                    'material_code' => $partNo,
+                    'material_code' => trim($partNo),
                     'coil_id' => $coilId,
                     'material_name' => $pData->part_name ?? 'N/A', 
                     'spec' => trim($request->spec), 
@@ -174,10 +174,11 @@ class RmController extends Controller
                     'updated_at' => now(),
                 ]);
 
+                // Log Inbound hanya dimasukkan sekali per CoilID untuk menjaga history stok rill
                 if (!$logInserted) {
                     DB::table('rm_incoming_logs')->insert([
                         'rm_stock_id' => $rmId, 
-                        'material_code' => $partNo, 
+                        'material_code' => trim($partNo), 
                         'pcs_in' => $request->stock_pcs, 
                         'source' => 'supplier', 
                         'no_produksi' => 'REG-' . date('Ymd'), 
@@ -206,7 +207,14 @@ class RmController extends Controller
         if(!$source) return back()->with('error', 'Source not found.');
         
         $part = DB::table('parts')->where('part_no', $request->part_no)->first();
-        $targetCoils = DB::table('rm_stocks')->where('customer', trim($source->customer))->where(DB::raw('TRIM(spec)'), trim($source->spec))->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $source->size))->distinct()->pluck('coil_id');
+        
+        // ✨ FIX: Ambil semua Coil ID yang speknya identik (tanpa spasi)
+        $targetCoils = DB::table('rm_stocks')
+                        ->where('customer', trim($source->customer))
+                        ->where(DB::raw('TRIM(spec)'), trim($source->spec))
+                        ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $source->size))
+                        ->distinct()
+                        ->pluck('coil_id');
         
         DB::beginTransaction();
         try {
@@ -222,6 +230,8 @@ class RmController extends Controller
                         'size' => $source->size, 
                         'coil_id' => $coilId, 
                         'stock_pcs' => $ref->stock_pcs, 
+                        'min_stock' => $ref->min_stock,
+                        'max_stock' => $ref->max_stock,
                         'created_at' => now(), 
                         'updated_at' => now()
                     ]);
@@ -316,21 +326,29 @@ class RmController extends Controller
             $specTarget = trim($m->material_type); 
             $sizeTarget = trim($m->thickness) . ' X ' . trim($m->size);
             
-            // Ambil mapping part yang sudah ada untuk spek ini
-            $previousMapping = DB::table('rm_stocks')->where('spec', $specTarget)->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))->where('customer', trim($m->customer_code))->select('material_code', 'material_name')->distinct()->get();
+            // Ambil mapping part yang sudah ada untuk spek ini (Gunakan REPLACE spasi agar akurat)
+            $previousMapping = DB::table('rm_stocks')
+                                ->where('spec', $specTarget)
+                                ->where(DB::raw("REPLACE(size, ' ', '')"), '=', str_replace(' ', '', $sizeTarget))
+                                ->where('customer', trim($m->customer_code))
+                                ->select('material_code', 'material_name')
+                                ->distinct()
+                                ->get();
             
             $logCreated = false; 
             if ($previousMapping->isEmpty()) {
+                // Jika spek baru, gunakan Alias Code dari master material
                 $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $m->alias_code, 'material_name' => $m->material_type, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => $coilId, 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
                 DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $m->alias_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => $coilId, 'created_at' => now()]);
             } else { 
                 foreach ($previousMapping as $p) {
-                    // ✨ FIX: Cek duplikasi baris
+                    // ✨ FIX: Cek duplikasi baris per PartNo + CoilID
                     $exists = DB::table('rm_stocks')->where('coil_id', $coilId)->where('material_code', $p->material_code)->exists();
                     if($exists) continue;
 
                     $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $p->material_code, 'material_name' => $p->material_name, 'customer' => trim($m->customer_code), 'spec' => $specTarget, 'size' => $sizeTarget, 'coil_id' => $coilId, 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
                     
+                    // Log Inbound hanya untuk part pertama dalam mapping rill
                     if (!$logCreated) { 
                         DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $p->material_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => $coilId, 'created_at' => now()]); 
                         $logCreated = true; 
