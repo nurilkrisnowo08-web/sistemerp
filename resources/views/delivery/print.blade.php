@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title> 
     <style>
-        /* Pengaturan Kertas rill */
+        /* Pengaturan Kertas Portrait */
         @page { 
             size: 16.5cm 21.5cm; 
             margin: 0 !important; 
@@ -29,39 +29,39 @@
 
         @media print { .no-print { display: none !important; } }
 
-        /* TANGGAL rill */
+        /* ✨ 1. TANGGAL: KEMBALI KE ATAS & LURUS DENGAN NAMA PT */
         .date-area { 
             position: absolute; 
-            top: 0.4cm;      
-            right: 0.8cm;    
-            width: 7.0cm;    
+            top: 0.4cm;      /* Dikembalikan ke atas (tidak turun) */
+            right: 0.8cm;    /* Posisi kanan sama dengan PT */
+            width: 7.5cm;    /* Lebar sama dengan kotak PT */
+            text-align: left; /* Rata kiri agar lurus dengan huruf 'P' di PT. ICHII */
             font-weight: bold; 
-            text-align: left;
         }
 
-        /* CUSTOMER AREA rill */
+        /* CUSTOMER AREA (PT ICHII INDUSTRIES) */
         .customer-area { 
             position: absolute; 
             top: 1.4cm;      
             right: 0.8cm; 
-            width: 7.0cm; 
+            width: 7.5cm; 
             line-height: 1.2; 
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ PERBAIKAN: DIGESER KE KIRI BIAR SEBARIS SAMA KOLOM 'PCS' rill */
+        /* ✨ 2. NOMOR PO & SJ: TURUN LAGI DIKIT */
         .header-info { 
             position: absolute; 
-            top: 1.9cm;      /* Tetap sejajar baris Karawang rill */
-            left: 2.5cm;     /* DIGESER KE KIRI: Dari 4.0cm ke 2.5cm rill */
+            top: 3.5cm;      /* Diturunkan lagi dari 3.2cm ke 3.5cm */
+            left: 2.5cm;     
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* DAFTAR BARANG rill */
+        /* ✨ 3. DAFTAR BARANG (50 PCS): NAIK LAGI */
         .content-area { 
             position: absolute; 
-            top: 6.0cm;      
+            top: 5.0cm;      /* Dinaikkan lagi dari 5.2cm ke 5.0cm */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
@@ -77,7 +77,7 @@
     <div class="print-wrapper">
         
         <div class="no-print" style="position: fixed; top: 10px; right: 10px; background: #fff; padding: 15px; border: 2px solid #4361ee; border-radius: 12px; z-index: 9999;">
-            <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ rill!</button>
+            <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ!</button>
         </div>
 
         <div class="date-area">
