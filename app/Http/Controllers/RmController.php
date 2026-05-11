@@ -196,18 +196,26 @@ class RmController extends Controller
     }
 
     
-    public function getAvailableCoils($part_no)
-    {
-        
-        $coils = DB::table('rm_stocks')
-            ->where('material_code', trim($part_no))
-            ->where('stock_pcs', '>', 0)
-            ->groupBy('coil_id', 'id', 'stock_pcs') // ✨ Kunci agar ID Coil unik
-            ->select('id', 'coil_id', 'stock_pcs')
-            ->get();
+   /**
+ * ✨ FIX FINAL: MENGAMBIL DAFTAR COIL UNIK (1 COIL = 1 PILIHAN)
+ */
+public function getAvailableCoils($part_no)
+{
+    // Kita ambil berdasarkan Part No, tapi kita GROUP BY Coil ID saja
+    // Supaya walaupun ada 10 part di 1 coil, yang muncul di dropdown cuma 1
+    $coils = DB::table('rm_stocks')
+        ->where('material_code', trim($part_no))
+        ->where('stock_pcs', '>', 0)
+        ->select(
+            'coil_id', 
+            DB::raw('MAX(id) as id'), // Kita ambil salah satu ID sebagai referensi input
+            DB::raw('MAX(stock_pcs) as stock_pcs') // Ambil stok tertinggi/terakhir
+        )
+        ->groupBy('coil_id') // ✨ Kunci utamanya di sini: Hanya grouping berdasarkan Coil ID
+        ->get();
 
-        return response()->json($coils);
-    }
+    return response()->json($coils);
+}
 
     public function assignPart(Request $request) {
         $source = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
