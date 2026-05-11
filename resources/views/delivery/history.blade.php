@@ -57,7 +57,7 @@
                             <th>Customer</th>
                             <th>Jumlah Item</th>
                             <th>Tanggal Terbit</th>
-                            <th width="200">Aksi</th>
+                            <th width="240">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -79,6 +79,10 @@
                                 <div class="btn-group">
                                     <a href="{{ route('delivery.print', $no_sj) }}" class="btn btn-info btn-sm font-weight-bold shadow-sm" target="_blank">
                                         <i class="fas fa-print mr-1"></i> SJ
+                                    </a>
+                                    {{-- ✨ TOMBOL BARU: CETAK LABEL --}}
+                                    <a href="{{ route('delivery.label', $no_sj) }}" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark" target="_blank">
+                                        <i class="fas fa-tag mr-1"></i> LABEL
                                     </a>
                                     @if($poNumber)
                                         <a href="{{ route('delivery.print-rekap-po', $poNumber) }}" class="btn btn-primary btn-sm font-weight-bold shadow-sm" target="_blank">
