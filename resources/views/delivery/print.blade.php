@@ -49,19 +49,19 @@
         }
         .customer-name { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
 
-        /* ✨ 1. PERBAIKAN: PO & SJ NAIK & GESER KANAN */
+        /* ✨ PERBAIKAN 1: PO & SJ NAIK & GESER KANAN DRATIS */
         .header-info { 
             position: absolute; 
-            top: 2.2cm;      /* Naik dari 2.8cm */
-            left: 5.2cm;     /* Geser kanan dari 2.5cm supaya pas di titik-titik */
+            top: 1.8cm;      /* Naik dari 2.2cm rill */
+            left: 6.8cm;     /* Geser kanan dari 5.2cm supaya tidak numpuk rill */
             font-weight: bold; 
         }
         .header-row { height: 0.45cm; }
 
-        /* ✨ 2. PERBAIKAN: DAFTAR BARANG (50 PCS) NAIK KE BARIS TABEL */
+        /* ✨ PERBAIKAN 2: DAFTAR BARANG (50 PCS) NAIK LAGI */
         .content-area { 
             position: absolute; 
-            top: 4.1cm;      /* Naik drastis dari 4.8cm agar pas di baris pertama */
+            top: 3.6cm;      /* Naik drastis dari 4.1cm rill */
             width: 100%; 
         }
         .item-table { width: 100%; border-collapse: collapse; }
@@ -77,7 +77,7 @@
     <div class="print-wrapper">
         
         <div class="no-print" style="position: fixed; top: 10px; right: 10px; background: #fff; padding: 15px; border: 2px solid #4361ee; border-radius: 12px; z-index: 9999;">
-            <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ!</button>
+            <button onclick="window.print()" style="padding: 10px 20px; background: #4361ee; color: #fff; border: none; font-weight: 800; cursor: pointer; border-radius: 8px;">🖨️ CETAK SJ rill!</button>
         </div>
 
         <div class="date-area">
