@@ -124,9 +124,9 @@
                             <div style="max-height: 200px; overflow-y: auto;">
                                 @foreach($ngStamping as $ng)
                                 <div class="ng-item shadow-sm">
-                                    {{-- ✨ FIX: Karena mengambil data dari master_materials, kita gunakan alias_code atau material_type rill --}}
-                                    <span class="small font-weight-bold text-dark">[{{ $ng->alias_code }}] {{ $ng->material_type }}</span>
-                                    <input type="number" name="ng_details[{{ $ng->alias_code }}]" class="ng-input-sm ng-val-{{ $p->id }}" value="0" oninput="validatePartial('{{ $p->id }}', {{ $remaining }})">
+                                    {{-- ✨ FIX FINAL: Menampilkan ng_name dari tabel master_ngs rill --}}
+                                    <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
+                                    <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-{{ $p->id }}" value="0" oninput="validatePartial('{{ $p->id }}', {{ $remaining }})">
                                 </div>
                                 @endforeach
                             </div>
@@ -189,9 +189,9 @@
                             <div style="max-height: 200px; overflow-y: auto;">
                                 @foreach($ngWelding as $ng)
                                 <div class="ng-item shadow-sm">
-                                    {{-- ✨ FIX: Sinkronisasi pemanggilan kolom master_materials rill --}}
-                                    <span class="small font-weight-bold text-dark">[{{ $ng->alias_code }}] {{ $ng->material_type }}</span>
-                                    <input type="number" name="ng_details[{{ $ng->alias_code }}]" class="ng-input-sm ng-val-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
+                                    {{-- ✨ FIX FINAL: Menampilkan properti ng_name bawaan master_ngs rill --}}
+                                    <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
+                                    <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
                                 </div>
                                 @endforeach
                             </div>
@@ -214,7 +214,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // ✨ INTERCEPTOR AJAX UNTUK AUTO-PRINT LABEL PARTIAL OTOMATIS RILL
+    // AJAX INTERCEPTOR UNTUK AUTO-PRINT LABEL BARCODE PARTIAL RILL
     $(document).on('submit', '.ajax-qc-form', function(e) {
         e.preventDefault();
         
@@ -230,6 +230,7 @@
             data: form.serialize(),
             success: function(res) {
                 if(res.success) {
+                    // Cek jika kuantitas OK yang dilaporkan di atas 0, buka tab print barcode rill
                     let okInput = form.find('input[name="qty_ok_final"]').val() || 0;
                     if(parseInt(okInput) > 0 && res.print_url) {
                         window.open(res.print_url, '_blank');
