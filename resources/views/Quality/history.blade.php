@@ -1,7 +1,6 @@
 @extends('layout.admin')
 
 @section('content')
-<!-- Core Assets -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
@@ -20,10 +19,10 @@
     .batch-header { background: #f8fafc; padding: 20px 30px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
     
     .table-history td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #f8fafc; font-weight: 700; font-size: 13px; }
-    /* Warna Badge Phase Dinamis */
     .phase-badge { background: var(--ind-navy); color: white; padding: 4px 12px; border-radius: 8px; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; }
     
     .ng-pill { background: #fee2e2; color: var(--ind-rose); font-size: 9px; padding: 2px 8px; border-radius: 6px; border: 1px solid #fecdd3; font-family: 'JetBrains Mono'; font-weight: 700; margin: 2px; display: inline-block; }
+    .btn-table-print { border-radius: 8px; font-weight: 800; font-family: 'Orbitron'; font-size: 10px; padding: 6px 12px; transition: 0.3s; }
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
@@ -38,13 +37,11 @@
     </div>
 
     @php
-        // Mengurutkan data berdasarkan Batch
         $groupedHistory = $historyData->groupBy('batch_no');
     @endphp
 
     @forelse($groupedHistory as $batchNo => $records)
         @php
-            // Urutkan records secara kronologis (lama ke baru) untuk menghitung progress total
             $sortedRecords = $records->sortBy('created_at');
             
             $batchPart = $sortedRecords->first()->part_no;
@@ -89,29 +86,48 @@
                             <th style="font-size: 10px; text-transform: uppercase;" class="text-primary">Return</th>
                             <th style="font-size: 10px; text-transform: uppercase;">Timestamp</th>
                             <th style="font-size: 10px; text-transform: uppercase;" class="text-left">Defects Summary</th>
+                            <th style="font-size: 10px; text-transform: uppercase; width: 120px;">Label</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Membalik urutan display: TERBARU di ATAS, tapi nomor urut tetap akurat --}}
                         @php $totalRecords = $records->count(); @endphp
                         @foreach($records->sortByDesc('created_at') as $index => $h)
-                        <tr onclick="showDetail({{ json_encode($h) }})">
-                            <td>
-                                {{-- Logika: Jika ada 3 data, baris paling atas (terbaru) jadi CHECK #3 --}}
+                        @php
+                            // Link Cetak Otomatis menggunakan rute internal QC rill
+                            $printUrl = route('quality.print_label_partial_qc', [
+                                'part_no'  => $h->part_no,
+                                'qty'      => $h->qty_ok,
+                                'batch_id' => $h->batch_no
+                            ]);
+                        @endphp
+                        <tr>
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;">
                                 <span class="phase-badge">CHECK #{{ $totalRecords - $loop->index }}</span>
                             </td>
-                            <td class="font-weight-black uppercase text-dark">{{ $h->inspector }}</td>
-                            <td class="text-success font-weight-black">+{{ number_format($h->qty_ok) }}</td>
-                            <td class="text-danger font-weight-black">+{{ number_format($h->qty_ng) }}</td>
-                            <td class="text-primary font-weight-black">+{{ number_format($h->qty_ret ?? 0) }}</td>
-                            <td class="text-muted small font-weight-bold">{{ date('d/m/Y H:i', strtotime($h->created_at)) }}</td>
-                            <td class="text-left">
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;" class="font-weight-black uppercase text-dark">{{ $h->inspector }}</td>
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;" class="text-success font-weight-black">+{{ number_format($h->qty_ok) }}</td>
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;" class="text-danger font-weight-black">+{{ number_format($h->qty_ng) }}</td>
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;" class="text-primary font-weight-black">+{{ number_format($h->qty_ret ?? 0) }}</td>
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;" class="text-muted small font-weight-bold">{{ date('d/m/Y H:i', strtotime($h->created_at)) }}</td>
+                            <td onclick="showDetail({{ json_encode($h) }})" style="cursor: pointer;" class="text-left">
                                 @if($h->ng_reason && $h->ng_reason != 'OK GOODS')
                                     @foreach(explode(', ', $h->ng_reason) as $pill)
                                         <span class="ng-pill">{{ $pill }}</span>
                                     @endforeach
                                 @else
                                     <small class="text-muted italic font-weight-bold">ZERO_DEFECTS</small>
+                                @endif
+                            </td>
+                            <td>
+                                {{-- ✨ TOMBOL CETAK LANGSUNG: Hanya muncul jika jumlah barang OK di atas 0 rill --}}
+                                @if($h->qty_ok > 0)
+                                    <button class="btn btn-outline-success btn-table-print shadow-sm" onclick="window.open('{{ $printUrl }}', '_blank')">
+                                        <i class="fas fa-print mr-1"></i> PRINT
+                                    </button>
+                                @else
+                                    <button class="btn btn-light btn-table-print text-muted" disabled style="cursor: not-allowed;">
+                                        <i class="fas fa-ban mr-1"></i> N/A
+                                    </button>
                                 @endif
                             </td>
                         </tr>
@@ -127,7 +143,7 @@
     @endforelse
 </div>
 
-{{-- MODAL DETAIL (DI-UPDATE UNTUK RETURN) --}}
+{{-- MODAL DETAIL (DITAMBAHKAN TOMBOL CETAK INTERNAL RILL) --}}
 <div class="modal fade animate__animated animate__zoomIn" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content shadow-lg" style="border-radius: 35px; border: none; overflow: hidden;">
@@ -150,8 +166,18 @@
                 </div>
 
                 <div class="mb-4 text-center">
-                    <small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">Batch Efficiency (Yield)</small>
-                    <div class="text-dark font-weight-black h4" id="det-yield"></div>
+                    <div class="row">
+                        <div class="col-6">
+                            <small class="text-muted font-weight-bold uppercase" style="font-size: 9px;">Batch Efficiency (Yield)</small>
+                            <div class="text-dark font-weight-black h4" id="det-yield"></div>
+                        </div>
+                        <div class="col-6 d-flex align-items-center justify-content-center">
+                            {{-- ✨ TOMBOL CETAK INTERNAL MODAL RILL --}}
+                            <button id="modal-print-btn" class="btn btn-success font-weight-black rounded-pill shadow px-4 uppercase" style="font-family: 'Orbitron'; font-size: 11px; display: none;">
+                                <i class="fas fa-print mr-2"></i> Print Label
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -170,7 +196,6 @@
 
 <script>
     function showDetail(data) {
-        // Yield dihitung dari OK / (OK+NG) rill
         const totalChecked = parseFloat(data.qty_ok) + parseFloat(data.qty_ng);
         const yieldVal = totalChecked > 0 ? ((data.qty_ok / totalChecked) * 100).toFixed(1) : 0;
 
@@ -182,6 +207,19 @@
         document.getElementById('det-ret').innerText = data.qty_ret ?? 0;
         document.getElementById('det-yield').innerText = yieldVal + "%";
         document.getElementById('det-inspector').innerText = data.inspector;
+
+        // ✨ LOGIKA TOMBOL MODAL: Tampilkan dan berikan aksi jika barang OK > 0 rill
+        const modalPrintBtn = document.getElementById('modal-print-btn');
+        if(parseInt(data.qty_ok) > 0) {
+            modalPrintBtn.style.display = 'inline-block';
+            modalPrintBtn.onclick = function() {
+                // Generate URL dinamis ke route internal QC rill
+                let url = `/quality/print-label-partial-qc?part_no=${encodeURIComponent(data.part_no)}&qty=${data.qty_ok}&batch_id=${encodeURIComponent(data.batch_no)}`;
+                window.open(url, '_blank');
+            };
+        } else {
+            modalPrintBtn.style.display = 'none';
+        }
 
         const ngListDiv = document.getElementById('det-ng-list');
         ngListDiv.innerHTML = ''; 
