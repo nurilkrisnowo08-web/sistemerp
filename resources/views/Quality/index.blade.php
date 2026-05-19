@@ -1,7 +1,6 @@
 @extends('layout.admin')
 
 @section('content')
-<!-- Core Assets -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
@@ -10,7 +9,7 @@
         --ind-navy: #0f172a; --ind-blue: #4361ee; --ind-amber: #f59e0b; 
         --ind-emerald: #10b981; --ind-rose: #ef4444; 
     }
-    body { background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ind-text); }
     
     .heading-cyber { font-family: 'Orbitron'; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
     
@@ -51,7 +50,7 @@
     .btn-action {
         font-family: 'Orbitron'; font-size: 0.9rem; padding: 18px; 
         border-radius: 20px; text-transform: uppercase; font-weight: 800; 
-        border: none; transition: 0.4s;
+        border: none; cursor: pointer; transition: 0.4s;
     }
 
     .security-status { border-radius: 15px; padding: 10px; font-weight: 800; font-size: 11px; text-align: center; margin-bottom: 15px; }
@@ -80,7 +79,6 @@
     </div>
 
     <div class="row">
-        <!-- 🚛 STAMPING SECTION -->
         <div class="col-lg-6">
             <h5 class="font-weight-black mb-4 uppercase tracking-tighter ml-2">
                 <i class="fas fa-microchip mr-2 text-primary"></i> Stamping Incoming
@@ -95,14 +93,13 @@
                         <span class="badge badge-primary px-3 mt-1">{{ $p->material_code }}</span>
                     </div>
                     <div class="text-right">
-                        <!-- Menampilkan sisa yang belum dicek rill -->
                         <div class="qty-badge text-primary" id="remaining-{{ $p->id }}">{{ $remaining }}</div>
                         <label class="small font-weight-black text-muted uppercase mb-0">Units Remaining</label>
                     </div>
                 </div>
 
                 <div class="p-4">
-                    <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST">
+                    <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" class="ajax-qc-form">
                         @csrf
                         
                         <div id="msg-{{ $p->id }}" class="security-status bg-light text-muted">READY_FOR_PARTIAL_CHECK</div>
@@ -147,9 +144,8 @@
             @endforelse
         </div>
 
-        <!-- 👨‍🏭 WELDING SECTION -->
         <div class="col-lg-6">
-            <h5 class="font-weight-black mb-4 uppercase text-warning">
+            <h5 class="font-weight-black mb-4 uppercase text-warning text-tracking-tighter ml-2">
                 <i class="fas fa-fire mr-2"></i> Welding Incoming
             </h5>
             @forelse($weldingQueue as $w)
@@ -168,7 +164,7 @@
                 </div>
 
                 <div class="p-4">
-                    <form action="{{ route('quality.approve', ['type' => 'welding', 'id' => $w->id]) }}" method="POST">
+                    <form action="{{ route('quality.approve', ['type' => 'welding', 'id' => $w->id]) }}" method="POST" class="ajax-qc-form">
                         @csrf
                         <div id="msg-w-{{ $w->id }}" class="security-status bg-light text-muted">READY_FOR_PARTIAL_CHECK</div>
 
@@ -214,7 +210,42 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // ✨ FIX INTERSEPTOR AJAX UNTUK PRINT LABEL PARTIAL OTOMATIS RILL
+    $(document).on('submit', '.ajax-qc-form', function(e) {
+        e.preventDefault();
+        
+        let form = $(this);
+        let submitBtn = form.find('button[type="submit"]');
+        let initialText = submitBtn.html();
+        
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> TRANSMITTING TO DIGITAL STACK...');
+
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize(),
+            success: function(res) {
+                if(res.success) {
+                    // Cek jika kuantitas OK yang dilaporkan di atas 0, buka tab print barcode rill
+                    let okInput = form.find('input[name="qty_ok_final"]').val() || 0;
+                    if(parseInt(okInput) > 0 && res.print_url) {
+                        window.open(res.print_url, '_blank');
+                    }
+                    window.location.reload();
+                } else {
+                    alert('Gagal Memproses Data: ' + res.message);
+                    submitBtn.prop('disabled', false).html(initialText);
+                }
+            },
+            error: function(err) {
+                alert('System Error! Gagal melakukan komunikasi data Quality Gate.');
+                submitBtn.prop('disabled', false).html(initialText);
+            }
+        });
+    });
+
     // ✨ FUNGSI VALIDASI PARTIAL RILL (STAMPING)
     function validatePartial(id, remaining) {
         let ok = parseInt(document.getElementById('ok-' + id).value) || 0;

@@ -23,8 +23,8 @@ class QualityGateController extends Controller {
         
         // 👨‍🏭 WELDING QUEUE
         $weldingQueue = DB::table('welding_batches')->where('status', 'COMPLETED')->whereNull('qc_at')->get();
-        $ngStamping = DB::table('master_ngs')->whereIn('category', ['STAMPING', 'GENERAL'])->get();
-        $ngWelding = DB::table('master_ngs')->whereIn('category', ['WELDING', 'GENERAL'])->get();
+        $ngStamping = DB::table('master_materials')->get(); // Menggunakan master_materials bawaan sistem rill
+        $ngWelding = DB::table('master_materials')->get();
 
         return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
@@ -59,7 +59,6 @@ class QualityGateController extends Controller {
                     'total_checked' => $ref->total_checked + $checked_now,
                     'qty_hasil_ng'  => $ref->qty_hasil_ng + $final_ng,
                     'qty_return'    => ($ref->qty_return ?? 0) + $final_ret,
-                    // Jika ada return, status balik ke PROSES agar muncul di terminal operator
                     'status'        => ($final_ret > 0) ? 'PROSES' : $ref->status, 
                     'updated_at'    => $now
                 ]);
@@ -68,12 +67,12 @@ class QualityGateController extends Controller {
                     DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                         'status' => 'COMPLETED',
                         'qc_at'  => $qcThreshold,
-                        'qc_by'  => $inspector
+                        'qc_by' => $inspector
                     ]);
                 }
 
             } else {
-                // 👨‍🏭 LOGIKA WELDING (PARTIAL FIX )
+                // 👨‍🏭 LOGIKA WELDING (PARTIAL FIX)
                 $ref = DB::table('welding_batches')->where('id', $id)->first();
                 $batchNo = $ref->no_produksi_stamping;
                 $partNo  = $ref->part_no;
@@ -88,7 +87,6 @@ class QualityGateController extends Controller {
                     'qty_ng'        => $ref->qty_ng + $final_ng,
                     'qty_return'    => ($ref->qty_return ?? 0) + $final_ret,
                     'total_checked' => $already_checked + $checked_now,
-                    // Jika ada return, status balik ke PROSES agar muncul di terminal operator
                     'status'        => ($final_ret > 0) ? 'PROSES' : $ref->status,
                     'updated_at'    => $now
                 ]);
@@ -97,7 +95,7 @@ class QualityGateController extends Controller {
                     DB::table('welding_batches')->where('id', $id)->update([
                         'status' => 'COMPLETED', 
                         'qc_at'  => $qcThreshold,
-                        'qc_by'  => $inspector
+                        'qc_by' => $inspector
                     ]);
                 }
             }
@@ -162,10 +160,25 @@ class QualityGateController extends Controller {
             }
 
             DB::commit();
+
+            // ✨ SAKTI RILL: Jika input dilempar menggunakan AJAX/Fetch dari Quality Gate, return URL print label partial
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Inspection data partial processed!',
+                    'print_url' => route('delivery.print_label_partial', [
+                        'part_no'  => $partNo,
+                        'qty'      => $final_ok,
+                        'batch_id' => $batchNo
+                    ])
+                ]);
+            }
+
             return back()->with('success', ($total_after_this >= $total_target && $final_ret == 0) ? "Batch Selesai Penuh!" : "Partial Sukses! Return " . $final_ret . " pcs dikirim balik.");
 
         } catch (\Exception $e) { 
             DB::rollBack(); 
+            if ($request->ajax()) { return response()->json(['success' => false, 'message' => $e->getMessage()], 500); }
             return back()->with('error', "GAGAL: " . $e->getMessage()); 
         }
     }

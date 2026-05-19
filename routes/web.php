@@ -97,6 +97,7 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     Route::get('/quality-control-room', [QualityGateController::class, 'index'])->name('quality.index');
     Route::post('/quality-control-approve/{type}/{id}', [QualityGateController::class, 'approve'])->name('quality.approve');
     Route::get('/quality/history', [QualityGateController::class, 'history'])->name('quality.history');
+    Route::get('/produksi/print-label-partial', [App\Http\Controllers\ProduksiController::class, 'printLabelPartial'])->name('delivery.print_label_partial');
 
     // 📦 MONITORING GUDANG (HANYA LIHAT)
     Route::get('/stock-fg', [FgController::class, 'index'])->name('fg.index');
