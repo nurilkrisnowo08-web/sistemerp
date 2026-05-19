@@ -99,6 +99,7 @@
                 </div>
 
                 <div class="p-4">
+                    {{-- ✨ FIX CLASS: Diubah jadi .ajax-qc-form agar tertangkap sempurna oleh skrip bawah rill --}}
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" class="ajax-qc-form">
                         @csrf
                         
@@ -189,7 +190,7 @@
                                 @foreach($ngWelding as $ng)
                                 <div class="ng-item shadow-sm">
                                     <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
-                                    <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
+                                    <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-w-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
                                 </div>
                                 @endforeach
                             </div>
@@ -203,6 +204,7 @@
                     </form>
                 </div>
             </div>
+            @forelse($weldingQueue as $w)
             @empty
             <div class="text-center p-5 text-muted bg-white rounded-3xl border">WELDING_QUEUE_CLEAR</div>
             @endforelse
@@ -226,9 +228,9 @@
             url: form.attr('action'),
             type: 'POST',
             data: form.serialize(),
-            dataType: 'json', // Minta respon balik terstruktur rill
+            dataType: 'json', 
             headers: {
-                'X-Requested-With': 'XMLHttpRequest' // ✨ Kunci utama agar deteksi $request->ajax() di Controller aktif rill
+                'X-Requested-With': 'XMLHttpRequest' // ✨ Memaksa request terbaca murni AJAX oleh server rill
             },
             success: function(res) {
                 if(res.success) {
@@ -244,7 +246,7 @@
                 }
             },
             error: function(err) {
-                let errorMsg = err.responseJSON ? err.responseJSON.message : 'Koneksi bermasalah atau hak akses role ditolak.';
+                let errorMsg = err.responseJSON ? err.responseJSON.message : 'Koneksi bermasalah atau data parameter tidak sinkron.';
                 alert('Quality Gate Error: ' + errorMsg);
                 submitBtn.prop('disabled', false).html(initialText);
             }
@@ -287,7 +289,7 @@
         let ret = parseInt(document.getElementById('ret-w-' + id).value) || 0;
         let totalNG = 0;
         
-        document.querySelectorAll('.ng-val-w-' + id).forEach(input => {
+        document.querySelectorAll('.ng-val-w-w-' + id).forEach(input => {
             totalNG += (parseInt(input.value) || 0);
         });
 

@@ -163,7 +163,7 @@ class QualityGateController extends Controller {
 
             DB::commit();
 
-            // ✨ FIX SAKTI RILL: Alihkan ke rute internal QC agar lolos dari pembatasan Middleware CheckRole
+            // ✨ FIX FINAL: Arahkan ke internal Route QC 'quality.print_label_partial_qc' rill
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
@@ -203,7 +203,7 @@ class QualityGateController extends Controller {
         }
     }
 
-    // ✨ FUNGSI INTERNAL QC: Merender pencetakan barcode mandiri tanpa menyenggol controller lain rill
+    // ✨ FIX FINAL: Merender view 'Quality.label_qc_print' milik folder Quality sendiri Pak rill
     public function printLabelPartialQC(Request $request)
     {
         $part_no = $request->part_no;
@@ -212,7 +212,7 @@ class QualityGateController extends Controller {
 
         $part = DB::table('parts')->where('part_no', $part_no)->first();
         
-        $qrText = "ITEM DETAIL\n" .
+        $qrText = "QC INSPECTION DETAIL\n" .
                   "Part: " . $part_no . "\n" .
                   "Name: " . ($part->part_name ?? 'N/A') . "\n" .
                   "Qty : " . number_format($qty) . " PCS\n" .
@@ -221,7 +221,7 @@ class QualityGateController extends Controller {
 
         $qr_content = rawurlencode($qrText);
 
-        return view('Produksi.label_partial_print', compact('part_no', 'qty', 'no_sj', 'part', 'qr_content'));
+        return view('Quality.label_qc_print', compact('part_no', 'qty', 'no_sj', 'part', 'qr_content'));
     }
 
     public function history() {
