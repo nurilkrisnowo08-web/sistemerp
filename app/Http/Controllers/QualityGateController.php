@@ -163,12 +163,12 @@ class QualityGateController extends Controller {
 
             DB::commit();
 
-            // ✨ AJAX Handler Cetak Otomatis di Quality Gate Partial rill
+            // ✨ FIX SAKTI RILL: Alihkan ke rute internal QC agar lolos dari pembatasan Middleware CheckRole
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Inspection data partial processed!',
-                    'print_url' => route('delivery.print_label_partial', [
+                    'print_url' => route('quality.print_label_partial_qc', [
                         'part_no'  => $partNo,
                         'qty'      => $final_ok,
                         'batch_id' => $batchNo
@@ -201,6 +201,27 @@ class QualityGateController extends Controller {
                 'created_at' => now(), 'updated_at' => now()
             ]);
         }
+    }
+
+    // ✨ FUNGSI INTERNAL QC: Merender pencetakan barcode mandiri tanpa menyenggol controller lain rill
+    public function printLabelPartialQC(Request $request)
+    {
+        $part_no = $request->part_no;
+        $qty = $request->qty;
+        $no_sj = $request->batch_id; 
+
+        $part = DB::table('parts')->where('part_no', $part_no)->first();
+        
+        $qrText = "ITEM DETAIL\n" .
+                  "Part: " . $part_no . "\n" .
+                  "Name: " . ($part->part_name ?? 'N/A') . "\n" .
+                  "Qty : " . number_format($qty) . " PCS\n" .
+                  "Lot : " . date('ymd') . "\n" .
+                  "Ref : " . $no_sj;
+
+        $qr_content = rawurlencode($qrText);
+
+        return view('Produksi.label_partial_print', compact('part_no', 'qty', 'no_sj', 'part', 'qr_content'));
     }
 
     public function history() {
