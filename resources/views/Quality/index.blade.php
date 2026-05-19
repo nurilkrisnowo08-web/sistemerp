@@ -9,7 +9,7 @@
         --ind-navy: #0f172a; --ind-blue: #4361ee; --ind-amber: #f59e0b; 
         --ind-emerald: #10b981; --ind-rose: #ef4444; 
     }
-    body { background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: #f1f5f9; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ind-text); }
     
     .heading-cyber { font-family: 'Orbitron'; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
     
@@ -50,7 +50,7 @@
     .btn-action {
         font-family: 'Orbitron'; font-size: 0.9rem; padding: 18px; 
         border-radius: 20px; text-transform: uppercase; font-weight: 800; 
-        border: none; transition: 0.4s;
+        border: none; cursor: pointer; transition: 0.4s;
     }
 
     .security-status { border-radius: 15px; padding: 10px; font-weight: 800; font-size: 11px; text-align: center; margin-bottom: 15px; }
@@ -99,8 +99,7 @@
                 </div>
 
                 <div class="p-4">
-                    {{-- ✨ Ditambahkan class ajax-quality-form untuk intercept rill --}}
-                    <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" class="ajax-quality-form">
+                    <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" class="ajax-qc-form">
                         @csrf
                         
                         <div id="msg-{{ $p->id }}" class="security-status bg-light text-muted">READY_FOR_PARTIAL_CHECK</div>
@@ -125,8 +124,9 @@
                             <div style="max-height: 200px; overflow-y: auto;">
                                 @foreach($ngStamping as $ng)
                                 <div class="ng-item shadow-sm">
-                                    <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
-                                    <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-{{ $p->id }}" value="0" oninput="validatePartial('{{ $p->id }}', {{ $remaining }})">
+                                    {{-- ✨ FIX: Karena mengambil data dari master_materials, kita gunakan alias_code atau material_type rill --}}
+                                    <span class="small font-weight-bold text-dark">[{{ $ng->alias_code }}] {{ $ng->material_type }}</span>
+                                    <input type="number" name="ng_details[{{ $ng->alias_code }}]" class="ng-input-sm ng-val-{{ $p->id }}" value="0" oninput="validatePartial('{{ $p->id }}', {{ $remaining }})">
                                 </div>
                                 @endforeach
                             </div>
@@ -146,7 +146,7 @@
         </div>
 
         <div class="col-lg-6">
-            <h5 class="font-weight-black mb-4 uppercase text-warning">
+            <h5 class="font-weight-black mb-4 uppercase text-warning text-tracking-tighter ml-2">
                 <i class="fas fa-fire mr-2"></i> Welding Incoming
             </h5>
             @forelse($weldingQueue as $w)
@@ -165,8 +165,7 @@
                 </div>
 
                 <div class="p-4">
-                    {{-- ✨ Ditambahkan class ajax-quality-form rill --}}
-                    <form action="{{ route('quality.approve', ['type' => 'welding', 'id' => $w->id]) }}" method="POST" class="ajax-quality-form">
+                    <form action="{{ route('quality.approve', ['type' => 'welding', 'id' => $w->id]) }}" method="POST" class="ajax-qc-form">
                         @csrf
                         <div id="msg-w-{{ $w->id }}" class="security-status bg-light text-muted">READY_FOR_PARTIAL_CHECK</div>
 
@@ -190,8 +189,9 @@
                             <div style="max-height: 200px; overflow-y: auto;">
                                 @foreach($ngWelding as $ng)
                                 <div class="ng-item shadow-sm">
-                                    <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
-                                    <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
+                                    {{-- ✨ FIX: Sinkronisasi pemanggilan kolom master_materials rill --}}
+                                    <span class="small font-weight-bold text-dark">[{{ $ng->alias_code }}] {{ $ng->material_type }}</span>
+                                    <input type="number" name="ng_details[{{ $ng->alias_code }}]" class="ng-input-sm ng-val-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
                                 </div>
                                 @endforeach
                             </div>
@@ -214,15 +214,15 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // ✨ FIX INTERCEPTOR AJAX UNTUK AUTO-PRINT LABEL BARCODE PARTIAL RILL
-    $(document).on('submit', '.ajax-quality-form', function(e) {
+    // ✨ INTERCEPTOR AJAX UNTUK AUTO-PRINT LABEL PARTIAL OTOMATIS RILL
+    $(document).on('submit', '.ajax-qc-form', function(e) {
         e.preventDefault();
         
         let form = $(this);
         let submitBtn = form.find('button[type="submit"]');
-        let originalText = submitBtn.html();
+        let initialText = submitBtn.html();
         
-        submitBtn.prop('disabled', true).html('<i class="fas fa-sync fa-spin"></i> TRANSMITTING DATA...');
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> TRANSMITTING TO DIGITAL STACK...');
 
         $.ajax({
             url: form.attr('action'),
@@ -230,29 +230,24 @@
             data: form.serialize(),
             success: function(res) {
                 if(res.success) {
-                    // Ambil nilai OK yang diinput oleh QC rill
-                    let qtyOkInput = form.find('input[name="qty_ok_final"]').val() || 0;
-                    
-                    // Kalau QC input barang lolos (> 0) dan link print tersedia, jebol tab baru rill
-                    if(parseInt(qtyOkInput) > 0 && res.print_url) {
+                    let okInput = form.find('input[name="qty_ok_final"]').val() || 0;
+                    if(parseInt(okInput) > 0 && res.print_url) {
                         window.open(res.print_url, '_blank');
                     }
-                    
-                    // Refresh data antrean utama rill
                     window.location.reload();
                 } else {
-                    alert('Gagal memproses data QC: ' + res.message);
-                    submitBtn.prop('disabled', false).html(originalText);
+                    alert('Gagal Memproses Data: ' + res.message);
+                    submitBtn.prop('disabled', false).html(initialText);
                 }
             },
             error: function(err) {
-                alert('System Error! Gagal memproses data partial Quality Gate.');
-                submitBtn.prop('disabled', false).html(originalText);
+                alert('System Error! Gagal melakukan komunikasi data Quality Gate.');
+                submitBtn.prop('disabled', false).html(initialText);
             }
         });
     });
 
-    // Fungsi Validasi Stamping rill
+    // Fungsi Validasi Partial (Stamping)
     function validatePartial(id, remaining) {
         let ok = parseInt(document.getElementById('ok-' + id).value) || 0;
         let ret = parseInt(document.getElementById('ret-' + id).value) || 0;
@@ -282,7 +277,7 @@
         }
     }
 
-    // Fungsi Validasi Welding rill
+    // Fungsi Validasi Partial (Welding)
     function validatePartialWelding(id, remaining) {
         let ok = parseInt(document.getElementById('ok-w-' + id).value) || 0;
         let ret = parseInt(document.getElementById('ret-w-' + id).value) || 0;
