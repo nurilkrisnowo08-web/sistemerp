@@ -124,7 +124,6 @@
                             <div style="max-height: 200px; overflow-y: auto;">
                                 @foreach($ngStamping as $ng)
                                 <div class="ng-item shadow-sm">
-                                    {{-- ✨ FIX FINAL: Menampilkan ng_name dari tabel master_ngs rill --}}
                                     <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
                                     <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-{{ $p->id }}" value="0" oninput="validatePartial('{{ $p->id }}', {{ $remaining }})">
                                 </div>
@@ -189,7 +188,6 @@
                             <div style="max-height: 200px; overflow-y: auto;">
                                 @foreach($ngWelding as $ng)
                                 <div class="ng-item shadow-sm">
-                                    {{-- ✨ FIX FINAL: Menampilkan properti ng_name bawaan master_ngs rill --}}
                                     <span class="small font-weight-bold text-dark">{{ $ng->ng_name }}</span>
                                     <input type="number" name="ng_details[{{ $ng->ng_name }}]" class="ng-input-sm ng-val-w-{{ $w->id }}" value="0" oninput="validatePartialWelding('{{ $w->id }}', {{ $remainingW }})">
                                 </div>
@@ -214,7 +212,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // AJAX INTERCEPTOR UNTUK AUTO-PRINT LABEL BARCODE PARTIAL RILL
+    // ✨ FIX FINAL: SINKRONKAN HEADER DAN DATATYPE UNTUK MENDUKUNG AUTO-POPUP PRINT BARCODE RILL
     $(document).on('submit', '.ajax-qc-form', function(e) {
         e.preventDefault();
         
@@ -228,10 +226,14 @@
             url: form.attr('action'),
             type: 'POST',
             data: form.serialize(),
+            dataType: 'json', // Minta respon balik terstruktur rill
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // ✨ Kunci utama agar deteksi $request->ajax() di Controller aktif rill
+            },
             success: function(res) {
                 if(res.success) {
-                    // Cek jika kuantitas OK yang dilaporkan di atas 0, buka tab print barcode rill
                     let okInput = form.find('input[name="qty_ok_final"]').val() || 0;
+                    // Jika ada kuantitas OK, buka tab pencetakan label partial rill
                     if(parseInt(okInput) > 0 && res.print_url) {
                         window.open(res.print_url, '_blank');
                     }
@@ -242,7 +244,8 @@
                 }
             },
             error: function(err) {
-                alert('System Error! Gagal melakukan komunikasi data Quality Gate.');
+                let errorMsg = err.responseJSON ? err.responseJSON.message : 'Koneksi bermasalah atau hak akses role ditolak.';
+                alert('Quality Gate Error: ' + errorMsg);
                 submitBtn.prop('disabled', false).html(initialText);
             }
         });
