@@ -23,8 +23,10 @@ class QualityGateController extends Controller {
         
         // 👨‍🏭 WELDING QUEUE
         $weldingQueue = DB::table('welding_batches')->where('status', 'COMPLETED')->whereNull('qc_at')->get();
-        $ngStamping = DB::table('master_materials')->get(); // Menggunakan master_materials bawaan sistem rill
-        $ngWelding = DB::table('master_materials')->get();
+        
+        // ✨ FIX: Kembalikan query ke tabel master_ngs rill, agar properti $ng->ng_name di View Blade tidak Error 500 Undefined!
+        $ngStamping = DB::table('master_ngs')->whereIn('category', ['STAMPING', 'GENERAL'])->get();
+        $ngWelding = DB::table('master_ngs')->whereIn('category', ['WELDING', 'GENERAL'])->get();
 
         return view('Quality.index', compact('produksiQueue', 'weldingQueue', 'ngStamping', 'ngWelding'));
     }
@@ -67,7 +69,7 @@ class QualityGateController extends Controller {
                     DB::table('produksi_batches')->where('no_produksi', $batchNo)->update([
                         'status' => 'COMPLETED',
                         'qc_at'  => $qcThreshold,
-                        'qc_by' => $inspector
+                        'qc_by'  => $inspector
                     ]);
                 }
 
@@ -95,7 +97,7 @@ class QualityGateController extends Controller {
                     DB::table('welding_batches')->where('id', $id)->update([
                         'status' => 'COMPLETED', 
                         'qc_at'  => $qcThreshold,
-                        'qc_by' => $inspector
+                        'qc_by'  => $inspector
                     ]);
                 }
             }
@@ -161,7 +163,7 @@ class QualityGateController extends Controller {
 
             DB::commit();
 
-            // ✨ SAKTI RILL: Jika input dilempar menggunakan AJAX/Fetch dari Quality Gate, return URL print label partial
+            // ✨ AJAX Handler Cetak Otomatis di Quality Gate Partial rill
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
