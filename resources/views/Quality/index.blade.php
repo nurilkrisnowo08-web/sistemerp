@@ -99,7 +99,6 @@
                 </div>
 
                 <div class="p-4">
-                    {{-- ✨ FIX CLASS: Diubah jadi .ajax-qc-form agar tertangkap sempurna oleh skrip bawah rill --}}
                     <form action="{{ route('quality.approve', ['type' => 'stamping', 'id' => $p->id]) }}" method="POST" class="ajax-qc-form">
                         @csrf
                         
@@ -204,7 +203,6 @@
                     </form>
                 </div>
             </div>
-            @forelse($weldingQueue as $w)
             @empty
             <div class="text-center p-5 text-muted bg-white rounded-3xl border">WELDING_QUEUE_CLEAR</div>
             @endforelse
@@ -214,7 +212,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // ✨ FIX FINAL: SINKRONKAN HEADER DAN DATATYPE UNTUK MENDUKUNG AUTO-POPUP PRINT BARCODE RILL
+    // AJAX INTERCEPTOR UNTUK AUTO-PRINT LABEL BARCODE PARTIAL RILL
     $(document).on('submit', '.ajax-qc-form', function(e) {
         e.preventDefault();
         
@@ -230,12 +228,11 @@
             data: form.serialize(),
             dataType: 'json', 
             headers: {
-                'X-Requested-With': 'XMLHttpRequest' // ✨ Memaksa request terbaca murni AJAX oleh server rill
+                'X-Requested-With': 'XMLHttpRequest'
             },
             success: function(res) {
                 if(res.success) {
                     let okInput = form.find('input[name="qty_ok_final"]').val() || 0;
-                    // Jika ada kuantitas OK, buka tab pencetakan label partial rill
                     if(parseInt(okInput) > 0 && res.print_url) {
                         window.open(res.print_url, '_blank');
                     }
