@@ -28,7 +28,7 @@
     .progress-bar-fill { height: 100%; background: var(--ind-success); transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
 </style>
 
-<div class="container-fluid main-terminal anim-fade-up">
+<div class="container-fluid main-terminal animate__animated animate__fadeInUp">
     <div class="px-4 pt-3">
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm" style="border-radius:15px; border-left: 6px solid var(--ind-success) !important;">
@@ -37,7 +37,7 @@
             </div>
         @endif
         @if(session('error'))
-            <div class="alert alert-danger border-0 shadow-sm mb-4" style="border-radius:15px; border-left: 6px solid var(--ind-danger) !important;">
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" style="border-radius:15px; border-left: 6px solid var(--ind-danger) !important;">
                 <div class="d-flex align-items-center"><i class="fas fa-exclamation-triangle mr-3 fa-lg"></i><div><strong class="text-uppercase">Alert </strong><br><small>{{ session('error') }}</small></div></div>
                 <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
             </div>
@@ -71,7 +71,7 @@
                     <th>Production Line</th>
                     <th class="text-center">Total Jatah</th>
                     <th class="text-center">Status</th>
-                    <th class="text-right">Action</th>
+                    <th class="text-right" style="padding-right: 40px;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -92,7 +92,7 @@
                     </td>
                     <td><span class="font-weight-bold text-primary">{{ $p->line_names }}</span></td>
                     
-                    <td class="text-center font-weight-black">
+                    <td class="text-center font-weight-bold">
                         @if($p->qty_return > 0)
                             <span class="text-primary" style="font-size: 16px;">{{ number_format($p->qty_return) }}</span>
                             <div style="font-size: 8px; color: #64748b;">PCS REWORK</div>
@@ -108,11 +108,13 @@
                             <span class="badge badge-primary px-3">{{ $p->status }}</span>
                         @endif
                     </td>
-                    <td class="text-right d-flex justify-content-end align-items-center">
-                        <button class="btn btn-danger btn-sm px-3 mr-2" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" style="border-radius: 10px;" title="REPORT PROBLEM">
-                            <i class="fas fa-radiation-alt"></i>
-                        </button>
-                        <button class="btn btn-blueprint btn-sm px-4" style="background: var(--ind-success); color: #fff; border-radius: 10px;" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">INPUT RESULT</button>
+                    <td class="text-right" style="padding-right: 40px;">
+                        <div class="d-flex justify-content-end align-items-center">
+                            <button class="btn btn-danger btn-sm px-3 mr-2" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" style="border-radius: 10px;" title="REPORT PROBLEM">
+                                <i class="fas fa-radiation-alt"></i>
+                            </button>
+                            <button class="btn btn-blueprint btn-sm px-4" style="background: var(--ind-success); color: #fff; border-radius: 10px;" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">INPUT RESULT</button>
+                        </div>
                     </td>
                 </tr>
                 @empty 
@@ -134,37 +136,38 @@
                     <i class="fas fa-microchip mr-2"></i> 
                     {{ $p->qty_return > 0 ? 'REWORK PROCESS' : 'FINISH BATCH' }}: [{{ $p->no_produksi }}]
                 </h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form action="{{ route('produksi.update_result', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-5">
-                    <div id="police_msg_{{ $p->batch_id }}" class="alert alert-warning border-0 font-weight-bold text-center py-3 mb-4">👮 STATUS: STANDBY FOR SYNC...</div>
+                    <div id="police_msg_{{ $p->batch_id }}" class="alert alert-warning border-0 font-weight-bold text-center py-3 mb-4" style="border-radius: 12px;">区分 STATUS: STANDBY FOR SYNC...</div>
                     <div class="row">
                         <div class="col-md-6">
-                            <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
+                            <label class="small font-weight-bold text-success text-uppercase">Total OK Quantity</label>
                             <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
                         </div>
                         <div class="col-md-6">
-                            <label class="small font-weight-bold text-danger uppercase">Return (Sisa Material)</label>
+                            <label class="small font-weight-bold text-danger text-uppercase">Return (Sisa Material)</label>
                             <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
                         </div>
                     </div>
 
                     <div class="mt-2 border-top pt-3">
-                        <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
+                        <label class="small font-weight-bold text-danger text-uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
                         <div id="ng_container_{{ $p->batch_id }}"></div>
-                        <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" onclick="addNgRow({{ $p->batch_id }})">
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" style="border-radius: 10px;" onclick="addNgRow({{ $p->batch_id }})">
                             <i class="fas fa-plus mr-1"></i> TAMBAH JENIS NG
                         </button>
                     </div>
 
                     <div class="form-group mt-4">
-                        <label class="small font-weight-bold text-muted uppercase">Keterangan Produksi</label>
+                        <label class="small font-weight-bold text-muted text-uppercase">Keterangan Produksi</label>
                         <textarea name="keterangan" class="form-control" rows="2" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Catatan tambahan..."></textarea>
                     </div>
 
-                    <div class="p-3 bg-light mt-4 rounded-xl border text-center">
-                        <small class="text-muted font-weight-bold uppercase">Gap Status (Must be 0):</small>
+                    <div class="p-3 bg-light mt-4 border text-center" style="border-radius: 16px;">
+                        <small class="text-muted font-weight-bold text-uppercase">Gap Status (Must be 0):</small>
                         <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ number_format($currentTarget) }}</h4>
                         <div class="progress-lite mt-2"><div class="progress-bar-fill" id="bar_{{ $p->batch_id }}" style="width: 0%"></div></div>
                         <input type="hidden" class="target-val" data-id="{{ $p->batch_id }}" value="{{ $currentTarget }}">
@@ -184,11 +187,12 @@
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
             <div class="modal-header bg-danger text-white py-3 border-0">
                 <h6 class="modal-title font-weight-bold"><i class="fas fa-radiation-alt mr-2"></i> EMERGENCY REPORT: {{ $p->no_produksi }}</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form action="{{ route('produksi.report_problem', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
                 <div class="modal-body p-4">
-                    <label class="small font-weight-bold uppercase">Detail Kendala (Dies Rusak, Pin Patah, dll)</label>
+                    <label class="small font-weight-bold text-uppercase">Detail Kendala (Dies Rusak, Pin Patah, dll)</label>
                     <textarea name="problem_note" class="form-control" rows="4" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" required placeholder="Jelaskan kondisi dies/kendala saat ini secara detail..."></textarea>
                 </div>
                 <div class="modal-footer border-0 p-4 bg-light text-right">
@@ -204,8 +208,11 @@
 {{-- MODAL INITIALIZE BATCH --}}
 <div class="modal fade" id="modalAmbilMaterial" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow-2xl" style="border-radius:24px;">
-            <div class="modal-header bg-primary text-white py-4"><h6 class="modal-title font-weight-bold uppercase" style="font-family: 'Orbitron';">Initialize Batch</h6></div>
+        <div class="modal-content border-0 shadow-2xl" style="border-radius:24px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white py-4 border-0">
+                <h6 class="modal-title font-weight-bold text-uppercase" style="font-family: 'Orbitron';">Initialize Batch</h6>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
             <form action="{{ route('produksi.store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4">
@@ -242,7 +249,7 @@
                     <label class="small font-weight-bold text-primary">08. TOTAL QUANTITY</label>
                     <input type="number" id="qty_ambil_pcs" name="qty_ambil_pcs" class="input-tactical text-center border-primary shadow-sm" required placeholder="0">
                 </div>
-                <div class="modal-footer border-0 p-4">
+                <div class="modal-footer border-0 p-4 bg-light">
                     <button type="submit" id="btn_submit_ambil" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-blue); color: #fff;" disabled>DEPLOY BATCH</button>
                 </div>
             </form>
@@ -260,14 +267,14 @@
         const html = `
             <div class="row no-gutters mb-2 animate__animated animate__fadeInDown" id="row-${id}">
                 <div class="col-7 pr-1">
-                    <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold">${options}</select>
+                    <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold" style="border-radius: 8px; height: 38px;">${options}</select>
                 </div>
                 <div class="col-3 pr-1">
                     <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" 
-                    placeholder="Qty" min="1" required data-id="${batchId}">
+                    placeholder="Qty" min="1" required data-id="${batchId}" style="border-radius: 8px; height: 38px;">
                 </div>
                 <div class="col-2">
-                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})"><i class="fas fa-times"></i></button>
+                    <button type="button" class="btn btn-danger btn-sm btn-block" style="border-radius: 8px; height: 38px;" onclick="removeNgRow(${id}, ${batchId})"><i class="fas fa-times"></i></button>
                 </div>
             </div>`;
         $(`#ng_container_${batchId}`).append(html);
@@ -337,10 +344,7 @@
         $('#sel_part').change(function() {
             $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
-                
-                // ✨ FIX UTAMA: Menyisipkan opsi gabungan coil otomatis langsung di dalam response AJAX rill
                 h += '<option value="AUTO" data-qty="999999">🔄 -- AMBIL OTOMATIS (FIFO/GABUNGAN COIL) --</option>';
-                
                 data.forEach(i => { 
                     h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
                 });
@@ -353,7 +357,6 @@
             let mesinSelected = $('select[name="mesin_id"]').val();
             let coilSelected = $('#sel_bandel').val();
             
-            // Tombol aktif jika qty > 0, mesin & opsi dropdown coil terisi
             $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && mesinSelected && coilSelected));
         });
     });
