@@ -74,33 +74,104 @@ class ProduksiController extends Controller
         DB::beginTransaction();
         try {
             $no_produksi = 'PROD-' . date('Ymd-His');
-            $rmInfo = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
-            
-            if(!$rmInfo) throw new \Exception("Material Unit not found!");
+            $requestedQty = (int)$request->qty_ambil_pcs;
 
-            DB::table('produksi_batches')->insert([
-                'no_produksi'   => $no_produksi,
-                'mesin_id'      => $request->mesin_id,
-                'rm_stock_id'   => $request->rm_stock_id,
-                'material_code' => $request->material_code,
-                'shift'         => $request->shift,
-                'qty_ambil_pcs' => $request->qty_ambil_pcs,
-                'status'        => 'PROSES',
-                'created_at'    => now(),
-                'updated_at'    => now()
-            ]);
-            
-            // Potong stok untuk SEMUA baris yang punya Coil ID yang sama rill
-            DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
+            if ($request->rm_stock_id === 'AUTO') {
+                // 1. Dapatkan referensi spesifikasi dasar berdasarkan material_code yang dipilih rill
+                $baseMaterial = DB::table('rm_stocks')->where('material_code', trim($request->material_code))->first();
+                if (!$baseMaterial) throw new \Exception("Material Reference not found!");
 
-            DB::table('rm_production_logs')->insert([
-                'rm_stock_id'   => $request->rm_stock_id,
-                'material_code' => $request->material_code,
-                'pcs_used'      => $request->qty_ambil_pcs, 
-                'no_produksi'   => $no_produksi,
-                'created_at'    => now(),
-                'updated_at'    => now()
-            ]);
+                // 2. Ambil semua coil yang cocok dengan spec tersebut dan masih ada isinya, urutkan dari ID terkecil (FIFO)
+                $availableCoils = DB::table('rm_stocks')
+                    ->where('customer', trim($baseMaterial->customer))
+                    ->where(DB::raw('TRIM(spec)'), trim($baseMaterial->spec))
+                    ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $baseMaterial->size))
+                    ->where('stock_pcs', '>', 0)
+                    ->orderBy('id', 'asc')
+                    ->get();
+
+                // 3. Hitung total seluruh stok gabungan coil yang tersedia
+                $totalAvailableStock = $availableCoils->sum('stock_pcs');
+                if ($totalAvailableStock < $requestedQty) {
+                    throw new \Exception("Total stok gabungan coil tidak mencukupi! Hanya tersedia: " . $totalAvailableStock . " PCS");
+                }
+
+                $qtyRemainingToDeduct = $requestedQty;
+                $firstRmStockId = null;
+
+                // 4. Lakukan pemotongan secara berantai/gabungan ke coil-coil yang ada
+                foreach ($availableCoils as $coil) {
+                    if ($qtyRemainingToDeduct <= 0) break;
+
+                    if ($firstRmStockId === null) {
+                        $firstRmStockId = $coil->id; // Ambil ID pertama untuk acuan master di tabel produksi_batches
+                    }
+
+                    $currentStock = (int)$coil->stock_pcs;
+                    $deduction = min($qtyRemainingToDeduct, $currentStock);
+
+                    // Potong stok untuk baris yang punya Coil ID yang sama rill
+                    DB::table('rm_stocks')->where('coil_id', trim($coil->coil_id))->decrement('stock_pcs', $deduction);
+
+                    // Catat riwayat log penggunaan material per objek coil terkait
+                    DB::table('rm_production_logs')->insert([
+                        'rm_stock_id'   => $coil->id,
+                        'material_code' => $request->material_code,
+                        'pcs_used'      => $deduction, 
+                        'no_produksi'   => $no_produksi,
+                        'created_at'    => now(),
+                        'updated_at'    => now()
+                    ]);
+
+                    $qtyRemainingToDeduct -= $deduction;
+                }
+
+                // 5. Insert master produksi utama menggunakan id coil utama/pertama yang terpangkas stoknya
+                DB::table('produksi_batches')->insert([
+                    'no_produksi'   => $no_produksi,
+                    'mesin_id'      => $request->mesin_id,
+                    'rm_stock_id'   => $firstRmStockId,
+                    'material_code' => $request->material_code,
+                    'shift'         => $request->shift,
+                    'qty_ambil_pcs' => $requestedQty,
+                    'status'        => 'PROSES',
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
+
+            } else {
+                // Logika Standar Lama Jika Memilih Coil Satuan Tertentu Secara Manual rill
+                $rmInfo = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
+                if(!$rmInfo) throw new \Exception("Material Unit not found!");
+                
+                if ((int)$rmInfo->stock_pcs < $requestedQty) {
+                    throw new \Exception("Stok coil " . $rmInfo->coil_id . " tidak cukup! Tersisa: " . $rmInfo->stock_pcs . " PCS");
+                }
+
+                DB::table('produksi_batches')->insert([
+                    'no_produksi'   => $no_produksi,
+                    'mesin_id'      => $request->mesin_id,
+                    'rm_stock_id'   => $request->rm_stock_id,
+                    'material_code' => $request->material_code,
+                    'shift'         => $request->shift,
+                    'qty_ambil_pcs' => $requestedQty,
+                    'status'        => 'PROSES',
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
+                
+                // Potong stok untuk SEMUA baris yang punya Coil ID yang sama rill
+                DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $requestedQty);
+
+                DB::table('rm_production_logs')->insert([
+                    'rm_stock_id'   => $request->rm_stock_id,
+                    'material_code' => $request->material_code,
+                    'pcs_used'      => $requestedQty, 
+                    'no_produksi'   => $no_produksi,
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
+            }
 
             DB::commit();
             return redirect()->back()->with('success', 'Batch Produksi Dimulai!');
