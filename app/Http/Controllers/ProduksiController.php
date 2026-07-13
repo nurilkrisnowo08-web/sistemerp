@@ -74,75 +74,36 @@ class ProduksiController extends Controller
         DB::beginTransaction();
         try {
             $no_produksi = 'PROD-' . date('Ymd-His');
-            $requestedQty = (int)$request->qty_ambil_pcs;
+            $rmInfo = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
+            
+            if(!$rmInfo) throw new \Exception("Material Unit not found!");
 
-            // Pastikan rm_stock_id dikirim sebagai array dari form multi-dropdown rill
-            $coilIds = $request->rm_stock_id;
-            if (!is_array($coilIds)) {
-                $coilIds = [$coilIds];
-            }
-
-            // 1. Validasi ketersediaan total stok dari coil-coil yang dipilih manual
-            $totalAvailableStock = 0;
-            $coilDetails = [];
-            foreach ($coilIds as $id) {
-                if (empty($id) || $id === 'AUTO') continue;
-                $rmInfo = DB::table('rm_stocks')->where('id', $id)->first();
-                if (!$rmInfo) throw new \Exception("Material Unit ID {$id} not found!");
-                
-                $totalAvailableStock += (int)$rmInfo->stock_pcs;
-                $coilDetails[] = $rmInfo;
-            }
-
-            if (empty($coilDetails)) {
-                throw new \Exception("Silakan pilih minimal satu Physical Coil!");
-            }
-
-            if ($totalAvailableStock < $requestedQty) {
-                throw new \Exception("Total stok dari coil yang dipilih tidak mencukupi! Hanya tersedia: " . $totalAvailableStock . " PCS");
-            }
-
-            // 2. Potong stok sekuensial dari array coil yang dipilih sampai target qty terpenuhi
-            $qtyRemainingToDeduct = $requestedQty;
-            $firstRmStockId = $coilDetails[0]->id;
-
-            foreach ($coilDetails as $coil) {
-                if ($qtyRemainingToDeduct <= 0) break;
-
-                $currentStock = (int)$coil->stock_pcs;
-                $deduction = min($qtyRemainingToDeduct, $currentStock);
-
-                // Potong stok berdasarkan Coil ID rill
-                DB::table('rm_stocks')->where('coil_id', trim($coil->coil_id))->decrement('stock_pcs', $deduction);
-
-                // Catat log pemakaian untuk coil ini
-                DB::table('rm_production_logs')->insert([
-                    'rm_stock_id'   => $coil->id,
-                    'material_code' => $request->material_code,
-                    'pcs_used'      => $deduction, 
-                    'no_produksi'   => $no_produksi,
-                    'created_at'    => now(),
-                    'updated_at'    => now()
-                ]);
-
-                $qtyRemainingToDeduct -= $deduction;
-            }
-
-            // 3. Masukkan master baris produksi tunggal ke tabel produksi_batches rill
             DB::table('produksi_batches')->insert([
                 'no_produksi'   => $no_produksi,
                 'mesin_id'      => $request->mesin_id,
-                'rm_stock_id'   => $firstRmStockId, // Mengacu ke ID coil pertama yang dipilih
+                'rm_stock_id'   => $request->rm_stock_id,
                 'material_code' => $request->material_code,
                 'shift'         => $request->shift,
-                'qty_ambil_pcs' => $requestedQty,
+                'qty_ambil_pcs' => $request->qty_ambil_pcs,
                 'status'        => 'PROSES',
+                'created_at'    => now(),
+                'updated_at'    => now()
+            ]);
+            
+            // Potong stok untuk SEMUA baris yang punya Coil ID yang sama rill
+            DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
+
+            DB::table('rm_production_logs')->insert([
+                'rm_stock_id'   => $request->rm_stock_id,
+                'material_code' => $request->material_code,
+                'pcs_used'      => $request->qty_ambil_pcs, 
+                'no_produksi'   => $no_produksi,
                 'created_at'    => now(),
                 'updated_at'    => now()
             ]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Batch Produksi Dimulai dengan Gabungan Coil!');
+            return redirect()->back()->with('success', 'Batch Produksi Dimulai!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal Start: ' . $e->getMessage());
