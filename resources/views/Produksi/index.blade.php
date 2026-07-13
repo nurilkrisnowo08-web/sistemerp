@@ -309,7 +309,7 @@
                 msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC! Ready to commit.'); 
                 btn.prop('disabled', false); 
             } else if (gap < 0) {
-                msg.removeClass('alert-warning alert-success').addClass('alert-danger').html('🚨 OVER LIMIT! Check your numbers.'); 
+                msg.removeClass('alert-warning alert-danger').addClass('alert-danger').html('🚨 OVER LIMIT! Check your numbers.'); 
                 btn.prop('disabled', true); 
             } else { 
                 msg.removeClass('alert-success alert-danger').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); 
@@ -336,7 +336,10 @@
 
         $('#sel_part').change(function() {
             $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
+                // Modifikasi logika: Menambahkan opsi gabungan coil otomatis paling atas rill
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
+                h += '<option value="AUTO" data-qty="999999">🔄 -- AMBIL OTOMATIS (FIFO/GABUNGAN COIL) --</option>';
+                
                 data.forEach(i => { 
                     h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
                 });
@@ -349,8 +352,7 @@
             let mesinSelected = $('select[name="mesin_id"]').val();
             let coilSelected = $('#sel_bandel').val();
             
-            // Logika validasi diperbaiki agar tidak mengunci saat input 500 pcs
-            // Selama kuantitas di atas 0, Mesin diisi, dan physical coil dipilih, tombol deploy akan aktif
+            // Tombol aktif jika qty > 0, mesin & opsi dropdown coil terisi
             $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && mesinSelected && coilSelected));
         });
     });
