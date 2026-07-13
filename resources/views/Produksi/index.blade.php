@@ -336,8 +336,9 @@
 
         $('#sel_part').change(function() {
             $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
-                // Modifikasi logika: Menambahkan opsi gabungan coil otomatis paling atas rill
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
+                
+                // ✨ FIX UTAMA: Menyisipkan opsi gabungan coil otomatis langsung di dalam response AJAX rill
                 h += '<option value="AUTO" data-qty="999999">🔄 -- AMBIL OTOMATIS (FIFO/GABUNGAN COIL) --</option>';
                 
                 data.forEach(i => { 
