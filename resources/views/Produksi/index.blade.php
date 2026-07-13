@@ -142,7 +142,6 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
-                            {{-- ✨ FIX: Nilai default dimulai dari 0 rill --}}
                             <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
                         </div>
                         <div class="col-md-6">
@@ -339,7 +338,6 @@
             $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
                 data.forEach(i => { 
-                    // ✨ Menggunakan i.id yang merupakan MAX(id) dari Controller rill
                     h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
                 });
                 $('#sel_bandel').prop('disabled', false).html(h);
@@ -347,10 +345,13 @@
         });
 
         $('#sel_bandel, #qty_ambil_pcs, select[name="mesin_id"]').on('change input', function() {
-            let maxStok = parseInt($('#sel_bandel option:selected').data('qty')) || 0;
             let inputQty = parseInt($('#qty_ambil_pcs').val()) || 0;
             let mesinSelected = $('select[name="mesin_id"]').val();
-            $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && inputQty <= maxStok && mesinSelected));
+            let coilSelected = $('#sel_bandel').val();
+            
+            // Logika validasi diperbaiki agar tidak mengunci saat input 500 pcs
+            // Selama kuantitas di atas 0, Mesin diisi, dan physical coil dipilih, tombol deploy akan aktif
+            $('#btn_submit_ambil').prop('disabled', !(inputQty > 0 && mesinSelected && coilSelected));
         });
     });
 </script>
