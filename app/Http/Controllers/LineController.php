@@ -14,12 +14,8 @@ class LineController extends Controller
     {
         $lines = Line::all();
         
-        // ✨ PENTING : 
-        // Kalau folder di resources/views namanya 'Line' (L Kapital), 
-        // maka tulis 'Line.index'. 
-        // Kalau foldernya sudah lu rename jadi 'line' (kecil), pake 'line.index'.
-        // Gue setting 'line.index' (kecil) sesuai standar !
-        return view('line.index', compact('lines'));
+        // Membaca otomatis variasi huruf besar/kecil pada folder dan file view di Linux
+        return view()->first(['Line.index', 'line.index', 'Line.Index', 'line.Index'], compact('lines'));
     }
 
     /**
