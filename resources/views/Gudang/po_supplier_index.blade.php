@@ -1,6 +1,13 @@
 @extends('layout.admin')
 
 @section('content')
+@php
+    // Amankan data: jika Controller tidak mengirim $masterMaterials, ambil langsung dari tabel master_materials
+    if (!isset($masterMaterials) || empty($masterMaterials) || (is_countable($masterMaterials) && count($masterMaterials) === 0)) {
+        $masterMaterials = \Illuminate\Support\Facades\DB::table('master_materials')->get();
+    }
+@endphp
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
@@ -254,28 +261,63 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    const masterMaterials = @json($masterMaterials ?? []);
-    function populateSpecs(targetSelect, clientCode) {
-        const filtered = masterMaterials.filter(m => m.customer_code && m.customer_code.trim() === clientCode.trim());
-        let options = '<option value="">-- Select Material --</option>';
-        filtered.forEach(m => { options += `<option value="${m.alias_code}">${m.alias_code} (${m.material_type})</option>`; });
-        targetSelect.html(options);
+    const masterMaterials = @json($masterMaterials);
+
+    function filterMaterialsByClient(clientCode) {
+        if (!clientCode) return [];
+        const cleanClient = String(clientCode).trim().toUpperCase();
+        
+        return masterMaterials.filter(m => {
+            if (!m.customer_code) return false;
+            const itemCode = String(m.customer_code).trim().toUpperCase();
+            
+            // Cocokkan langsung, atau jika mengandung nama/kode yang serupa (misal AMA dengan AMA-P2)
+            return itemCode === cleanClient || 
+                   itemCode.startsWith(cleanClient) || 
+                   cleanClient.startsWith(itemCode) ||
+                   itemCode.includes(cleanClient) ||
+                   cleanClient.includes(itemCode);
+        });
     }
+
+    function buildOptionsHtml(materials) {
+        if (!materials || materials.length === 0) {
+            return '<option value="">-- No Material Available --</option>';
+        }
+        let options = '<option value="">-- Select Material --</option>';
+        materials.forEach(m => { 
+            const alias = m.alias_code || m.material_type;
+            const type = m.material_type ? ` (${m.material_type})` : '';
+            options += `<option value="${alias}">${alias}${type}</option>`; 
+        });
+        return options;
+    }
+
+    function populateSpecs(targetSelect, clientCode) {
+        const filtered = filterMaterialsByClient(clientCode);
+        targetSelect.html(buildOptionsHtml(filtered));
+    }
+
     $(document).on('change', '#client_filter', function() {
         const clientCode = $(this).val(); 
-        if(clientCode) { $('.spec-dropdown').each(function() { populateSpecs($(this), clientCode); }); }
+        if(clientCode) { 
+            $('.spec-dropdown').each(function() { 
+                populateSpecs($(this), clientCode); 
+            }); 
+        }
     });
+
     let idx = 1;
     function addPoItemRow() {
         const clientCode = $('#client_filter').val(); 
         let options = '<option value="">Select Client First</option>';
         if(clientCode) {
-            const filtered = masterMaterials.filter(m => m.customer_code && m.customer_code.trim() === clientCode.trim());
-            options = '<option value="">-- Select Material --</option>';
-            filtered.forEach(m => { options += `<option value="${m.alias_code}">${m.alias_code} (${m.material_type})</option>`; });
+            const filtered = filterMaterialsByClient(clientCode);
+            options = buildOptionsHtml(filtered);
         }
         const html = `<div class="item-row-box p-4 border rounded-24 bg-light mb-3 animate__animated animate__fadeInUp"><div class="row align-items-end"><div class="col-md-8"><label class="x-small font-weight-bold text-muted text-uppercase">Material Alias</label><select name="items[${idx}][spec]" class="form-control-premium w-100 spec-dropdown" required>${options}</select></div><div class="col-md-3"><label class="x-small font-weight-bold text-muted text-uppercase">Quantity</label><input type="number" name="items[${idx}][qty]" class="form-control-premium w-100" required></div><div class="col-md-1"><button type="button" class="btn btn-link text-danger mb-2" onclick="$(this).closest('.item-row-box').remove()"><i class="fas fa-trash fa-lg"></i></button></div></div></div>`;
-        $('#po-items-container').append(html); idx++;
+        $('#po-items-container').append(html); 
+        idx++;
     }
 
     $(document).on('input', '.input-qty-secure', function() {
