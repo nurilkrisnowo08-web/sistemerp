@@ -109,7 +109,7 @@
         </tbody>
     </table>
 
-    {{-- 5. RINCIAN PER SURAT JALAN (DENGAN FIX JAM WIB) --}}
+    {{-- 5. RINCIAN PER SURAT JALAN --}}
     <h4 style="margin-top: 40px; margin-bottom: 10px; border-left: 5px solid #000; padding-left: 10px;">
         RINCIAN SURAT JALAN (STAGE DELIVERY)
     </h4>
@@ -125,9 +125,9 @@
         <tbody>
             @forelse($allDeliveries as $delivery)
             <tr>
-                {{-- FIX JAM: Paksa konversi dari UTC ke Asia/Jakarta agar tidak selisih 7 jam --}}
+                {{-- Format tanggal langsung sesuai waktu lokal tanpa penambahan jam ganda --}}
                 <td>
-                    {{ \Carbon\Carbon::parse($delivery->created_at, 'UTC')->setTimezone('Asia/Jakarta')->format('d/m/Y H:i') }} WIB
+                    {{ \Carbon\Carbon::parse($delivery->created_at)->format('d/m/Y H:i') }} WIB
                 </td>
                 <td class="text-bold" style="color: #4e73df;">{{ $delivery->no_sj }}</td>
                 <td>{{ $delivery->part_no }}</td>
