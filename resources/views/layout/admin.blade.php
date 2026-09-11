@@ -97,7 +97,7 @@
         <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
             <a class="sidebar-brand d-flex align-items-center justify-content-center my-4" href="{{ route('dashboard') }}">
                 <div class="sidebar-brand-icon"><i class="fas fa-microchip text-primary animate__animated animate__pulse animate__infinite"></i></div>
-                <div class="sidebar-brand-text mx-2">ASALTA <span class="opacity-50" style="font-size: 0.6rem;">v2</span></div>
+                <div class="sidebar-brand-text mx-2">ASALTA <span class="opacity-50" style="font-size: 0.6rem;">SYSTEAM</span></div>
             </a>
 
             @php $role = strtolower(Auth::user()->role); @endphp
