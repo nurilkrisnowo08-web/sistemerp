@@ -49,7 +49,7 @@
     {{-- 🛰️ TOP COMMAND BAR --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
         <div>
-            <h1 class="heading-cyber m-0">RM_HUB <span class="text-primary">CORE_v2.6</span></h1>
+            <h1 class="heading-cyber m-0">RM_HUB <span class="text-primary">ASALTA MANDIRI AGUNG</span></h1>
             <p class="text-muted small font-weight-bold mb-0 text-uppercase"><i class="fas fa-satellite-dish text-primary mr-2"></i> PT ASALTA MANDIRI AGUNG - GLOBAL INVENTORY</p>
         </div>
         <div class="d-flex align-items-center mt-3 mt-md-0">
