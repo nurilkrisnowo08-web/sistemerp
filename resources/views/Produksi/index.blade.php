@@ -88,7 +88,11 @@
                     <td><div class="font-weight-bold text-dark">{{ $p->material_code }}</div><small class="text-muted">{{ $p->coil_id }}</small></td>
                     <td>
                         @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
-                        @if(strtoupper($route) == 'WELDING') <span class="badge badge-warning">WELDING</span> @else <span class="badge badge-success">FG / QC</span> @endif
+                        @if(strtoupper($route) == 'WELDING') 
+                            <span class="badge badge-warning">WELDING</span> 
+                        @else 
+                            <span class="badge badge-success">FINISHED GOOD</span> 
+                        @endif
                     </td>
                     <td><span class="font-weight-bold text-primary">{{ $p->line_names }}</span></td>
                     
@@ -137,12 +141,13 @@
             </div>
             <form action="{{ route('produksi.update_result', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
+                {{-- Bypass antrean QC: arahkan hasil secara eksplisit langsung ke status COMPLETED --}}
+                <input type="hidden" name="status" value="COMPLETED">
                 <div class="modal-body p-5">
                     <div id="police_msg_{{ $p->batch_id }}" class="alert alert-warning border-0 font-weight-bold text-center py-3 mb-4">👮 STATUS: STANDBY FOR SYNC...</div>
                     <div class="row">
                         <div class="col-md-6">
-                            <label class="small font-weight-bold text-success uppercase">Total OK Quantity</label>
-                            {{-- ✨ FIX: Nilai default dimulai dari 0 rill --}}
+                            <label class="small font-weight-bold text-success uppercase">Total OK Quantity (Direct to FG)</label>
                             <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
                         </div>
                         <div class="col-md-6">
@@ -172,7 +177,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-5 bg-light">
-                    <button type="submit" id="btn_{{ $p->batch_id }}" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-success); color: #fff;" disabled>COMMIT & TRANSMIT DATA</button>
+                    <button type="submit" id="btn_{{ $p->batch_id }}" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-success); color: #fff;" disabled>COMMIT & TRANSMIT DIRECT TO FG</button>
                 </div>
             </form>
         </div>
@@ -339,7 +344,6 @@
             $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
                 data.forEach(i => { 
-                    // ✨ Menggunakan i.id yang merupakan MAX(id) dari Controller rill
                     h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
                 });
                 $('#sel_bandel').prop('disabled', false).html(h);

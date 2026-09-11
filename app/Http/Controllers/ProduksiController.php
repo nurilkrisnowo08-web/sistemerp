@@ -47,7 +47,7 @@ class ProduksiController extends Controller
 
         $activeProductions = $query->orderBy('batch_id', 'desc')->get();
         
-        // ✨ FIX 1: Gunakan MAX(stock_pcs) agar tidak dobel jumlah stoknya saat inisialisasi rill
+        // Gunakan MAX(stock_pcs) agar tidak dobel jumlah stoknya saat inisialisasi
         $materials = DB::table('rm_stocks')
             ->where('stock_pcs', '>', 0)
             ->select(
@@ -67,7 +67,6 @@ class ProduksiController extends Controller
         return view('Produksi.index', compact('activeProductions', 'materials', 'customers', 'lines'));
     }
 
-    
     public function productionStore(Request $request) { return $this->store($request); }
 
     public function store(Request $request)
@@ -91,7 +90,7 @@ class ProduksiController extends Controller
                 'updated_at'    => now()
             ]);
             
-            // Potong stok untuk SEMUA baris yang punya Coil ID yang sama rill
+            // Potong stok untuk SEMUA baris yang punya Coil ID yang sama
             DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
 
             DB::table('rm_production_logs')->insert([
@@ -155,18 +154,15 @@ class ProduksiController extends Controller
                         'pcs_in' => (int)$request->qty_return_warehouse, 'source' => 'return',
                         'no_produksi' => $p->no_produksi, 'created_at' => now()
                     ]);
-
-                    // ✨ FIX 2: HAPUS/KOMENTARI UPDATE pcs_used AGAR LOG "OUT" TETAP NETEP (GAK JADI 0) rill
-                    /* $currentLog = DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->first();
-                    if($currentLog) { DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->update(['pcs_used' => ($currentLog->pcs_used - (int)$request->qty_return_warehouse)]); }
-                    */
                 }
             }
 
             $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
             $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
             $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
-            $status_akhir = $request->status ?? (($target == 'WELDING' || ($p->qty_hasil_ok + $qty_ok_new) == 0) ? 'COMPLETED' : 'WAITING_QC');
+            
+            // Bypass QC Gate: Status langsung COMPLETED tanpa perlu masuk antrean WAITING_QC
+            $status_akhir = $request->status ?? 'COMPLETED';
 
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok' => $p->qty_hasil_ok + $qty_ok_new,
@@ -180,12 +176,19 @@ class ProduksiController extends Controller
             ]);
 
             if ($qty_ok_new > 0) {
-                DB::table('production_logs')->insert(['part_no' => $p->material_code, 'qty' => $qty_ok_new, 'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 'created_at' => now(), 'updated_at' => now()]);
+                DB::table('production_logs')->insert([
+                    'part_no' => $p->material_code, 
+                    'qty' => $qty_ok_new, 
+                    'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 
+                    'created_at' => now(), 
+                    'updated_at' => now()
+                ]);
             }
 
+            // Tambahkan langsung ke stok FG atau Welding sesuai jenis part
             if ($target == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
-            } else if($status_akhir == 'COMPLETED') {
+            } else {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
             }
 
@@ -200,8 +203,12 @@ class ProduksiController extends Controller
                 }
             }
 
-            DB::commit(); return redirect()->route('produksi.index')->with('success', 'Update Success!');
-        } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
+            DB::commit(); 
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Berhasil Dikirim Langsung ke FG!');
+        } catch (\Exception $e) { 
+            DB::rollback(); 
+            return back()->with('error', $e->getMessage()); 
+        }
     }
 
     private function syncToActual($batchId)
@@ -248,9 +255,6 @@ class ProduksiController extends Controller
         return response()->json($parts);
     }
 
-    /**
-     * ✨ FIX 3: DROPDOWN NO. 07 (PHYSICAL COIL) DIBUAT UNIK RILL
-     */
     public function getBundlesByPart($material_code) {
         $current = DB::table('rm_stocks')->where('material_code', trim($material_code))->first();
         if ($current) { 
@@ -260,7 +264,7 @@ class ProduksiController extends Controller
                 ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $current->size))
                 ->where('stock_pcs', '>', 0)
                 ->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size')
-                ->groupBy('coil_id', 'size') // ✨ Grouping berdasarkan coil_id agar tidak dobel rill
+                ->groupBy('coil_id', 'size')
                 ->get(); 
             return response()->json($bundles); 
         }
