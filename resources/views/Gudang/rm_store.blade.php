@@ -95,8 +95,8 @@
                         <th class="text-success">In (Supplier)</th>
                         <th style="color: var(--brand-return);">In (Return)</th>
                         <th class="text-danger">Out (Prod)</th>
-                        <th class="col-live">Live Balance</th>
-                        <th style="width: 80px;">Status</th>
+                        <th class="col-live">STOCK SEKARANG</th>
+                        <th style="width: 80px;">DETAIL</th>
                     </tr>
                 </thead>
                 <tbody>
