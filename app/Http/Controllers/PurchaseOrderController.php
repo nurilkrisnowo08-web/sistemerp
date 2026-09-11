@@ -40,20 +40,23 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrders = collect($activeOrders)->groupBy(['customer_code', 'po_number']);
         $historyOrders = PurchaseOrder::where('status', 'CLOSED')->latest()->take(15)->get();
-        $customers = \App\Models\Customer::all();
+        $customers = Customer::all();
 
         return view('po.index', compact('purchaseOrders', 'historyOrders', 'customers'));
     }
 
     /**
-     * 2. SIMPAN PO BARU (FIX: PAKSA SIMPAN KE DUA KOLOM BIAR GAK BALIK REGULER)
+     * 2. SIMPAN PO BARU (VALIDASI ARRAY & SINKRON STATUS DUA KOLOM)
      */
     public function store(Request $request) 
     {
+        if (!$request->has('part_no') || !is_array($request->part_no)) {
+            return redirect()->back()->with('error', 'Item part tidak ditemukan!');
+        }
+
         DB::transaction(function () use ($request) {
             foreach ($request->part_no as $key => $part) {
                 if (!empty($part)) {
-                    // SAKTI: Ambil pilihan Guru, kalau kosong baru default ke REGULER
                     $pilihan = $request->jenis_po ?? $request->keterangan ?? 'REGULER';
 
                     PurchaseOrder::create([
@@ -61,9 +64,8 @@ class PurchaseOrderController extends Controller
                         'customer_code' => $request->customer_code,
                         'due_date'      => $request->due_date,
                         'part_no'       => $part,
-                        'quantity'      => $request->quantity[$key],
+                        'quantity'      => $request->quantity[$key] ?? 0,
                         'status'        => 'READY',
-                        // SAKTI: Kita isi dua-duanya biar pilihan TESTING/URGENT nempel permanen!
                         'jenis_po'      => $pilihan, 
                         'keterangan'    => $pilihan 
                     ]);
@@ -84,7 +86,7 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * 4. UPDATE MASSAL HEADER (FIX: NANGKEP EDIT URGENT/TESTING)
+     * 4. UPDATE MASSAL HEADER (CEK PILIHAN AGAR TIDAK KETIMPA NULL)
      */
     public function update(Request $request)
     {
@@ -93,17 +95,20 @@ class PurchaseOrderController extends Controller
             'due_date' => 'required|date',
         ]);
 
+        $updateData = [
+            'due_date'   => $request->due_date,
+            'updated_at' => now(),
+        ];
+
         $pilihan = $request->jenis_po ?? $request->keterangan;
+        if (!empty($pilihan)) {
+            $updateData['jenis_po'] = $pilihan;
+            $updateData['keterangan'] = $pilihan;
+        }
 
         DB::table('purchase_orders')
             ->where('po_number', $request->original_po_number)
-            ->update([
-                'due_date' => $request->due_date,
-                // SAKTI: Update dua-duanya biar sinkron sama database
-                'jenis_po' => $pilihan,
-                'keterangan' => $pilihan,
-                'updated_at' => now(),
-            ]);
+            ->update($updateData);
 
         return redirect()->back()->with('success', 'Data PO ' . $request->original_po_number . ' berhasil diperbarui!');
     }
@@ -121,33 +126,39 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * 6. UPDATE HEADER PER PO NUMBER (FIX: SINKRON URGENT/TESTING)
+     * 6. UPDATE HEADER PER PO NUMBER (CEK PILIHAN AGAR TIDAK KETIMPA NULL)
      */
     public function updateHeader(Request $request, $po_number)
     {
         $clean_po = urldecode($po_number);
-        $pilihan = $request->jenis_po ?? $request->keterangan;
-
-        DB::table('purchase_orders')->where('po_number', $clean_po)->update([
-            'due_date' => $request->due_date,
-            // SAKTI: Isi dua-duanya biar gak ada alasan balik ke Reguler lagi!
-            'jenis_po' => $pilihan, 
-            'keterangan' => $pilihan, 
-            'updated_at' => now()
-        ]);
         
-        return redirect()->back()->with('success', 'Data PO '.$clean_po.' Berhasil Diupdate!');
+        $updateData = [
+            'due_date'   => $request->due_date,
+            'updated_at' => now(),
+        ];
+
+        $pilihan = $request->jenis_po ?? $request->keterangan;
+        if (!empty($pilihan)) {
+            $updateData['jenis_po'] = $pilihan;
+            $updateData['keterangan'] = $pilihan;
+        }
+
+        DB::table('purchase_orders')
+            ->where('po_number', $clean_po)
+            ->update($updateData);
+        
+        return redirect()->back()->with('success', 'Data PO ' . $clean_po . ' Berhasil Diupdate!');
     }
 
     /**
-     * 7. HISTORY PO CLOSED (FIXED: ANTI-CRASH & ANTI-ZONK)
+     * 7. HISTORY PO CLOSED (TETAP)
      */
     public function history(Request $request)
     {
-        $customers = \DB::table('customers')->get();
+        $customers = Customer::all();
         $customer = $request->customer;
 
-        $purchaseOrders = \App\Models\PurchaseOrder::with('deliveries')
+        $purchaseOrders = PurchaseOrder::with('deliveries')
             ->where('status', 'CLOSED')
             ->when($customer, function($q) use ($customer) {
                 return $q->where('customer_code', $customer);
@@ -159,41 +170,50 @@ class PurchaseOrderController extends Controller
     }
 
     /**
-     * 8. TERBIT SURAT JALAN (ANTI-DUPLIKAT)
+     * 8. TERBIT SURAT JALAN (NOMOR OTOMATIS URUT, TANPA SLASH BIAR TIDAK 404)
      */
     public function storeSj(Request $request)
     {
-        DB::table('deliveries')->updateOrInsert(
-            [
-                'po_id'         => $request->po_id,
-                'part_no'       => $request->part_no,
-                'customer_code' => $request->customer_code,
-                'no_sj'         => 'SJ-' . date('Ymd') . '-00/' . $request->customer_code 
-            ],
-            [
-                'qty_delivery'  => $request->qty_delivery,
-                'status'        => 'SENT',
-                'updated_at'    => now()
-            ]
-        );
+        $today = date('Ymd');
+        $countToday = DB::table('deliveries')
+            ->where('customer_code', $request->customer_code)
+            ->whereDate('created_at', now()->toDateString())
+            ->count() + 1;
 
-        return redirect()->back()->with('success', 'Surat Jalan Berhasil Terbit (Anti-Duplikat)!');
+        $sequence = str_pad($countToday, 2, '0', STR_PAD_LEFT);
+        $no_sj = 'SJ-' . $today . '-' . $sequence . '-' . $request->customer_code;
+
+        DB::table('deliveries')->insert([
+            'po_id'         => $request->po_id,
+            'part_no'       => $request->part_no,
+            'customer_code' => $request->customer_code,
+            'no_sj'         => $no_sj,
+            'qty_delivery'  => $request->qty_delivery,
+            'status'        => 'SENT',
+            'created_at'    => now(),
+            'updated_at'    => now()
+        ]);
+
+        return redirect()->back()->with('success', 'Surat Jalan Berhasil Terbit dengan No: ' . $no_sj);
     }
 
     /**
-     * 9. SAKTI: TAMPILAN CETAK SURAT JALAN (FIX 404)
+     * 9. TAMPILAN CETAK SURAT JALAN
      */
     public function printSj($no_sj, $customer_code)
     {
+        $clean_sj = urldecode($no_sj);
+        $clean_customer = urldecode($customer_code);
+
         $delivery = DB::table('deliveries')
-            ->where('no_sj', 'LIKE', $no_sj)
-            ->where('customer_code', 'LIKE', $customer_code)
+            ->where('no_sj', $clean_sj)
+            ->where('customer_code', $clean_customer)
             ->first();
 
         if (!$delivery) {
             $existingSj = DB::table('deliveries')->limit(5)->pluck('no_sj')->toArray();
             $list = implode(', ', $existingSj);
-            return "Guru, No SJ <b>$no_sj</b> tidak ketemu! Di database adanya: <b>$list</b>.";
+            return "No SJ <b>$clean_sj</b> tidak ditemukan. Data terakhir yang ada: <b>$list</b>.";
         }
 
         $poDetail = DB::table('purchase_orders')->where('id', $delivery->po_id)->first();

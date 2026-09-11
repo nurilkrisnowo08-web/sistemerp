@@ -67,6 +67,7 @@ class ProduksiController extends Controller
         return view('Produksi.index', compact('activeProductions', 'materials', 'customers', 'lines'));
     }
 
+    
     public function productionStore(Request $request) { return $this->store($request); }
 
     public function store(Request $request)
