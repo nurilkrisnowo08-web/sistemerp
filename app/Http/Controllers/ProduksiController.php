@@ -161,7 +161,7 @@ class ProduksiController extends Controller
             $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
             $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
             
-            // Bypass QC Gate: Status langsung COMPLETED tanpa perlu masuk antrean WAITING_QC
+            // Status langsung COMPLETED menuju FG
             $status_akhir = $request->status ?? 'COMPLETED';
 
             DB::table('produksi_batches')->where('id', $id)->update([
@@ -185,7 +185,6 @@ class ProduksiController extends Controller
                 ]);
             }
 
-            // Tambahkan langsung ke stok FG atau Welding sesuai jenis part
             if ($target == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
             } else {
@@ -255,20 +254,57 @@ class ProduksiController extends Controller
         return response()->json($parts);
     }
 
-    public function getBundlesByPart($material_code) {
-        $current = DB::table('rm_stocks')->where('material_code', trim($material_code))->first();
-        if ($current) { 
+    /**
+     * Mengambil Physical Coil: fleksibel menerima parameter URL maupun query string,
+     * serta kebal terhadap karakter garis miring (/) pada nomor part.
+     */
+    public function getBundlesByPart(Request $request, $material_code = null) 
+    {
+        $code = $material_code ? urldecode($material_code) : ($request->material_code ?? $request->input('material_code'));
+        $customer = $request->customer;
+        $spec = $request->spec;
+        $size = $request->size;
+
+        $query = DB::table('rm_stocks')->where('stock_pcs', '>', 0);
+
+        if ($customer) {
+            $query->where('customer', trim($customer));
+        }
+        if ($spec) {
+            $query->where(DB::raw('TRIM(spec)'), trim($spec));
+        }
+        if ($size) {
+            $query->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $size));
+        }
+        if ($code) {
+            $cleanCode = trim($code);
+            $query->where(function($q) use ($cleanCode) {
+                $q->where('material_code', $cleanCode)
+                  ->orWhere('material_name', $cleanCode)
+                  ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanCode)]);
+            });
+        }
+
+        $bundles = $query->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size')
+            ->groupBy('coil_id', 'size')
+            ->get();
+
+        // Fallback jika pencarian spesifik tidak menemukan hasil karena filter size/spec terlalu ketat
+        if ($bundles->isEmpty() && $code) {
+            $cleanCode = trim($code);
             $bundles = DB::table('rm_stocks')
-                ->where('customer', trim($current->customer))
-                ->where(DB::raw('TRIM(spec)'), trim($current->spec))
-                ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $current->size))
                 ->where('stock_pcs', '>', 0)
+                ->where(function($q) use ($cleanCode) {
+                    $q->where('material_code', $cleanCode)
+                      ->orWhere('material_name', $cleanCode)
+                      ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanCode)]);
+                })
                 ->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size')
                 ->groupBy('coil_id', 'size')
-                ->get(); 
-            return response()->json($bundles); 
+                ->get();
         }
-        return response()->json([]);
+
+        return response()->json($bundles);
     }
 
     public function returnToRM($id) {

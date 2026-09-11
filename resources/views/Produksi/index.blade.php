@@ -141,7 +141,6 @@
             </div>
             <form action="{{ route('produksi.update_result', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
-                {{-- Bypass antrean QC: arahkan hasil secara eksplisit langsung ke status COMPLETED --}}
                 <input type="hidden" name="status" value="COMPLETED">
                 <div class="modal-body p-5">
                     <div id="police_msg_{{ $p->batch_id }}" class="alert alert-warning border-0 font-weight-bold text-center py-3 mb-4">👮 STATUS: STANDBY FOR SYNC...</div>
@@ -328,6 +327,8 @@
                 let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
                 data.forEach(i => { h += `<option value="${i.spec}" data-size="${i.size}">${i.spec} [${i.size}]</option>`; });
                 $('#sel_spec').prop('disabled', false).html(h);
+                $('#sel_part').prop('disabled', true).html('<option value="" disabled selected>-- SELECT SPEC FIRST --</option>');
+                $('#sel_bandel').prop('disabled', true).html('<option value="" disabled selected>-- SELECT PART FIRST --</option>');
             });
         });
 
@@ -337,15 +338,30 @@
                 let h = '<option value="" disabled selected>-- SELECT PART --</option>';
                 data.forEach(i => { h += `<option value="${i.material_code}">${i.material_code}</option>`; });
                 $('#sel_part').prop('disabled', false).html(h);
+                $('#sel_bandel').prop('disabled', true).html('<option value="" disabled selected>-- SELECT PART FIRST --</option>');
             });
         });
 
         $('#sel_part').change(function() {
-            $.get('/produksi/get-bundles/' + $(this).val(), function(data) {
+            let partVal = $(this).val();
+            let custVal = $('#sel_customer').val();
+            let specVal = $('#sel_spec').val();
+            let sizeVal = $('#sel_spec').find(':selected').data('size');
+
+            $.get('/produksi/get-bundles', {
+                material_code: partVal,
+                customer: custVal,
+                spec: specVal,
+                size: sizeVal
+            }, function(data) {
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
-                data.forEach(i => { 
-                    h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
-                });
+                if(data && data.length > 0) {
+                    data.forEach(i => { 
+                        h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
+                    });
+                } else {
+                    h = '<option value="" disabled selected>-- NO COIL AVAILABLE --</option>';
+                }
                 $('#sel_bandel').prop('disabled', false).html(h);
             });
         });

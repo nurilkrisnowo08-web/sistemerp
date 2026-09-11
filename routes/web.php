@@ -85,6 +85,7 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     Route::post('/stamping-production/store', [StampingController::class, 'store'])->name('stamping.store');
     Route::get('/produksi/history', [ProduksiController::class, 'history'])->name('produksi.history');
     Route::get('/ng-report', [ProduksiController::class, 'report'])->name('produksi.report');
+    Route::get('/produksi/get-bundles/{material_code?}', [App\Http\Controllers\ProduksiController::class, 'getBundlesByPart'])->name('produksi.get_bundles');
     // Tambahkan baris ini di web.php
     Route::put('/produksi/report-problem/{id}', [App\Http\Controllers\ProduksiController::class, 'reportProblem'])->name('produksi.report_problem');
     // PPIC menghidupkan kembali produksi (Jika perbaikan < 2 jam)
