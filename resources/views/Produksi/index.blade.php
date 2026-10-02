@@ -129,7 +129,7 @@
 
 @foreach($activeProductions as$p)
 @php $currentTarget = ($p->qty_return > 0) ? $p->qty_return :$p->total_qty_batch; @endphp
-{{-- 🛡️️ MODAL INPUT HASIL --}}
+{{-- 🛡 MODAL INPUT HASIL --}}
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
