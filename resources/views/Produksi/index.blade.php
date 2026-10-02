@@ -56,7 +56,7 @@
 
     <div class="nav-rail">
         <a href="{{ route('produksi.index') }}" class="tab-btn {{ !request('customer') ? 'active' : '' }}">ALL OPERATIONS</a>
-        @foreach($customers as $cust)
+        @foreach($customers as$cust)
             <a href="{{ route('produksi.index', ['customer' => trim($cust->code)]) }}" class="tab-btn {{ request('customer') == trim($cust->code) ? 'active' : '' }}">{{ strtoupper($cust->code) }}</a>
         @endforeach
     </div>
@@ -75,7 +75,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($activeProductions as $p)
+                @forelse($activeProductions as$p)
                 <tr>
                     <td>
                         @if($p->qty_return > 0)
@@ -87,7 +87,7 @@
                     </td>
                     <td><div class="font-weight-bold text-dark">{{ $p->material_code }}</div><small class="text-muted">{{ $p->coil_id }}</small></td>
                     <td>
-                        @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
+                        @php $route = DB::table('parts')->where('part_no',$p->material_code)->value('next_process'); @endphp
                         @if(strtoupper($route) == 'WELDING') 
                             <span class="badge badge-warning">WELDING</span> 
                         @else 
@@ -127,8 +127,8 @@
     </div>
 </div>
 
-@foreach($activeProductions as $p)
-@php $currentTarget = ($p->qty_return > 0) ? $p->qty_return : $p->total_qty_batch; @endphp
+@foreach($activeProductions as$p)
+@php $currentTarget = ($p->qty_return > 0) ? $p->qty_return :$p->total_qty_batch; @endphp
 {{-- 🛡️ MODAL INPUT HASIL --}}
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -136,7 +136,7 @@
             <div class="modal-header bg-success text-white py-4 border-0">
                 <h6 class="modal-title font-weight-bold">
                     <i class="fas fa-microchip mr-2"></i> 
-                    {{ $p->qty_return > 0 ? 'REWORK PROCESS' : 'FINISH BATCH' }}: [{{ $p->no_produksi }}]
+                    {{ $p->qty_return > 0 ? 'REWORK PROCESS' : 'FINISH BATCH' }}: [{{$p->no_produksi }}]
                 </h6>
             </div>
             <form action="{{ route('produksi.update_result', $p->batch_id) }}" method="POST">
@@ -229,19 +229,21 @@
                             <label class="small font-weight-bold text-primary">03. LINE</label>
                             <select name="mesin_id" class="input-tactical mb-3 border-primary" required>
                                 <option value="" disabled selected>-- SELECT --</option>
-                                @foreach($lines as $l) <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> @endforeach
+                                @foreach($lines as$l) <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> @endforeach
                             </select>
                         </div>
                     </div>
                     <label class="small font-weight-bold">04. CUSTOMER</label>
                     <select id="sel_customer" class="input-tactical mb-3" required>
                         <option value="" disabled selected>-- SELECT --</option>
-                        @foreach($customers as $c) <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> @endforeach
+                        @foreach($customers as$c) <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> @endforeach
                     </select>
+                    
                     <div class="row">
                         <div class="col-6"><label class="small font-weight-bold">05. SPEC</label><select id="sel_spec" class="input-tactical mb-3" disabled required></select></div>
-                        <div class="col-6"><label class="small font-weight-bold">06. PART NO</label><select id="sel_part" name="material_code" class="input-tactical mb-3" disabled required></select></div>
+                        <div class="col-6"><label class="small font-weight-bold">06. PART NO <small class="text-primary">(Tahan CTRL/Shift untuk pilih >1)</small></label><select id="sel_part" name="part_no[]" class="input-tactical mb-3" multiple="multiple" style="min-height: 80px;" disabled required></select></div>
                     </div>
+                    
                     <label class="small font-weight-bold text-primary">07. PHYSICAL COIL</label>
                     <select id="sel_bandel" name="rm_stock_id" class="input-tactical mb-3 border-primary" disabled required></select>
                     <label class="small font-weight-bold text-primary">08. TOTAL QUANTITY</label>
@@ -288,8 +290,7 @@
         $(`#ok_${batchId}`).trigger('input');
     }
 
-    $(document).ready(function() {
-        $(document).on('input', '.calc-input, .ng-qty-input', function() {
+    $(document).ready(function() {$(document).on('input', '.calc-input, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
             
@@ -333,9 +334,8 @@
         });
 
         $('#sel_spec').change(function() {
-            let s = $(this).find(':selected').data('size');
-            $.get('/produksi/get-parts-by-spec', {customer: $('#sel_customer').val(), spec: $(this).val(), size: s}, function(data) {
-                let h = '<option value="" disabled selected>-- SELECT PART --</option>';
+            let s = $(this).find(':selected').data('size');$.get('/produksi/get-parts-by-spec', {customer: $('#sel_customer').val(), spec: $(this).val(), size: s}, function(data) {
+                let h = '';
                 data.forEach(i => { h += `<option value="${i.material_code}">${i.material_code}</option>`; });
                 $('#sel_part').prop('disabled', false).html(h);
                 $('#sel_bandel').prop('disabled', true).html('<option value="" disabled selected>-- SELECT PART FIRST --</option>');
@@ -343,7 +343,14 @@
         });
 
         $('#sel_part').change(function() {
-            let partVal = $(this).val();
+            let selectedParts = $(this).val(); 
+            let partVal = (selectedParts && selectedParts.length > 0) ? selectedParts[0] : null;
+
+            if (!partVal) {
+                $('#sel_bandel').prop('disabled', true).html('<option value="" disabled selected>-- SELECT PART FIRST --</option>');
+                return;
+            }
+
             let custVal = $('#sel_customer').val();
             let specVal = $('#sel_spec').val();
             let sizeVal = $('#sel_spec').find(':selected').data('size');
