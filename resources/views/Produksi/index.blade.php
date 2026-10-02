@@ -3,8 +3,6 @@
 @section('content')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-<!-- TAMBAHAN: Select2 untuk bisa ngetik part manual -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
 <style>
     :root {
@@ -28,11 +26,6 @@
     .btn-blueprint { border-radius: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 12px 25px; border: none; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; }
     .progress-lite { height: 12px; border-radius: 20px; background: #f1f5f9; overflow: hidden; margin: 15px 0; border: 1px solid var(--ind-border); }
     .progress-bar-fill { height: 100%; background: var(--ind-success); transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-    
-    /* Style untuk Select2 biar seragam */
-    .select2-container--default .select2-selection--multiple { background: #f8fafc; border: 2px solid var(--ind-border); border-radius: 12px; min-height: 48px; padding: 4px; }
-    .select2-container--default .select2-selection--multiple .select2-selection__choice { background: var(--ind-blue); color: white; border: none; border-radius: 6px; font-weight: bold; padding: 4px 8px; margin-top: 6px;}
-    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: white; margin-right: 5px; }
 </style>
 
 <div class="container-fluid main-terminal anim-fade-up">
@@ -63,7 +56,7 @@
 
     <div class="nav-rail">
         <a href="{{ route('produksi.index') }}" class="tab-btn {{ !request('customer') ? 'active' : '' }}">ALL OPERATIONS</a>
-        @foreach ($customers as $cust)
+        @foreach($customers as $cust)
             <a href="{{ route('produksi.index', ['customer' => trim($cust->code)]) }}" class="tab-btn {{ request('customer') == trim($cust->code) ? 'active' : '' }}">{{ strtoupper($cust->code) }}</a>
         @endforeach
     </div>
@@ -82,7 +75,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse ($activeProductions as $p)
+                @forelse($activeProductions as $p)
                 <tr>
                     <td>
                         @if($p->qty_return > 0)
@@ -141,7 +134,7 @@
     </div>
 </div>
 
-@foreach ($activeProductions as $p)
+@foreach($activeProductions as $p)
 @php $currentTarget = ($p->qty_return > 0) ? $p->qty_return :$p->total_qty_batch; @endphp
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -251,7 +244,7 @@
                             <label class="small font-weight-bold text-primary">03. LINE</label>
                             <select name="mesin_id" class="input-tactical mb-3 border-primary" required>
                                 <option value="" disabled selected>-- SELECT --</option>
-                                @foreach ($lines as $l) 
+                                @foreach($lines as $l) 
                                     <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> 
                                 @endforeach
                             </select>
@@ -260,24 +253,32 @@
                     <label class="small font-weight-bold">04. CUSTOMER</label>
                     <select id="sel_customer" class="input-tactical mb-3" required>
                         <option value="" disabled selected>-- SELECT --</option>
-                        @foreach ($customers as $c) 
+                        @foreach($customers as $c) 
                             <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> 
                         @endforeach
                     </select>
                     
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-6">
                             <label class="small font-weight-bold">05. SPEC</label>
                             <select id="sel_spec" class="input-tactical mb-3" disabled required></select>
                         </div>
-                        <div class="col-12">
-                            <label class="small font-weight-bold">06. PART NO (L/R) <small class="text-danger ml-2">BISA KETIK MANUAL JIKA PART TIDAK ADA LALU ENTER</small></label>
-                            <!-- Pake Select2 biar bebas ngetik -->
-                            <select id="sel_part" name="part_no[]" class="input-tactical mb-3" multiple="multiple" disabled required></select>
+                        <div class="col-6">
+                            <label class="small font-weight-bold">06. PART NO <small class="text-primary">(Tahan CTRL untuk pilih >1)</small></label>
+                            <select id="sel_part" name="part_no[]" class="input-tactical mb-1" multiple="multiple" style="min-height: 80px;" disabled required></select>
+                            
+                            {{-- ✨ FITUR TAMBAH MANUAL NATIVE (Tanpa Select2) --}}
+                            <div class="input-group mt-1">
+                                <input type="text" id="manual_part_input" class="form-control form-control-sm" placeholder="Ketik LH & Tambah.." style="border-radius: 8px 0 0 8px; border: 2px solid var(--ind-border); font-weight:bold;">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-sm btn-success font-weight-bold" id="btn_add_manual_part" style="border-radius: 0 8px 8px 0;">+ TAMBAH</button>
+                                </div>
+                            </div>
+                            
                         </div>
                     </div>
                     
-                    <label class="small font-weight-bold text-primary mt-2">07. PHYSICAL COIL</label>
+                    <label class="small font-weight-bold text-primary mt-3">07. PHYSICAL COIL</label>
                     <select id="sel_bandel" name="rm_stock_id" class="input-tactical mb-3 border-primary" disabled required></select>
                     <label class="small font-weight-bold text-primary">08. TOTAL QUANTITY</label>
                     <input type="number" id="qty_ambil_pcs" name="qty_ambil_pcs" class="input-tactical text-center border-primary shadow-sm" required placeholder="0">
@@ -291,40 +292,65 @@
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<!-- TAMBAHAN: Select2 -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    $(document).ready(function() {
-        // ✨ Inisialisasi Select2 biar lu bisa NGETIK manual part RH/LH
-        $('#sel_part').select2({
-            tags: true, 
-            tokenSeparators: [',', ' '],
-            placeholder: "Ketik / Pilih Part (Tekan Enter)"
-        });
+    const listPenyakit = ["Burry", "Dented", "Deform", "Oil Maru", "Spring Back", "Nobi", "Crack", "Scratch", "Pull Up", "Pull Down", "NG Thickness", "Wrinkle", "Missing Hole"];
 
-        $(document).on('input', '.calc-input', function() {
+    function addNgRow(batchId) {
+        const id = Date.now();
+        let options = listPenyakit.map(p => `<option value="${p}">${p}</option>`).join('');
+        const html = `
+            <div class="row no-gutters mb-2 animate__animated animate__fadeInDown" id="row-${id}">
+                <div class="col-7 pr-1">
+                    <select name="ng_detail_type[]" class="form-control form-control-sm shadow-sm font-weight-bold">${options}</select>
+                </div>
+                <div class="col-3 pr-1">
+                    <input type="number" name="ng_detail_qty[]" class="form-control form-control-sm shadow-sm ng-qty-input text-center font-weight-bold" 
+                    placeholder="Qty" min="1" required data-id="${batchId}">
+                </div>
+                <div class="col-2">
+                    <button type="button" class="btn btn-danger btn-sm btn-block" onclick="removeNgRow(${id}, ${batchId})"><i class="fas fa-times"></i></button>
+                </div>
+            </div>`;
+        $(`#ng_container_${batchId}`).append(html);
+        triggerCalc(batchId);
+    }
+
+    function removeNgRow(id, batchId) {
+        $(`#row-${id}`).remove();
+        triggerCalc(batchId);
+    }
+
+    function triggerCalc(batchId) {
+        $(`#ok_${batchId}`).trigger('input');
+    }
+
+    $(document).ready(function() {$(document).on('input', '.calc-input, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
             
-            // Hitungan Gap cuma dari Part Pertama (karena 1 plat = 1 set RH/LH)
+            // Gap dihitung HANYA DARI PART PERTAMA SAJA + RETURN + TOTAL SEMUA NG
             let okVal = parseInt($(`#ok_${id}`).val()) || 0;
             let ngVal = parseInt($(`#ng_${id}`).val()) || 0;
             let retVal = parseInt($(`#return_${id}`).val()) || 0;
             
-            let accounted = okVal + ngVal + retVal;
+            let dynamicNgSum = 0;
+            $(`#ng_container_${id} .ng-qty-input`).each(function() {
+                dynamicNgSum += parseInt($(this).val()) || 0;
+            });
+
+            let accounted = okVal + ngVal + retVal + dynamicNgSum;
             let gap = target - accounted;
-            $(`#gap_${id}`).text(gap.toLocaleString());
             
+            $(`#gap_${id}`).text(gap.toLocaleString());
             let progress = (accounted / target) * 100;
             $(`#bar_${id}`).css('width', progress + '%');
             
             let btn = $(`#btn_${id}`), msg = $(`#police_msg_${id}`);
-            
             if (gap === 0) { 
                 msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC! Ready to commit.'); 
                 btn.prop('disabled', false); 
             } else if (gap < 0) {
-                msg.removeClass('alert-warning alert-success').addClass('alert-danger').html('🚨 OVER LIMIT! Cek QTY Part Pertama.'); 
+                msg.removeClass('alert-warning alert-success').addClass('alert-danger').html('🚨 OVER LIMIT! Cek hitungan Part Pertama.'); 
                 btn.prop('disabled', true); 
             } else { 
                 msg.removeClass('alert-success alert-danger').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); 
@@ -337,7 +363,7 @@
                 let h = '<option value="" disabled selected>-- SELECT SPEC --</option>';
                 data.forEach(i => { h += `<option value="${i.spec}" data-size="${i.size}">${i.spec} [${i.size}]</option>`; });
                 $('#sel_spec').prop('disabled', false).html(h);
-                $('#sel_part').prop('disabled', true).empty().trigger('change');
+                $('#sel_part').prop('disabled', true).html('<option value="" disabled selected>-- SELECT SPEC FIRST --</option>');
                 $('#sel_bandel').prop('disabled', true).html('<option value="" disabled selected>-- SELECT PART FIRST --</option>');
             });
         });
@@ -346,8 +372,20 @@
             let s = $(this).find(':selected').data('size');$.get('/produksi/get-parts-by-spec', {customer: $('#sel_customer').val(), spec: $(this).val(), size: s}, function(data) {
                 let h = '';
                 data.forEach(i => { h += `<option value="${i.material_code}">${i.material_code}</option>`; });
-                $('#sel_part').html(h).prop('disabled', false).trigger('change');
+                $('#sel_part').prop('disabled', false).html(h);
+                $('#sel_bandel').prop('disabled', true).html('<option value="" disabled selected>-- SELECT PART FIRST --</option>');
             });
+        });
+
+        // ✨ JS BARU: Tambah Part Manual ke dalam Select Multiple
+        $('#btn_add_manual_part').click(function() {
+            let newPart = $('#manual_part_input').val().trim();
+            if (newPart !== '') {
+                // Bikin Option baru, langsung di-select, lalu masukin ke daftar part
+                let opt = new Option(newPart, newPart, true, true);
+                $('#sel_part').append(opt).trigger('change');
+                $('#manual_part_input').val('');
+            }
         });
 
         $('#sel_part').change(function() {
