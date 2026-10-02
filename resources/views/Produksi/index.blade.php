@@ -56,7 +56,7 @@
 
     <div class="nav-rail">
         <a href="{{ route('produksi.index') }}" class="tab-btn {{ !request('customer') ? 'active' : '' }}">ALL OPERATIONS</a>
-        @foreach( $customers as$cust )
+        @foreach($customers as$cust)
             <a href="{{ route('produksi.index', ['customer' => trim($cust->code)]) }}" class="tab-btn {{ request('customer') == trim($cust->code) ? 'active' : '' }}">{{ strtoupper($cust->code) }}</a>
         @endforeach
     </div>
@@ -75,7 +75,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse( $activeProductions as$p )
+                @forelse($activeProductions as$p)
                 <tr>
                     <td>
                         @if($p->qty_return > 0)
@@ -127,7 +127,7 @@
     </div>
 </div>
 
-@foreach( $activeProductions as$p )
+@foreach($activeProductions as$p)
 @php $currentTarget = ($p->qty_return > 0) ? $p->qty_return :$p->total_qty_batch; @endphp
 {{-- 🛡 MODAL INPUT HASIL --}}
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
@@ -229,17 +229,17 @@
                             <label class="small font-weight-bold text-primary">03. LINE</label>
                             <select name="mesin_id" class="input-tactical mb-3 border-primary" required>
                                 <option value="" disabled selected>-- SELECT --</option>
-                                @foreach( $lines as$l ) <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> @endforeach
+                                @foreach($lines as$l) <option value="{{ $l->id }}">{{ $l->kode_Line }}</option> @endforeach
                             </select>
                         </div>
                     </div>
                     <label class="small font-weight-bold">04. CUSTOMER</label>
                     <select id="sel_customer" class="input-tactical mb-3" required>
                         <option value="" disabled selected>-- SELECT --</option>
-                        @foreach( $customers as$c ) <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> @endforeach
+                        @foreach($customers as$c) <option value="{{ trim($c->code) }}">{{ strtoupper($c->code) }}</option> @endforeach
                     </select>
                     
-                    {{-- ✨ MODIFIKASI: Bagian 06. PART NO disesuaikan agar bisa array --}}
+                    {{-- ✨ MODIFIKASI: Bagian 06. PART NO disesuaikan agar bisa array (Pilih Banyak Part) --}}
                     <div class="row">
                         <div class="col-6">
                             <label class="small font-weight-bold">05. SPEC</label>
@@ -349,9 +349,11 @@
             });
         });
 
+        // ✨ MODIFIKASI JAVASCRIPT: Penyesuaian karena sel_part sekarang mengirimkan array (Multi-select)
         $('#sel_part').change(function() {
             let selectedParts = $(this).val(); 
             
+            // Ambil part PERTAMA dari array yang dipilih untuk mengecek ketersediaan Coil/Bandel ke backend
             let partVal = (selectedParts && selectedParts.length > 0) ? selectedParts[0] : null;
 
             if (!partVal) {
