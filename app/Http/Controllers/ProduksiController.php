@@ -78,11 +78,18 @@ class ProduksiController extends Controller
             
             if(!$rmInfo) throw new \Exception("Material Unit not found!");
 
-            DB::table('produksi_batches')->insert([
+            // ✨ MODIFIKASI: Ambil part pertama dari array form (atau material_code lama)
+            // Ini supaya kolom material_code di parent tetap terisi dan tidak bikin error fungsi lain.
+            $primary_part = ($request->has('part_no') && is_array($request->part_no)) 
+                            ? $request->part_no[0] 
+                            : $request->material_code;
+
+            // ✨ MODIFIKASI: Ubah insert menjadi insertGetId agar kita dapat ID parent-nya
+            $batchId = DB::table('produksi_batches')->insertGetId([
                 'no_produksi'   => $no_produksi,
                 'mesin_id'      => $request->mesin_id,
                 'rm_stock_id'   => $request->rm_stock_id,
-                'material_code' => $request->material_code,
+                'material_code' => $primary_part, 
                 'shift'         => $request->shift,
                 'qty_ambil_pcs' => $request->qty_ambil_pcs,
                 'status'        => 'PROSES',
@@ -90,12 +97,27 @@ class ProduksiController extends Controller
                 'updated_at'    => now()
             ]);
             
+            // ✨ TAMBAHAN BARU: Looping untuk menyimpan SEMUA part ke tabel child
+            if ($request->has('part_no') && is_array($request->part_no)) {
+                foreach ($request->part_no as $index => $part_number) {
+                    DB::table('produksi_batch_parts')->insert([
+                        'batch_id'     => $batchId,
+                        'part_no'      => $part_number,
+                        // Jika qty diisi dari awal pakai qty_hasil_ok, jika kosong pakai 0
+                        'qty_hasil_ok' => isset($request->qty_hasil_ok[$index]) ? $request->qty_hasil_ok[$index] : 0,
+                        'qty_ng'       => 0,
+                        'created_at'   => now(),
+                        'updated_at'   => now()
+                    ]);
+                }
+            }
+
             // Potong stok untuk SEMUA baris yang punya Coil ID yang sama
             DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
 
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
-                'material_code' => $request->material_code,
+                'material_code' => $primary_part,
                 'pcs_used'      => $request->qty_ambil_pcs, 
                 'no_produksi'   => $no_produksi,
                 'created_at'    => now(),
@@ -254,10 +276,6 @@ class ProduksiController extends Controller
         return response()->json($parts);
     }
 
-    /**
-     * Mengambil Physical Coil: fleksibel menerima parameter URL maupun query string,
-     * serta kebal terhadap karakter garis miring (/) pada nomor part.
-     */
     public function getBundlesByPart(Request $request, $material_code = null) 
     {
         $code = $material_code ? urldecode($material_code) : ($request->material_code ?? $request->input('material_code'));
@@ -289,7 +307,6 @@ class ProduksiController extends Controller
             ->groupBy('coil_id', 'size')
             ->get();
 
-        // Fallback jika pencarian spesifik tidak menemukan hasil karena filter size/spec terlalu ketat
         if ($bundles->isEmpty() && $code) {
             $cleanCode = trim($code);
             $bundles = DB::table('rm_stocks')

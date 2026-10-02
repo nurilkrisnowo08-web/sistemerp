@@ -11,15 +11,20 @@ class ProduksiBatch extends Model
 
     protected $fillable = [
         'no_produksi', 
-        'shift',          // ✨ TAMBAHAN BARU
-        'mesin_id',       // ✨ TAMBAHAN BARU
-        'material_code', 
-        'qty_ambil_pcs', 
-        'qty_hasil_ok',
-        'qty_ng_material', 
-        'qty_ng_process', 
-        'qty_hasil_ng', 
-        'qty_hasil_scrap',
+        'shift', 
+        'mesin_id',
+        'rm_stock_id',    // ✨ WAJIB ADA: Untuk mencatat material Coil apa yang dipakai
+        'qty_ambil_pcs',  // Jumlah total potongan dari Coil
+        
+        // --- KOLOM DI BAWAH INI DIPINDAH KE TABEL CHILD ---
+        // 'material_code', 
+        // 'qty_hasil_ok',
+        // 'qty_ng_material', 
+        // 'qty_ng_process', 
+        // 'qty_hasil_ng', 
+        // 'qty_hasil_scrap',
+        // --------------------------------------------------
+
         'penempatan', 
         'keterangan', 
         'durasi_hari', 
@@ -28,26 +33,29 @@ class ProduksiBatch extends Model
 
     /**
      * ✨ CASTING SAKTI
-     * Biar angka-angka ini otomatis jadi Integer saat dipanggil di Controller/Blade.
      */
     protected $casts = [
-        'mesin_id'        => 'integer', // ✨ TAMBAHAN BARU
+        'mesin_id'        => 'integer',
+        'rm_stock_id'     => 'integer',
         'qty_ambil_pcs'   => 'integer',
-        'qty_hasil_ok'    => 'integer',
-        'qty_ng_material' => 'integer',
-        'qty_ng_process'  => 'integer',
-        'qty_hasil_ng'    => 'integer',
-        'qty_hasil_scrap' => 'integer',
         'created_at'      => 'datetime',
         'updated_at'      => 'datetime',
     ];
 
     /**
      * ✨ RELASI KE MASTER MESIN
-     * Biar di dashboard bisa panggil $p->mesin->nama_mesin
      */
     public function mesin()
     {
         return $this->belongsTo(Mesin::class, 'mesin_id');
+    }
+
+    /**
+     * ✨ RELASI KE TABEL CHILD (HASIL PART)
+     * Biar di dashboard/view bisa panggil $batch->parts untuk melihat 1 material jadi part apa saja
+     */
+    public function parts()
+    {
+        return $this->hasMany(ProduksiBatchPart::class, 'batch_id');
     }
 }
