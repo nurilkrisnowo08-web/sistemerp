@@ -63,7 +63,7 @@
 
     <div class="nav-rail">
         <a href="{{ route('produksi.index') }}" class="tab-btn {{ !request('customer') ? 'active' : '' }}">ALL OPERATIONS</a>
-        @foreach ($customers as $ cust)
+        @foreach ($customers as $cust)
             <a href="{{ route('produksi.index', ['customer' => trim($cust->code)]) }}" class="tab-btn {{ request('customer') == trim($cust->code) ? 'active' : '' }}">{{ strtoupper($cust->code) }}</a>
         @endforeach
     </div>
