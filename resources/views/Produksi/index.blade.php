@@ -180,6 +180,14 @@
                         </div>
                     </div>
 
+                    <div class="mt-2 border-top pt-3">
+                        <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
+                        <div id="ng_container_{{ $p->batch_id }}"></div>
+                        <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" onclick="addNgRow({{ $p->batch_id }})">
+                            <i class="fas fa-plus mr-1"></i> TAMBAH JENIS NG
+                        </button>
+                    </div>
+
                     <div class="form-group mt-4">
                         <label class="small font-weight-bold text-muted uppercase">Keterangan / Detail NG</label>
                         <textarea name="keterangan" class="form-control" rows="2" style="border-radius: 12px; border: 2px solid var(--ind-border); font-weight: 600;" placeholder="Tulis rincian jenis NG disini..."></textarea>
@@ -267,7 +275,7 @@
                             <label class="small font-weight-bold">06. PART NO <small class="text-primary">(Tahan CTRL untuk pilih >1)</small></label>
                             <select id="sel_part" name="part_no[]" class="input-tactical mb-1" multiple="multiple" style="min-height: 80px;" disabled required></select>
                             
-                            {{-- ✨ FITUR TAMBAH MANUAL NATIVE (Tanpa Select2) --}}
+                            {{-- ✨ FITUR TAMBAH MANUAL --}}
                             <div class="input-group mt-1">
                                 <input type="text" id="manual_part_input" class="form-control form-control-sm" placeholder="Ketik LH & Tambah.." style="border-radius: 8px 0 0 8px; border: 2px solid var(--ind-border); font-weight:bold;">
                                 <div class="input-group-append">
@@ -321,16 +329,13 @@
     }
 
     function triggerCalc(batchId) {
-        $(`#ok_${batchId}`).trigger('input');
+        $(`input[data-id="${batchId}"].calc-input`).first().trigger('input');
     }
 
     $(document).ready(function() {$(document).on('input', '.calc-input, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
             
-            // Gap dihitung HANYA DARI PART PERTAMA SAJA + RETURN + TOTAL SEMUA NG
-            let okVal = parseInt($(`#ok_${id}`).val()) || 0;
-            let ngVal = parseInt($(`#ng_${id}`).val()) || 0;
             let retVal = parseInt($(`#return_${id}`).val()) || 0;
             
             let dynamicNgSum = 0;
@@ -338,7 +343,29 @@
                 dynamicNgSum += parseInt($(this).val()) || 0;
             });
 
-            let accounted = okVal + ngVal + retVal + dynamicNgSum;
+            // LOGIKA BARU: Cari total OK + NG terbesar di antara semua part
+            let maxPartUsage = 0;
+            $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).each(function() {
+                let currentOk = parseInt($(this).val()) || 0;
+                let partIdMatch = $(this).attr('name').match(/\[(\d+)\]/);
+                if(partIdMatch) {
+                    let partId = partIdMatch[1];
+                    let currentNg = parseInt($(`input[name="qty_hasil_ng_parts[${partId}]"]`).val()) || 0;
+                    let currentTotal = currentOk + currentNg;
+                    if (currentTotal > maxPartUsage) {
+                        maxPartUsage = currentTotal;
+                    }
+                }
+            });
+
+            // Jika form lawas (tidak ada multi-part)
+            if (maxPartUsage === 0 && $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).length === 0) {
+                 let oldOk = parseInt($(`#ok_${id}`).val()) || 0;
+                 maxPartUsage = oldOk;
+            }
+
+            // Hitung material yang terpakai
+            let accounted = maxPartUsage + retVal + dynamicNgSum;
             let gap = target - accounted;
             
             $(`#gap_${id}`).text(gap.toLocaleString());
@@ -350,7 +377,7 @@
                 msg.removeClass('alert-warning alert-danger').addClass('alert-success').html('👮 DATA SYNC! Ready to commit.'); 
                 btn.prop('disabled', false); 
             } else if (gap < 0) {
-                msg.removeClass('alert-warning alert-success').addClass('alert-danger').html('🚨 OVER LIMIT! Cek hitungan Part Pertama.'); 
+                msg.removeClass('alert-warning alert-success').addClass('alert-danger').html('🚨 OVER LIMIT! Cek hitungan Part.'); 
                 btn.prop('disabled', true); 
             } else { 
                 msg.removeClass('alert-success alert-danger').addClass('alert-warning').html('👮 WAITING SYNC... Gap: ' + gap); 
@@ -377,11 +404,9 @@
             });
         });
 
-        // ✨ JS BARU: Tambah Part Manual ke dalam Select Multiple
         $('#btn_add_manual_part').click(function() {
             let newPart = $('#manual_part_input').val().trim();
             if (newPart !== '') {
-                // Bikin Option baru, langsung di-select, lalu masukin ke daftar part
                 let opt = new Option(newPart, newPart, true, true);
                 $('#sel_part').append(opt).trigger('change');
                 $('#manual_part_input').val('');
