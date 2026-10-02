@@ -47,7 +47,6 @@ class ProduksiController extends Controller
 
         $activeProductions = $query->orderBy('batch_id', 'desc')->get();
         
-        // Gunakan MAX(stock_pcs) agar tidak dobel jumlah stoknya saat inisialisasi
         $materials = DB::table('rm_stocks')
             ->where('stock_pcs', '>', 0)
             ->select(
@@ -78,13 +77,14 @@ class ProduksiController extends Controller
             
             if(!$rmInfo) throw new \Exception("Material Unit not found!");
 
-            // ✨ MODIFIKASI: Ambil part pertama dari array form (atau material_code lama)
-            // Ini supaya kolom material_code di parent tetap terisi dan tidak bikin error fungsi lain.
-            $primary_part = ($request->has('part_no') && is_array($request->part_no)) 
-                            ? $request->part_no[0] 
-                            : $request->material_code;
+            // ✨ LOGIKA MULTI-PART: Ambil array part dari form
+            $parts = $request->part_no;
+            if (!is_array($parts)) { $parts = [$parts]; }
+            
+            // Jadikan part pertama sebagai representasi utama di tabel parent
+            $primary_part = $parts[0] ?? $request->material_code;
 
-            // ✨ MODIFIKASI: Ubah insert menjadi insertGetId agar kita dapat ID parent-nya
+            // 1. Simpan ke tabel Parent (produksi_batches)
             $batchId = DB::table('produksi_batches')->insertGetId([
                 'no_produksi'   => $no_produksi,
                 'mesin_id'      => $request->mesin_id,
@@ -97,24 +97,26 @@ class ProduksiController extends Controller
                 'updated_at'    => now()
             ]);
             
-            // ✨ TAMBAHAN BARU: Looping untuk menyimpan SEMUA part ke tabel child
-            if ($request->has('part_no') && is_array($request->part_no)) {
-                foreach ($request->part_no as $index => $part_number) {
-                    DB::table('produksi_batch_parts')->insert([
-                        'batch_id'     => $batchId,
-                        'part_no'      => $part_number,
-                        // Jika qty diisi dari awal pakai qty_hasil_ok, jika kosong pakai 0
-                        'qty_hasil_ok' => isset($request->qty_hasil_ok[$index]) ? $request->qty_hasil_ok[$index] : 0,
-                        'qty_ng'       => 0,
-                        'created_at'   => now(),
-                        'updated_at'   => now()
-                    ]);
+            // 2. Simpan semua Part (RH & LH) ke tabel Child (produksi_batch_parts)
+            if (is_array($parts)) {
+                foreach ($parts as $index => $part_number) {
+                    if (!empty($part_number)) {
+                        DB::table('produksi_batch_parts')->insert([
+                            'batch_id'     => $batchId,
+                            'part_no'      => $part_number,
+                            'qty_hasil_ok' => 0,
+                            'qty_ng'       => 0,
+                            'created_at'   => now(),
+                            'updated_at'   => now()
+                        ]);
+                    }
                 }
             }
 
-            // Potong stok untuk SEMUA baris yang punya Coil ID yang sama
+            // 3. Potong stok RM
             DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
 
+            // 4. Catat ke Log RM
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
                 'material_code' => $primary_part,
@@ -125,7 +127,7 @@ class ProduksiController extends Controller
             ]);
 
             DB::commit();
-            return redirect()->back()->with('success', 'Batch Produksi Dimulai!');
+            return redirect()->back()->with('success', 'Batch Produksi Multi-Part Dimulai!');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal Start: ' . $e->getMessage());
@@ -155,63 +157,103 @@ class ProduksiController extends Controller
         $p = DB::table('produksi_batches')->where('id', $id)->first();
         if (!$p) return redirect()->back()->with('error', 'Batch tidak ditemukan!');
 
-        $qty_ok_new = (int)$request->qty_hasil_ok;
-        $total_ng_spesifik = 0;
-        $ng_details = [];
-        if ($request->has('ng_detail_type')) {
-            foreach ($request->ng_detail_type as $idx => $type) {
-                $q = (int)$request->ng_detail_qty[$idx];
-                if ($q > 0) { $total_ng_spesifik += $q; $ng_details[] = ['type' => $type, 'qty' => $q]; }
-            }
-        }
-
         DB::beginTransaction();
         try {
-            if ((int)$request->qty_return_warehouse > 0) {
+            $total_ng_spesifik = 0;
+            $ng_details = [];
+            if ($request->has('ng_detail_type')) {
+                foreach ($request->ng_detail_type as $idx => $type) {
+                    $q = (int)$request->ng_detail_qty[$idx];
+                    if ($q > 0) { $total_ng_spesifik += $q; $ng_details[] = ['type' => $type, 'qty' => $q]; }
+                }
+            }
+
+            $first_ok = 0;
+            $qty_ok_new = (int)$request->qty_hasil_ok; 
+
+            // ✨ LOGIKA MULTI-PART: Input OK masuk ke masing-masing stok Part
+            if ($request->has('qty_hasil_ok_parts')) {
+                $is_first = true;
+                foreach ($request->qty_hasil_ok_parts as $part_id => $qty) {
+                    $qty = (int)$qty;
+                    if ($is_first) { $first_ok = $qty; $is_first = false; } 
+
+                    $child = DB::table('produksi_batch_parts')->where('id', $part_id)->first();
+                    if ($child) {
+                        DB::table('produksi_batch_parts')->where('id', $part_id)->update([
+                            'qty_hasil_ok' => $child->qty_hasil_ok + $qty,
+                            'updated_at' => now()
+                        ]);
+
+                        $cleanPart = str_replace([' ', '-'], '', trim($child->part_no));
+                        $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
+                        $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
+
+                        if ($qty > 0) {
+                            DB::table('production_logs')->insert([
+                                'part_no' => $child->part_no, 
+                                'qty' => $qty, 
+                                'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 
+                                'created_at' => now(), 'updated_at' => now()
+                            ]);
+
+                            if ($target == 'WELDING') {
+                                DB::table('finished_goods')->where('part_no', $child->part_no)->increment('welding_stock', $qty, ['updated_at' => now()]);
+                            } else {
+                                DB::table('finished_goods')->where('part_no', $child->part_no)->increment('actual_stock', $qty, ['updated_at' => now()]);
+                            }
+                        }
+                    }
+                }
+                $qty_ok_new = $first_ok;
+            } else {
+                // Fallback untuk batch tunggal lama
+                $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
+                $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
+                $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
+
+                if ($qty_ok_new > 0) {
+                    DB::table('production_logs')->insert([
+                        'part_no' => $p->material_code, 
+                        'qty' => $qty_ok_new, 
+                        'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 
+                        'created_at' => now(), 
+                        'updated_at' => now()
+                    ]);
+                }
+
+                if ($target == 'WELDING') {
+                    DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
+                } else {
+                    DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
+                }
+            }
+
+            $qty_return_warehouse = (int)$request->qty_return_warehouse;
+            if ($qty_return_warehouse > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
-                    DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', (int)$request->qty_return_warehouse);
+                    DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $qty_return_warehouse);
                     DB::table('rm_incoming_logs')->insert([
                         'rm_stock_id' => $p->rm_stock_id, 'material_code' => $p->material_code,
-                        'pcs_in' => (int)$request->qty_return_warehouse, 'source' => 'return',
+                        'pcs_in' => $qty_return_warehouse, 'source' => 'return',
                         'no_produksi' => $p->no_produksi, 'created_at' => now()
                     ]);
                 }
             }
 
-            $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
-            $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
-            $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
-            
-            // Status langsung COMPLETED menuju FG
             $status_akhir = $request->status ?? 'COMPLETED';
 
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok' => $p->qty_hasil_ok + $qty_ok_new,
                 'qty_ng_process' => $p->qty_ng_process + $total_ng_spesifik,
                 'qty_hasil_ng' => $p->qty_hasil_ng + $total_ng_spesifik,
-                'qty_return_warehouse' => $p->qty_return_warehouse + (int)$request->qty_return_warehouse,
+                'qty_return_warehouse' => $p->qty_return_warehouse + $qty_return_warehouse,
                 'qty_return' => 0, 
-                'keterangan' => $request->keterangan,
                 'status' => $status_akhir,
+                'keterangan' => $request->keterangan,
                 'updated_at' => now()
             ]);
-
-            if ($qty_ok_new > 0) {
-                DB::table('production_logs')->insert([
-                    'part_no' => $p->material_code, 
-                    'qty' => $qty_ok_new, 
-                    'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 
-                    'created_at' => now(), 
-                    'updated_at' => now()
-                ]);
-            }
-
-            if ($target == 'WELDING') {
-                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
-            } else {
-                DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
-            }
 
             $this->syncToActual($id); 
 
@@ -225,7 +267,7 @@ class ProduksiController extends Controller
             }
 
             DB::commit(); 
-            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Berhasil Dikirim Langsung ke FG!');
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Multi-Part Berhasil Dikirim!');
         } catch (\Exception $e) { 
             DB::rollback(); 
             return back()->with('error', $e->getMessage()); 
