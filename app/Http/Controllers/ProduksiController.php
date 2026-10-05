@@ -207,7 +207,7 @@ class ProduksiController extends Controller
                     }
                 }
                 $qty_ok_new = $first_ok;
-                $ng_parent_update = $first_ng; // Material utama dianggap NG berdasarkan Part pertama (karena 1 plat dipotong 2)
+                $ng_parent_update = $first_ng; // Material utama dianggap NG berdasarkan Part pertama
             } else {
                 $ng_parent_update = $total_ng_spesifik; // Fallback jika tidak multi-part
                 
@@ -232,45 +232,65 @@ class ProduksiController extends Controller
                 }
             }
 
-            $qty_return_warehouse = (int)$request->qty_return_warehouse;
-            if ($qty_return_warehouse > 0) {
-                $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
-                if ($rmInfo) {
-                    DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $qty_return_warehouse);
-                    DB::table('rm_incoming_logs')->insert([
-                        'rm_stock_id' => $p->rm_stock_id, 'material_code' => $p->material_code,
-                        'pcs_in' => $qty_return_warehouse, 'source' => 'return',
-                        'no_produksi' => $p->no_produksi, 'created_at' => now()
-                    ]);
+            // ✨ LOGIKA BARU: CONVERT PCS RETURN KE SHEET UTUH UNTUK GUDANG & SISA JADI NG
+            $qty_return_pcs = (int)$request->qty_return_warehouse; 
+            $qty_return_sheet = 0;
+            $sisa_potongan_ng = 0;
+
+            if ($qty_return_pcs > 0) {
+                $cavity = $p->cavity > 0 ? $p->cavity : 1;
+                $qty_return_sheet = floor($qty_return_pcs / $cavity); // Dapat lembar utuh
+                $sisa_potongan_ng = $qty_return_pcs % $cavity;        // Sisa Pcs potongan (Scrap nanggung)
+
+                if ($qty_return_sheet > 0) {
+                    $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
+                    if ($rmInfo) {
+                        DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $qty_return_sheet);
+                        DB::table('rm_incoming_logs')->insert([
+                            'rm_stock_id' => $p->rm_stock_id, 'material_code' => $p->material_code,
+                            'pcs_in' => $qty_return_sheet, 'source' => 'return',
+                            'no_produksi' => $p->no_produksi, 'created_at' => now()
+                        ]);
+                    }
                 }
             }
 
             $status_akhir = $request->status ?? 'COMPLETED';
 
+            // Tambahkan keterangan kalau ada sisa return yang dilarikan ke NG
+            $note = $request->keterangan;
+            if ($sisa_potongan_ng > 0) {
+                $note .= " | Auto-NG dari potongan sisa Return: $sisa_potongan_ng Pcs";
+            }
+
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok' => $p->qty_hasil_ok + $qty_ok_new,
-                'qty_ng_process' => $p->qty_ng_process + $ng_parent_update, // ✨ Sinkronisasi total NG parent
-                'qty_hasil_ng' => $p->qty_hasil_ng + $ng_parent_update,
-                'qty_return_warehouse' => $p->qty_return_warehouse + $qty_return_warehouse,
+                'qty_ng_process' => $p->qty_ng_process + $ng_parent_update + $sisa_potongan_ng, // ✨ Tambah NG sisa return
+                'qty_hasil_ng' => $p->qty_hasil_ng + $ng_parent_update + $sisa_potongan_ng,     // ✨ Tambah NG sisa return
+                'qty_return_warehouse' => $p->qty_return_warehouse + $qty_return_sheet,         // ✨ Return Gudang pakai hitungan Sheet/Lembar
                 'qty_return' => 0, 
                 'status' => $status_akhir,
-                'keterangan' => $request->keterangan,
+                'keterangan' => $note,
                 'updated_at' => now()
             ]);
 
             $this->syncToActual($id); 
 
-            if (!empty($ng_details)) {
-                $actual = DB::table('production_actuals')->where('part_no', $p->material_code)->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
-                if ($actual) {
+            $actual = DB::table('production_actuals')->where('part_no', $p->material_code)->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
+            if ($actual) {
+                if (!empty($ng_details)) {
                     foreach ($ng_details as $detail) {
                         DB::table('production_ng_logs')->insert(['actual_id' => $actual->id, 'no_produksi' => $p->no_produksi, 'ng_type' => $detail['type'], 'qty' => $detail['qty'], 'created_at' => now()]);
                     }
                 }
+                // Catat secara rapi sisa potongan tanggung sebagai NG Scrap
+                if ($sisa_potongan_ng > 0) {
+                    DB::table('production_ng_logs')->insert(['actual_id' => $actual->id, 'no_produksi' => $p->no_produksi, 'ng_type' => 'Potongan Tanggung (Sisa Return)', 'qty' => $sisa_potongan_ng, 'created_at' => now()]);
+                }
             }
 
             DB::commit(); 
-            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Multi-Part Berhasil Dikirim Langsung ke FG!');
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Berhasil Dikirim! Return PCS diconvert ke Sheet Gudang.');
         } catch (\Exception $e) { 
             DB::rollback(); 
             return back()->with('error', $e->getMessage()); 

@@ -15,15 +15,18 @@ class ProduksiBatch extends Model
         'mesin_id',
         'rm_stock_id',    // ✨ WAJIB ADA: Untuk mencatat material Coil apa yang dipakai
         'qty_ambil_pcs',  // Jumlah total potongan dari Coil
+        'cavity',         // ✨ TAMBAHAN BARU: Untuk menyimpan nilai pengali / cavity
         
-        // --- KOLOM DI BAWAH INI DIPINDAH KE TABEL CHILD ---
-        // 'material_code', 
-        // 'qty_hasil_ok',
-        // 'qty_ng_material', 
-        // 'qty_ng_process', 
-        // 'qty_hasil_ng', 
-        // 'qty_hasil_scrap',
-        // --------------------------------------------------
+        // --- DIKEMBALIKAN KARENA TETAP DIPAKAI UNTUK TOTAL KESELURUHAN BATCH ---
+        'material_code', 
+        'qty_hasil_ok',
+        'qty_ng_material', 
+        'qty_ng_process', 
+        'qty_hasil_ng', 
+        'qty_hasil_scrap',
+        'qty_return_warehouse',
+        'qty_return',
+        // ------------------------------------------------------------------------
 
         'penempatan', 
         'keterangan', 
@@ -35,11 +38,15 @@ class ProduksiBatch extends Model
      * ✨ CASTING SAKTI
      */
     protected $casts = [
-        'mesin_id'        => 'integer',
-        'rm_stock_id'     => 'integer',
-        'qty_ambil_pcs'   => 'integer',
-        'created_at'      => 'datetime',
-        'updated_at'      => 'datetime',
+        'mesin_id'             => 'integer',
+        'rm_stock_id'          => 'integer',
+        'qty_ambil_pcs'        => 'integer',
+        'cavity'               => 'integer',
+        'qty_hasil_ok'         => 'integer',
+        'qty_hasil_ng'         => 'integer',
+        'qty_return_warehouse' => 'integer',
+        'created_at'           => 'datetime',
+        'updated_at'           => 'datetime',
     ];
 
     /**
