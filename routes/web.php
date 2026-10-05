@@ -168,6 +168,7 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::put('/po/update-header/{po_number}', [PurchaseOrderController::class, 'updateHeader'])->name('po.update')->where('po_number', '.*');
     Route::get('/po/edit/{id}', [PurchaseOrderController::class, 'edit'])->name('po.edit');
     Route::delete('/po/delete/{id}', [PurchaseOrderController::class, 'destroy'])->name('po.destroy');
+    Route::put('/delivery/update', [App\Http\Controllers\DeliveryController::class, 'update'])->name('delivery.update');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
