@@ -216,7 +216,7 @@ class DeliveryController extends Controller
      * ✨ 7. PRINT LABEL (FITUR BARU)
      */
    public function printLabel($no_sj)
-{
+   {
     // Gunakan urldecode karena No SJ sering mengandung karakter miring '/'
     $clean_sj = urldecode($no_sj);
     $items = DB::table('deliveries')->where('no_sj', $clean_sj)->get();
@@ -255,5 +255,73 @@ class DeliveryController extends Controller
     }
 
     return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));
-}
+   }
+
+   /**
+    * ✨ 8. FITUR REVISI SURAT JALAN / AUTO-SYNC FG & PO
+    */
+   public function update(Request $request)
+   {
+       DB::beginTransaction();
+       try {
+           $no_sj = urldecode($request->no_sj);
+           
+           // Loop semua item (bisa satu atau banyak part dalam 1 SJ)
+           foreach ($request->items as $delivery_id => $new_qty) {
+               $new_qty = (int)$new_qty;
+               
+               // Ambil data historis pengiriman ini
+               $delivery = DB::table('deliveries')->where('id', $delivery_id)->where('no_sj', $no_sj)->first();
+               if (!$delivery) continue;
+
+               $old_qty = (int)$delivery->qty_delivery;
+               $selisih = $old_qty - $new_qty; // Kalau minus berarti dia mau kirim LEBIH BANYAK dari sebelumnya
+               
+               if ($selisih != 0) {
+                   // A. KALO REVISINYA JADI LEBIH KECIL (MENGEMBALIKAN KE GUDANG FG)
+                   if ($selisih > 0) {
+                       // 1. Balikin barang ke FG Rak
+                       DB::table('finished_goods')->where('part_no', $delivery->part_no)->increment('actual_stock', $selisih);
+                       // 2. Kurangi catatan 'total_sent' di tabel PO
+                       DB::table('purchase_orders')->where('id', $delivery->po_id)->decrement('total_sent', $selisih);
+                   } 
+                   // B. KALO REVISINYA JADI LEBIH GEDE (AMBIL LAGI DARI GUDANG FG)
+                   else {
+                       $selisih_kurang = abs($selisih);
+                       $fg = DB::table('finished_goods')->where('part_no', $delivery->part_no)->first();
+                       
+                       if (!$fg || $fg->actual_stock < $selisih_kurang) {
+                           throw new \Exception("Gagal Revisi! Sisa Stok FG untuk " . $delivery->part_no . " di rak tidak cukup.");
+                       }
+                       // 1. Potong stok FG lagi
+                       DB::table('finished_goods')->where('part_no', $delivery->part_no)->decrement('actual_stock', $selisih_kurang);
+                       // 2. Tambah catatan 'total_sent' di tabel PO
+                       DB::table('purchase_orders')->where('id', $delivery->po_id)->increment('total_sent', $selisih_kurang);
+                   }
+
+                   // Update tabel deliveries dengan angka yang baru
+                   DB::table('deliveries')->where('id', $delivery_id)->update([
+                       'qty_delivery' => $new_qty,
+                       'updated_at' => now()
+                   ]);
+
+                   // Cek PO-nya, kalau gara2 revisi ini jadi "Belum Lunas", buka lagi statusnya ke READY
+                   $po_item = DB::table('purchase_orders')->where('id', $delivery->po_id)->first();
+                   if ($po_item) {
+                       if ($po_item->total_sent < $po_item->quantity) {
+                           DB::table('purchase_orders')->where('id', $po_item->id)->update(['status' => 'READY']);
+                       } elseif ($po_item->total_sent >= $po_item->quantity) {
+                           DB::table('purchase_orders')->where('id', $po_item->id)->update(['status' => 'CLOSED']);
+                       }
+                   }
+               }
+           }
+
+           DB::commit();
+           return redirect()->back()->with('success', 'Surat Jalan ' . $no_sj . ' Berhasil Direvisi & Stok Telah Disesuaikan!');
+       } catch (\Exception $e) {
+           DB::rollBack();
+           return redirect()->back()->with('error', $e->getMessage());
+       }
+   }
 }

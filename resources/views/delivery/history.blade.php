@@ -39,6 +39,22 @@
     </div>
 </div>
 
+{{-- ALERT SUCCESS & ERROR --}}
+<div class="px-2">
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-lg" style="border-left: 5px solid #10b981 !important;">
+            <strong>Success!</strong> {{ session('success') }}
+            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm rounded-lg" style="border-left: 5px solid #ef4444 !important;">
+            <strong>Error!</strong> {{ session('error') }}
+            <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+        </div>
+    @endif
+</div>
+
 {{-- 2. TABEL HISTORY UTAMA --}}
 @if(request('customer_code') || (request('start_date') && request('end_date')))
     <div class="card shadow mb-4">
@@ -57,7 +73,7 @@
                             <th>Customer</th>
                             <th>Jumlah Item</th>
                             <th>Tanggal Terbit</th>
-                            <th width="240">Aksi</th>
+                            <th width="300">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -77,15 +93,14 @@
                             
                             <td>
                                 <div class="btn-group">
-                                    <a href="{{ route('delivery.print', $no_sj) }}" class="btn btn-info btn-sm font-weight-bold shadow-sm" target="_blank">
+                                    <a href="{{ route('delivery.print', urlencode($no_sj)) }}" class="btn btn-info btn-sm font-weight-bold shadow-sm" target="_blank">
                                         <i class="fas fa-print mr-1"></i> SJ
                                     </a>
-                                    {{-- ✨ TOMBOL BARU: CETAK LABEL --}}
-                                    <a href="{{ route('delivery.label', $no_sj) }}" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark" target="_blank">
+                                    <a href="{{ route('delivery.label', urlencode($no_sj)) }}" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark" target="_blank">
                                         <i class="fas fa-tag mr-1"></i> LABEL
                                     </a>
                                     @if($poNumber)
-                                        <a href="{{ route('delivery.print-rekap-po', $poNumber) }}" class="btn btn-primary btn-sm font-weight-bold shadow-sm" target="_blank">
+                                        <a href="{{ route('delivery.print-rekap-po', urlencode($poNumber)) }}" class="btn btn-primary btn-sm font-weight-bold shadow-sm" target="_blank">
                                             <i class="fas fa-file-invoice mr-1"></i> REKAP
                                         </a>
                                     @else
@@ -93,6 +108,11 @@
                                             <i class="fas fa-exclamation-circle mr-1"></i> NO PO
                                         </button>
                                     @endif
+                                    
+                                    {{-- ✨ TOMBOL REVISI --}}
+                                    <button class="btn btn-danger btn-sm font-weight-bold shadow-sm" data-toggle="modal" data-target="#modalRevisi-{{ Str::slug($no_sj) }}">
+                                        <i class="fas fa-edit mr-1"></i> REVISI
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -126,6 +146,55 @@
                                 </div>
                             </td>
                         </tr>
+
+                        {{-- ✨ MODAL REVISI SURAT JALAN --}}
+                        <div class="modal fade" id="modalRevisi-{{ Str::slug($no_sj) }}" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content border-0 shadow-lg rounded-lg">
+                                    <div class="modal-header bg-danger text-white border-0 py-3">
+                                        <h6 class="modal-title font-weight-bold text-uppercase">
+                                            <i class="fas fa-tools mr-2"></i> REVISI QTY PENGIRIMAN
+                                        </h6>
+                                    </div>
+                                    <form action="{{ route('delivery.update') }}" method="POST">
+                                        @csrf @method('PUT')
+                                        <input type="hidden" name="no_sj" value="{{ urlencode($no_sj) }}">
+                                        
+                                        <div class="modal-body p-4 bg-light">
+                                            <div class="alert alert-warning border-0 shadow-sm small font-weight-bold mb-4">
+                                                <i class="fas fa-info-circle mr-1"></i> 
+                                                Sistem akan memotong/mengembalikan stok FG dan me-refresh sisa PO secara otomatis.
+                                            </div>
+
+                                            <h6 class="font-weight-bold text-dark mb-3">{{ $no_sj }}</h6>
+                                            
+                                            @foreach($items as $item)
+                                            <div class="form-group mb-3 bg-white p-3 rounded shadow-sm border">
+                                                <label class="font-weight-bold text-primary mb-1">{{ $item->part_no }}</label>
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text bg-light font-weight-bold">QTY</span>
+                                                    </div>
+                                                    {{-- Array input name menggunakan id delivery untuk patokan spesifik --}}
+                                                    <input type="number" name="items[{{ $item->id }}]" class="form-control font-weight-bold text-center" value="{{ $item->qty_delivery }}" min="0" required>
+                                                    <div class="input-group-append">
+                                                        <span class="input-group-text bg-light">PCS</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                        <div class="modal-footer border-0 p-3 bg-white">
+                                            <button type="button" class="btn btn-light border font-weight-bold" data-dismiss="modal">BATAL</button>
+                                            <button type="submit" class="btn btn-danger font-weight-bold shadow-sm">
+                                                <i class="fas fa-save mr-1"></i> SIMPAN REVISI
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
                         @empty
                         <tr>
                             <td colspan="6" class="text-center py-5 text-muted small">
