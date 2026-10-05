@@ -69,7 +69,7 @@
                     <th>Identification</th>
                     <th>Destination</th>
                     <th>Production Line</th>
-                    <th class="text-center">Total Jatah</th>
+                    <th class="text-center">Total Jatah Pcs</th>
                     <th class="text-center">Status</th>
                     <th class="text-right">Action</th>
                 </tr>
@@ -91,7 +91,7 @@
                             $displayParts = count($childParts) > 0 ? implode(' & ', $childParts) :$p->material_code;
                         @endphp
                         <div class="font-weight-bold text-dark">{{ $displayParts }}</div>
-                        <small class="text-muted">{{ $p->coil_id }}</small>
+                        <small class="text-muted">{{ $p->coil_id }} <span class="badge badge-light border">Cav: {{ $p->cavity ?? 1 }}</span></small>
                     </td>
                     <td>
                         @php $route = DB::table('parts')->where('part_no',$p->material_code)->value('next_process'); @endphp
@@ -135,7 +135,7 @@
 </div>
 
 @foreach($activeProductions as $p)
-@php $currentTarget = ($p->qty_return > 0) ? $p->qty_return :$p->total_qty_batch; @endphp
+@php $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; @endphp
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
@@ -148,6 +148,7 @@
             <form action="{{ route('produksi.update_result', $p->batch_id) }}" method="POST">
                 @csrf @method('PUT')
                 <input type="hidden" name="status" value="COMPLETED">
+                <input type="hidden" id="cavity_{{ $p->batch_id }}" value="{{ $p->cavity ?? 1 }}">
                 <div class="modal-body p-5">
                     <div id="police_msg_{{ $p->batch_id }}" class="alert alert-warning border-0 font-weight-bold text-center py-3 mb-4">👮 STATUS: STANDBY FOR SYNC...</div>
                     <div class="row">
@@ -161,11 +162,11 @@
                                         <div class="col-12 mb-2"><strong class="text-primary font-weight-bold" style="font-size:14px;"><i class="fas fa-cog mr-1"></i> {{ $cp->part_no }}</strong></div>
                                         <div class="col-6">
                                             <label class="small text-success font-weight-bold">QTY OK</label>
-                                            <input type="number" name="qty_hasil_ok_parts[{{ $cp->id }}]" {{ $idx == 0 ? 'id=ok_'.$p->batch_id : '' }} data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
+                                            <input type="number" name="qty_hasil_ok_parts[{{ $cp->id }}]" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
                                         </div>
                                         <div class="col-6">
                                             <label class="small text-danger font-weight-bold">QTY NG (Total)</label>
-                                            <input type="number" name="qty_hasil_ng_parts[{{ $cp->id }}]" {{ $idx == 0 ? 'id=ng_'.$p->batch_id : '' }} data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
+                                            <input type="number" name="qty_hasil_ng_parts[{{ $cp->id }}]" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
                                         </div>
                                     </div>
                                 @endforeach
@@ -175,8 +176,9 @@
                         </div>
 
                         <div class="col-md-4">
-                            <label class="small font-weight-bold text-danger uppercase">Return Material</label>
+                            <label class="small font-weight-bold text-danger uppercase">Return Material (Sheet)</label>
                             <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
+                            <small class="text-muted d-block" style="font-size:10px;">Return akan dikalikan {{ $p->cavity ?? 1 }} Pcs saat hitung Gap</small>
                         </div>
                     </div>
 
@@ -194,7 +196,7 @@
                     </div>
 
                     <div class="p-3 bg-light mt-4 rounded-xl border text-center">
-                        <small class="text-muted font-weight-bold uppercase">Gap Status (Patokan Material):</small>
+                        <small class="text-muted font-weight-bold uppercase">Gap Status (Target Material x Cavity):</small>
                         <h4 class="mb-0 font-weight-bold text-danger" id="gap_{{ $p->batch_id }}">{{ number_format($currentTarget) }}</h4>
                         <div class="progress-lite mt-2"><div class="progress-bar-fill" id="bar_{{ $p->batch_id }}" style="width: 0%"></div></div>
                         <input type="hidden" class="target-val" data-id="{{ $p->batch_id }}" value="{{ $currentTarget }}">
@@ -282,14 +284,23 @@
                                     <button type="button" class="btn btn-sm btn-success font-weight-bold" id="btn_add_manual_part" style="border-radius: 0 8px 8px 0;">+ TAMBAH</button>
                                 </div>
                             </div>
-                            
                         </div>
                     </div>
                     
                     <label class="small font-weight-bold text-primary mt-3">07. PHYSICAL COIL</label>
                     <select id="sel_bandel" name="rm_stock_id" class="input-tactical mb-3 border-primary" disabled required></select>
-                    <label class="small font-weight-bold text-primary">08. TOTAL QUANTITY</label>
-                    <input type="number" id="qty_ambil_pcs" name="qty_ambil_pcs" class="input-tactical text-center border-primary shadow-sm" required placeholder="0">
+                    
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="small font-weight-bold text-primary">08. QTY DIAMBIL (SHEET)</label>
+                            <input type="number" id="qty_ambil_pcs" name="qty_ambil_pcs" class="input-tactical text-center border-primary shadow-sm mb-3" required placeholder="0">
+                        </div>
+                        <div class="col-6">
+                            {{-- ✨ CAVITY OTOMATIS BACA DARI DATABASE & READONLY --}}
+                            <label class="small font-weight-bold text-success">09. CAVITY (OTOMATIS DARI RM)</label>
+                            <input type="number" id="cavity_input" name="cavity" class="input-tactical text-center shadow-sm mb-3" style="background:#e9ecef; border: 1px solid #ced4da;" readonly value="1">
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 p-4">
                     <button type="submit" id="btn_submit_ambil" class="btn btn-blueprint btn-block py-3 shadow-lg" style="background: var(--ind-blue); color: #fff;" disabled>DEPLOY BATCH</button>
@@ -336,14 +347,16 @@
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
             
+            let cavity = parseInt($(`#cavity_${id}`).val()) || 1;
             let retVal = parseInt($(`#return_${id}`).val()) || 0;
+            let retValInPcs = retVal * cavity; 
             
             let dynamicNgSum = 0;
             $(`#ng_container_${id} .ng-qty-input`).each(function() {
                 dynamicNgSum += parseInt($(this).val()) || 0;
             });
 
-            // LOGIKA BARU: Cari total OK + NG terbesar di antara semua part
+            // ✨ LOGIKA BARU: Cari total (OK + NG) paling gede di antara Kanan dan Kiri
             let maxPartUsage = 0;
             $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).each(function() {
                 let currentOk = parseInt($(this).val()) || 0;
@@ -351,6 +364,7 @@
                 if(partIdMatch) {
                     let partId = partIdMatch[1];
                     let currentNg = parseInt($(`input[name="qty_hasil_ng_parts[${partId}]"]`).val()) || 0;
+                    
                     let currentTotal = currentOk + currentNg;
                     if (currentTotal > maxPartUsage) {
                         maxPartUsage = currentTotal;
@@ -358,14 +372,13 @@
                 }
             });
 
-            // Jika form lawas (tidak ada multi-part)
             if (maxPartUsage === 0 && $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).length === 0) {
                  let oldOk = parseInt($(`#ok_${id}`).val()) || 0;
                  maxPartUsage = oldOk;
             }
 
-            // Hitung material yang terpakai
-            let accounted = maxPartUsage + retVal + dynamicNgSum;
+            // Dihitung dengan NG Dynamic kalau ada NG tambahan selain per-part
+            let accounted = maxPartUsage + retValInPcs + dynamicNgSum;
             let gap = target - accounted;
             
             $(`#gap_${id}`).text(gap.toLocaleString());
@@ -434,12 +447,21 @@
             }, function(data) {
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
                 if(data && data.length > 0) {
-                    data.forEach(i => { h += `<option value="${i.id}" data-qty="${i.stock_pcs}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; });
+                    data.forEach(i => { 
+                        // ✨ DATA CAVITY DIAMBIL DARI DB
+                        h += `<option value="${i.id}" data-qty="${i.stock_pcs}" data-cavity="${i.cavity || 1}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
+                    });
                 } else {
                     h = '<option value="" disabled selected>-- NO COIL AVAILABLE --</option>';
                 }
                 $('#sel_bandel').prop('disabled', false).html(h);
             });
+        });
+
+        // ✨ JS BARU: Pas milih Bandel, otomatis ngisi Cavity
+        $('#sel_bandel').change(function() {
+            let selectedCavity = $(this).find('option:selected').data('cavity') || 1;
+            $('#cavity_input').val(selectedCavity);
         });
 
         $('#sel_bandel, #qty_ambil_pcs, select[name="mesin_id"]').on('change input', function() {

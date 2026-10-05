@@ -23,13 +23,14 @@ class ProduksiController extends Controller
                 'produksi_batches.status',
                 'produksi_batches.qty_return', 
                 'produksi_batches.created_at',
+                'produksi_batches.cavity', // ✨ LOGIKA CAVITY: Panggil kolom cavity
                 'rm_stocks.coil_id',
                 'rm_stocks.customer',
                 'rm_stocks.size',
                 'rm_stocks.spec',
                 'rm_stocks.material_name',
                 DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
-                DB::raw('SUM(produksi_batches.qty_ambil_pcs) as total_qty_batch'),
+                DB::raw('SUM(produksi_batches.qty_ambil_pcs * produksi_batches.cavity) as total_qty_batch'), // ✨ LOGIKA CAVITY: Target material dikali cavity
                 DB::raw('MIN(produksi_batches.id) as batch_id')
             )
             ->where(function($q) {
@@ -38,7 +39,7 @@ class ProduksiController extends Controller
             })
             ->groupBy(
                 'no_produksi', 'shift', 'material_code', 'status', 'qty_return',
-                'created_at', 'coil_id', 'customer', 'size', 'spec', 'material_name'
+                'created_at', 'produksi_batches.cavity', 'coil_id', 'customer', 'size', 'spec', 'material_name'
             );
 
         if ($customerFilter) {
@@ -77,14 +78,11 @@ class ProduksiController extends Controller
             
             if(!$rmInfo) throw new \Exception("Material Unit not found!");
 
-            // ✨ LOGIKA MULTI-PART: Ambil array part dari form
             $parts = $request->part_no;
             if (!is_array($parts)) { $parts = [$parts]; }
             
-            // Jadikan part pertama sebagai representasi utama di tabel parent
             $primary_part = $parts[0] ?? $request->material_code;
 
-            // 1. Simpan ke tabel Parent (produksi_batches)
             $batchId = DB::table('produksi_batches')->insertGetId([
                 'no_produksi'   => $no_produksi,
                 'mesin_id'      => $request->mesin_id,
@@ -92,12 +90,12 @@ class ProduksiController extends Controller
                 'material_code' => $primary_part, 
                 'shift'         => $request->shift,
                 'qty_ambil_pcs' => $request->qty_ambil_pcs,
+                'cavity'        => $request->cavity ?? 1, // ✨ LOGIKA CAVITY: Simpan cavity dari UI (bawaan DB RM) ke Batch
                 'status'        => 'PROSES',
                 'created_at'    => now(),
                 'updated_at'    => now()
             ]);
             
-            // 2. Simpan semua Part (RH & LH) ke tabel Child (produksi_batch_parts)
             if (is_array($parts)) {
                 foreach ($parts as $index => $part_number) {
                     if (!empty($part_number)) {
@@ -113,10 +111,8 @@ class ProduksiController extends Controller
                 }
             }
 
-            // 3. Potong stok RM
             DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
 
-            // 4. Catat ke Log RM
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
                 'material_code' => $primary_part,
@@ -169,45 +165,52 @@ class ProduksiController extends Controller
             }
 
             $first_ok = 0;
+            $first_ng = 0;
             $qty_ok_new = (int)$request->qty_hasil_ok; 
 
-            // ✨ LOGIKA MULTI-PART: Input OK masuk ke masing-masing stok Part
+            // ✨ LOGIKA MULTI-PART & NG: Input OK dan NG masuk ke masing-masing stok Part
             if ($request->has('qty_hasil_ok_parts')) {
                 $is_first = true;
                 foreach ($request->qty_hasil_ok_parts as $part_id => $qty) {
-                    $qty = (int)$qty;
-                    if ($is_first) { $first_ok = $qty; $is_first = false; } 
+                    $qty_ok = (int)$qty;
+                    // Ambil nilai NG dari inputan untuk part ini
+                    $qty_ng = (int)($request->qty_hasil_ng_parts[$part_id] ?? 0);
+
+                    if ($is_first) { $first_ok = $qty_ok; $first_ng = $qty_ng; $is_first = false; } 
 
                     $child = DB::table('produksi_batch_parts')->where('id', $part_id)->first();
                     if ($child) {
                         DB::table('produksi_batch_parts')->where('id', $part_id)->update([
-                            'qty_hasil_ok' => $child->qty_hasil_ok + $qty,
-                            'updated_at' => now()
+                            'qty_hasil_ok' => $child->qty_hasil_ok + $qty_ok,
+                            'qty_ng'       => $child->qty_ng + $qty_ng, // ✨ Update NG spesifik per Part
+                            'updated_at'   => now()
                         ]);
 
                         $cleanPart = str_replace([' ', '-'], '', trim($child->part_no));
                         $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
                         $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
 
-                        if ($qty > 0) {
+                        if ($qty_ok > 0) {
                             DB::table('production_logs')->insert([
                                 'part_no' => $child->part_no, 
-                                'qty' => $qty, 
+                                'qty' => $qty_ok, 
                                 'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 
                                 'created_at' => now(), 'updated_at' => now()
                             ]);
 
                             if ($target == 'WELDING') {
-                                DB::table('finished_goods')->where('part_no', $child->part_no)->increment('welding_stock', $qty, ['updated_at' => now()]);
+                                DB::table('finished_goods')->where('part_no', $child->part_no)->increment('welding_stock', $qty_ok, ['updated_at' => now()]);
                             } else {
-                                DB::table('finished_goods')->where('part_no', $child->part_no)->increment('actual_stock', $qty, ['updated_at' => now()]);
+                                DB::table('finished_goods')->where('part_no', $child->part_no)->increment('actual_stock', $qty_ok, ['updated_at' => now()]);
                             }
                         }
                     }
                 }
                 $qty_ok_new = $first_ok;
+                $ng_parent_update = $first_ng; // Material utama dianggap NG berdasarkan Part pertama (karena 1 plat dipotong 2)
             } else {
-                // Fallback untuk batch tunggal lama
+                $ng_parent_update = $total_ng_spesifik; // Fallback jika tidak multi-part
+                
                 $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
                 $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
                 $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
@@ -246,8 +249,8 @@ class ProduksiController extends Controller
 
             DB::table('produksi_batches')->where('id', $id)->update([
                 'qty_hasil_ok' => $p->qty_hasil_ok + $qty_ok_new,
-                'qty_ng_process' => $p->qty_ng_process + $total_ng_spesifik,
-                'qty_hasil_ng' => $p->qty_hasil_ng + $total_ng_spesifik,
+                'qty_ng_process' => $p->qty_ng_process + $ng_parent_update, // ✨ Sinkronisasi total NG parent
+                'qty_hasil_ng' => $p->qty_hasil_ng + $ng_parent_update,
                 'qty_return_warehouse' => $p->qty_return_warehouse + $qty_return_warehouse,
                 'qty_return' => 0, 
                 'status' => $status_akhir,
@@ -267,7 +270,7 @@ class ProduksiController extends Controller
             }
 
             DB::commit(); 
-            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Multi-Part Berhasil Dikirim!');
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Multi-Part Berhasil Dikirim Langsung ke FG!');
         } catch (\Exception $e) { 
             DB::rollback(); 
             return back()->with('error', $e->getMessage()); 
@@ -318,6 +321,7 @@ class ProduksiController extends Controller
         return response()->json($parts);
     }
 
+    // ✨ LOGIKA CAVITY: Menarik data Cavity dari DB RM_Stocks untuk modal frontend
     public function getBundlesByPart(Request $request, $material_code = null) 
     {
         $code = $material_code ? urldecode($material_code) : ($request->material_code ?? $request->input('material_code'));
@@ -345,7 +349,7 @@ class ProduksiController extends Controller
             });
         }
 
-        $bundles = $query->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size')
+        $bundles = $query->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size', DB::raw('MAX(cavity) as cavity'))
             ->groupBy('coil_id', 'size')
             ->get();
 
@@ -358,7 +362,7 @@ class ProduksiController extends Controller
                       ->orWhere('material_name', $cleanCode)
                       ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanCode)]);
                 })
-                ->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size')
+                ->select('coil_id', DB::raw('MAX(id) as id'), DB::raw('MAX(stock_pcs) as stock_pcs'), 'size', DB::raw('MAX(cavity) as cavity'))
                 ->groupBy('coil_id', 'size')
                 ->get();
         }
