@@ -265,6 +265,7 @@ class DeliveryController extends Controller
        DB::beginTransaction();
        try {
            $no_sj = urldecode($request->no_sj);
+           $ada_revisi = false; // ✨ Flag untuk ngecek apa beneran ada angka yang diubah
            
            // Loop semua item (bisa satu atau banyak part dalam 1 SJ)
            foreach ($request->items as $delivery_id => $new_qty) {
@@ -278,6 +279,8 @@ class DeliveryController extends Controller
                $selisih = $old_qty - $new_qty; // Kalau minus berarti dia mau kirim LEBIH BANYAK dari sebelumnya
                
                if ($selisih != 0) {
+                   $ada_revisi = true; // ✨ Tandai kalau beneran ada perubahan angka
+
                    // A. KALO REVISINYA JADI LEBIH KECIL (MENGEMBALIKAN KE GUDANG FG)
                    if ($selisih > 0) {
                        // 1. Balikin barang ke FG Rak
@@ -315,6 +318,11 @@ class DeliveryController extends Controller
                        }
                    }
                }
+           }
+
+           // ✨ JIKA BENERAN ADA PERUBAHAN, NAIKKAN ANGKA REVISI SURAT JALAN INI DI DATABASE
+           if ($ada_revisi) {
+               DB::table('deliveries')->where('no_sj', $no_sj)->increment('revision_count');
            }
 
            DB::commit();

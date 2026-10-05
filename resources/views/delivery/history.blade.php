@@ -84,7 +84,13 @@
                         
                         <tr class="text-center" style="cursor: pointer;" data-toggle="collapse" data-target="#details-{{ Str::slug($no_sj) }}">
                             <td class="text-success"><i class="fas fa-plus-circle"></i></td>
-                            <td class="font-weight-bold text-primary">{{ $no_sj }}</td>
+                            <td class="font-weight-bold text-primary">
+                                {{ $no_sj }}
+                                {{-- ✨ LABEL REVISI MUNCUL DI BAWAH NOMOR SJ KALAU ADA --}}
+                                @if($items->first()->revision_count > 0)
+                                    <br><span class="badge badge-danger shadow-sm mt-1" style="font-size: 10px;"><i class="fas fa-exclamation-triangle mr-1"></i> Direvisi {{ $items->first()->revision_count }}x</span>
+                                @endif
+                            </td>
                             <td class="text-uppercase">{{ $items->first()->customer_code }}</td>
                             <td><span class="badge badge-pill badge-info px-3">{{ $items->count() }} Item</span></td>
                             
@@ -154,6 +160,10 @@
                                     <div class="modal-header bg-danger text-white border-0 py-3">
                                         <h6 class="modal-title font-weight-bold text-uppercase">
                                             <i class="fas fa-tools mr-2"></i> REVISI QTY PENGIRIMAN
+                                            {{-- ✨ TAMBAHAN INFO REVISI KE-BERAPA DI JUDUL MODAL --}}
+                                            @if($items->first()->revision_count > 0)
+                                                <span class="badge badge-light text-danger ml-2" style="font-size: 11px;">Rev ke-{{ $items->first()->revision_count + 1 }}</span>
+                                            @endif
                                         </h6>
                                     </div>
                                     <form action="{{ route('delivery.update') }}" method="POST">
