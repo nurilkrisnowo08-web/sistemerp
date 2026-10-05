@@ -120,6 +120,8 @@
                 <th>NO SURAT JALAN</th>
                 <th>PART NUMBER</th>
                 <th>QTY KIRIM</th>
+                {{-- ✨ TAMBAHAN KOLOM INFO REVISI --}}
+                <th>INFO REVISI</th>
             </tr>
         </thead>
         <tbody>
@@ -132,10 +134,19 @@
                 <td class="text-bold" style="color: #4e73df;">{{ $delivery->no_sj }}</td>
                 <td>{{ $delivery->part_no }}</td>
                 <td>{{ number_format($delivery->qty_delivery) }} PCS</td>
+                
+                {{-- ✨ TAMPILAN LABEL REVISI DI CETAKAN KERTAS --}}
+                <td style="color: #e74a3b; font-style: italic; font-size: 9pt;">
+                    @if(isset($delivery->revision_count) && $delivery->revision_count > 0)
+                        Direvisi {{ $delivery->revision_count }}x
+                    @else
+                        -
+                    @endif
+                </td>
             </tr>
             @empty
             <tr>
-                <td colspan="4" class="text-muted" style="padding: 20px;">Belum ada riwayat pengiriman untuk PO ini.</td>
+                <td colspan="5" class="text-muted" style="padding: 20px;">Belum ada riwayat pengiriman untuk PO ini.</td>
             </tr>
             @endforelse
         </tbody>
