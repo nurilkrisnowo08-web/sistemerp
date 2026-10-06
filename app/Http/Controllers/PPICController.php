@@ -139,14 +139,184 @@ class PPICController extends Controller
         ))->with('shift', $shiftParam);
     }
 
+    /**
+     * ✨ UPDATED: STORE MPS (AUTO-PILOT WOS DEPLOYMENT)
+     */
     public function mpsStore(Request $request)
     {
-        DB::table('production_plans')->updateOrInsert(
-            ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
-            ['customer_code' => $request->customer_code, 'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 8, 'process_qty' => $request->process_qty ?? 4, 'qty_lot' => $request->qty_lot ?? 200, 'cap_per_hour' => $request->cap_per_hour ?? 320, 's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0, 's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'dandory_time' => $request->dandory_time ?? 15, 'updated_at' => now()]
-        );
-        return redirect()->back()->with('success', 'Master Schedule Updated!');
+        DB::beginTransaction();
+        try {
+            // 1. Simpan ke Master Schedule (PPIC)
+            $planId = DB::table('production_plans')->insertGetId([
+                'plan_date' => $request->plan_date,
+                'part_no' => $request->part_no,
+                'customer_code' => $request->customer_code,
+                'line_code' => $request->line_code,
+                'manpower' => $request->manpower ?? 8,
+                'process_qty' => $request->process_qty ?? 4,
+                'qty_lot' => $request->qty_lot ?? 200,
+                'cap_per_hour' => $request->cap_per_hour ?? 320,
+                's1_plan_reg' => $request->s1_plan_reg ?? 0,
+                's1_plan_ot' => $request->s1_plan_ot ?? 0,
+                's2_plan_reg' => $request->s2_plan_reg ?? 0,
+                's2_plan_ot' => $request->s2_plan_ot ?? 0,
+                'dandory_time' => $request->dandory_time ?? 15,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 2. Hitung Total Target Pcs per Shift
+            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
+            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+
+            // 3. Ambil data Mesin untuk nyari ID-nya
+            $mesin = DB::table('line')->where('kode_Line', $request->line_code)->first();
+            $mesin_id = $mesin ? $mesin->id : null;
+
+            // 4. Cari Data Material & Cavity di rm_stocks berdasarkan part_no
+            // Asumsi: part_no identik dengan material_code, atau ada relasi di tabel parts
+            $rm_stock = DB::table('rm_stocks')->where('material_code', $request->part_no)->where('stock_pcs', '>', 0)->first();
+            $rm_stock_id = $rm_stock ? $rm_stock->id : null;
+            $cavity = $rm_stock ? ($rm_stock->cavity > 0 ? $rm_stock->cavity : 1) : 1;
+
+            // 5. Deploy Auto-WOS ke Terminal Produksi (Shift 1 jika ada target)
+            if ($target_s1 > 0 && $mesin_id) {
+                $qty_lembar_s1 = ceil($target_s1 / $cavity); // Kebutuhan material lembaran
+                
+                DB::table('produksi_batches')->insert([
+                    'no_produksi' => 'WOS-S1-' . date('Ymd-His'),
+                    'plan_id' => $planId, // Relasi ke plan
+                    'shift' => 'Pagi',
+                    'mesin_id' => $mesin_id,
+                    'rm_stock_id' => $rm_stock_id,
+                    'material_code' => $request->part_no,
+                    'qty_ambil_pcs' => $qty_lembar_s1, // Permintaan material dalam bentuk lembar/sheet
+                    'cavity' => $cavity,
+                    'status' => 'WAITING_MATERIAL', // ✨ Status nunggu bahan dari gudang
+                    'keterangan' => 'AUTO-DEPLOY FROM PPIC',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            // 6. Deploy Auto-WOS ke Terminal Produksi (Shift 2 jika ada target)
+            if ($target_s2 > 0 && $mesin_id) {
+                $qty_lembar_s2 = ceil($target_s2 / $cavity);
+                
+                DB::table('produksi_batches')->insert([
+                    'no_produksi' => 'WOS-S2-' . date('Ymd-His'),
+                    'plan_id' => $planId,
+                    'shift' => 'Malam',
+                    'mesin_id' => $mesin_id,
+                    'rm_stock_id' => $rm_stock_id,
+                    'material_code' => $request->part_no,
+                    'qty_ambil_pcs' => $qty_lembar_s2,
+                    'cavity' => $cavity,
+                    'status' => 'WAITING_MATERIAL',
+                    'keterangan' => 'AUTO-DEPLOY FROM PPIC',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Master Schedule Updated & Work Order Auto-Deployed!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal Deploy WOS: ' . $e->getMessage());
+        }
     }
+
+    /**
+     * ✨ FITUR BARU: UPDATE & REVISI WOS (AUTO-SYNC EFFECT)
+     */
+    public function updateWos(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            // 1. Cek Plan Asli
+            $plan = DB::table('production_plans')->where('id', $id)->first();
+            if (!$plan) throw new \Exception("Schedule tidak ditemukan.");
+
+            // 2. Cek Status Batches di Produksi (Safety Lock)
+            $activeBatches = DB::table('produksi_batches')
+                                ->where('plan_id', $id)
+                                ->whereIn('status', ['PROSES', 'COMPLETED', 'PROBLEM'])
+                                ->count();
+            
+            if ($activeBatches > 0) {
+                throw new \Exception("DITOLAK! Batch mesin sudah berjalan (PROSES/COMPLETED). Revisi tidak diizinkan untuk menghindari kekacauan data aktual.");
+            }
+
+            // 3. Update Master Schedule
+            DB::table('production_plans')->where('id', $id)->update([
+                's1_plan_reg' => $request->s1_plan_reg ?? 0,
+                's1_plan_ot' => $request->s1_plan_ot ?? 0,
+                's2_plan_reg' => $request->s2_plan_reg ?? 0,
+                's2_plan_ot' => $request->s2_plan_ot ?? 0,
+                'cap_per_hour' => $request->cap_per_hour ?? $plan->cap_per_hour,
+                'dandory_time' => $request->dandory_time ?? $plan->dandory_time,
+                'updated_at' => now()
+            ]);
+
+            // 4. Kalkulasi Ulang Target
+            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
+            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+
+            // Ambil Cavity dari Batch lama (jika ada)
+            $sampleBatch = DB::table('produksi_batches')->where('plan_id', $id)->first();
+            $cavity = $sampleBatch ? ($sampleBatch->cavity > 0 ? $sampleBatch->cavity : 1) : 1;
+
+            // 5. Update/Sync ulang Qty Material di Batch Terminal Produksi
+            if ($target_s1 > 0) {
+                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Pagi')->update([
+                    'qty_ambil_pcs' => ceil($target_s1 / $cavity),
+                    'keterangan' => 'DIREVISI OLEH PPIC',
+                    'updated_at' => now()
+                ]);
+            } else {
+                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Pagi')->delete(); // Kalo target jadi 0, hapus antrean
+            }
+
+            if ($target_s2 > 0) {
+                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Malam')->update([
+                    'qty_ambil_pcs' => ceil($target_s2 / $cavity),
+                    'keterangan' => 'DIREVISI OLEH PPIC',
+                    'updated_at' => now()
+                ]);
+            } else {
+                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Malam')->delete();
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Revisi Jadwal Sukses! Terminal & Gudang otomatis tersinkron.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * ✨ FITUR BARU: PRINT WOS (SURAT PERINTAH KERJA)
+     */
+    public function printWos($id)
+    {
+        $plan = DB::table('production_plans')->where('id', $id)->first();
+        if (!$plan) return redirect()->back()->with('error', 'Data tidak ditemukan.');
+
+        // Ambil data batch yang di-deploy (untuk dapet info material & cavity)
+        $batches = DB::table('produksi_batches')
+            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+            ->where('produksi_batches.plan_id', $id)
+            ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size')
+            ->get();
+
+        $partInfo = DB::table('parts')->where('part_no', $plan->part_no)->first();
+
+        // Nanti lu tinggal siapin file view blade-nya namanya 'print_wos.blade.php' di folder PPIC
+        return view('PPIC.print_wos', compact('plan', 'batches', 'partInfo'));
+    }
+
 
     /**
      * 3. QUALITY HUB KHUSUS STAMPING

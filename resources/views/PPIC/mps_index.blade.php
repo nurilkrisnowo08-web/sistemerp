@@ -45,6 +45,19 @@
 </style>
 
 <div class="container-fluid mt-4 mb-5 anim-up">
+
+    {{-- ALERT MESSAGES --}}
+    @if(session('success'))
+        <div class="alert alert-success border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #10b981 !important;">
+            <i class="fas fa-check-circle mr-2"></i><strong>Sukses!</strong> {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #ef4444 !important;">
+            <i class="fas fa-exclamation-triangle mr-2"></i><strong>Gagal!</strong> {{ session('error') }}
+        </div>
+    @endif
+
     {{-- 🛰️ HEADER & CONTROL SECTOR --}}
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -116,7 +129,8 @@
                         <th class="text-primary">Start</th>
                         <th class="text-primary">Finish</th>
                         <th>Dandory</th>
-                        <th>Remark</th>
+                        {{-- ✨ TAMBAHAN KOLOM COMMAND / AKSI --}}
+                        <th width="150">Command</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -140,8 +154,81 @@
                         <td><span class="badge-time">{{ $p->start_time }}</span></td>
                         <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                         <td class="text-muted small">{{ $p->dandory_time }}m</td>
-                        <td class="text-muted italic small text-left">{{ $p->remark ?? '-' }}</td>
+                        
+                        {{-- ✨ TOMBOL EDIT/CANCEL & PRINT --}}
+                        <td>
+                            <div class="btn-group">
+                                {{-- Tombol Revisi Buka Modal --}}
+                                <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}" title="Revisi / Cancel">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                {{-- Tombol Print WOS --}}
+                                <a href="{{ route('ppic.wos.print', $p->id) }}" class="btn btn-primary btn-sm shadow-sm font-weight-bold" target="_blank" title="Print WOS">
+                                    <i class="fas fa-print"></i>
+                                </a>
+                            </div>
+                        </td>
                     </tr>
+
+                    {{-- ✨ MODAL REVISI / CANCEL PER BARIS --}}
+                    <div class="modal fade" id="modalEditPlan-{{ $p->id }}" tabindex="-1" role="dialog">
+                        <div class="modal-dialog modal-dialog-centered" role="document">
+                            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                                <div class="modal-header bg-warning text-dark p-4 border-0">
+                                    <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi / Cancel WOS</h6>
+                                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                                </div>
+                                <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
+                                    @csrf @method('PUT')
+                                    <div class="modal-body p-4 bg-light">
+                                        <div class="alert alert-info border-0 shadow-sm small font-weight-bold">
+                                            <i class="fas fa-info-circle mr-1"></i> <strong>Set angka target menjadi 0</strong> jika ingin membatalkan/mencabut WOS ini dari terminal produksi.
+                                        </div>
+                                        
+                                        <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
+                                            <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
+                                            
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <label class="small font-weight-bold">S1 Reguler</label>
+                                                    <input type="number" name="s1_plan_reg" class="form-control" value="{{ $p->s1_plan_reg }}" min="0">
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="small font-weight-bold text-warning">S1 OT</label>
+                                                    <input type="number" name="s1_plan_ot" class="form-control" value="{{ $p->s1_plan_ot }}" min="0">
+                                                </div>
+                                                <div class="col-6 mt-3">
+                                                    <label class="small font-weight-bold">S2 Reguler</label>
+                                                    <input type="number" name="s2_plan_reg" class="form-control" value="{{ $p->s2_plan_reg }}" min="0">
+                                                </div>
+                                                <div class="col-6 mt-3">
+                                                    <label class="small font-weight-bold text-warning">S2 OT</label>
+                                                    <input type="number" name="s2_plan_ot" class="form-control" value="{{ $p->s2_plan_ot }}" min="0">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <label class="small font-weight-bold">Cap/Hour</label>
+                                                <input type="number" name="cap_per_hour" class="form-control" value="{{ $p->cap_per_hour }}">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="small font-weight-bold">Dandory (m)</label>
+                                                <input type="number" name="dandory_time" class="form-control" value="{{ $p->dandory_time }}">
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                    <div class="modal-footer bg-white border-0 p-3">
+                                        <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
+                                        <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> SIMPAN REVISI</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
                     @empty
                     <tr><td colspan="11" class="py-5 text-center text-muted font-weight-bold h5">-- NO PRODUCTION DATA FOR {{ $currentShift }} --</td></tr>
                     @endforelse
@@ -162,7 +249,7 @@
     </div>
 </div>
 
-{{-- 🛠️ MODAL REGISTER - REVAMPED UI --}}
+{{-- 🛠️ MODAL REGISTER - REVAMPED UI (SMART FORM) --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
@@ -179,9 +266,10 @@
                             <h6 class="font-weight-bold text-primary mb-3">01. PRODUCT_IDENTITY</h6>
                             <div class="form-group">
                                 <label class="small font-weight-bold">Select Line</label>
-                                <select name="line_code" class="form-control input-industrial" required>
+                                <select name="line_code" id="select_line" class="form-control input-industrial" required>
+                                    <option value="">-- CHOOSE LINE --</option>
                                     @foreach($availableLines as $l)
-                                        <option value="{{ $l->kode_Line }}">{{ $l->kode_Line }} - {{ $l->nama_Line }}</option>
+                                        <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{ $l->nama_Line }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -271,7 +359,7 @@
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
         
-        // Reset values of the other shift to 0
+        // Reset values
         if(isS1) { 
             document.getElementById('s2_reg').value = 0; document.getElementById('s2_ot').value = 0; 
         } else { 
@@ -302,6 +390,21 @@
             data.parts.forEach(p => html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`);
             document.getElementById('select_part').innerHTML = html;
         });
+    });
+
+    // ✨ SMART FORM: AUTO DETECT BIG PRESS VS SMALL
+    document.getElementById('select_line').addEventListener('change', function() {
+        let type = this.options[this.selectedIndex].getAttribute('data-type');
+        let capInput = document.getElementById('input_cap');
+        
+        if(type === 'BIG') {
+            capInput.value = 320; // Default Capacity buat Mesin Gede
+            document.getElementById('s1_reg').value = 2400; // Contoh plan gede
+        } else {
+            capInput.value = 500; // Default Capacity buat Mesin Kecil (biasanya lebih cepet)
+            document.getElementById('s1_reg').value = 4000; // Contoh plan kecil
+        }
+        calculateLiveHours();
     });
 </script>
 @endsection
