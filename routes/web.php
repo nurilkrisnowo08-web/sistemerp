@@ -216,6 +216,8 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::post('/mps/store', [PPICController::class, 'mpsStore'])->name('ppic.mps.store');
     Route::get('/ppic/monthly-matrix', [PPICController::class, 'monthlyMatrix'])->name('ppic.monthly.matrix');
     Route::post('/ppic/monthly-matrix/save', [PPICController::class, 'saveMatrixAjax'])->name('ppic.monthly.ajax_save');
+    Route::put('/ppic/mps/wos/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWos'])->name('ppic.wos.update');
+Route::get('/ppic/mps/wos/print/{id}', [App\Http\Controllers\PPICController::class, 'printWos'])->name('ppic.wos.print');
 
     // Halaman Dashboard Utama (Intelligence Hub) dengan Grafik OK vs NG
 Route::get('/ppic-planning', [App\Http\Controllers\PPICController::class, 'index'])->name('ppic.index');
