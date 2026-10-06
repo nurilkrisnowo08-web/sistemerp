@@ -111,7 +111,6 @@
                             </td>
                             <td colspan="2" class="text-right pr-4">
                                 <div class="btn-group shadow-sm">
-                                    {{-- Parameter Shift dikirim 'ALL' biar Controller yang narik S1 & S2 --}}
                                     <a href="{{ route('ppic.wos.print', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" class="btn btn-primary btn-sm font-weight-bold" target="_blank" title="Print Kertas WOS (Full Day)">
                                         <i class="fas fa-print mr-1"></i> WOS
                                     </a>
@@ -127,7 +126,7 @@
                             $s2Plans = $plansInLine->where('display_shift', 'S2')->values();
                         @endphp
 
-                        {{-- ==================== SHIFT 1 (DAY OPS) ==================== --}}
+                        {{-- SHIFT 1 --}}
                         @if($s1Plans->count() > 0)
                             <tr style="background-color: #e2e8f0;">
                                 <td colspan="11" class="text-left pl-4 font-weight-bold" style="font-size: 11px; color: #334155;">
@@ -155,18 +154,18 @@
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi / Cancel Target">
+                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi Target">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                     </td>
                                 </tr>
 
-                                {{-- MODAL REVISI SHIFT 1 --}}
+                                {{-- MODAL REVISI S1 --}}
                                 <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi / Cancel WOS</h6>
+                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS</h6>
                                                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
                                             <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
@@ -218,7 +217,7 @@
                             @endforeach
                         @endif
 
-                        {{-- ==================== SHIFT 2 (NIGHT OPS) ==================== --}}
+                        {{-- SHIFT 2 --}}
                         @if($s2Plans->count() > 0)
                             <tr style="background-color: #cbd5e1;">
                                 <td colspan="11" class="text-left pl-4 font-weight-bold" style="font-size: 11px; color: #1e293b;">
@@ -246,18 +245,18 @@
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi / Cancel Target">
+                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi Target">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                     </td>
                                 </tr>
 
-                                {{-- MODAL REVISI SHIFT 2 --}}
+                                {{-- MODAL REVISI S2 --}}
                                 <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi / Cancel WOS</h6>
+                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS</h6>
                                                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
                                             <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
@@ -329,7 +328,7 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER --}}
+{{-- MODAL REGISTER (FINAL FIX: BISA INPUT S1 & S2 BARENGAN, DAN ADA TANGGALNYA) --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
@@ -378,7 +377,7 @@
                                 <div class="col-6"><label class="small font-weight-bold text-warning">Dandory (m)</label><input type="number" name="dandory_time" id="input_dandory" class="form-control input-industrial mb-3" value="15"></div>
                             </div>
                             <div class="alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm">
-                                <small class="d-block font-weight-bold uppercase mb-1">Calculated M/C Load</small>
+                                <small class="d-block font-weight-bold uppercase mb-1">Calculated M/C Load (Total S1+S2)</small>
                                 <h4 class="hud-title mb-0" id="live_load_label">0.0H</h4>
                             </div>
                         </div>
@@ -403,6 +402,12 @@
                                     <label class="small font-weight-bold text-warning">S2 Overtime Plan</label>
                                     <input type="number" name="s2_plan_ot" id="s2_ot" class="form-control input-industrial calc-trigger" value="0">
                                 </div>
+                            </div>
+                            
+                            {{-- ✨ INI DIA YANG SEMPAT HILANG (plan_date & remark) ✨ --}}
+                            <div class="mt-3">
+                                <input type="hidden" name="plan_date" value="{{ $date }}">
+                                <textarea name="remark" class="form-control" rows="2" style="border-radius:12px;" placeholder="Optional remark..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -430,6 +435,8 @@
         document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
+        
+        // KODE RESET KE 0 UDAH GUA HAPUS DI SINI! SEKARANG BEBAS INPUT S1 & S2 BERBARENGAN
         calculateLiveHours();
     }
 
@@ -443,7 +450,8 @@
         
         const label = document.getElementById('live_load_label');
         label.innerText = hours.toFixed(1) + "H";
-        label.parentElement.className = hours > 8 ? "alert alert-danger border-0 rounded-lg text-center mt-3 py-3 shadow-sm" : "alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm";
+        // Batas merah dinaikkan ke 16 jam karena menghitung 2 shift sekaligus
+        label.parentElement.className = hours > 16 ? "alert alert-danger border-0 rounded-lg text-center mt-3 py-3 shadow-sm" : "alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm";
     }
 
     document.querySelectorAll('.calc-trigger, #input_cap, #input_dandory').forEach(i => i.addEventListener('input', calculateLiveHours));
