@@ -15,14 +15,12 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        // 1. Ambil Alerts (Problem Batches)
         $alerts = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
             ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at')
             ->get();
 
-        // 2. Ambil Plans & Hitung Progress Stamping
         $plans = DB::table('production_plans')->where('plan_date', $date)->get();
         $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
         $chartLabels = []; $chartTargets = []; $chartActuals = [];
@@ -51,7 +49,6 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        // 3. Data Daily (7 Hari)
         $dailyLabels = []; $dailyOk = []; $dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
@@ -60,7 +57,6 @@ class PPICController extends Controller
             $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
-        // 4. Data Monthly (6 Bulan)
         $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
@@ -78,13 +74,12 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ UPDATED: 2. DAILY MPS (STAMPING) - GABUNG S1 & S2 DALAM 1 TAMPILAN FULL DAY
+     * ✨ UPDATED: 2. DAILY MPS - GABUNG S1 & S2 TAPI HITUNGAN JAM KERJA DIPISAH
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
-        // Tarik SEMUA plan tanpa filter shift
         $allPlans = DB::table('production_plans')
             ->where('plan_date', $date)
             ->orderBy('line_code', 'asc')
@@ -92,7 +87,8 @@ class PPICController extends Controller
             ->get();
 
         $totalPlanQty = 0;
-        $totalWorkingHours = 0;
+        $totalWorkingHoursS1 = 0; // ✨ JAM SHIFT 1 DIPISAH
+        $totalWorkingHoursS2 = 0; // ✨ JAM SHIFT 2 DIPISAH
         $totalDandory = 0;
 
         $processedPlans = collect();
@@ -104,7 +100,7 @@ class PPICController extends Controller
             $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
             $dandory = $p->dandory_time ?? 15;
 
-            // ☀ PECAH DATA UNTUK SHIFT 1
+            // ☀ PROSES PECAHAN DATA SHIFT 1
             if ($t_s1 > 0) {
                 $actualS1 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Pagi')
@@ -126,11 +122,11 @@ class PPICController extends Controller
                 $processedPlans->push($item);
 
                 $totalPlanQty += $t_s1;
-                $totalWorkingHours += $dur;
+                $totalWorkingHoursS1 += $dur; // Masuk ke akumulasi S1
                 $totalDandory += $dandory;
             }
 
-            // 🌙 PECAH DATA UNTUK SHIFT 2
+            // 🌙 PROSES PECAHAN DATA SHIFT 2
             if ($t_s2 > 0) {
                 $actualS2 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Malam')
@@ -152,7 +148,7 @@ class PPICController extends Controller
                 $processedPlans->push($item);
 
                 $totalPlanQty += $t_s2;
-                $totalWorkingHours += $dur;
+                $totalWorkingHoursS2 += $dur; // Masuk ke akumulasi S2
                 $totalDandory += $dandory;
             }
         }
@@ -163,12 +159,12 @@ class PPICController extends Controller
 
         return view('PPIC.mps_index', compact(
             'groupedPlans', 'date', 'availableLines', 'availableCustomers', 
-            'totalPlanQty', 'totalWorkingHours', 'totalDandory'
+            'totalPlanQty', 'totalWorkingHoursS1', 'totalWorkingHoursS2', 'totalDandory'
         ));
     }
 
     /**
-     * 3. STORE MPS (AUTO-PILOT WOS DEPLOYMENT) - LANGSUNG STATUS "PROSES"
+     * 3. STORE MPS (AUTO-PILOT WOS DEPLOYMENT)
      */
     public function mpsStore(Request $request)
     {
@@ -301,18 +297,16 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ UPDATED: 5. PRINT WOS (1 KERTAS LANGSUNG NAMPILIN SHIFT 1 & SHIFT 2)
+     * 5. PRINT WOS (1 KERTAS LANGSUNG NAMPILIN SHIFT 1 & SHIFT 2)
      */
     public function printWos($date, $shift, $line_code)
     {
-        // 1. Tarik jadwal Shift 1
         $plansS1 = DB::table('production_plans')
             ->where('plan_date', $date)
             ->where('line_code', $line_code)
             ->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)
             ->orderBy('id', 'asc')->get();
 
-        // 2. Tarik jadwal Shift 2
         $plansS2 = DB::table('production_plans')
             ->where('plan_date', $date)
             ->where('line_code', $line_code)
@@ -323,7 +317,6 @@ class PPICController extends Controller
             return redirect()->back()->with('error', 'Tidak ada jadwal di mesin ini untuk dicetak.');
         }
 
-        // Gabung ID Plan buat narik data Batch Material
         $planIds = collect()->merge($plansS1)->merge($plansS2)->pluck('id')->unique()->toArray();
 
         $batches = DB::table('produksi_batches')
@@ -336,7 +329,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ UPDATED: 6. PRINT SURAT SERAH TERIMA MATERIAL (TARIK SEMUA SHIFT 1 HARI PENUH)
+     * 6. PRINT SURAT SERAH TERIMA MATERIAL
      */
     public function printSerahTerima($date, $shift, $line_code)
     {
