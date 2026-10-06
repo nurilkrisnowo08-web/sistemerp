@@ -78,78 +78,102 @@ class PPICController extends Controller
     }
 
     /**
-     * 2. DAILY MPS (STAMPING)
+     * ✨ UPDATED: 2. DAILY MPS (STAMPING) - GABUNG S1 & S2 DALAM 1 TAMPILAN FULL DAY
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        $shiftParam = $request->shift ?? 'S1'; 
 
-        $query = DB::table('production_plans')->where('plan_date', $date);
-        
-        if ($shiftParam == 'S1') {
-            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
-        } else {
-            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
-        }
-
-        $plans = $query->orderBy('line_code', 'asc')->orderBy('id', 'asc')->get();
+        // Tarik SEMUA plan tanpa filter shift
+        $allPlans = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->orderBy('line_code', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
 
         $totalPlanQty = 0;
         $totalWorkingHours = 0;
         $totalDandory = 0;
 
-        $lineFinishTime = []; 
-        $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
+        $processedPlans = collect();
+        $lineFinishTimeS1 = []; 
+        $lineFinishTimeS2 = [];
 
-        foreach($plans as $plan) {
-            $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam';
-            
-            $actualData = DB::table('production_actuals')
-                ->where('part_no', $plan->part_no) 
-                ->where('shift', $dbShiftName) 
-                ->whereDate('created_at', $date)
-                ->where('line_code', '!=', 'WELDING AREA')
-                ->sum('qty_ok');
+        foreach($allPlans as $p) {
+            $t_s1 = $p->s1_plan_reg + $p->s1_plan_ot;
+            $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
+            $dandory = $p->dandory_time ?? 15;
 
-            $plan->total_actual = (int)$actualData;
-            $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
-            
-            $totalPlanQty += $plan->total_target;
-            $totalDandory += ($plan->dandory_time ?? 0);
+            // ☀ PECAH DATA UNTUK SHIFT 1
+            if ($t_s1 > 0) {
+                $actualS1 = DB::table('production_actuals')
+                    ->where('part_no', $p->part_no)->where('shift', 'Pagi')
+                    ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
+                    ->sum('qty_ok');
 
-            $dandoryH = ($plan->dandory_time ?? 0) / 60;
-            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
-            
-            $totalWorkingHours += $duration;
+                $dur = ($p->cap_per_hour > 0) ? ($t_s1 / $p->cap_per_hour) + ($dandory / 60) : 0;
+                $start = $lineFinishTimeS1[$p->line_code] ?? "07:30";
+                $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
+                $lineFinishTimeS1[$p->line_code] = $finish;
 
-            $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
-            $plan->start_time = $startTime;
-            $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
-            $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
-            $plan->balance = $plan->total_target - $plan->total_actual;
+                $item = clone $p; 
+                $item->display_shift = 'S1';
+                $item->total_target = $t_s1;
+                $item->total_actual = (int)$actualS1;
+                $item->balance = $t_s1 - $actualS1;
+                $item->start_time = $start;
+                $item->ahir_time = $finish;
+                $processedPlans->push($item);
+
+                $totalPlanQty += $t_s1;
+                $totalWorkingHours += $dur;
+                $totalDandory += $dandory;
+            }
+
+            // 🌙 PECAH DATA UNTUK SHIFT 2
+            if ($t_s2 > 0) {
+                $actualS2 = DB::table('production_actuals')
+                    ->where('part_no', $p->part_no)->where('shift', 'Malam')
+                    ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
+                    ->sum('qty_ok');
+
+                $dur = ($p->cap_per_hour > 0) ? ($t_s2 / $p->cap_per_hour) + ($dandory / 60) : 0;
+                $start = $lineFinishTimeS2[$p->line_code] ?? "19:30";
+                $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
+                $lineFinishTimeS2[$p->line_code] = $finish;
+
+                $item = clone $p; 
+                $item->display_shift = 'S2';
+                $item->total_target = $t_s2;
+                $item->total_actual = (int)$actualS2;
+                $item->balance = $t_s2 - $actualS2;
+                $item->start_time = $start;
+                $item->ahir_time = $finish;
+                $processedPlans->push($item);
+
+                $totalPlanQty += $t_s2;
+                $totalWorkingHours += $dur;
+                $totalDandory += $dandory;
+            }
         }
 
+        $groupedPlans = $processedPlans->groupBy('line_code');
         $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
-
-        // 🌟 DI SINI KITA KELOMPOKIN DATA BERDASARKAN MESIN BIAR GAMPANG NGE-PRINTNYA
-        $groupedPlans = $plans->groupBy('line_code');
 
         return view('PPIC.mps_index', compact(
             'groupedPlans', 'date', 'availableLines', 'availableCustomers', 
             'totalPlanQty', 'totalWorkingHours', 'totalDandory'
-        ))->with('shift', $shiftParam);
+        ));
     }
 
     /**
-     * ✨ UPDATED: STORE MPS (AUTO-PILOT WOS DEPLOYMENT) - LANGSUNG STATUS "PROSES"
+     * 3. STORE MPS (AUTO-PILOT WOS DEPLOYMENT) - LANGSUNG STATUS "PROSES"
      */
     public function mpsStore(Request $request)
     {
         DB::beginTransaction();
         try {
-            // 1. Simpan ke Master Schedule (PPIC)
             $planId = DB::table('production_plans')->insertGetId([
                 'plan_date' => $request->plan_date,
                 'part_no' => $request->part_no,
@@ -178,7 +202,6 @@ class PPICController extends Controller
             $rm_stock_id = $rm_stock ? $rm_stock->id : null;
             $cavity = $rm_stock ? ($rm_stock->cavity > 0 ? $rm_stock->cavity : 1) : 1;
 
-            // 5. Deploy Auto-WOS ke Terminal Produksi (Shift 1) -> STATUS LANGSUNG 'PROSES'
             if ($target_s1 > 0 && $mesin_id) {
                 $qty_lembar_s1 = ceil($target_s1 / $cavity);
                 DB::table('produksi_batches')->insert([
@@ -190,14 +213,13 @@ class PPICController extends Controller
                     'material_code' => $request->part_no,
                     'qty_ambil_pcs' => $qty_lembar_s1,
                     'cavity' => $cavity,
-                    'status' => 'PROSES', // ✨ STATUS LANGSUNG JALAN DI TERMINAL PRODUKSI
+                    'status' => 'PROSES',
                     'keterangan' => 'AUTO-DEPLOY FROM PPIC',
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);
             }
 
-            // 6. Deploy Auto-WOS ke Terminal Produksi (Shift 2) -> STATUS LANGSUNG 'PROSES'
             if ($target_s2 > 0 && $mesin_id) {
                 $qty_lembar_s2 = ceil($target_s2 / $cavity);
                 DB::table('produksi_batches')->insert([
@@ -209,7 +231,7 @@ class PPICController extends Controller
                     'material_code' => $request->part_no,
                     'qty_ambil_pcs' => $qty_lembar_s2,
                     'cavity' => $cavity,
-                    'status' => 'PROSES', // ✨ STATUS LANGSUNG JALAN DI TERMINAL PRODUKSI
+                    'status' => 'PROSES',
                     'keterangan' => 'AUTO-DEPLOY FROM PPIC',
                     'created_at' => now(),
                     'updated_at' => now()
@@ -225,7 +247,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ FITUR BARU: UPDATE & REVISI WOS
+     * 4. UPDATE & REVISI WOS
      */
     public function updateWos(Request $request, $id)
     {
@@ -279,44 +301,71 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ FITUR BARU: PRINT WOS (SATU KERTAS UNTUK SEMUA PART DI MESIN & SHIFT YG SAMA)
+     * ✨ UPDATED: 5. PRINT WOS (1 KERTAS LANGSUNG NAMPILIN SHIFT 1 & SHIFT 2)
      */
     public function printWos($date, $shift, $line_code)
     {
-        // 1. Ambil semua jadwal (Plans) di mesin ini pada hari dan shift tersebut
-        $query = DB::table('production_plans')
+        // 1. Tarik jadwal Shift 1
+        $plansS1 = DB::table('production_plans')
             ->where('plan_date', $date)
-            ->where('line_code', $line_code);
-            
-        if ($shift == 'S1') {
-            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
-            $dbShiftName = 'Pagi';
-        } else {
-            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
-            $dbShiftName = 'Malam';
-        }
+            ->where('line_code', $line_code)
+            ->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')->get();
 
-        $plans = $query->orderBy('id', 'asc')->get();
+        // 2. Tarik jadwal Shift 2
+        $plansS2 = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', $line_code)
+            ->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')->get();
 
-        if ($plans->isEmpty()) {
+        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada jadwal di mesin ini untuk dicetak.');
         }
 
-        // 2. Ambil data Batches & Info Material (Buat Surat Serah Terima)
-        $planIds = $plans->pluck('id')->toArray();
+        // Gabung ID Plan buat narik data Batch Material
+        $planIds = collect()->merge($plansS1)->merge($plansS2)->pluck('id')->unique()->toArray();
+
         $batches = DB::table('produksi_batches')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->whereIn('produksi_batches.plan_id', $planIds)
-            ->where('produksi_batches.shift', $dbShiftName)
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
-        // Nanti lu tinggal siapin file view blade-nya namanya 'print_wos.blade.php' di folder PPIC
-        return view('PPIC.print_wos', compact('plans', 'batches', 'date', 'shift', 'line_code'));
+        return view('PPIC.print_wos', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
     }
 
     /**
-     * 3. QUALITY HUB KHUSUS STAMPING
+     * ✨ UPDATED: 6. PRINT SURAT SERAH TERIMA MATERIAL (TARIK SEMUA SHIFT 1 HARI PENUH)
+     */
+    public function printSerahTerima($date, $shift, $line_code)
+    {
+        $planIds = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', $line_code)
+            ->pluck('id');
+
+        $batches = DB::table('produksi_batches')
+            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+            ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
+            ->whereIn('produksi_batches.plan_id', $planIds)
+            ->select(
+                'produksi_batches.*', 
+                'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name',
+                'parts.part_name'
+            )
+            ->orderBy('produksi_batches.shift', 'desc') // Biar Shift Pagi di atas
+            ->get();
+
+        if ($batches->isEmpty()) {
+            return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
+        }
+
+        return view('PPIC.print_serah_terima', compact('batches', 'date', 'line_code'));
+    }
+
+    /**
+     * 7. QUALITY HUB KHUSUS STAMPING
      */
     public function qualityHub(Request $request)
     {
@@ -371,7 +420,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. WELDING INTELLIGENCE DASHBOARD
+     * 8. WELDING INTELLIGENCE DASHBOARD
      */
     public function weldingIndex(Request $request)
     {
@@ -429,7 +478,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 5. WELDING MPS (PISAH ACTUAL PER SHIFT )
+     * 9. WELDING MPS
      */
     public function weldingMps(Request $request)
     {
@@ -499,40 +548,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. QUALITY HUB KHUSUS WELDING
-     */
-    public function weldingQualityHub(Request $request)
-    {
-        $date = $request->date ?? date('Y-m-d');
-
-        $summary = DB::table('welding_actuals')
-            ->whereDate('created_at', $date)
-            ->select(DB::raw('SUM(qty_ok) as total_ok'), DB::raw('SUM(qty_ng) as total_ng'))
-            ->first();
-
-        $ngRanking = DB::table('welding_ng_logs')
-            ->select('ng_type', DB::raw('SUM(qty) as total'))
-            ->whereDate('created_at', $date)
-            ->groupBy('ng_type')
-            ->orderBy('total', 'DESC')
-            ->get();
-
-        $details = DB::table('welding_actuals')->whereDate('created_at', $date)->get();
-
-        foreach($details as $d) {
-            $d->batches = DB::table('welding_batches')
-                ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
-                ->where('part_no', $d->part_no)
-                ->whereDate('welding_batches.created_at', $date)
-                ->select('no_produksi_stamping as no_produksi', 'qty_masuk', 'qty_ok', 'qty_ng', 'kode_line')
-                ->get();
-        }
-
-        return view('PPIC.welding_quality_hub', compact('date', 'summary', 'ngRanking', 'details'));
-    }
-
-    /**
-     * 7. BATCH RECOVERY FUNCTIONS
+     * 10. BATCH RECOVERY FUNCTIONS
      */
     public function resumeBatch($id) 
     { 
@@ -599,37 +615,5 @@ class PPICController extends Controller
         } else { 
             DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]); 
         }
-    }
-
-    /**
-     * ✨ FITUR BARU: PRINT SURAT SERAH TERIMA MATERIAL (GUDANG RM -> PRODUKSI)
-     */
-    public function printSerahTerima($date, $shift, $line_code)
-    {
-        $dbShiftName = ($shift == 'S1') ? 'Pagi' : 'Malam';
-        
-        // Cari ID Plan untuk ditarik batch-nya
-        $planIds = DB::table('production_plans')
-            ->where('plan_date', $date)
-            ->where('line_code', $line_code)
-            ->pluck('id');
-
-        // Tarik data Batches lengkap sama Part & Materialnya
-        $batches = DB::table('produksi_batches')
-            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
-            ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
-            ->whereIn('produksi_batches.plan_id', $planIds)
-            ->where('produksi_batches.shift', $dbShiftName)
-            ->select(
-                'produksi_batches.*', 
-                'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name',
-                'parts.part_name'
-            )->get();
-
-        if ($batches->isEmpty()) {
-            return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
-        }
-
-        return view('PPIC.print_serah_terima', compact('batches', 'date', 'shift', 'line_code'));
     }
 }
