@@ -74,7 +74,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ UPDATED: 2. DAILY MPS - GABUNG S1 & S2 TAPI HITUNGAN JAM KERJA DIPISAH
+     * 2. DAILY MPS (GABUNG S1 & S2)
      */
     public function mpsIndex(Request $request)
     {
@@ -87,8 +87,8 @@ class PPICController extends Controller
             ->get();
 
         $totalPlanQty = 0;
-        $totalWorkingHoursS1 = 0; // ✨ JAM SHIFT 1 DIPISAH
-        $totalWorkingHoursS2 = 0; // ✨ JAM SHIFT 2 DIPISAH
+        $totalWorkingHoursS1 = 0; 
+        $totalWorkingHoursS2 = 0; 
         $totalDandory = 0;
 
         $processedPlans = collect();
@@ -100,7 +100,6 @@ class PPICController extends Controller
             $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
             $dandory = $p->dandory_time ?? 15;
 
-            // ☀ PROSES PECAHAN DATA SHIFT 1
             if ($t_s1 > 0) {
                 $actualS1 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Pagi')
@@ -122,11 +121,10 @@ class PPICController extends Controller
                 $processedPlans->push($item);
 
                 $totalPlanQty += $t_s1;
-                $totalWorkingHoursS1 += $dur; // Masuk ke akumulasi S1
+                $totalWorkingHoursS1 += $dur; 
                 $totalDandory += $dandory;
             }
 
-            // 🌙 PROSES PECAHAN DATA SHIFT 2
             if ($t_s2 > 0) {
                 $actualS2 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Malam')
@@ -148,7 +146,7 @@ class PPICController extends Controller
                 $processedPlans->push($item);
 
                 $totalPlanQty += $t_s2;
-                $totalWorkingHoursS2 += $dur; // Masuk ke akumulasi S2
+                $totalWorkingHoursS2 += $dur; 
                 $totalDandory += $dandory;
             }
         }
@@ -164,12 +162,35 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. STORE MPS (AUTO-PILOT WOS DEPLOYMENT)
+     * ✨ UPDATED: 3. STORE MPS (SMART INVENTORY GUARD)
      */
     public function mpsStore(Request $request)
     {
         DB::beginTransaction();
         try {
+            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
+            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+            $total_target = $target_s1 + $target_s2;
+
+            if ($total_target <= 0) {
+                throw new \Exception("Target produksi tidak boleh kosong / 0.");
+            }
+
+            // 🌟 1. CEK MATERIAL & VALIDASI LIMIT STOK 🌟
+            $rm_stock = DB::table('rm_stocks')->where('material_code', $request->part_no)->where('stock_pcs', '>', 0)->first();
+            if (!$rm_stock) {
+                throw new \Exception("Material untuk Part No [{$request->part_no}] kosong atau tidak terdaftar di Master RM!");
+            }
+
+            $cavity = $rm_stock->cavity > 0 ? $rm_stock->cavity : 1;
+            $kebutuhan_lembar = ceil($total_target / $cavity);
+
+            // 🛑 STOP KALAU STOK KURANG!
+            if ($rm_stock->stock_pcs < $kebutuhan_lembar) {
+                throw new \Exception("❌ PLAN DITOLAK: STOK MATERIAL KURANG! Anda butuh {$kebutuhan_lembar} Lembar (Target {$total_target} Pcs), tapi Sisa di Gudang cuma {$rm_stock->stock_pcs} Lembar.");
+            }
+
+            // 🌟 2. SIMPAN PLAN
             $planId = DB::table('production_plans')->insertGetId([
                 'plan_date' => $request->plan_date,
                 'part_no' => $request->part_no,
@@ -188,24 +209,24 @@ class PPICController extends Controller
                 'updated_at' => now()
             ]);
 
-            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
-            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+            // 🌟 3. POTONG STOK MATERIAL OTOMATIS (AUTO DEDUCT)
+            DB::table('rm_stocks')->where('id', $rm_stock->id)->decrement('stock_pcs', $kebutuhan_lembar);
 
             $mesin = DB::table('line')->where('kode_Line', $request->line_code)->first();
             $mesin_id = $mesin ? $mesin->id : null;
 
-            $rm_stock = DB::table('rm_stocks')->where('material_code', $request->part_no)->where('stock_pcs', '>', 0)->first();
-            $rm_stock_id = $rm_stock ? $rm_stock->id : null;
-            $cavity = $rm_stock ? ($rm_stock->cavity > 0 ? $rm_stock->cavity : 1) : 1;
+            // Supaya alokasi lembar pas, S1 dihitung, sisa kebutuhan dikasih ke S2
+            $qty_lembar_s1 = ceil($target_s1 / $cavity);
+            if ($target_s1 == 0) $qty_lembar_s1 = 0;
+            $qty_lembar_s2 = $kebutuhan_lembar - $qty_lembar_s1;
 
             if ($target_s1 > 0 && $mesin_id) {
-                $qty_lembar_s1 = ceil($target_s1 / $cavity);
                 DB::table('produksi_batches')->insert([
-                    'no_produksi' => 'WOS-S1-' . date('Ymd-His'),
+                    'no_produksi' => 'WOS-S1-' . date('YmdHis'),
                     'plan_id' => $planId,
                     'shift' => 'Pagi',
                     'mesin_id' => $mesin_id,
-                    'rm_stock_id' => $rm_stock_id,
+                    'rm_stock_id' => $rm_stock->id,
                     'material_code' => $request->part_no,
                     'qty_ambil_pcs' => $qty_lembar_s1,
                     'cavity' => $cavity,
@@ -217,13 +238,12 @@ class PPICController extends Controller
             }
 
             if ($target_s2 > 0 && $mesin_id) {
-                $qty_lembar_s2 = ceil($target_s2 / $cavity);
                 DB::table('produksi_batches')->insert([
-                    'no_produksi' => 'WOS-S2-' . date('Ymd-His'),
+                    'no_produksi' => 'WOS-S2-' . date('YmdHis'),
                     'plan_id' => $planId,
                     'shift' => 'Malam',
                     'mesin_id' => $mesin_id,
-                    'rm_stock_id' => $rm_stock_id,
+                    'rm_stock_id' => $rm_stock->id,
                     'material_code' => $request->part_no,
                     'qty_ambil_pcs' => $qty_lembar_s2,
                     'cavity' => $cavity,
@@ -235,15 +255,15 @@ class PPICController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Master Schedule Updated & WOS Langsung Masuk Terminal Produksi!');
+            return redirect()->back()->with('success', "Sukses! Jadwal WOS Terkirim & {$kebutuhan_lembar} Lembar Material Otomatis Dibooking/Dipotong dari Gudang!");
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Gagal Deploy WOS: ' . $e->getMessage());
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
     /**
-     * 4. UPDATE & REVISI WOS
+     * ✨ UPDATED: 4. UPDATE & REVISI WOS (AUTO RETURN & AUTO ADD MATERIAL)
      */
     public function updateWos(Request $request, $id)
     {
@@ -252,6 +272,47 @@ class PPICController extends Controller
             $plan = DB::table('production_plans')->where('id', $id)->first();
             if (!$plan) throw new \Exception("Schedule tidak ditemukan.");
 
+            // Hitung Target Lama vs Baru
+            $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
+            $old_target_s2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
+            $old_total = $old_target_s1 + $old_target_s2;
+
+            $new_target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
+            $new_target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+            $new_total = $new_target_s1 + $new_target_s2;
+
+            // Cari Master RM nya
+            $sampleBatch = DB::table('produksi_batches')->where('plan_id', $id)->first();
+            if ($sampleBatch) {
+                $rm_stock = DB::table('rm_stocks')->where('id', $sampleBatch->rm_stock_id)->first();
+            } else {
+                $rm_stock = DB::table('rm_stocks')->where('material_code', $plan->part_no)->first();
+            }
+
+            if (!$rm_stock) throw new \Exception("Database Material tidak terdeteksi untuk proses Revisi/Return.");
+
+            $cavity = $rm_stock->cavity > 0 ? $rm_stock->cavity : 1;
+            
+            // Hitung Lembaran Lama vs Baru
+            $old_lembar = ceil($old_total / $cavity);
+            $new_lembar = ceil($new_total / $cavity);
+            $selisih_lembar = $new_lembar - $old_lembar;
+
+            // 🌟 VALIDASI & MANAJEMEN STOK REVISI 🌟
+            if ($selisih_lembar > 0) {
+                // Target Naik -> Potong Stok Tambahan
+                if ($rm_stock->stock_pcs < $selisih_lembar) {
+                    throw new \Exception("❌ REVISI DITOLAK! Butuh tambahan {$selisih_lembar} Lembar material. Sisa stok di gudang hanya {$rm_stock->stock_pcs} Lembar.");
+                }
+                DB::table('rm_stocks')->where('id', $rm_stock->id)->decrement('stock_pcs', $selisih_lembar);
+            } 
+            elseif ($selisih_lembar < 0) {
+                // Target Turun / Dibatalkan (0) -> AUTO RETURN STOK
+                $return_qty = abs($selisih_lembar);
+                DB::table('rm_stocks')->where('id', $rm_stock->id)->increment('stock_pcs', $return_qty);
+            }
+
+            // Update Master Plan
             DB::table('production_plans')->where('id', $id)->update([
                 's1_plan_reg' => $request->s1_plan_reg ?? 0,
                 's1_plan_ot' => $request->s1_plan_ot ?? 0,
@@ -262,34 +323,59 @@ class PPICController extends Controller
                 'updated_at' => now()
             ]);
 
-            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
-            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+            // Hapus terminal batch yang lama
+            DB::table('produksi_batches')->where('plan_id', $id)->delete();
 
-            $sampleBatch = DB::table('produksi_batches')->where('plan_id', $id)->first();
-            $cavity = $sampleBatch ? ($sampleBatch->cavity > 0 ? $sampleBatch->cavity : 1) : 1;
+            // Render ulang Batch baru (Biar pembagian material s1/s2 akurat)
+            $qty_lembar_s1 = ceil($new_target_s1 / $cavity);
+            if($new_target_s1 == 0) $qty_lembar_s1 = 0;
+            $qty_lembar_s2 = $new_lembar - $qty_lembar_s1;
 
-            if ($target_s1 > 0) {
-                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Pagi')->update([
-                    'qty_ambil_pcs' => ceil($target_s1 / $cavity),
-                    'keterangan' => 'DIREVISI OLEH PPIC',
+            $mesin = DB::table('line')->where('kode_Line', $plan->line_code)->first();
+
+            if ($new_target_s1 > 0) {
+                DB::table('produksi_batches')->insert([
+                    'no_produksi' => 'WOS-S1-REV-' . date('His'),
+                    'plan_id' => $id,
+                    'shift' => 'Pagi',
+                    'mesin_id' => $mesin->id,
+                    'rm_stock_id' => $rm_stock->id,
+                    'material_code' => $plan->part_no,
+                    'qty_ambil_pcs' => $qty_lembar_s1,
+                    'cavity' => $cavity,
+                    'status' => 'PROSES',
+                    'keterangan' => 'DIREVISI PPIC',
+                    'created_at' => now(),
                     'updated_at' => now()
                 ]);
-            } else {
-                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Pagi')->delete();
             }
 
-            if ($target_s2 > 0) {
-                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Malam')->update([
-                    'qty_ambil_pcs' => ceil($target_s2 / $cavity),
-                    'keterangan' => 'DIREVISI OLEH PPIC',
+            if ($new_target_s2 > 0) {
+                DB::table('produksi_batches')->insert([
+                    'no_produksi' => 'WOS-S2-REV-' . date('His'),
+                    'plan_id' => $id,
+                    'shift' => 'Malam',
+                    'mesin_id' => $mesin->id,
+                    'rm_stock_id' => $rm_stock->id,
+                    'material_code' => $plan->part_no,
+                    'qty_ambil_pcs' => $qty_lembar_s2,
+                    'cavity' => $cavity,
+                    'status' => 'PROSES',
+                    'keterangan' => 'DIREVISI PPIC',
+                    'created_at' => now(),
                     'updated_at' => now()
                 ]);
+            }
+
+            // Bikin Pesan Otomatis
+            if ($new_total == 0) {
+                $msg = "Plan DIBATALKAN! " . abs($selisih_lembar) . " Lembar material otomatis direturn ke Gudang RM.";
             } else {
-                DB::table('produksi_batches')->where('plan_id', $id)->where('shift', 'Malam')->delete();
+                $msg = "Revisi Sukses! Material otomatis ter-syncronize.";
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Revisi Jadwal Sukses!');
+            return redirect()->back()->with('success', $msg);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
@@ -297,7 +383,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 5. PRINT WOS (1 KERTAS LANGSUNG NAMPILIN SHIFT 1 & SHIFT 2)
+     * 5. PRINT WOS 
      */
     public function printWos($date, $shift, $line_code)
     {
@@ -347,7 +433,7 @@ class PPICController extends Controller
                 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name',
                 'parts.part_name'
             )
-            ->orderBy('produksi_batches.shift', 'desc') // Biar Shift Pagi di atas
+            ->orderBy('produksi_batches.shift', 'desc') 
             ->get();
 
         if ($batches->isEmpty()) {

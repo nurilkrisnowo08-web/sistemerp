@@ -12,8 +12,7 @@
     .glass-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
     .hud-title { font-family: 'Orbitron'; font-weight: 800; letter-spacing: -1px; }
     .shift-toggle-pill { background: #f1f5f9; padding: 5px; border-radius: 50px; display: inline-flex; gap: 5px; }
-    .st-btn { border: none; padding: 8px 25px; border-radius: 50px; font-weight: 800; font-size: 11px; transition: 0.3s; color: var(--p-slate); text-decoration: none !important; }
-    .st-btn.active { background: var(--p-primary); color: white; box-shadow: 0 4px 12px rgba(67, 97, 238, 0.4); }
+    .shift-btn { border: none; padding: 8px 25px; border-radius: 50px; font-weight: 800; font-size: 11px; transition: 0.3s; color: var(--p-slate); text-decoration: none !important; }
     .table-mps { width: 100%; border-collapse: separate; border-spacing: 0; }
     .table-mps thead th { background: #f1f5f9; padding: 15px 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--p-slate); border-bottom: 2px solid #e2e8f0; }
     .table-mps tbody td { padding: 15px 10px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; vertical-align: middle; }
@@ -29,20 +28,23 @@
 </style>
 
 <div class="container-fluid mt-4 mb-5 anim-up">
+    {{-- ALERT PINTAR MRP --}}
     @if(session('success'))
-        <div class="alert alert-success border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #10b981 !important;">
-            <i class="fas fa-check-circle mr-2"></i><strong>Sukses!</strong> {{ session('success') }}
+        <div class="alert alert-success border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #10b981 !important; background-color: #d1fae5;">
+            <h6 class="font-weight-bold mb-1"><i class="fas fa-check-circle mr-2 text-success"></i>Sukses!</h6>
+            <p class="mb-0 text-dark" style="font-size: 13px;">{{ session('success') }}</p>
         </div>
     @endif
     @if(session('error'))
-        <div class="alert alert-danger border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #ef4444 !important;">
-            <i class="fas fa-exclamation-triangle mr-2"></i><strong>Gagal!</strong> {{ session('error') }}
+        <div class="alert alert-danger border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #ef4444 !important; background-color: #fee2e2;">
+            <h6 class="font-weight-bold mb-1 text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Peringatan Sistem!</h6>
+            <p class="mb-0 text-dark" style="font-size: 13px;">{{ session('error') }}</p>
         </div>
     @endif
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="hud-title m-0">MPS_TERMINAL <span class="text-primary">v6.0</span></h2>
+            <h2 class="hud-title m-0">MPS_TERMINAL <span class="text-primary">v7.0 Smart MRP</span></h2>
             <p class="text-muted small font-weight-bold uppercase mb-0"><i class="fas fa-calendar-alt mr-2"></i> Operational Date: {{ date('d F Y', strtotime($date)) }}</p>
         </div>
         <div class="d-flex align-items-center gap-3">
@@ -65,7 +67,6 @@
         <div class="col-md-3">
             <div class="glass-card p-3 text-center border-left border-info" style="border-left-width: 5px !important;">
                 <small class="text-muted font-weight-bold uppercase">Workload (Hours)</small>
-                {{-- ✨ TAMPILAN JAM KERJA DIPISAH S1 DAN S2 ✨ --}}
                 <h4 class="font-weight-bold mb-0 mt-1 text-info">
                     <span class="text-primary">S1: {{ round($totalWorkingHoursS1, 1) }}h</span>
                     <span class="text-muted mx-1">|</span>
@@ -170,14 +171,14 @@
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS</h6>
+                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h6>
                                                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
                                             <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
                                                 @csrf @method('PUT')
                                                 <div class="modal-body p-4 bg-light">
-                                                    <div class="alert alert-info border-0 shadow-sm small font-weight-bold">
-                                                        <i class="fas fa-info-circle mr-1"></i> <strong>Set angka target menjadi 0</strong> jika ingin membatalkan WOS.
+                                                    <div class="alert alert-warning border-0 shadow-sm small font-weight-bold">
+                                                        <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
                                                     </div>
                                                     <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
                                                         <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
@@ -213,7 +214,7 @@
                                                 </div>
                                                 <div class="modal-footer bg-white border-0 p-3">
                                                     <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> SIMPAN REVISI</button>
+                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC MATERIAL</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -261,14 +262,14 @@
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS</h6>
+                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h6>
                                                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
                                             <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
                                                 @csrf @method('PUT')
                                                 <div class="modal-body p-4 bg-light">
-                                                    <div class="alert alert-info border-0 shadow-sm small font-weight-bold">
-                                                        <i class="fas fa-info-circle mr-1"></i> <strong>Set angka target menjadi 0</strong> jika ingin membatalkan WOS.
+                                                    <div class="alert alert-warning border-0 shadow-sm small font-weight-bold">
+                                                        <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
                                                     </div>
                                                     <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
                                                         <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
@@ -304,7 +305,7 @@
                                                 </div>
                                                 <div class="modal-footer bg-white border-0 p-3">
                                                     <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> SIMPAN REVISI</button>
+                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC MATERIAL</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -323,7 +324,6 @@
                         <td colspan="4" class="text-right uppercase">Daily Summary Total :</td>
                         <td>{{ number_format($totalPlanQty) }}</td>
                         <td colspan="2" class="text-right">Total Est. Work :</td>
-                        {{-- ✨ TAMPILAN FOOTER DIPISAH S1 DAN S2 ✨ --}}
                         <td colspan="2" class="text-center">S1: {{ round($totalWorkingHoursS1, 1) }}H | S2: {{ round($totalWorkingHoursS2, 1) }}H</td>
                         <td colspan="2"></td>
                     </tr>
@@ -334,7 +334,7 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER --}}
+{{-- MODAL REGISTER (DENGAN HIDDEN DATE & ALERT MATERIAL) --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
@@ -393,8 +393,8 @@
                         <div class="col-md-4 pl-4">
                             <h6 class="font-weight-bold text-success mb-3">03. QUANTITY_PLANNING</h6>
                             <div class="shift-toggle-pill mb-3 w-100">
-                                <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="border:none; border-radius:50px; padding:10px;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
-                                <button type="button" id="m_btn_s2" class="shift-btn w-50" style="border:none; border-radius:50px; padding:10px; background:none;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
+                                <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="border:none; border-radius:50px; padding:10px; background:#4361ee; color:white;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
+                                <button type="button" id="m_btn_s2" class="shift-btn w-50" style="border:none; border-radius:50px; padding:10px; background:none; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
                                 <input type="hidden" name="active_shift_input" id="m_active_shift" value="1">
                             </div>
                             <div class="bg-light p-3 rounded-lg border">
@@ -411,6 +411,8 @@
                                     <input type="number" name="s2_plan_ot" id="s2_ot" class="form-control input-industrial calc-trigger" value="0">
                                 </div>
                             </div>
+                            
+                            {{-- INI PENTING: TANGGAL PLAN BIAR NGGAK ERROR NULL --}}
                             <div class="mt-3">
                                 <input type="hidden" name="plan_date" value="{{ $date }}">
                                 <textarea name="remark" class="form-control" rows="2" style="border-radius:12px;" placeholder="Optional remark..."></textarea>
@@ -430,17 +432,16 @@
 <script>
     function modalShiftSwitch(s) {
         const isS1 = s === 1;
-        document.getElementById('m_btn_s1').className = isS1 ? 'shift-btn active-s1 w-50' : 'shift-btn w-50';
         document.getElementById('m_btn_s1').style.background = isS1 ? '#4361ee' : 'none';
         document.getElementById('m_btn_s1').style.color = isS1 ? 'white' : '#64748b';
 
-        document.getElementById('m_btn_s2').className = !isS1 ? 'shift-btn active-s2 w-50' : 'shift-btn w-50';
         document.getElementById('m_btn_s2').style.background = !isS1 ? '#0f172a' : 'none';
         document.getElementById('m_btn_s2').style.color = !isS1 ? 'white' : '#64748b';
 
         document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
+        calculateLiveHours();
     }
 
     function calculateLiveHours() {
