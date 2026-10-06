@@ -65,7 +65,12 @@
         <div class="col-md-3">
             <div class="glass-card p-3 text-center border-left border-info" style="border-left-width: 5px !important;">
                 <small class="text-muted font-weight-bold uppercase">Workload (Hours)</small>
-                <h3 class="font-weight-bold mb-0 text-info">{{ round($totalWorkingHours, 1) }}h</h3>
+                {{-- ✨ TAMPILAN JAM KERJA DIPISAH S1 DAN S2 ✨ --}}
+                <h4 class="font-weight-bold mb-0 mt-1 text-info">
+                    <span class="text-primary">S1: {{ round($totalWorkingHoursS1, 1) }}h</span>
+                    <span class="text-muted mx-1">|</span>
+                    <span class="text-dark">S2: {{ round($totalWorkingHoursS2, 1) }}h</span>
+                </h4>
             </div>
         </div>
         <div class="col-md-3">
@@ -318,7 +323,8 @@
                         <td colspan="4" class="text-right uppercase">Daily Summary Total :</td>
                         <td>{{ number_format($totalPlanQty) }}</td>
                         <td colspan="2" class="text-right">Total Est. Work :</td>
-                        <td colspan="2" class="text-center">{{ round($totalWorkingHours, 1) }} HOURS</td>
+                        {{-- ✨ TAMPILAN FOOTER DIPISAH S1 DAN S2 ✨ --}}
+                        <td colspan="2" class="text-center">S1: {{ round($totalWorkingHoursS1, 1) }}H | S2: {{ round($totalWorkingHoursS2, 1) }}H</td>
                         <td colspan="2"></td>
                     </tr>
                 </tfoot>
@@ -328,7 +334,7 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER (FINAL FIX: BISA INPUT S1 & S2 BARENGAN, DAN ADA TANGGALNYA) --}}
+{{-- MODAL REGISTER --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
@@ -377,8 +383,10 @@
                                 <div class="col-6"><label class="small font-weight-bold text-warning">Dandory (m)</label><input type="number" name="dandory_time" id="input_dandory" class="form-control input-industrial mb-3" value="15"></div>
                             </div>
                             <div class="alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm">
-                                <small class="d-block font-weight-bold uppercase mb-1">Calculated M/C Load (Total S1+S2)</small>
-                                <h4 class="hud-title mb-0" id="live_load_label">0.0H</h4>
+                                <small class="d-block font-weight-bold uppercase mb-1">Calculated M/C Load</small>
+                                <h5 class="hud-title mb-0" id="live_load_label">
+                                    <span class="text-primary">S1: 0.0H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: 0.0H</span>
+                                </h5>
                             </div>
                         </div>
 
@@ -403,8 +411,6 @@
                                     <input type="number" name="s2_plan_ot" id="s2_ot" class="form-control input-industrial calc-trigger" value="0">
                                 </div>
                             </div>
-                            
-                            {{-- ✨ INI DIA YANG SEMPAT HILANG (plan_date & remark) ✨ --}}
                             <div class="mt-3">
                                 <input type="hidden" name="plan_date" value="{{ $date }}">
                                 <textarea name="remark" class="form-control" rows="2" style="border-radius:12px;" placeholder="Optional remark..."></textarea>
@@ -435,23 +441,22 @@
         document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
-        
-        // KODE RESET KE 0 UDAH GUA HAPUS DI SINI! SEKARANG BEBAS INPUT S1 & S2 BERBARENGAN
-        calculateLiveHours();
     }
 
     function calculateLiveHours() {
         const cap = parseFloat(document.getElementById('input_cap').value) || 1;
         const dandory = parseFloat(document.getElementById('input_dandory').value) || 0;
+        
         const s1 = (parseFloat(document.getElementById('s1_reg').value) || 0) + (parseFloat(document.getElementById('s1_ot').value) || 0);
         const s2 = (parseFloat(document.getElementById('s2_reg').value) || 0) + (parseFloat(document.getElementById('s2_ot').value) || 0);
-        const totalQty = s1 + s2;
-        let hours = totalQty > 0 ? (totalQty / cap) + (dandory / 60) : 0;
+        
+        let hoursS1 = s1 > 0 ? (s1 / cap) + (dandory / 60) : 0;
+        let hoursS2 = s2 > 0 ? (s2 / cap) + (dandory / 60) : 0;
         
         const label = document.getElementById('live_load_label');
-        label.innerText = hours.toFixed(1) + "H";
-        // Batas merah dinaikkan ke 16 jam karena menghitung 2 shift sekaligus
-        label.parentElement.className = hours > 16 ? "alert alert-danger border-0 rounded-lg text-center mt-3 py-3 shadow-sm" : "alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm";
+        label.innerHTML = `<span class="text-primary">S1: ${hoursS1.toFixed(1)}H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: ${hoursS2.toFixed(1)}H</span>`;
+        
+        label.parentElement.className = (hoursS1 > 12 || hoursS2 > 12) ? "alert alert-danger border-0 rounded-lg text-center mt-3 py-3 shadow-sm" : "alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm";
     }
 
     document.querySelectorAll('.calc-trigger, #input_cap, #input_dandory').forEach(i => i.addEventListener('input', calculateLiveHours));
@@ -467,8 +472,15 @@
     document.getElementById('select_line').addEventListener('change', function() {
         let type = this.options[this.selectedIndex].getAttribute('data-type');
         let capInput = document.getElementById('input_cap');
-        if(type === 'BIG') { capInput.value = 320; document.getElementById('s1_reg').value = 2400; } 
-        else { capInput.value = 500; document.getElementById('s1_reg').value = 4000; }
+        if(type === 'BIG') { 
+            capInput.value = 320; 
+            document.getElementById('s1_reg').value = 2400; 
+            document.getElementById('s2_reg').value = 0; 
+        } else { 
+            capInput.value = 500; 
+            document.getElementById('s1_reg').value = 4000; 
+            document.getElementById('s2_reg').value = 0;
+        }
         calculateLiveHours();
     });
 </script>
