@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -29,7 +29,7 @@
 <body onload="window.print()">
 
     <div class="no-print" style="text-align: right; margin-bottom: 20px;">
-        <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px; font-weight: bold; cursor: pointer;">🖨️ PRINT DOKUMEN</button>
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px; font-weight: bold; cursor: pointer;">🖨️ PRINT DOKUMEN MATERIAL</button>
     </div>
 
     <div class="header">
@@ -49,7 +49,7 @@
         </tr>
         <tr>
             <td>SHIFT KERJA</td>
-            <td>: {{ $shift == 'S1' ? 'SHIFT 1 (PAGI)' : 'SHIFT 2 (MALAM)' }}</td>
+            <td>: FULL DAY (SHIFT 1 & SHIFT 2)</td>
         </tr>
         <tr>
             <td>TUJUAN MESIN</td>
@@ -62,18 +62,21 @@
             <tr>
                 <th width="30">NO</th>
                 <th>NO PRODUKSI (WOS)</th>
+                <th>SHIFT</th>
                 <th>PART NUMBER</th>
                 <th>SPESIFIKASI MATERIAL</th>
                 <th>NO COIL</th>
                 <th width="100">QTY DIAMBIL<br>(SHEET)</th>
-                <th>KETERANGAN</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($batches as $index => $b)
+            @forelse($batches as $index => $b)
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td style="font-family: monospace; font-weight: bold;">{{ $b->no_produksi }}</td>
+                <td style="font-weight: bold; color: {{ $b->shift == 'Pagi' ? '#d97706' : '#0f172a' }};">
+                    {{ strtoupper($b->shift) }}
+                </td>
                 <td class="text-left font-weight-bold">{{ $b->material_code }}<br><small>{{ $b->part_name }}</small></td>
                 <td class="text-left">
                     {{ $b->material_name }}<br>
@@ -81,9 +84,12 @@
                 </td>
                 <td style="font-weight: bold;">{{ $b->coil_id }}</td>
                 <td style="font-size: 16px; font-weight: bold;">{{ $b->qty_ambil_pcs }}</td>
-                <td>{{ $b->keterangan }}</td>
             </tr>
-            @endforeach
+            @empty
+            <tr>
+                <td colspan="7" style="padding: 20px; font-weight: bold; color: red;">-- BELUM ADA DATA MATERIAL --</td>
+            </tr>
+            @endforelse
         </tbody>
     </table>
 
