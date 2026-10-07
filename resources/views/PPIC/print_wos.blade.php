@@ -133,11 +133,22 @@
                     <td>{{ $plan->s1_plan_reg }}</td><td>{{ $plan->s1_plan_ot }}</td>
                     <td class="text-bold" style="font-size: 11px;">{{ number_format($target) }}</td>
                     <td class="text-bold">{{ $plan->line_code }}</td>
-                    <td></td><td></td><td></td><td></td>
+                    
+                    {{-- ✨ AUTO FILL ACTUAL ✨ --}}
+                    <td></td> 
+                    <td class="text-bold" style="color: #059669;">{{ ($batchData && $batchData->qty_hasil_ok > 0) ? number_format($batchData->qty_hasil_ok) : '' }}</td>
+                    <td class="text-bold" style="color: #dc2626;">{{ ($batchData && $batchData->qty_hasil_ng > 0) ? number_format($batchData->qty_hasil_ng) : '' }}</td>
+                    <td class="text-bold" style="color: #d97706;">{{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}</td>
+                    
                     <td class="text-left" style="font-size: 8px; line-height: 1.2;">
                         @if($batchData)
                             <strong>{{ $batchData->material_code }}</strong><br>
-                            <span style="font-size: 9px; font-weight: bold;">{{ $batchData->qty_ambil_pcs }}</span> Sheet/Lembar<br>(Coil: {{ $batchData->coil_id }})
+                            Ambil: <b>{{ $batchData->qty_ambil_pcs }}</b> Sht<br>
+                            @if(($batchData->qty_return_warehouse ?? 0) > 0)
+                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ $batchData->qty_return_warehouse }} Sht</span><br>
+                                Pakai: <b>{{ $batchData->qty_ambil_pcs - $batchData->qty_return_warehouse }}</b> Sht<br>
+                            @endif
+                            <small style="color: #555;">Coil: {{ $batchData->coil_id }}</small>
                         @else - @endif
                     </td>
                 </tr>
@@ -187,11 +198,22 @@
                     <td>{{ $plan->s2_plan_reg }}</td><td>{{ $plan->s2_plan_ot }}</td>
                     <td class="text-bold" style="font-size: 11px;">{{ number_format($target) }}</td>
                     <td class="text-bold">{{ $plan->line_code }}</td>
-                    <td></td><td></td><td></td><td></td>
+                    
+                    {{-- ✨ AUTO FILL ACTUAL ✨ --}}
+                    <td></td>
+                    <td class="text-bold" style="color: #059669;">{{ ($batchData && $batchData->qty_hasil_ok > 0) ? number_format($batchData->qty_hasil_ok) : '' }}</td>
+                    <td class="text-bold" style="color: #dc2626;">{{ ($batchData && $batchData->qty_hasil_ng > 0) ? number_format($batchData->qty_hasil_ng) : '' }}</td>
+                    <td class="text-bold" style="color: #d97706;">{{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}</td>
+
                     <td class="text-left" style="font-size: 8px; line-height: 1.2;">
                         @if($batchData)
                             <strong>{{ $batchData->material_code }}</strong><br>
-                            <span style="font-size: 9px; font-weight: bold;">{{ $batchData->qty_ambil_pcs }}</span> Sheet/Lembar<br>(Coil: {{ $batchData->coil_id }})
+                            Ambil: <b>{{ $batchData->qty_ambil_pcs }}</b> Sht<br>
+                            @if(($batchData->qty_return_warehouse ?? 0) > 0)
+                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ $batchData->qty_return_warehouse }} Sht</span><br>
+                                Pakai: <b>{{ $batchData->qty_ambil_pcs - $batchData->qty_return_warehouse }}</b> Sht<br>
+                            @endif
+                            <small style="color: #555;">Coil: {{ $batchData->coil_id }}</small>
                         @else - @endif
                     </td>
                 </tr>
@@ -200,7 +222,7 @@
 
             {{-- PADDING KOSONG BIAR KERTAS PENUH & RAPI --}}
             @php $totalRows = (isset($plansS1) ? count($plansS1) : 0) + (isset($plansS2) ? count($plansS2) : 0); @endphp
-            @for($i = $totalRows; $i < 8; $i++)
+            @for($i = $totalRows; $i < 12; $i++)
             <tr>
                 <td>-</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>

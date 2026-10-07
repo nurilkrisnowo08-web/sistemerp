@@ -280,7 +280,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. UPDATE & REVISI WOS (DENGAN PROTEKSI ANTI-DOUBLE RETURN & ANTI-DUPLIKAT)
+     * ✨ 4. UPDATE & REVISI WOS (DENGAN PROTEKSI PENGAMAN + ANTI-DOUBLE RETURN)
      */
     public function updateWos(Request $request, $id)
     {
@@ -290,6 +290,16 @@ class PPICController extends Controller
             if (!$plan) throw new \Exception("Schedule tidak ditemukan.");
 
             $existingBatches = DB::table('produksi_batches')->where('plan_id', $id)->get();
+            
+            // ✨ PENGAMAN 1: Tolak Revisi jika Produksi sudah nyetor aktual atau sudah di-close
+            $isStarted = $existingBatches->contains(function($b) {
+                return $b->qty_hasil_ok > 0 || $b->qty_hasil_ng > 0 || $b->status === 'COMPLETED';
+            });
+
+            if ($isStarted) {
+                throw new \Exception("❌ REVISI DITOLAK! WOS ini sudah mulai dikerjakan (Aktual > 0) atau sudah ditutup oleh tim Produksi.");
+            }
+
             $alreadyReturnedByProd = $existingBatches->sum('qty_return_warehouse');
 
             $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
@@ -331,7 +341,7 @@ class PPICController extends Controller
             } 
             elseif ($selisih_lembar < 0) {
                 $raw_return = abs($selisih_lembar);
-                // ✨ CEGAH DOUBLE RETURN: Kurangi dengan jumlah lembar yang sudah dikembalikan oleh produksi
+                // ✨ PENGAMAN 2 (ANTI DOUBLE RETURN)
                 $net_return = max(0, $raw_return - $alreadyReturnedByProd);
 
                 if ($net_return > 0) {
@@ -358,7 +368,6 @@ class PPICController extends Controller
                 'updated_at' => now()
             ]);
 
-            // ✨ HANYA HAPUS BATCH YANG BELUM COMPLETED AGAR DATA TIDAK TERDUPLIKASI
             DB::table('produksi_batches')->where('plan_id', $id)->where('status', '!=', 'COMPLETED')->delete();
 
             $qty_lembar_s1 = ceil($new_target_s1 / $cavity);
@@ -446,6 +455,41 @@ class PPICController extends Controller
             ->get();
 
         return view('PPIC.print_wos', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
+    }
+
+    /**
+     * ✨ 5B. PRINT WOS BUNDLE (BIG & SMALL)
+     */
+    public function printWosBundle($date)
+    {
+        $allPlans = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')
+            ->get();
+
+        if ($allPlans->isEmpty()) {
+            return redirect()->back()->with('error', 'Belum ada jadwal produksi pada tanggal ini untuk dicetak.');
+        }
+
+        $bigPlans = $allPlans->filter(function($p) {
+            $code = strtoupper($p->line_code);
+            return !str_contains($code, 'C') && !str_contains($code, 'SMALL');
+        });
+
+        $smallPlans = $allPlans->filter(function($p) {
+            $code = strtoupper($p->line_code);
+            return str_contains($code, 'C') || str_contains($code, 'SMALL');
+        });
+
+        $planIds = $allPlans->pluck('id')->toArray();
+        $batches = DB::table('produksi_batches')
+            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+            ->whereIn('produksi_batches.plan_id', $planIds)
+            ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
+            ->get();
+
+        return view('PPIC.print_wos_bundle', compact('bigPlans', 'smallPlans', 'batches', 'date'));
     }
 
     /**
@@ -661,7 +705,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 10. BATCH RECOVERY & CLOSE FUNCTIONS (DENGAN PENCATATAN RETURN & NG LENGKAP)
+     * 10. BATCH RECOVERY & CLOSE FUNCTIONS (CATAT RETURN & NG)
      */
     public function resumeBatch($id) 
     { 
@@ -676,15 +720,12 @@ class PPICController extends Controller
             $batch = DB::table('produksi_batches')->where('id', $id)->first();
             if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan.');
 
-            // 1. Hitung lembar aktual terpakai dengan cavity
             $cavity = $batch->cavity > 0 ? $batch->cavity : 1;
             $totalPcsProduced = (int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng;
             $lembarTerpakai = ceil($totalPcsProduced / $cavity);
             
-            // Sisa lembar yang tidak terpakai
             $sisa = max(0, (int)$batch->qty_ambil_pcs - $lembarTerpakai);
 
-            // 2. Kembalikan sisa lembar ke rm_stocks dan catat log return-nya
             if ($sisa > 0 && $batch->rm_stock_id) {
                 DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa);
 
@@ -698,7 +739,6 @@ class PPICController extends Controller
                 ]);
             }
 
-            // 3. Catat rincian NG ke production_ng_logs jika ada NG dari terminal
             if ((int)$batch->qty_hasil_ng > 0) {
                 $hasNgLog = DB::table('production_ng_logs')->where('no_produksi', $batch->no_produksi)->exists();
                 if (!$hasNgLog) {
@@ -716,14 +756,12 @@ class PPICController extends Controller
                 }
             }
 
-            // 4. Update status batch menjadi COMPLETED dan simpan qty_return_warehouse
             DB::table('produksi_batches')->where('id', $id)->update([
                 'status'               => 'COMPLETED',
                 'qty_return_warehouse' => $sisa,
                 'updated_at'           => now()
             ]);
 
-            // 5. Transfer hasil OK ke Finished Goods
             $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
 
             if ($part && $part->next_process == 'WELDING') {
@@ -752,7 +790,6 @@ class PPICController extends Controller
                 ]);
             }
 
-            // 6. Sinkronisasi aktual
             $this->syncToActual($id);
 
             DB::commit();
