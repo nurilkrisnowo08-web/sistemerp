@@ -81,7 +81,8 @@
                 <th rowspan="2" width="50">M/C LINE</th>
                 <th rowspan="2" width="35">JAM</th>
                 <th colspan="3">ACTUAL PRODUKSI</th>
-                <th rowspan="2" width="110">MATERIAL REQ<br>(SERAH TERIMA)</th>
+                {{-- ✨ UBAH HEADER JADI KETERANGAN ✨ --}}
+                <th rowspan="2" width="110">KETERANGAN</th>
             </tr>
             <tr>
                 <th width="40">START</th><th width="40">AKHIR</th><th width="40">REG</th><th width="40">OT</th>
@@ -115,14 +116,23 @@
                     $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes")); 
                     
                     $batchData = isset($batches) ? $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first() : null;
-                    $keterangan = $batchData ? $batchData->keterangan : '';
-
-                    $isMainPair = strpos($keterangan, 'PAIR_MAIN:') === 0;
-                    $pairedPartName = $isMainPair ? str_replace('PAIR_MAIN:', '', $keterangan) : '';
+                    
+                    $isMainPair = $batchData && str_ends_with($batchData->no_produksi, '-M');
+                    $pairedPartName = '';
                     $batchSubData = null;
 
-                    if ($isMainPair && isset($batches)) {
-                        $batchSubData = $batches->where('material_code', $pairedPartName)->where('shift', 'Pagi')->first();
+                    if ($isMainPair) {
+                        $subNoProd = substr($batchData->no_produksi, 0, -2) . '-S';
+                        $batchSubData = isset($batches) ? $batches->where('no_produksi', $subNoProd)->first() : null;
+                        if (!$batchSubData) {
+                            $batchSubData = \Illuminate\Support\Facades\DB::table('produksi_batches')->where('no_produksi', $subNoProd)->first();
+                        }
+                        
+                        if ($batchSubData) {
+                            $pairedPartName = $batchSubData->material_code;
+                        } else {
+                            $isMainPair = false; 
+                        }
                     }
 
                     $grandTarget += $target; $grandStroke += $stroke; $grandReg += $plan->s1_plan_reg; $grandOt += $plan->s1_plan_ot;
@@ -157,31 +167,20 @@
                         {{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}
                     </td>
 
-                    <td class="text-left" style="font-size: 8px; line-height: 1.2;">
-                        @if($batchData)
-                            <strong>{{ $batchData->material_code }}</strong><br>
-                            Ambil: <b>{{ number_format($batchData->qty_ambil_pcs) }}</b> Sht<br>
-                            @if(($batchData->qty_return_warehouse ?? 0) > 0)
-                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ number_format($batchData->qty_return_warehouse) }} Sht</span><br>
-                                Pakai: <b>{{ number_format($batchData->qty_ambil_pcs - $batchData->qty_return_warehouse) }}</b> Sht<br>
-                            @endif
-                            <small style="color: #555;">Coil: {{ $batchData->coil_id }}</small>
-                            
-                            {{-- ✨ RINCIAN SEPARATING ✨ --}}
-                            @if($isMainPair && $batchSubData)
-                                @php
-                                    $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
-                                    $tOK2 = $batchSubData->qty_hasil_ok ?? 0; $tNG2 = $batchSubData->qty_hasil_ng ?? 0;
-                                    $totPcs = $tOK1 + $tNG1 + $tOK2 + $tNG2;
-                                @endphp
-                                <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999;">
-                                    <span style="color:#059669; font-weight:bold;">Total Hasil: {{ number_format($totPcs) }} Pcs</span><br>
-                                    <span style="color:#1e40af; font-weight:bold;">▶ Utama:</span> OK {{ number_format($tOK1) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG1) }}</span><br>
-                                    <span style="color:#d97706; font-weight:bold;">▶ Psg:</span> OK {{ number_format($tOK2) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG2) }}</span>
-                                </div>
-                            @endif
-
-                        @else - @endif
+                    <td class="text-left" style="font-size: 8px; line-height: 1.4;">
+                        {{-- ✨ HANYA MENAMPILKAN KETERANGAN SEPARATING ✨ --}}
+                        @if($isMainPair && $batchSubData)
+                            @php
+                                $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
+                                $tOK2 = $batchSubData->qty_hasil_ok ?? 0; $tNG2 = $batchSubData->qty_hasil_ng ?? 0;
+                                $totPcs = $tOK1 + $tNG1 + $tOK2 + $tNG2;
+                            @endphp
+                            <span style="color:#059669; font-weight:bold; font-size: 9px;">Total Hasil: {{ number_format($totPcs) }} Pcs</span><br>
+                            <span style="color:#1e40af; font-weight:bold;">▶ Utama:</span> OK {{ number_format($tOK1) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG1) }}</span><br>
+                            <span style="color:#d97706; font-weight:bold;">▶ Psg:</span> OK {{ number_format($tOK2) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG2) }}</span>
+                        @else
+                            -
+                        @endif
                     </td>
                 </tr>
                 @endforeach
@@ -212,14 +211,23 @@
                     $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes")); 
                     
                     $batchData = isset($batches) ? $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first() : null;
-                    $keterangan = $batchData ? $batchData->keterangan : '';
-
-                    $isMainPair = strpos($keterangan, 'PAIR_MAIN:') === 0;
-                    $pairedPartName = $isMainPair ? str_replace('PAIR_MAIN:', '', $keterangan) : '';
+                    
+                    $isMainPair = $batchData && str_ends_with($batchData->no_produksi, '-M');
+                    $pairedPartName = '';
                     $batchSubData = null;
 
-                    if ($isMainPair && isset($batches)) {
-                        $batchSubData = $batches->where('material_code', $pairedPartName)->where('shift', 'Malam')->first();
+                    if ($isMainPair) {
+                        $subNoProd = substr($batchData->no_produksi, 0, -2) . '-S';
+                        $batchSubData = isset($batches) ? $batches->where('no_produksi', $subNoProd)->first() : null;
+                        if (!$batchSubData) {
+                            $batchSubData = \Illuminate\Support\Facades\DB::table('produksi_batches')->where('no_produksi', $subNoProd)->first();
+                        }
+                        
+                        if ($batchSubData) {
+                            $pairedPartName = $batchSubData->material_code;
+                        } else {
+                            $isMainPair = false; 
+                        }
                     }
 
                     $grandTarget += $target; $grandStroke += $stroke; $grandReg += $plan->s2_plan_reg; $grandOt += $plan->s2_plan_ot;
@@ -254,31 +262,20 @@
                         {{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}
                     </td>
 
-                    <td class="text-left" style="font-size: 8px; line-height: 1.2;">
-                        @if($batchData)
-                            <strong>{{ $batchData->material_code }}</strong><br>
-                            Ambil: <b>{{ number_format($batchData->qty_ambil_pcs) }}</b> Sht<br>
-                            @if(($batchData->qty_return_warehouse ?? 0) > 0)
-                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ number_format($batchData->qty_return_warehouse) }} Sht</span><br>
-                                Pakai: <b>{{ number_format($batchData->qty_ambil_pcs - $batchData->qty_return_warehouse) }}</b> Sht<br>
-                            @endif
-                            <small style="color: #555;">Coil: {{ $batchData->coil_id }}</small>
-
-                            {{-- ✨ RINCIAN SEPARATING ✨ --}}
-                            @if($isMainPair && $batchSubData)
-                                @php
-                                    $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
-                                    $tOK2 = $batchSubData->qty_hasil_ok ?? 0; $tNG2 = $batchSubData->qty_hasil_ng ?? 0;
-                                    $totPcs = $tOK1 + $tNG1 + $tOK2 + $tNG2;
-                                @endphp
-                                <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999;">
-                                    <span style="color:#059669; font-weight:bold;">Total Hasil: {{ number_format($totPcs) }} Pcs</span><br>
-                                    <span style="color:#1e40af; font-weight:bold;">▶ Utama:</span> OK {{ number_format($tOK1) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG1) }}</span><br>
-                                    <span style="color:#d97706; font-weight:bold;">▶ Psg:</span> OK {{ number_format($tOK2) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG2) }}</span>
-                                </div>
-                            @endif
-
-                        @else - @endif
+                    <td class="text-left" style="font-size: 8px; line-height: 1.4;">
+                        {{-- ✨ HANYA MENAMPILKAN KETERANGAN SEPARATING ✨ --}}
+                        @if($isMainPair && $batchSubData)
+                            @php
+                                $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
+                                $tOK2 = $batchSubData->qty_hasil_ok ?? 0; $tNG2 = $batchSubData->qty_hasil_ng ?? 0;
+                                $totPcs = $tOK1 + $tNG1 + $tOK2 + $tNG2;
+                            @endphp
+                            <span style="color:#059669; font-weight:bold; font-size: 9px;">Total Hasil: {{ number_format($totPcs) }} Pcs</span><br>
+                            <span style="color:#1e40af; font-weight:bold;">▶ Utama:</span> OK {{ number_format($tOK1) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG1) }}</span><br>
+                            <span style="color:#d97706; font-weight:bold;">▶ Psg:</span> OK {{ number_format($tOK2) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG2) }}</span>
+                        @else
+                            -
+                        @endif
                     </td>
                 </tr>
                 @endforeach

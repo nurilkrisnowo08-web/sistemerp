@@ -107,8 +107,8 @@ class PPICController extends Controller
         $lineFinishTimeS2 = [];
 
         foreach($allPlans as $p) {
-            // ✨ FITUR BARU: Skip (sembunyikan) Part Pasangan/Sub dari tampilan Dashboard PPIC
-            $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('keterangan', 'LIKE', 'PAIR_SUB:%')->first();
+            // ✨ FITUR BARU ANTI-WIPE: Sembunyikan Part Pasangan/Sub berdasarkan Ujung Kode Batch (-S)
+            $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
             if ($cekSub) {
                 continue; 
             }
@@ -248,35 +248,38 @@ class PPICController extends Controller
             if ($target_s1 == 0) $qty_lembar_s1 = 0;
             $qty_lembar_s2 = $kebutuhan_lembar - $qty_lembar_s1;
 
-            $ketMain = $part_separator ? "PAIR_MAIN:{$part_separator}" : "AUTO-DEPLOY FROM PPIC";
-            $ketSub  = "PAIR_SUB:{$request->part_no}";
+            $ket = "AUTO-DEPLOY FROM PPIC";
+            // KODE SAKTI: -M untuk part utama jika separating, -S untuk part sub.
+            $main_suffix = $part_separator ? '-M' : '';
 
             if ($target_s1 > 0 && $mesin_id) {
+                $base_prod_s1 = 'WOS-S1-' . date('His');
                 DB::table('produksi_batches')->insert([
-                    'no_produksi' => 'WOS-S1-' . date('His') . '-M', 'plan_id' => $planIdMain, 'shift' => 'Pagi', 'mesin_id' => $mesin_id,
+                    'no_produksi' => $base_prod_s1 . $main_suffix, 'plan_id' => $planIdMain, 'shift' => 'Pagi', 'mesin_id' => $mesin_id,
                     'rm_stock_id' => $rm_stock->id, 'material_code' => $request->part_no, 'qty_ambil_pcs' => $qty_lembar_s1, 'cavity' => $cavity,
-                    'status' => 'PROSES', 'keterangan' => $ketMain, 'created_at' => now(), 'updated_at' => now()
+                    'status' => 'PROSES', 'keterangan' => $ket, 'created_at' => now(), 'updated_at' => now()
                 ]);
                 if ($planIdSub) {
                     DB::table('produksi_batches')->insert([
-                        'no_produksi' => 'WOS-S1-' . date('His') . '-S', 'plan_id' => $planIdSub, 'shift' => 'Pagi', 'mesin_id' => $mesin_id,
+                        'no_produksi' => $base_prod_s1 . '-S', 'plan_id' => $planIdSub, 'shift' => 'Pagi', 'mesin_id' => $mesin_id,
                         'rm_stock_id' => 0, 'material_code' => $part_separator, 'qty_ambil_pcs' => 0, 'cavity' => 1,
-                        'status' => 'PROSES', 'keterangan' => $ketSub, 'created_at' => now(), 'updated_at' => now()
+                        'status' => 'PROSES', 'keterangan' => $ket, 'created_at' => now(), 'updated_at' => now()
                     ]);
                 }
             }
 
             if ($target_s2 > 0 && $mesin_id) {
+                $base_prod_s2 = 'WOS-S2-' . date('His');
                 DB::table('produksi_batches')->insert([
-                    'no_produksi' => 'WOS-S2-' . date('His') . '-M', 'plan_id' => $planIdMain, 'shift' => 'Malam', 'mesin_id' => $mesin_id,
+                    'no_produksi' => $base_prod_s2 . $main_suffix, 'plan_id' => $planIdMain, 'shift' => 'Malam', 'mesin_id' => $mesin_id,
                     'rm_stock_id' => $rm_stock->id, 'material_code' => $request->part_no, 'qty_ambil_pcs' => $qty_lembar_s2, 'cavity' => $cavity,
-                    'status' => 'PROSES', 'keterangan' => $ketMain, 'created_at' => now(), 'updated_at' => now()
+                    'status' => 'PROSES', 'keterangan' => $ket, 'created_at' => now(), 'updated_at' => now()
                 ]);
                 if ($planIdSub) {
                     DB::table('produksi_batches')->insert([
-                        'no_produksi' => 'WOS-S2-' . date('His') . '-S', 'plan_id' => $planIdSub, 'shift' => 'Malam', 'mesin_id' => $mesin_id,
+                        'no_produksi' => $base_prod_s2 . '-S', 'plan_id' => $planIdSub, 'shift' => 'Malam', 'mesin_id' => $mesin_id,
                         'rm_stock_id' => 0, 'material_code' => $part_separator, 'qty_ambil_pcs' => 0, 'cavity' => 1,
-                        'status' => 'PROSES', 'keterangan' => $ketSub, 'created_at' => now(), 'updated_at' => now()
+                        'status' => 'PROSES', 'keterangan' => $ket, 'created_at' => now(), 'updated_at' => now()
                     ]);
                 }
             }
@@ -291,7 +294,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. UPDATE & REVISI WOS (DENGAN PROTEKSI PENGAMAN + SEPARATING CHECK)
+     * 4. UPDATE & REVISI WOS
      */
     public function updateWos(Request $request, $id)
     {
@@ -313,8 +316,13 @@ class PPICController extends Controller
             $alreadyReturnedByProd = $existingBatches->sum('qty_return_warehouse');
             $sampleBatch = $existingBatches->first();
             
-            $keteranganToSave = $sampleBatch ? $sampleBatch->keterangan : 'DIREVISI PPIC';
-            $is_separating_sub = str_starts_with($keteranganToSave, 'PAIR_SUB:');
+            // Pertahankan suffix pasangan
+            $suffix = '';
+            if ($sampleBatch) {
+                if (str_ends_with($sampleBatch->no_produksi, '-M')) $suffix = '-M';
+                if (str_ends_with($sampleBatch->no_produksi, '-S')) $suffix = '-S';
+            }
+            $is_separating_sub = ($suffix === '-S');
 
             $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
             $old_target_s2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
@@ -366,17 +374,17 @@ class PPICController extends Controller
 
             if ($new_target_s1 > 0) {
                 DB::table('produksi_batches')->insert([
-                    'no_produksi' => 'WOS-S1-REV-' . date('His'), 'plan_id' => $id, 'shift' => 'Pagi', 'mesin_id' => $mesin ? $mesin->id : null,
+                    'no_produksi' => 'WOS-S1-REV-' . date('His') . $suffix, 'plan_id' => $id, 'shift' => 'Pagi', 'mesin_id' => $mesin ? $mesin->id : null,
                     'rm_stock_id' => $rm_stock_id, 'material_code' => $plan->part_no, 'qty_ambil_pcs' => $qty_lembar_s1, 'cavity' => $cavity,
-                    'status' => 'PROSES', 'keterangan' => $keteranganToSave, 'created_at' => now(), 'updated_at' => now()
+                    'status' => 'PROSES', 'keterangan' => 'DIREVISI PPIC', 'created_at' => now(), 'updated_at' => now()
                 ]);
             }
 
             if ($new_target_s2 > 0) {
                 DB::table('produksi_batches')->insert([
-                    'no_produksi' => 'WOS-S2-REV-' . date('His'), 'plan_id' => $id, 'shift' => 'Malam', 'mesin_id' => $mesin ? $mesin->id : null,
+                    'no_produksi' => 'WOS-S2-REV-' . date('His') . $suffix, 'plan_id' => $id, 'shift' => 'Malam', 'mesin_id' => $mesin ? $mesin->id : null,
                     'rm_stock_id' => $rm_stock_id, 'material_code' => $plan->part_no, 'qty_ambil_pcs' => $qty_lembar_s2, 'cavity' => $cavity,
-                    'status' => 'PROSES', 'keterangan' => $keteranganToSave, 'created_at' => now(), 'updated_at' => now()
+                    'status' => 'PROSES', 'keterangan' => 'DIREVISI PPIC', 'created_at' => now(), 'updated_at' => now()
                 ]);
             }
 
@@ -392,39 +400,27 @@ class PPICController extends Controller
      */
     public function printWos($date, $shift, $line_code)
     {
-        $plansS1 = DB::table('production_plans')
-            ->where('plan_date', $date)
-            ->where('line_code', $line_code)
-            ->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)
-            ->orderBy('id', 'asc')->get();
+        $plansS1 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
+        $plansS2 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
 
-        $plansS2 = DB::table('production_plans')
-            ->where('plan_date', $date)
-            ->where('line_code', $line_code)
-            ->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)
-            ->orderBy('id', 'asc')->get();
-
-        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada jadwal di mesin ini untuk dicetak.');
-        }
+        if ($plansS1->isEmpty() && $plansS2->isEmpty()) return redirect()->back()->with('error', 'Tidak ada jadwal di mesin ini untuk dicetak.');
 
         $planIds = collect()->merge($plansS1)->merge($plansS2)->pluck('id')->unique()->toArray();
-
         $batches = DB::table('produksi_batches')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->whereIn('produksi_batches.plan_id', $planIds)
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
-        // ✨ FILTER AJAIB: Jangan bawa PAIR_SUB ke kertas WOS sebagai baris utama biar jamnya gak berantakan
+        // ✨ FILTER AJAIB: Jangan bawa Batch -S (Pasangan) ke kertas WOS biar jamnya gak berantakan!
         $plansS1 = $plansS1->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
-            return !($batchData && strpos($batchData->keterangan, 'PAIR_SUB:') === 0);
+            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
         })->values();
 
         $plansS2 = $plansS2->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
-            return !($batchData && strpos($batchData->keterangan, 'PAIR_SUB:') === 0);
+            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
         })->values();
 
         return view('PPIC.print_wos', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
@@ -435,12 +431,7 @@ class PPICController extends Controller
      */
     public function printWosBundle($date)
     {
-        $allPlans = DB::table('production_plans')
-            ->where('plan_date', $date)
-            ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
-            ->orderBy('id', 'asc')
-            ->get();
-
+        $allPlans = DB::table('production_plans')->where('plan_date', $date)->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
         if ($allPlans->isEmpty()) return redirect()->back()->with('error', 'Belum ada jadwal produksi pada tanggal ini untuk dicetak.');
 
         $planIds = $allPlans->pluck('id')->toArray();
@@ -450,10 +441,10 @@ class PPICController extends Controller
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
-        // ✨ FILTER AJAIB: Buang PAIR_SUB dari daftar rencana
+        // ✨ FILTER AJAIB: Buang Batch -S dari daftar rencana bundle
         $allPlansFiltered = $allPlans->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->first();
-            return !($batchData && strpos($batchData->keterangan, 'PAIR_SUB:') === 0);
+            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
         });
 
         $bigPlans = $allPlansFiltered->filter(function($p) { $code = strtoupper($p->line_code); return !str_contains($code, 'C') && !str_contains($code, 'SMALL'); })->values();
@@ -472,7 +463,7 @@ class PPICController extends Controller
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->whereIn('produksi_batches.plan_id', $planIds)
-            ->where('produksi_batches.rm_stock_id', '!=', 0) // Jangan print material untuk separating part
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') // Jangan print material untuk separating part pasangan
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name', 'parts.part_name')
             ->orderBy('produksi_batches.shift', 'desc')->get();
 
@@ -651,9 +642,9 @@ class PPICController extends Controller
                 throw new \Exception("❌ Batch ini sudah di-Close! Sistem menolak proses ganda agar data tidak terduplikasi.");
             }
 
-            $is_separating = ($batch->rm_stock_id == 0 || is_null($batch->rm_stock_id));
+            $is_separating_sub = str_ends_with($batch->no_produksi, '-S');
 
-            if (!$is_separating) {
+            if (!$is_separating_sub) {
                 if ((int)$batch->qty_return_warehouse > 0) {
                     $sisa = (int)$batch->qty_return_warehouse;
                 } else {
@@ -700,7 +691,7 @@ class PPICController extends Controller
             $this->syncToActual($id);
             DB::commit();
             
-            $msg = $is_separating ? "Batch Separating Closed! Barang jadi ditambahkan." : "Batch Closed! {$sisa} Lembar dicatat return ke Gudang RM.";
+            $msg = $is_separating_sub ? "Batch Separating Closed! Barang jadi ditambahkan." : "Batch Closed! {$sisa} Lembar dicatat return ke Gudang RM.";
             return redirect()->back()->with('success', $msg);
 
         } catch (\Exception $e) {
