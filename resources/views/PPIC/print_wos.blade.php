@@ -7,8 +7,14 @@
     <style>
         @page { size: landscape; margin: 10mm; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10px; margin: 0; padding: 0; color: #111; }
-        .no-print-area { text-align: right; margin-bottom: 15px; }
-        .btn-print { background: #0f172a; color: white; border: none; padding: 10px 25px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        
+        /* Area tombol print & back (nggak akan ikut keprint) */
+        .no-print-area { text-align: right; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        .btn-print { background: #0f172a; color: white; border: none; padding: 10px 25px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s; }
+        .btn-back { background: #64748b; color: white; border: none; padding: 10px 25px; font-size: 14px; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-right: 10px; transition: 0.3s; }
+        .btn-print:hover { background: #1e293b; }
+        .btn-back:hover { background: #475569; }
+
         .header-container { display: table; width: 100%; border-bottom: 4px double #222; padding-bottom: 15px; margin-bottom: 15px; }
         .header-container > div { display: table-cell; vertical-align: middle; }
         .logo-section { width: 30%; }
@@ -39,6 +45,8 @@
 </head>
 <body>
     <div class="no-print no-print-area">
+        {{-- ✨ TOMBOL KEMBALI / TUTUP TAB ✨ --}}
+        <button class="btn-back" onclick="window.history.back(); window.close();">⬅️ KEMBALI / TUTUP</button>
         <button class="btn-print" onclick="window.print()">🖨️ PRINT WOS (FULL DAY)</button>
     </div>
 
@@ -81,7 +89,6 @@
                 <th rowspan="2" width="50">M/C LINE</th>
                 <th rowspan="2" width="35">JAM</th>
                 <th colspan="3">ACTUAL PRODUKSI</th>
-                {{-- ✨ UBAH HEADER JADI KETERANGAN ✨ --}}
                 <th rowspan="2" width="110">KETERANGAN</th>
             </tr>
             <tr>
@@ -168,7 +175,6 @@
                     </td>
 
                     <td class="text-left" style="font-size: 8px; line-height: 1.4;">
-                        {{-- ✨ HANYA MENAMPILKAN KETERANGAN SEPARATING ✨ --}}
                         @if($isMainPair && $batchSubData)
                             @php
                                 $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
@@ -263,7 +269,6 @@
                     </td>
 
                     <td class="text-left" style="font-size: 8px; line-height: 1.4;">
-                        {{-- ✨ HANYA MENAMPILKAN KETERANGAN SEPARATING ✨ --}}
                         @if($isMainPair && $batchSubData)
                             @php
                                 $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
