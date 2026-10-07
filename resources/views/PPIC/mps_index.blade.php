@@ -142,7 +142,6 @@
                             </tr>
                             @foreach ($s1Plans as $index => $p)
                                 @php 
-                                    // ✨ FIX: Logika Plus untuk Overproduksi
                                     if ($p->balance < 0) {
                                         $balanceStatus = 'balance-success';
                                         $balanceIcon = 'fa-plus-circle';
@@ -173,7 +172,6 @@
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        {{-- ✨ FIX: GEMBOK UI KEMBALI AKTIF --}}
                                         @if($p->total_actual > 0)
                                             <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold" disabled title="Terkunci: Produksi Sudah Mulai (Aktual > 0)">
                                                 <i class="fas fa-lock"></i>
@@ -186,7 +184,6 @@
                                     </td>
                                 </tr>
 
-                                {{-- MODAL REVISI S1 (Hanya dirender jika aktual belum ada biar aman) --}}
                                 @if($p->total_actual == 0)
                                 <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -202,7 +199,7 @@
                                                         <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
                                                     </div>
                                                     <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
-                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{$p->line_code }}</label>
+                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
                                                         <div class="row">
                                                             <div class="col-6">
                                                                 <label class="small font-weight-bold">S1 Reguler</label>
@@ -254,7 +251,6 @@
                             </tr>
                             @foreach ($s2Plans as $index =>$p)
                                 @php 
-                                    // ✨ FIX: Logika Plus untuk Overproduksi
                                     if ($p->balance < 0) {
                                         $balanceStatus = 'balance-success';$balanceIcon = 'fa-plus-circle';
                                         $balanceText = '+' . number_format(abs($p->balance));
@@ -282,7 +278,6 @@
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        {{-- ✨ FIX: GEMBOK UI KEMBALI AKTIF --}}
                                         @if($p->total_actual > 0)
                                             <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold" disabled title="Terkunci: Produksi Sudah Mulai (Aktual > 0)">
                                                 <i class="fas fa-lock"></i>
@@ -295,7 +290,6 @@
                                     </td>
                                 </tr>
 
-                                {{-- MODAL REVISI S2 (Hanya dirender jika aktual belum ada biar aman) --}}
                                 @if($p->total_actual == 0)
                                 <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
@@ -374,7 +368,7 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER (DENGAN HIDDEN DATE & ALERT MATERIAL) --}}
+{{-- MODAL REGISTER --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
@@ -432,6 +426,18 @@
 
                         <div class="col-md-4 pl-4">
                             <h6 class="font-weight-bold text-success mb-3">03. QUANTITY_PLANNING</h6>
+
+                            {{-- ✨ FITUR SEPARATING PART DROPDOWN --}}
+                            <div class="mb-3 p-2 rounded" style="background-color: #f0fdf4; border: 1px dashed #10b981;">
+                                <label class="small font-weight-bold text-success"><i class="fas fa-link mr-1"></i> Separating Part (Opsional)</label>
+                                <select name="part_no_separator" id="select_part_separator" class="form-control input-industrial border-success" style="font-size: 11px;">
+                                    <option value="">-- TANPA SEPARATING (TIDAK ADA PASANGAN) --</option>
+                                </select>
+                                <div class="text-muted mt-1" style="font-size: 9.5px; line-height: 1.3;">
+                                    Jika part Kiri/Kanan (cth: 35 & 36), pilih pasangannya. WOS akan otomatis <b>DIGABUNG JADI 1 BARIS</b> dan stok RM cuma dipotong sekali.
+                                </div>
+                            </div>
+
                             <div class="shift-toggle-pill mb-3 w-100">
                                 <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="border:none; border-radius:50px; padding:10px; background:#4361ee; color:white;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
                                 <button type="button" id="m_btn_s2" class="shift-btn w-50" style="border:none; border-radius:50px; padding:10px; background:none; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
@@ -513,8 +519,15 @@
     document.getElementById('select_customer').addEventListener('change', function() {
         fetch(`/get-parts-and-specs/${this.value}`).then(r => r.json()).then(data => {
             let html = '<option value="">-- SELECT PART --</option>';
-            data.parts.forEach(p => html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`);
+            let htmlSep = '<option value="">-- TANPA SEPARATING (TIDAK ADA PASANGAN) --</option>';
+            
+            data.parts.forEach(p => {
+                html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
+                htmlSep += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
+            });
+            
             document.getElementById('select_part').innerHTML = html;
+            document.getElementById('select_part_separator').innerHTML = htmlSep;
         });
     });
 
