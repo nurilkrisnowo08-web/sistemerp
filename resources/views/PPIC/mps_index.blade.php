@@ -355,7 +355,7 @@
                                 <label class="small font-weight-bold">Select Line</label>
                                 <select name="line_code" id="select_line" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE LINE --</option>
-                                    @foreach ($availableLines as$l)
+                                    @foreach ($availableLines as $l)
                                         <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{$l->nama_Line }}</option>
                                     @endforeach
                                 </select>
@@ -364,7 +364,7 @@
                                 <label class="small font-weight-bold">Customer</label>
                                 <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE --</option>
-                                    @foreach ($availableCustomers as$c)
+                                    @foreach ($availableCustomers as $c)
                                         <option value="{{ $c->code }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
