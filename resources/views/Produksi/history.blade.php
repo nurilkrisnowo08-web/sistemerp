@@ -118,7 +118,7 @@
             </thead>
             <tbody>
                 @if(isset($histories) && count($histories) > 0)
-                    @foreach($histories as$h)
+                    @foreach($histories as $h)
                     <tr>
                         <td>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
                         <td>{{ $h->no_produksi }}</td>
@@ -203,7 +203,7 @@
                     </thead>
                     <tbody>
                         @if(isset($histories) && count($histories) > 0)
-                            @foreach($histories as$h)
+                            @foreach($histories as $h)
                             @php 
                                 $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? $h->paired_ok : 0);
                                 $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? $h->paired_ng : 0);
