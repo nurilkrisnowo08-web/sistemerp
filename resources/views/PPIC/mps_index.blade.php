@@ -364,7 +364,7 @@
                                 <label class="small font-weight-bold">Customer</label>
                                 <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE --</option>
-                                    @foreach($availableCustomers as$c)
+                                    @foreach($availableCustomers as $c)
                                         <option value="{{ $c->code }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
