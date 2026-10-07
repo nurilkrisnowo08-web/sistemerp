@@ -28,7 +28,6 @@
 </style>
 
 <div class="container-fluid mt-4 mb-5 anim-up">
-    {{-- ALERT PINTAR MRP --}}
     @if(session('success'))
         <div class="alert alert-success border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #10b981 !important; background-color: #d1fae5;">
             <h6 class="font-weight-bold mb-1"><i class="fas fa-check-circle mr-2 text-success"></i>Sukses!</h6>
@@ -111,7 +110,6 @@
                 </thead>
                 <tbody>
                     @forelse ($groupedPlans as $lineCode => $plansInLine)
-                        {{-- HEADER MESIN --}}
                         <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; border-top: 5px solid #1e293b;">
                             <td colspan="9" class="text-left pl-4">
                                 <h5 class="font-weight-bold text-dark m-0 uppercase tracking-widest py-2">
@@ -144,8 +142,20 @@
                             </tr>
                             @foreach ($s1Plans as $index => $p)
                                 @php 
-                                    $balanceStatus = ($p->balance > 0) ? 'balance-danger' : 'balance-success';
-                                    $balanceIcon = ($p->balance > 0) ? 'fa-exclamation-triangle' : 'fa-check-circle';
+                                    // ✨ FIX: Logika Plus untuk Overproduksi
+                                    if ($p->balance < 0) {
+                                        $balanceStatus = 'balance-success';
+                                        $balanceIcon = 'fa-plus-circle';
+                                        $balanceText = '+' . number_format(abs($p->balance));
+                                    } elseif ($p->balance > 0) {
+                                        $balanceStatus = 'balance-danger';
+                                        $balanceIcon = 'fa-exclamation-triangle';
+                                        $balanceText = number_format($p->balance);
+                                    } else {
+                                        $balanceStatus = 'balance-success';
+                                        $balanceIcon = 'fa-check-circle';
+                                        $balanceText = '0';
+                                    }
                                 @endphp
                                 <tr>
                                     <td class="text-muted">{{ $index + 1 }}</td>
@@ -156,21 +166,29 @@
                                     <td class="text-primary font-weight-bold">{{ number_format($p->total_actual) }}</td>
                                     <td>
                                         <span class="badge-balance {{ $balanceStatus }}">
-                                            <i class="fas {{ $balanceIcon }} mr-1"></i> {{ number_format($p->balance) }}
+                                            <i class="fas {{ $balanceIcon }} mr-1"></i> {{ $balanceText }}
                                         </span>
                                     </td>
                                     <td><span class="badge-time">{{ $p->start_time }}</span></td>
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" title="Revisi Target">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
+                                        {{-- ✨ FIX: GEMBOK UI KEMBALI AKTIF --}}
+                                        @if($p->total_actual > 0)
+                                            <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold" disabled title="Terkunci: Produksi Sudah Mulai (Aktual > 0)">
+                                                <i class="fas fa-lock"></i>
+                                            </button>
+                                        @else
+                                            <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi Target">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
 
-                                {{-- MODAL REVISI S1 --}}
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
+                                {{-- MODAL REVISI S1 (Hanya dirender jika aktual belum ada biar aman) --}}
+                                @if($p->total_actual == 0)
+                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
@@ -223,6 +241,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @endif
                             @endforeach
                         @endif
 
@@ -235,8 +254,17 @@
                             </tr>
                             @foreach ($s2Plans as $index =>$p)
                                 @php 
-                                    $balanceStatus = ($p->balance > 0) ? 'balance-danger' : 'balance-success';
-                                    $balanceIcon = ($p->balance > 0) ? 'fa-exclamation-triangle' : 'fa-check-circle';
+                                    // ✨ FIX: Logika Plus untuk Overproduksi
+                                    if ($p->balance < 0) {
+                                        $balanceStatus = 'balance-success';$balanceIcon = 'fa-plus-circle';
+                                        $balanceText = '+' . number_format(abs($p->balance));
+                                    } elseif ($p->balance > 0) {
+                                        $balanceStatus = 'balance-danger';$balanceIcon = 'fa-exclamation-triangle';
+                                        $balanceText = number_format($p->balance);
+                                    } else {
+                                        $balanceStatus = 'balance-success';
+                                        $balanceIcon = 'fa-check-circle';$balanceText = '0';
+                                    }
                                 @endphp
                                 <tr>
                                     <td class="text-muted">{{ $index + 1 }}</td>
@@ -247,20 +275,28 @@
                                     <td class="text-primary font-weight-bold">{{ number_format($p->total_actual) }}</td>
                                     <td>
                                         <span class="badge-balance {{ $balanceStatus }}">
-                                            <i class="fas {{ $balanceIcon }} mr-1"></i> {{ number_format($p->balance) }}
+                                            <i class="fas {{ $balanceIcon }} mr-1"></i> {{ $balanceText }}
                                         </span>
                                     </td>
                                     <td><span class="badge-time">{{ $p->start_time }}</span></td>
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" title="Revisi Target">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
+                                        {{-- ✨ FIX: GEMBOK UI KEMBALI AKTIF --}}
+                                        @if($p->total_actual > 0)
+                                            <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold" disabled title="Terkunci: Produksi Sudah Mulai (Aktual > 0)">
+                                                <i class="fas fa-lock"></i>
+                                            </button>
+                                        @else
+                                            <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" title="Revisi Target">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        @endif
                                     </td>
                                 </tr>
 
-                                {{-- MODAL REVISI S2 --}}
+                                {{-- MODAL REVISI S2 (Hanya dirender jika aktual belum ada biar aman) --}}
+                                @if($p->total_actual == 0)
                                 <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
@@ -314,6 +350,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @endif
                             @endforeach
                         @endif
 
@@ -355,7 +392,7 @@
                                 <label class="small font-weight-bold">Select Line</label>
                                 <select name="line_code" id="select_line" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE LINE --</option>
-                                    @foreach ($availableLines as $l)
+                                    @foreach ($availableLines as$l)
                                         <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{$l->nama_Line }}</option>
                                     @endforeach
                                 </select>
@@ -364,7 +401,7 @@
                                 <label class="small font-weight-bold">Customer</label>
                                 <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE --</option>
-                                    @foreach ($availableCustomers as $c)
+                                    @foreach ($availableCustomers as$c)
                                         <option value="{{ $c->code }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
@@ -415,7 +452,6 @@
                                 </div>
                             </div>
                             
-                            {{-- INI PENTING: TANGGAL PLAN BIAR NGGAK ERROR NULL --}}
                             <div class="mt-3">
                                 <input type="hidden" name="plan_date" value="{{ $date }}">
                                 <textarea name="remark" class="form-control" rows="2" style="border-radius:12px;" placeholder="Optional remark..."></textarea>
@@ -433,7 +469,6 @@
 </div>
 
 <script>
-    // ✨ FIX JAVASCRIPT: Bersihkan input shift lain agar tidak dikirim ganda
     function modalShiftSwitch(s) {
         const isS1 = s === 1;
         document.getElementById('m_btn_s1').style.background = isS1 ? '#4361ee' : 'none';
@@ -446,7 +481,6 @@
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
 
-        // Kosongkan nilai shift yang tidak dipilih agar tidak dikirim ke database
         if (isS1) {
             document.getElementById('s2_reg').value = 0;
             document.getElementById('s2_ot').value = 0;
@@ -484,7 +518,6 @@
         });
     });
 
-    // ✨ FIX JAVASCRIPT: Hanya isi nilai sesuai shift yang sedang aktif
     document.getElementById('select_line').addEventListener('change', function() {
         let type = this.options[this.selectedIndex].getAttribute('data-type');
         let capInput = document.getElementById('input_cap');
