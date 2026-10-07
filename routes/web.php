@@ -220,6 +220,7 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::put('/ppic/mps/wos/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWos'])->name('ppic.wos.update');
     Route::get('/ppic/mps/material/print/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerima'])->name('ppic.material.print');
     Route::get('planning/ppic/mps/wos/print/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWos'])->name('ppic.wos.print');
+    Route::get('/ppic/wos/print-bundle/{date}', [\App\Http\Controllers\PPICController::class, 'printWosBundle'])->name('ppic.wos.print_bundle');
 
     // Halaman Dashboard Utama (Intelligence Hub) dengan Grafik OK vs NG
 Route::get('/ppic-planning', [App\Http\Controllers\PPICController::class, 'index'])->name('ppic.index');
