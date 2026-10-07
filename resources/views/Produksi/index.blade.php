@@ -87,8 +87,20 @@
                     </td>
                     <td>
                         @php 
-                            $childParts = DB::table('produksi_batch_parts')->where('batch_id',$p->batch_id)->pluck('part_no')->toArray();
-                            $displayParts = count($childParts) > 0 ? implode(' & ', $childParts) :$p->material_code;
+                            // CEK APAKAH INI HASIL BIKINAN WOS PPIC YANG KANAN KIRI
+                            $isMainPair = isset($p->is_separating) && $p->is_separating;
+                            $pairedPartCode = $isMainPair ? $p->paired_part : null;
+                            
+                            // LOGIKA LAMA (Manual Input Terminal)
+                            $childParts = DB::table('produksi_batch_parts')->where('batch_id', $p->batch_id)->pluck('part_no')->toArray();
+                            
+                            if ($isMainPair) {
+                                $displayParts = $p->material_code . ' & ' . $pairedPartCode;
+                            } elseif (count($childParts) > 0) {
+                                $displayParts = implode(' & ', $childParts);
+                            } else {
+                                $displayParts = $p->material_code;
+                            }
                         @endphp
                         <div class="font-weight-bold text-dark">{{ $displayParts }}</div>
                         <small class="text-muted">{{ $p->coil_id }} <span class="badge badge-light border">Cav: {{ $p->cavity ?? 1 }}</span></small>
@@ -135,7 +147,11 @@
 </div>
 
 @foreach($activeProductions as $p)
-@php $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; @endphp
+@php 
+    $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; 
+    $isMainPair = isset($p->is_separating) && $p->is_separating;
+    $pairedPartCode = $isMainPair ? $p->paired_part : null;
+@endphp
 <div class="modal fade" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg" style="border-radius:25px; overflow: hidden;">
@@ -149,38 +165,84 @@
                 @csrf @method('PUT')
                 <input type="hidden" name="status" value="COMPLETED">
                 <input type="hidden" id="cavity_{{ $p->batch_id }}" value="{{ $p->cavity ?? 1 }}">
-                <div class="modal-body p-5">
+                <div class="modal-body p-4 bg-light">
                     <div id="police_msg_{{ $p->batch_id }}" class="alert alert-warning border-0 font-weight-bold text-center py-3 mb-4">👮 STATUS: STANDBY FOR SYNC...</div>
-                    <div class="row">
-                        <div class="col-md-8">
-                            <label class="small font-weight-bold text-dark uppercase mb-3">RINCIAN HASIL PER PART (RH / LH)</label>
-                            @php $childs = DB::table('produksi_batch_parts')->where('batch_id',$p->batch_id)->get(); @endphp
-                            
-                            @if($childs->count() > 0)
-                                @foreach($childs as $idx =>$cp)
-                                    <div class="row mb-3 p-3 bg-white shadow-sm border" style="border-radius: 12px;">
-                                        <div class="col-12 mb-2"><strong class="text-primary font-weight-bold" style="font-size:14px;"><i class="fas fa-cog mr-1"></i> {{ $cp->part_no }}</strong></div>
-                                        <div class="col-6">
-                                            <label class="small text-success font-weight-bold">QTY OK</label>
-                                            <input type="number" name="qty_hasil_ok_parts[{{ $cp->id }}]" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="small text-danger font-weight-bold">QTY NG (Total)</label>
-                                            <input type="number" name="qty_hasil_ng_parts[{{ $cp->id }}]" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
-                                        </div>
-                                    </div>
-                                @endforeach
-                            @else
-                                <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
-                            @endif
+                    
+                    {{-- ✨ LOGIKA AUTO PECAH KANAN KIRI (Dari WOS PPIC) ✨ --}}
+                    @if($isMainPair)
+                        <div class="row mb-3">
+                            <div class="col-md-6 border-right">
+                                <label class="font-weight-bold text-dark d-block border-bottom pb-2 mb-3">
+                                    <span class="badge badge-primary mr-1">UTAMA</span> {{ $p->material_code }}
+                                </label>
+                                <div class="form-group">
+                                    <label class="small font-weight-bold text-success">Hasil OK (Pcs)</label>
+                                    <input type="number" name="qty_hasil_ok" id="ok_main_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="form-control font-weight-bold border-success calc-input-dual" placeholder="0" required min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="small font-weight-bold text-danger">Reject NG (Pcs)</label>
+                                    <input type="number" name="qty_hasil_ng" id="ng_main_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="form-control font-weight-bold border-danger calc-input-dual" placeholder="0" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="font-weight-bold text-dark d-block border-bottom pb-2 mb-3">
+                                    <span class="badge badge-info mr-1">PASANGAN</span> {{ $pairedPartCode }}
+                                </label>
+                                <input type="hidden" name="paired_batch_id" value="{{ $p->paired_batch_id }}">
+                                <div class="form-group">
+                                    <label class="small font-weight-bold text-success">Hasil OK (Pcs)</label>
+                                    <input type="number" name="paired_qty_ok" id="ok_sub_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="form-control font-weight-bold border-success calc-input-dual" placeholder="0" required min="0">
+                                </div>
+                                <div class="form-group">
+                                    <label class="small font-weight-bold text-danger">Reject NG (Pcs)</label>
+                                    <input type="number" name="paired_qty_ng" id="ng_sub_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="form-control font-weight-bold border-danger calc-input-dual" placeholder="0" min="0">
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="small font-weight-bold text-danger uppercase">Return Material (Sheet)</label>
-                            <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
-                            <small class="text-muted d-block" style="font-size:10px;">Return akan dikalikan {{ $p->cavity ?? 1 }} Pcs saat hitung Gap</small>
+                    {{-- LOGIKA LAMA: MANUAL MULTIPART TERMINAL --}}
+                    @else
+                        <div class="row">
+                            <div class="col-md-8">
+                                <label class="small font-weight-bold text-dark uppercase mb-3">RINCIAN HASIL PER PART</label>
+                                @php $childs = DB::table('produksi_batch_parts')->where('batch_id',$p->batch_id)->get(); @endphp
+                                
+                                @if($childs->count() > 0)
+                                    @foreach($childs as $idx =>$cp)
+                                        <div class="row mb-3 p-3 bg-white shadow-sm border" style="border-radius: 12px;">
+                                            <div class="col-12 mb-2"><strong class="text-primary font-weight-bold" style="font-size:14px;"><i class="fas fa-cog mr-1"></i> {{ $cp->part_no }}</strong></div>
+                                            <div class="col-6">
+                                                <label class="small text-success font-weight-bold">QTY OK</label>
+                                                <input type="number" name="qty_hasil_ok_parts[{{ $cp->id }}]" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="small text-danger font-weight-bold">QTY NG</label>
+                                                <input type="number" name="qty_hasil_ng_parts[{{ $cp->id }}]" data-id="{{ $p->batch_id }}" class="input-tactical calc-input" required value="0">
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" required value="0">
+                                @endif
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold text-danger uppercase">Return Material (Sheet)</label>
+                                <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-4" value="0">
+                                <small class="text-muted d-block" style="font-size:10px;">Return akan dikalikan {{ $p->cavity ?? 1 }} Pcs saat hitung Gap</small>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($isMainPair)
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="small font-weight-bold text-danger uppercase">Return Material Utama (Sheet)</label>
+                            <input type="number" name="qty_return_warehouse" id="return_dual_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input-dual mb-1" value="0">
+                            <small class="text-muted d-block" style="font-size:10px;">Return dihitung dari Plat Utama (Dikalikan Cavity: {{ $p->cavity ?? 1 }})</small>
                         </div>
                     </div>
+                    @endif
 
                     <div class="mt-2 border-top pt-3">
                         <label class="small font-weight-bold text-danger uppercase"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
@@ -296,7 +358,6 @@
                             <input type="number" id="qty_ambil_pcs" name="qty_ambil_pcs" class="input-tactical text-center border-primary shadow-sm mb-3" required placeholder="0">
                         </div>
                         <div class="col-6">
-                            {{-- ✨ CAVITY OTOMATIS BACA DARI DATABASE & READONLY --}}
                             <label class="small font-weight-bold text-success">09. CAVITY (OTOMATIS DARI RM)</label>
                             <input type="number" id="cavity_input" name="cavity" class="input-tactical text-center shadow-sm mb-3" style="background:#e9ecef; border: 1px solid #ced4da;" readonly value="1">
                         </div>
@@ -340,42 +401,63 @@
     }
 
     function triggerCalc(batchId) {
-        $(`input[data-id="${batchId}"].calc-input`).first().trigger('input');
+        $(`input[data-id="${batchId}"].calc-input, input[data-id="${batchId}"].calc-input-dual`).first().trigger('input');
     }
 
-    $(document).ready(function() {$(document).on('input', '.calc-input, .ng-qty-input', function() {
+    $(document).ready(function() {
+        // ✨ PERHITUNGAN BARU: MENCAKUP KANAN & KIRI ✨
+        $(document).on('input', '.calc-input, .calc-input-dual, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
-            
             let cavity = parseInt($(`#cavity_${id}`).val()) || 1;
-            let retVal = parseInt($(`#return_${id}`).val()) || 0;
+            
+            // Cek apakah ini form Dual (Separating WOS PPIC) atau form Biasa
+            let isDual = $(`#ok_main_${id}`).length > 0;
+            
+            let retVal = 0;
+            let maxPartUsage = 0;
+            
+            if (isDual) {
+                // Perhitungan form Kanan-Kiri
+                retVal = parseInt($(`#return_dual_${id}`).val()) || 0;
+                let okMain = parseInt($(`#ok_main_${id}`).val()) || 0;
+                let ngMain = parseInt($(`#ng_main_${id}`).val()) || 0;
+                let okSub = parseInt($(`#ok_sub_${id}`).val()) || 0;
+                let ngSub = parseInt($(`#ng_sub_${id}`).val()) || 0;
+                
+                let totalMain = okMain + ngMain;
+                let totalSub = okSub + ngSub;
+                
+                maxPartUsage = Math.max(totalMain, totalSub); // Ambil angka tertinggi antara Kanan dan Kiri
+            } else {
+                // Perhitungan form Biasa
+                retVal = parseInt($(`#return_${id}`).val()) || 0;
+                
+                $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).each(function() {
+                    let currentOk = parseInt($(this).val()) || 0;
+                    let partIdMatch = $(this).attr('name').match(/\[(\d+)\]/);
+                    if(partIdMatch) {
+                        let partId = partIdMatch[1];
+                        let currentNg = parseInt($(`input[name="qty_hasil_ng_parts[${partId}]"]`).val()) || 0;
+                        let currentTotal = currentOk + currentNg;
+                        if (currentTotal > maxPartUsage) {
+                            maxPartUsage = currentTotal;
+                        }
+                    }
+                });
+
+                if (maxPartUsage === 0 && $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).length === 0) {
+                     let oldOk = parseInt($(`#ok_${id}`).val()) || 0;
+                     maxPartUsage = oldOk;
+                }
+            }
+
             let retValInPcs = retVal * cavity; 
             
             let dynamicNgSum = 0;
             $(`#ng_container_${id} .ng-qty-input`).each(function() {
                 dynamicNgSum += parseInt($(this).val()) || 0;
             });
-
-            // ✨ LOGIKA BARU: Cari total (OK + NG) paling gede di antara Kanan dan Kiri
-            let maxPartUsage = 0;
-            $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).each(function() {
-                let currentOk = parseInt($(this).val()) || 0;
-                let partIdMatch = $(this).attr('name').match(/\[(\d+)\]/);
-                if(partIdMatch) {
-                    let partId = partIdMatch[1];
-                    let currentNg = parseInt($(`input[name="qty_hasil_ng_parts[${partId}]"]`).val()) || 0;
-                    
-                    let currentTotal = currentOk + currentNg;
-                    if (currentTotal > maxPartUsage) {
-                        maxPartUsage = currentTotal;
-                    }
-                }
-            });
-
-            if (maxPartUsage === 0 && $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).length === 0) {
-                 let oldOk = parseInt($(`#ok_${id}`).val()) || 0;
-                 maxPartUsage = oldOk;
-            }
 
             // Dihitung dengan NG Dynamic kalau ada NG tambahan selain per-part
             let accounted = maxPartUsage + retValInPcs + dynamicNgSum;
@@ -448,7 +530,6 @@
                 let h = '<option value="" disabled selected>-- SELECT COIL --</option>';
                 if(data && data.length > 0) {
                     data.forEach(i => { 
-                        // ✨ DATA CAVITY DIAMBIL DARI DB
                         h += `<option value="${i.id}" data-qty="${i.stock_pcs}" data-cavity="${i.cavity || 1}">${i.coil_id} (Avail: ${i.stock_pcs})</option>`; 
                     });
                 } else {
@@ -458,7 +539,6 @@
             });
         });
 
-        // ✨ JS BARU: Pas milih Bandel, otomatis ngisi Cavity
         $('#sel_bandel').change(function() {
             let selectedCavity = $(this).find('option:selected').data('cavity') || 1;
             $('#cavity_input').val(selectedCavity);

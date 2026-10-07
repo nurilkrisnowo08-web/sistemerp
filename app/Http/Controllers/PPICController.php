@@ -107,6 +107,12 @@ class PPICController extends Controller
         $lineFinishTimeS2 = [];
 
         foreach($allPlans as $p) {
+            // ✨ FITUR BARU: Skip (sembunyikan) Part Pasangan/Sub dari tampilan Dashboard PPIC
+            $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('keterangan', 'LIKE', 'PAIR_SUB:%')->first();
+            if ($cekSub) {
+                continue; 
+            }
+
             $t_s1 = $p->s1_plan_reg + $p->s1_plan_ot;
             $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
             $dandory = $p->dandory_time ?? 15;
@@ -173,7 +179,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 3. STORE MPS (DENGAN SMART SEPARATING PART)
+     * 3. STORE MPS (DENGAN SMART SEPARATING PART)
      */
     public function mpsStore(Request $request)
     {
@@ -182,7 +188,7 @@ class PPICController extends Controller
             $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
             $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
             $total_target = $target_s1 + $target_s2;
-            $part_separator = $request->part_no_separator; // Input dari view dropdown baru
+            $part_separator = $request->part_no_separator; 
 
             if ($total_target <= 0) {
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
@@ -285,7 +291,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 4. UPDATE & REVISI WOS (DENGAN PROTEKSI PENGAMAN + SEPARATING CHECK)
+     * 4. UPDATE & REVISI WOS (DENGAN PROTEKSI PENGAMAN + SEPARATING CHECK)
      */
     public function updateWos(Request $request, $id)
     {
@@ -296,7 +302,6 @@ class PPICController extends Controller
 
             $existingBatches = DB::table('produksi_batches')->where('plan_id', $id)->get();
             
-            // PENGAMAN 1: Tolak Revisi jika Produksi sudah nyetor aktual atau sudah di-close
             $isStarted = $existingBatches->contains(function($b) {
                 return $b->qty_hasil_ok > 0 || $b->qty_hasil_ng > 0 || $b->status === 'COMPLETED';
             });
@@ -308,7 +313,6 @@ class PPICController extends Controller
             $alreadyReturnedByProd = $existingBatches->sum('qty_return_warehouse');
             $sampleBatch = $existingBatches->first();
             
-            // Pertahankan label pasangan
             $keteranganToSave = $sampleBatch ? $sampleBatch->keterangan : 'DIREVISI PPIC';
             $is_separating_sub = str_starts_with($keteranganToSave, 'PAIR_SUB:');
 
@@ -388,17 +392,40 @@ class PPICController extends Controller
      */
     public function printWos($date, $shift, $line_code)
     {
-        $plansS1 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
-        $plansS2 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
+        $plansS1 = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', $line_code)
+            ->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')->get();
 
-        if ($plansS1->isEmpty() && $plansS2->isEmpty()) return redirect()->back()->with('error', 'Tidak ada jadwal di mesin ini untuk dicetak.');
+        $plansS2 = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', $line_code)
+            ->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')->get();
+
+        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada jadwal di mesin ini untuk dicetak.');
+        }
 
         $planIds = collect()->merge($plansS1)->merge($plansS2)->pluck('id')->unique()->toArray();
+
         $batches = DB::table('produksi_batches')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->whereIn('produksi_batches.plan_id', $planIds)
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
+
+        // ✨ FILTER AJAIB: Jangan bawa PAIR_SUB ke kertas WOS sebagai baris utama biar jamnya gak berantakan
+        $plansS1 = $plansS1->filter(function($plan) use ($batches) {
+            $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
+            return !($batchData && strpos($batchData->keterangan, 'PAIR_SUB:') === 0);
+        })->values();
+
+        $plansS2 = $plansS2->filter(function($plan) use ($batches) {
+            $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
+            return !($batchData && strpos($batchData->keterangan, 'PAIR_SUB:') === 0);
+        })->values();
 
         return view('PPIC.print_wos', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
     }
@@ -408,11 +435,13 @@ class PPICController extends Controller
      */
     public function printWosBundle($date)
     {
-        $allPlans = DB::table('production_plans')->where('plan_date', $date)->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
-        if ($allPlans->isEmpty()) return redirect()->back()->with('error', 'Belum ada jadwal produksi pada tanggal ini untuk dicetak.');
+        $allPlans = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where(DB::raw('s1_plan_reg + s1_plan_ot + s2_plan_reg + s2_plan_ot'), '>', 0)
+            ->orderBy('id', 'asc')
+            ->get();
 
-        $bigPlans = $allPlans->filter(function($p) { $code = strtoupper($p->line_code); return !str_contains($code, 'C') && !str_contains($code, 'SMALL'); });
-        $smallPlans = $allPlans->filter(function($p) { $code = strtoupper($p->line_code); return str_contains($code, 'C') || str_contains($code, 'SMALL'); });
+        if ($allPlans->isEmpty()) return redirect()->back()->with('error', 'Belum ada jadwal produksi pada tanggal ini untuk dicetak.');
 
         $planIds = $allPlans->pluck('id')->toArray();
         $batches = DB::table('produksi_batches')
@@ -420,6 +449,15 @@ class PPICController extends Controller
             ->whereIn('produksi_batches.plan_id', $planIds)
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
+
+        // ✨ FILTER AJAIB: Buang PAIR_SUB dari daftar rencana
+        $allPlansFiltered = $allPlans->filter(function($plan) use ($batches) {
+            $batchData = $batches->where('plan_id', $plan->id)->first();
+            return !($batchData && strpos($batchData->keterangan, 'PAIR_SUB:') === 0);
+        });
+
+        $bigPlans = $allPlansFiltered->filter(function($p) { $code = strtoupper($p->line_code); return !str_contains($code, 'C') && !str_contains($code, 'SMALL'); })->values();
+        $smallPlans = $allPlansFiltered->filter(function($p) { $code = strtoupper($p->line_code); return str_contains($code, 'C') || str_contains($code, 'SMALL'); })->values();
 
         return view('PPIC.print_wos_bundle', compact('bigPlans', 'smallPlans', 'batches', 'date'));
     }
@@ -594,7 +632,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 10. CLOSE BATCH (DENGAN PROTEKSI GANDA & PRIORITAS INPUT MANUAL TERMINAL)
+     * 10. CLOSE BATCH (DENGAN PROTEKSI GANDA & PRIORITAS INPUT MANUAL TERMINAL)
      */
     public function resumeBatch($id) 
     { 
@@ -609,7 +647,6 @@ class PPICController extends Controller
             $batch = DB::table('produksi_batches')->where('id', $id)->first();
             if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan.');
 
-            // KUNCI GANDA: Tolak kalau udah pernah di-Close biar gak duplikat data
             if ($batch->status === 'COMPLETED') {
                 throw new \Exception("❌ Batch ini sudah di-Close! Sistem menolak proses ganda agar data tidak terduplikasi.");
             }
@@ -617,7 +654,6 @@ class PPICController extends Controller
             $is_separating = ($batch->rm_stock_id == 0 || is_null($batch->rm_stock_id));
 
             if (!$is_separating) {
-                // PRIORITAS INPUT TERMINAL: Jika operator sudah ngisi manual qty_return, pake angka itu!
                 if ((int)$batch->qty_return_warehouse > 0) {
                     $sisa = (int)$batch->qty_return_warehouse;
                 } else {
@@ -635,7 +671,7 @@ class PPICController extends Controller
                     ]);
                 }
             } else {
-                $sisa = 0; // Part separating (pasangan) tidak direturn karena ikut plat part utama
+                $sisa = 0; 
             }
 
             if ((int)$batch->qty_hasil_ng > 0) {
