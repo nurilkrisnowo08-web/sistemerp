@@ -3,20 +3,25 @@
 @section('content')
 {{-- ✨ PERHITUNGAN GLOBAL --}}
 @php
-    $totalTake = 0; $totalOk = 0; $totalNg = 0; $totalRet = 0;
+    $totalTake = 0; 
+    $totalOk = 0; 
+    $totalNg = 0; 
+    $totalRet = 0;
     
     // Looping buat ngitung total (termasuk part pasangannya)
-    foreach($histories as$h) {
-        $totalTake +=$h->qty_ambil_pcs;
-        $totalRet +=$h->qty_return_warehouse;
-        
-        $totalOk +=$h->qty_hasil_ok;
-        $totalNg +=$h->qty_hasil_ng;
+    if(isset($histories) && count($histories) > 0) {
+        foreach($histories as$h) {
+            $totalTake +=$h->qty_ambil_pcs;
+            $totalRet +=$h->qty_return_warehouse;
+            
+            $totalOk +=$h->qty_hasil_ok;
+            $totalNg +=$h->qty_hasil_ng;
 
-        // Tambahin total pasangan kalau ada
-        if ($h->is_separating) {
-            $totalOk +=$h->paired_ok;
-            $totalNg +=$h->paired_ng;
+            // Tambahin total pasangan kalau ada
+            if ($h->is_separating) {
+                $totalOk +=$h->paired_ok;
+                $totalNg +=$h->paired_ng;
+            }
         }
     }
 
@@ -112,26 +117,32 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($histories as$h)
-                <tr>
-                    <td>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
-                    <td>{{ $h->no_produksi }}</td>
-                    <td>
-                        {{ $h->material_code }}
-                        @if($h->is_separating) <br> & {{$h->paired_part }} @endif
-                    </td>
-                    <td>{{ number_format($h->qty_ambil_pcs) }}</td>
-                    <td>
-                        {{ number_format($h->qty_hasil_ok) }}
-                        @if($h->is_separating) <br> {{ number_format($h->paired_ok) }} @endif
-                    </td>
-                    <td>
-                        {{ number_format($h->qty_hasil_ng) }}
-                        @if($h->is_separating) <br> {{ number_format($h->paired_ng) }} @endif
-                    </td>
-                    <td>{{ number_format($h->qty_return_warehouse) }}</td>
-                </tr>
-                @endforeach
+                @if(isset($histories) && count($histories) > 0)
+                    @foreach($histories as$h)
+                    <tr>
+                        <td>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
+                        <td>{{ $h->no_produksi }}</td>
+                        <td>
+                            {{ $h->material_code }}
+                            @if($h->is_separating) <br> & {{$h->paired_part }} @endif
+                        </td>
+                        <td>{{ number_format($h->qty_ambil_pcs) }}</td>
+                        <td>
+                            {{ number_format($h->qty_hasil_ok) }}
+                            @if($h->is_separating) <br> {{ number_format($h->paired_ok) }} @endif
+                        </td>
+                        <td>
+                            {{ number_format($h->qty_hasil_ng) }}
+                            @if($h->is_separating) <br> {{ number_format($h->paired_ng) }} @endif
+                        </td>
+                        <td>{{ number_format($h->qty_return_warehouse) }}</td>
+                    </tr>
+                    @endforeach
+                @else
+                    <tr>
+                        <td colspan="7">Belum ada data history produksi</td>
+                    </tr>
+                @endif
             </tbody>
         </table>
         
@@ -191,42 +202,46 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($histories as$h)
-                        @php 
-                            $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? $h->paired_ok : 0);
-                            $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? $h->paired_ng : 0);
-                            $yld = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk +$batchNg)) * 100 : 0;
-                        @endphp
-                        <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
-                            <td class="text-left pl-4">
-                                <div class="font-weight-bold text-dark">{{ date('d/m/y', strtotime($h->updated_at)) }}</div>
-                                <div class="small text-muted">{{ date('H:i', strtotime($h->updated_at)) }}</div>
-                            </td>
-                            <td class="small font-weight-bold text-muted">{{ $h->no_produksi }}</td>
-                            <td class="text-left font-weight-bold">
-                                {{ $h->material_code }}
-                                @if($h->is_separating)
-                                    <br><span class="text-primary small">& {{ $h->paired_part }}</span>
-                                @endif
-                            </td>
-                            <td class="font-weight-bold">{{ number_format($h->qty_ambil_pcs) }}</td>
-                            <td class="text-success font-weight-bold">
-                                {{ number_format($h->qty_hasil_ok) }}
-                                @if($h->is_separating) <br><span class="small">{{ number_format($h->paired_ok) }}</span> @endif
-                            </td>
-                            <td class="text-danger font-weight-bold">
-                                {{ number_format($h->qty_hasil_ng) }}
-                                @if($h->is_separating) <br><span class="small">{{ number_format($h->paired_ng) }}</span> @endif
-                            </td>
-                            <td><span class="badge badge-light border px-2 py-1 font-family-jetbrains">{{ number_format($yld, 1) }}%</span></td>
-                        </tr>
-                        @endforeach
+                        @if(isset($histories) && count($histories) > 0)
+                            @foreach($histories as$h)
+                            @php 
+                                $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? $h->paired_ok : 0);
+                                $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? $h->paired_ng : 0);
+                                $yld = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk +$batchNg)) * 100 : 0;
+                            @endphp
+                            <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
+                                <td class="text-left pl-4">
+                                    <div class="font-weight-bold text-dark">{{ date('d/m/y', strtotime($h->updated_at)) }}</div>
+                                    <div class="small text-muted">{{ date('H:i', strtotime($h->updated_at)) }}</div>
+                                </td>
+                                <td class="small font-weight-bold text-muted">{{ $h->no_produksi }}</td>
+                                <td class="text-left font-weight-bold">
+                                    {{ $h->material_code }}
+                                    @if($h->is_separating)
+                                        <br><span class="text-primary small">& {{ $h->paired_part }}</span>
+                                    @endif
+                                </td>
+                                <td class="font-weight-bold">{{ number_format($h->qty_ambil_pcs) }}</td>
+                                <td class="text-success font-weight-bold">
+                                    {{ number_format($h->qty_hasil_ok) }}
+                                    @if($h->is_separating) <br><span class="small">{{ number_format($h->paired_ok) }}</span> @endif
+                                </td>
+                                <td class="text-danger font-weight-bold">
+                                    {{ number_format($h->qty_hasil_ng) }}
+                                    @if($h->is_separating) <br><span class="small">{{ number_format($h->paired_ng) }}</span> @endif
+                                </td>
+                                <td><span class="badge badge-light border px-2 py-1 font-family-jetbrains">{{ number_format($yld, 1) }}%</span></td>
+                            </tr>
+                            @endforeach
+                        @else
+                            <tr><td colspan="7" class="py-5 text-center text-muted italic">Belum ada history produksi</td></tr>
+                        @endif
                     </tbody>
                 </table>
             </div>
             
             {{-- PAGINATION --}}
-            @if(method_exists($histories, 'links'))
+            @if(isset($histories) && method_exists($histories, 'links'))
                 <div class="p-3 border-top d-flex justify-content-center">
                     {{ $histories->links('pagination::bootstrap-4') }}
                 </div>
@@ -280,25 +295,27 @@
 
 <script>
     // 📊 TREND CHART
-    const historyData = @json($histories->take(20)->reverse()->values());
-    new ApexCharts(document.querySelector("#trendChart"), {
-        series: [
-            { name: 'Perf %', type: 'line', data: historyData.map(h => {
-                let ok = (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0);
-                let ng = (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0);
-                let t = ok + ng;
-                return t > 0 ? ((ok/t)*100).toFixed(1) : 0;
-            })},
-            { name: 'OK Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0)) },
-            { name: 'NG Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0)) }
-        ],
-        chart: { height: 350, type: 'line', toolbar: { show: false } },
-        stroke: { width: [4, 2, 2], curve: 'smooth' },
-        colors: ['#2563eb', '#10b981', '#ef4444'],
-        xaxis: { categories: historyData.map(h => h.no_produksi.substr(-6)) },
-        yaxis: [{ title: { text: "Performance %" }, min: 0, max: 100 }, { opposite: true, title: { text: "Units" } }],
-        legend: { position: 'top', fontWeight: 700 }
-    }).render();
+    @if(isset($histories) && count($histories) > 0)
+        const historyData = @json($histories->take(20)->reverse()->values());
+        new ApexCharts(document.querySelector("#trendChart"), {
+            series: [
+                { name: 'Perf %', type: 'line', data: historyData.map(h => {
+                    let ok = (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0);
+                    let ng = (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0);
+                    let t = ok + ng;
+                    return t > 0 ? ((ok/t)*100).toFixed(1) : 0;
+                })},
+                { name: 'OK Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0)) },
+                { name: 'NG Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0)) }
+            ],
+            chart: { height: 350, type: 'line', toolbar: { show: false } },
+            stroke: { width: [4, 2, 2], curve: 'smooth' },
+            colors: ['#2563eb', '#10b981', '#ef4444'],
+            xaxis: { categories: historyData.map(h => h.no_produksi.substr(-6)) },
+            yaxis: [{ title: { text: "Performance %" }, min: 0, max: 100 }, { opposite: true, title: { text: "Units" } }],
+            legend: { position: 'top', fontWeight: 700 }
+        }).render();
+    @endif
 
     // 🛡️ MODAL LOGIC
     let donut = null;
