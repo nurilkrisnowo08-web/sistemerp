@@ -110,7 +110,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($groupedPlans as $lineCode => $plansInLine)
+                    @forelse ($groupedPlans as $lineCode => $plansInLine)
                         {{-- HEADER MESIN --}}
                         <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; border-top: 5px solid #1e293b;">
                             <td colspan="9" class="text-left pl-4">
@@ -136,13 +136,13 @@
                         @endphp
 
                         {{-- SHIFT 1 --}}
-                        @if($s1Plans->count() > 0)
+                        @if ($s1Plans->count() > 0)
                             <tr style="background-color: #e2e8f0;">
                                 <td colspan="11" class="text-left pl-4 font-weight-bold" style="font-size: 11px; color: #334155;">
                                     <i class="fas fa-sun text-warning mr-1"></i> SHIFT 1 (DAY OPS)
                                 </td>
                             </tr>
-                            @foreach($s1Plans as $index => $p)
+                            @foreach ($s1Plans as $index => $p)
                                 @php 
                                     $balanceStatus = ($p->balance > 0) ? 'balance-danger' : 'balance-success';
                                     $balanceIcon = ($p->balance > 0) ? 'fa-exclamation-triangle' : 'fa-check-circle';
@@ -227,13 +227,13 @@
                         @endif
 
                         {{-- SHIFT 2 --}}
-                        @if($s2Plans->count() > 0)
+                        @if ($s2Plans->count() > 0)
                             <tr style="background-color: #cbd5e1;">
                                 <td colspan="11" class="text-left pl-4 font-weight-bold" style="font-size: 11px; color: #1e293b;">
                                     <i class="fas fa-moon text-dark mr-1"></i> SHIFT 2 (NIGHT OPS)
                                 </td>
                             </tr>
-                            @foreach($s2Plans as $index =>$p)
+                            @foreach ($s2Plans as $index =>$p)
                                 @php 
                                     $balanceStatus = ($p->balance > 0) ? 'balance-danger' : 'balance-success';
                                     $balanceIcon = ($p->balance > 0) ? 'fa-exclamation-triangle' : 'fa-check-circle';
@@ -321,7 +321,7 @@
                     <tr><td colspan="11" class="py-5 text-center text-muted font-weight-bold h5">-- BELUM ADA JADWAL PRODUKSI HARI INI --</td></tr>
                     @endforelse
                 </tbody>
-                @if(count($groupedPlans) > 0)
+                @if ($groupedPlans->count() > 0)
                 <tfoot>
                     <tr class="footer-summary">
                         <td colspan="4" class="text-right uppercase">Daily Summary Total :</td>
@@ -355,7 +355,7 @@
                                 <label class="small font-weight-bold">Select Line</label>
                                 <select name="line_code" id="select_line" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE LINE --</option>
-                                    @foreach($availableLines as$l)
+                                    @foreach ($availableLines as$l)
                                         <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{$l->nama_Line }}</option>
                                     @endforeach
                                 </select>
@@ -364,7 +364,7 @@
                                 <label class="small font-weight-bold">Customer</label>
                                 <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE --</option>
-                                    @foreach($availableCustomers as $c)
+                                    @foreach ($availableCustomers as$c)
                                         <option value="{{ $c->code }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
