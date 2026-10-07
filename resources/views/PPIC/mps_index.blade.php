@@ -44,7 +44,7 @@
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="hud-title m-0">MPS_TERMINAL <span class="text-primary">v7.0 Smart MRP</span></h2>
+            <h2 class="hud-title m-0">WOS_TERMINAL <span class="text-primary"> Smart MRP</span></h2>
             <p class="text-muted small font-weight-bold uppercase mb-0"><i class="fas fa-calendar-alt mr-2"></i> Operational Date: {{ date('d F Y', strtotime($date)) }}</p>
         </div>
         <div class="d-flex align-items-center gap-3">
