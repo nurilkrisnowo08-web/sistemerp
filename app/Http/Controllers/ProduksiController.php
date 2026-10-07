@@ -20,12 +20,12 @@ class ProduksiController extends Controller
                 'produksi_batches.no_produksi', 
                 'produksi_batches.shift',
                 'produksi_batches.material_code',
-                'produksi_batches.keterangan', // ✨ Ambil Keterangan buat deteksi PAIR
+                'produksi_batches.keterangan', 
                 'produksi_batches.status',
                 'produksi_batches.qty_return', 
                 'produksi_batches.created_at',
                 'produksi_batches.cavity',
-                'produksi_batches.qty_ambil_pcs', // ✨ Perlu buat hitung total jatah
+                'produksi_batches.qty_ambil_pcs', 
                 'rm_stocks.coil_id',
                 'rm_stocks.customer',
                 'rm_stocks.size',
@@ -39,7 +39,6 @@ class ProduksiController extends Controller
                 $q->where('produksi_batches.status', 'PROSES')
                   ->orWhere('produksi_batches.qty_return', '>', 0);
             })
-            // ✨ FITUR: Sembunyikan batch yang ujungnya "-S" (Pair Sub) dari tabel utama
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
             ->groupBy(
                 'no_produksi', 'shift', 'material_code', 'keterangan', 'status', 'qty_return',
@@ -52,7 +51,6 @@ class ProduksiController extends Controller
 
         $activeProductionsRaw = $query->orderBy('batch_id', 'desc')->get();
         
-        // ✨ GABUNGKAN DATA PASANGAN KE DALAM BARIS UTAMA
         $activeProductions = $activeProductionsRaw->map(function ($item) {
             $isMainPair = strpos($item->keterangan, 'PAIR_MAIN:') === 0;
             $item->is_separating = $isMainPair;
@@ -61,7 +59,6 @@ class ProduksiController extends Controller
 
             if ($isMainPair) {
                 $pairedPartCode = str_replace('PAIR_MAIN:', '', $item->keterangan);
-                // Cari batch pasangannya yang "-S" dengan timestamp dan shift yang sama
                 $timePrefix = substr($item->no_produksi, 0, strrpos($item->no_produksi, '-'));
                 $pairedBatch = DB::table('produksi_batches')
                     ->where('no_produksi', $timePrefix . '-S')
@@ -158,7 +155,7 @@ class ProduksiController extends Controller
         }
     }
 
-    public function storeResult(Request $request, $id) { /* Tetap */ return back(); }
+    public function storeResult(Request $request, $id) { return back(); }
 
     public function updateResult(Request $request, $id)
     {
@@ -167,9 +164,8 @@ class ProduksiController extends Controller
 
         DB::beginTransaction();
         try {
-            // === LOGIKA SIMPAN PART UTAMA ===
             $qty_ok_new = (int)$request->qty_hasil_ok; 
-            $ng_parent_update = (int)$request->qty_hasil_ng; // Jika inputan NG tidak ada detail
+            $ng_parent_update = (int)$request->qty_hasil_ng; 
 
             $total_ng_spesifik = 0;
             $ng_details = [];
@@ -181,7 +177,6 @@ class ProduksiController extends Controller
                 $ng_parent_update = $total_ng_spesifik;
             }
 
-            // CEK TARGET PROSES SELANJUTNYA UNTUK PART UTAMA
             $cleanPart = str_replace([' ', '-'], '', trim($p->material_code));
             $partMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->first();
             $target = ($partMaster && $partMaster->next_process) ? strtoupper($partMaster->next_process) : 'FG';
@@ -219,7 +214,7 @@ class ProduksiController extends Controller
                 'qty_return_warehouse' => $p->qty_return_warehouse + $qty_return_sheet,
                 'qty_return' => 0, 
                 'status' => $status_akhir,
-                'keterangan' => $request->keterangan ?? $p->keterangan, // Jangan timpa PAIR_MAIN
+                'keterangan' => $request->keterangan ?? $p->keterangan, 
                 'updated_at' => now()
             ]);
 
@@ -232,8 +227,6 @@ class ProduksiController extends Controller
                 }
             }
 
-
-            // === ✨ LOGIKA SIMPAN PART PASANGAN (SEPARATING) JIKA ADA ✨ ===
             if ($request->has('paired_batch_id') && !empty($request->paired_batch_id)) {
                 $sub_id = $request->paired_batch_id;
                 $p_sub = DB::table('produksi_batches')->where('id', $sub_id)->first();
@@ -242,7 +235,6 @@ class ProduksiController extends Controller
                     $qty_ok_sub = (int)$request->paired_qty_ok;
                     $qty_ng_sub = (int)$request->paired_qty_ng;
 
-                    // CEK TARGET PROSES SELANJUTNYA UNTUK PART PASANGAN
                     $cleanSubPart = str_replace([' ', '-'], '', trim($p_sub->material_code));
                     $subPartMaster = DB::table('parts')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanSubPart])->first();
                     $subTarget = ($subPartMaster && $subPartMaster->next_process) ? strtoupper($subPartMaster->next_process) : 'FG';
@@ -261,14 +253,12 @@ class ProduksiController extends Controller
                         'qty_hasil_ok' => $p_sub->qty_hasil_ok + $qty_ok_sub,
                         'qty_ng_process' => $p_sub->qty_ng_process + $qty_ng_sub,
                         'qty_hasil_ng' => $p_sub->qty_hasil_ng + $qty_ng_sub,
-                        // Part Sub tidak punya return material (mengikut part utama)
                         'status' => $status_akhir,
                         'updated_at' => now()
                     ]);
 
                     $this->syncToActual($sub_id);
 
-                    // Catat NG untuk Part Pasangan (Hanya general)
                     if ($qty_ng_sub > 0) {
                         $actualSub = DB::table('production_actuals')->where('part_no', $p_sub->material_code)->whereDate('created_at', date('Y-m-d', strtotime($p_sub->created_at)))->first();
                         if ($actualSub) {
@@ -299,7 +289,71 @@ class ProduksiController extends Controller
     }
 
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
-    public function history(Request $request) { /* Tetap */ }
+    
+    /**
+     * ✨ FUNGSI HISTORY BARU (Membaca Part Normal & Separating)
+     */
+    public function history(Request $request) 
+    { 
+        $query = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+            ->select(
+                'produksi_batches.*',
+                'line.kode_Line',
+                'line.nama_Line',
+                'rm_stocks.coil_id',
+                'rm_stocks.spec',
+                'rm_stocks.size',
+                'rm_stocks.customer'
+            )
+            ->where('produksi_batches.status', 'COMPLETED')
+            // Jangan load sub part sebagai baris sendiri, gabungin aja ke baris Utama
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
+            ->orderBy('produksi_batches.updated_at', 'desc');
+
+        if ($request->date) {
+            $query->whereDate('produksi_batches.created_at', $request->date);
+        }
+
+        // Ambil 50 data terbaru (Pagination biar enteng)
+        $historiesRaw = $query->paginate(50); 
+
+        // Mapping buat baca data Kanan-Kiri dan NG
+        $historiesRaw->getCollection()->transform(function ($item) {
+            // Cek apakah batch ini Part Separating Utama
+            $isMainPair = str_ends_with($item->no_produksi, '-M');
+            $item->is_separating = $isMainPair;
+            $item->paired_part = null;
+            $item->paired_ok = 0;
+            $item->paired_ng = 0;
+
+            if ($isMainPair) {
+                // Ambil data pasangannya (yang ekornya -S)
+                $subNoProd = substr($item->no_produksi, 0, -2) . '-S';
+                $pairedBatch = DB::table('produksi_batches')->where('no_produksi', $subNoProd)->first();
+                
+                if ($pairedBatch) {
+                    $item->paired_part = $pairedBatch->material_code;
+                    $item->paired_ok = $pairedBatch->qty_hasil_ok;
+                    $item->paired_ng = $pairedBatch->qty_hasil_ng;
+                }
+            }
+
+            // Ambil rincian NG spesifik (Dented, Burry, dll)
+            $item->ng_details = DB::table('production_ng_logs')
+                ->where('no_produksi', $item->no_produksi)
+                ->get();
+
+            return $item;
+        });
+
+        // Supaya aman nembus ke Blade, kita parsing 2 variabel populer
+        $histories = $historiesRaw;
+        $activeProductions = $historiesRaw;
+
+        return view('Produksi.history', compact('histories', 'activeProductions')); 
+    }
     
     public function getSpecsByCustomer($customer) {
         $specs = DB::table('rm_stocks')->where('customer', trim($customer))->where('stock_pcs', '>', 0)->select(DB::raw('TRIM(spec) as spec'), 'size', DB::raw("REPLACE(size, ' ', '') as size_clean"))->groupBy('spec', 'size', 'size_clean')->get();
@@ -368,7 +422,7 @@ class ProduksiController extends Controller
         } catch (\Exception $e) { DB::rollback(); return back(); }
     }
 
-    public function getPartDetail($id) { /* Tetap */ return response()->json(['sisa_jalan' => 0, 'stock_pcs' => 0]); }
+    public function getPartDetail($id) { return response()->json(['sisa_jalan' => 0, 'stock_pcs' => 0]); }
     public function resolveInterruption(Request $request, $id) { return $this->updateResult($request, $id); }
     public function gateConfirm(Request $request, $id) { return $this->updateResult($request, $id); }
     public function reportProblem(Request $request, $id) { DB::table('produksi_batches')->where('id', $id)->update(['status' => 'PROBLEM', 'keterangan' => '⚠️ DIES RUSAK: ' . $request->problem_note, 'updated_at' => now()]); return redirect()->back()->with('error', 'Laporan kendala telah dikirim!'); }

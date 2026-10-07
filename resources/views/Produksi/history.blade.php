@@ -3,14 +3,26 @@
 @section('content')
 {{-- ✨ PERHITUNGAN GLOBAL --}}
 @php
-    $totalTake = $history->sum('qty_ambil_pcs');
-    $totalOk = $history->sum('qty_hasil_ok');
-    $totalNg = $history->sum('qty_hasil_ng');
-    $totalRet = $history->sum('qty_return_warehouse');
-    $performance = ($totalTake - $totalRet) > 0 ? ($totalOk / ($totalTake - $totalRet)) * 100 : 0;
+    $totalTake = 0; $totalOk = 0; $totalNg = 0; $totalRet = 0;
     
-    // Format tanggal untuk laporan
-    $periodString = ($startDate == $endDate) 
+    // Looping buat ngitung total (termasuk part pasangannya)
+    foreach($histories as$h) {
+        $totalTake +=$h->qty_ambil_pcs;
+        $totalRet +=$h->qty_return_warehouse;
+        
+        $totalOk +=$h->qty_hasil_ok;
+        $totalNg +=$h->qty_hasil_ng;
+
+        // Tambahin total pasangan kalau ada
+        if ($h->is_separating) {
+            $totalOk +=$h->paired_ok;
+            $totalNg +=$h->paired_ng;
+        }
+    }
+
+    $performance = ($totalTake -$totalRet) > 0 ? ($totalOk / ($totalTake - $totalRet)) * 100 : 0;          // Format tanggal untuk laporan$startDate = request('start_date') ?? date('Y-m-d');
+    $endDate = request('end_date') ?? date('Y-m-d');
+    $periodString = ($startDate ==$endDate) 
         ? date('d F Y', strtotime($startDate)) 
         : date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate));
 @endphp
@@ -100,14 +112,23 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach($history as $h)
+                @foreach($histories as$h)
                 <tr>
                     <td>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
                     <td>{{ $h->no_produksi }}</td>
-                    <td>{{ $h->material_code }}</td>
+                    <td>
+                        {{ $h->material_code }}
+                        @if($h->is_separating) <br> & {{$h->paired_part }} @endif
+                    </td>
                     <td>{{ number_format($h->qty_ambil_pcs) }}</td>
-                    <td>{{ number_format($h->qty_hasil_ok) }}</td>
-                    <td>{{ number_format($h->qty_hasil_ng) }}</td>
+                    <td>
+                        {{ number_format($h->qty_hasil_ok) }}
+                        @if($h->is_separating) <br> {{ number_format($h->paired_ok) }} @endif
+                    </td>
+                    <td>
+                        {{ number_format($h->qty_hasil_ng) }}
+                        @if($h->is_separating) <br> {{ number_format($h->paired_ng) }} @endif
+                    </td>
                     <td>{{ number_format($h->qty_return_warehouse) }}</td>
                 </tr>
                 @endforeach
@@ -170,28 +191,46 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($history as $h)
+                        @foreach($histories as$h)
                         @php 
-                            $batchOk = (float)$h->qty_hasil_ok;
-                            $batchNg = (float)$h->qty_hasil_ng;
-                            $yld = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk + $batchNg)) * 100 : 0;
+                            $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? $h->paired_ok : 0);
+                            $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? $h->paired_ng : 0);
+                            $yld = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk +$batchNg)) * 100 : 0;
                         @endphp
-                        <tr class="row-clickable" onclick="showDeepDive({{ json_encode($h) }})">
+                        <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
                             <td class="text-left pl-4">
                                 <div class="font-weight-bold text-dark">{{ date('d/m/y', strtotime($h->updated_at)) }}</div>
                                 <div class="small text-muted">{{ date('H:i', strtotime($h->updated_at)) }}</div>
                             </td>
                             <td class="small font-weight-bold text-muted">{{ $h->no_produksi }}</td>
-                            <td class="text-left font-weight-bold">{{ $h->material_code }}</td>
+                            <td class="text-left font-weight-bold">
+                                {{ $h->material_code }}
+                                @if($h->is_separating)
+                                    <br><span class="text-primary small">& {{ $h->paired_part }}</span>
+                                @endif
+                            </td>
                             <td class="font-weight-bold">{{ number_format($h->qty_ambil_pcs) }}</td>
-                            <td class="text-success font-weight-bold">{{ number_format($batchOk) }}</td>
-                            <td class="text-danger font-weight-bold">{{ number_format($batchNg) }}</td>
+                            <td class="text-success font-weight-bold">
+                                {{ number_format($h->qty_hasil_ok) }}
+                                @if($h->is_separating) <br><span class="small">{{ number_format($h->paired_ok) }}</span> @endif
+                            </td>
+                            <td class="text-danger font-weight-bold">
+                                {{ number_format($h->qty_hasil_ng) }}
+                                @if($h->is_separating) <br><span class="small">{{ number_format($h->paired_ng) }}</span> @endif
+                            </td>
                             <td><span class="badge badge-light border px-2 py-1 font-family-jetbrains">{{ number_format($yld, 1) }}%</span></td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
+            
+            {{-- PAGINATION --}}
+            @if(method_exists($histories, 'links'))
+                <div class="p-3 border-top d-flex justify-content-center">
+                    {{ $histories->links('pagination::bootstrap-4') }}
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -229,8 +268,10 @@
                 </div>
 
                 <div class="p-3 bg-light rounded-lg border">
-                    <small class="stat-label d-block mb-1">Traceability Note</small>
-                    <p class="mb-0 small font-weight-bold" id="det-remark">-</p>
+                    <small class="stat-label d-block mb-2">Detailed NG (Reject Types)</small>
+                    <div id="det-ng-list" class="row">
+                        <!-- Disuntik lewat JS -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -239,15 +280,17 @@
 
 <script>
     // 📊 TREND CHART
-    const historyData = @json($history->take(20)->reverse()->values());
+    const historyData = @json($histories->take(20)->reverse()->values());
     new ApexCharts(document.querySelector("#trendChart"), {
         series: [
             { name: 'Perf %', type: 'line', data: historyData.map(h => {
-                let t = (parseFloat(h.qty_hasil_ok)||0) + (parseFloat(h.qty_hasil_ng)||0);
-                return t > 0 ? ((h.qty_hasil_ok/t)*100).toFixed(1) : 0;
+                let ok = (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0);
+                let ng = (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0);
+                let t = ok + ng;
+                return t > 0 ? ((ok/t)*100).toFixed(1) : 0;
             })},
-            { name: 'OK Units', type: 'area', data: historyData.map(h => h.qty_hasil_ok) },
-            { name: 'NG Units', type: 'area', data: historyData.map(h => h.qty_hasil_ng) }
+            { name: 'OK Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0)) },
+            { name: 'NG Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0)) }
         ],
         chart: { height: 350, type: 'line', toolbar: { show: false } },
         stroke: { width: [4, 2, 2], curve: 'smooth' },
@@ -262,15 +305,19 @@
     let tempDonutData = { ok: 0, ng: 0 };
 
     function showDeepDive(h) {
-        const ok = parseInt(h.qty_hasil_ok) || 0;
-        const ng = parseInt(h.qty_hasil_ng) || 0;
+        const ok = (parseInt(h.qty_hasil_ok) || 0) + (h.is_separating ? parseInt(h.paired_ok) : 0);
+        const ng = (parseInt(h.qty_hasil_ng) || 0) + (h.is_separating ? parseInt(h.paired_ng) : 0);
         const total = ok + ng;
         const yld = total > 0 ? Math.round((ok/total)*100) : 0;
         
         tempDonutData = { ok: ok, ng: ng };
 
         document.getElementById('det-batch').innerText = h.no_produksi;
-        document.getElementById('det-part').innerText = h.material_code;
+        
+        let partName = h.material_code;
+        if(h.is_separating) partName += " & " + h.paired_part;
+        document.getElementById('det-part').innerText = partName;
+        
         document.getElementById('det-time').innerText = h.updated_at;
         document.getElementById('det-take').innerText = h.qty_ambil_pcs;
         document.getElementById('det-ok').innerText = ok;
@@ -278,7 +325,21 @@
         document.getElementById('det-ret').innerText = h.qty_return_warehouse;
         document.getElementById('det-yield-val').innerText = yld + "%";
         document.getElementById('det-yield-val').style.color = yld >= 90 ? '#10b981' : '#ef4444';
-        document.getElementById('det-remark').innerText = h.keterangan || 'Audit record validated.';
+        
+        // Render List NG Spesifik
+        let ngHtml = '';
+        if(h.ng_details && h.ng_details.length > 0) {
+            h.ng_details.forEach(item => {
+                ngHtml += `<div class="col-6 col-md-4 mb-2">
+                            <div class="p-2 border rounded text-danger font-weight-bold" style="font-size: 11px; background:#fff;">
+                                ${item.ng_type}: ${item.qty} Pcs
+                            </div>
+                           </div>`;
+            });
+        } else {
+            ngHtml = '<div class="col-12"><p class="mb-0 small text-muted italic">No specific NG recorded.</p></div>';
+        }
+        document.getElementById('det-ng-list').innerHTML = ngHtml;
 
         $('#deepDiveModal').modal('show');
     }
