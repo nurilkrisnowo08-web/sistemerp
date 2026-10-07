@@ -81,7 +81,7 @@
                 <th rowspan="2" width="50">M/C LINE</th>
                 <th rowspan="2" width="35">JAM</th>
                 <th colspan="3">ACTUAL PRODUKSI</th>
-                <th rowspan="2" width="90">MATERIAL REQ<br>(SERAH TERIMA)</th>
+                <th rowspan="2" width="110">MATERIAL REQ<br>(SERAH TERIMA)</th>
             </tr>
             <tr>
                 <th width="40">START</th><th width="40">AKHIR</th><th width="40">REG</th><th width="40">OT</th>
@@ -109,21 +109,31 @@
                 @php
                     $target = $plan->s1_plan_reg + $plan->s1_plan_ot;
                     $stroke = $target * $plan->process_qty; 
-                    $grandTarget += $target; $grandStroke += $stroke; $grandReg += $plan->s1_plan_reg; $grandOt += $plan->s1_plan_ot;
                     
                     $dur = ($plan->cap_per_hour > 0 && $target > 0) ? ($target / $plan->cap_per_hour) + (($plan->dandory_time ?? 15) / 60) : 0;
                     $start = $lastFinish; 
                     $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes")); 
-                    $lastFinish = $finish;
                     
-                    $batchData = null;
-                    if(isset($batches)) {
-                        $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
+                    $batchData = isset($batches) ? $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first() : null;
+                    $keterangan = $batchData ? $batchData->keterangan : '';
+
+                    $isMainPair = strpos($keterangan, 'PAIR_MAIN:') === 0;
+                    $pairedPartName = $isMainPair ? str_replace('PAIR_MAIN:', '', $keterangan) : '';
+                    $batchSubData = null;
+
+                    if ($isMainPair && isset($batches)) {
+                        $batchSubData = $batches->where('material_code', $pairedPartName)->where('shift', 'Pagi')->first();
                     }
+
+                    $grandTarget += $target; $grandStroke += $stroke; $grandReg += $plan->s1_plan_reg; $grandOt += $plan->s1_plan_ot;
+                    $lastFinish = $finish;
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
-                    <td class="text-left text-bold">{{ $plan->part_no }}</td>
+                    <td class="text-left text-bold">
+                        {{ $plan->part_no }} 
+                        @if($isMainPair) <br><span style="color:#e63946;">& {{ $pairedPartName }}</span> @endif
+                    </td>
                     <td class="text-bold">{{ $plan->customer_code }}</td>
                     <td>{{ $plan->manpower }}</td><td>{{ $plan->process_qty }}</td><td>{{ $plan->qty_lot }}</td>
                     <td class="text-bold">{{ $plan->cap_per_hour }}</td>
@@ -134,21 +144,43 @@
                     <td class="text-bold" style="font-size: 11px;">{{ number_format($target) }}</td>
                     <td class="text-bold">{{ $plan->line_code }}</td>
                     
-                    {{-- ✨ AUTO FILL ACTUAL ✨ --}}
-                    <td></td> 
-                    <td class="text-bold" style="color: #059669;">{{ ($batchData && $batchData->qty_hasil_ok > 0) ? number_format($batchData->qty_hasil_ok) : '' }}</td>
-                    <td class="text-bold" style="color: #dc2626;">{{ ($batchData && $batchData->qty_hasil_ng > 0) ? number_format($batchData->qty_hasil_ng) : '' }}</td>
-                    <td class="text-bold" style="color: #d97706;">{{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}</td>
-                    
+                    <td></td>
+                    <td class="text-bold" style="color: #059669;">
+                        {{ ($batchData && $batchData->qty_hasil_ok > 0) ? number_format($batchData->qty_hasil_ok) : '' }}
+                        @if($batchSubData && $batchSubData->qty_hasil_ok > 0) <br><span style="color:#059669;">{{ number_format($batchSubData->qty_hasil_ok) }}</span> @endif
+                    </td>
+                    <td class="text-bold" style="color: #dc2626;">
+                        {{ ($batchData && $batchData->qty_hasil_ng > 0) ? number_format($batchData->qty_hasil_ng) : '' }}
+                        @if($batchSubData && $batchSubData->qty_hasil_ng > 0) <br><span style="color:#dc2626;">{{ number_format($batchSubData->qty_hasil_ng) }}</span> @endif
+                    </td>
+                    <td class="text-bold" style="color: #d97706;">
+                        {{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}
+                    </td>
+
                     <td class="text-left" style="font-size: 8px; line-height: 1.2;">
                         @if($batchData)
                             <strong>{{ $batchData->material_code }}</strong><br>
-                            Ambil: <b>{{ $batchData->qty_ambil_pcs }}</b> Sht<br>
+                            Ambil: <b>{{ number_format($batchData->qty_ambil_pcs) }}</b> Sht<br>
                             @if(($batchData->qty_return_warehouse ?? 0) > 0)
-                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ $batchData->qty_return_warehouse }} Sht</span><br>
-                                Pakai: <b>{{ $batchData->qty_ambil_pcs - $batchData->qty_return_warehouse }}</b> Sht<br>
+                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ number_format($batchData->qty_return_warehouse) }} Sht</span><br>
+                                Pakai: <b>{{ number_format($batchData->qty_ambil_pcs - $batchData->qty_return_warehouse) }}</b> Sht<br>
                             @endif
                             <small style="color: #555;">Coil: {{ $batchData->coil_id }}</small>
+                            
+                            {{-- ✨ RINCIAN SEPARATING ✨ --}}
+                            @if($isMainPair && $batchSubData)
+                                @php
+                                    $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
+                                    $tOK2 = $batchSubData->qty_hasil_ok ?? 0; $tNG2 = $batchSubData->qty_hasil_ng ?? 0;
+                                    $totPcs = $tOK1 + $tNG1 + $tOK2 + $tNG2;
+                                @endphp
+                                <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999;">
+                                    <span style="color:#059669; font-weight:bold;">Total Hasil: {{ number_format($totPcs) }} Pcs</span><br>
+                                    <span style="color:#1e40af; font-weight:bold;">▶ Utama:</span> OK {{ number_format($tOK1) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG1) }}</span><br>
+                                    <span style="color:#d97706; font-weight:bold;">▶ Psg:</span> OK {{ number_format($tOK2) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG2) }}</span>
+                                </div>
+                            @endif
+
                         @else - @endif
                     </td>
                 </tr>
@@ -174,21 +206,31 @@
                 @php
                     $target = $plan->s2_plan_reg + $plan->s2_plan_ot;
                     $stroke = $target * $plan->process_qty; 
-                    $grandTarget += $target; $grandStroke += $stroke; $grandReg += $plan->s2_plan_reg; $grandOt += $plan->s2_plan_ot;
                     
                     $dur = ($plan->cap_per_hour > 0 && $target > 0) ? ($target / $plan->cap_per_hour) + (($plan->dandory_time ?? 15) / 60) : 0;
                     $start = $lastFinish; 
                     $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes")); 
-                    $lastFinish = $finish;
                     
-                    $batchData = null;
-                    if(isset($batches)) {
-                        $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
+                    $batchData = isset($batches) ? $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first() : null;
+                    $keterangan = $batchData ? $batchData->keterangan : '';
+
+                    $isMainPair = strpos($keterangan, 'PAIR_MAIN:') === 0;
+                    $pairedPartName = $isMainPair ? str_replace('PAIR_MAIN:', '', $keterangan) : '';
+                    $batchSubData = null;
+
+                    if ($isMainPair && isset($batches)) {
+                        $batchSubData = $batches->where('material_code', $pairedPartName)->where('shift', 'Malam')->first();
                     }
+
+                    $grandTarget += $target; $grandStroke += $stroke; $grandReg += $plan->s2_plan_reg; $grandOt += $plan->s2_plan_ot;
+                    $lastFinish = $finish;
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
-                    <td class="text-left text-bold">{{ $plan->part_no }}</td>
+                    <td class="text-left text-bold">
+                        {{ $plan->part_no }} 
+                        @if($isMainPair) <br><span style="color:#e63946;">& {{ $pairedPartName }}</span> @endif
+                    </td>
                     <td class="text-bold">{{ $plan->customer_code }}</td>
                     <td>{{ $plan->manpower }}</td><td>{{ $plan->process_qty }}</td><td>{{ $plan->qty_lot }}</td>
                     <td class="text-bold">{{ $plan->cap_per_hour }}</td>
@@ -199,21 +241,43 @@
                     <td class="text-bold" style="font-size: 11px;">{{ number_format($target) }}</td>
                     <td class="text-bold">{{ $plan->line_code }}</td>
                     
-                    {{-- ✨ AUTO FILL ACTUAL ✨ --}}
                     <td></td>
-                    <td class="text-bold" style="color: #059669;">{{ ($batchData && $batchData->qty_hasil_ok > 0) ? number_format($batchData->qty_hasil_ok) : '' }}</td>
-                    <td class="text-bold" style="color: #dc2626;">{{ ($batchData && $batchData->qty_hasil_ng > 0) ? number_format($batchData->qty_hasil_ng) : '' }}</td>
-                    <td class="text-bold" style="color: #d97706;">{{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}</td>
+                    <td class="text-bold" style="color: #059669;">
+                        {{ ($batchData && $batchData->qty_hasil_ok > 0) ? number_format($batchData->qty_hasil_ok) : '' }}
+                        @if($batchSubData && $batchSubData->qty_hasil_ok > 0) <br><span style="color:#059669;">{{ number_format($batchSubData->qty_hasil_ok) }}</span> @endif
+                    </td>
+                    <td class="text-bold" style="color: #dc2626;">
+                        {{ ($batchData && $batchData->qty_hasil_ng > 0) ? number_format($batchData->qty_hasil_ng) : '' }}
+                        @if($batchSubData && $batchSubData->qty_hasil_ng > 0) <br><span style="color:#dc2626;">{{ number_format($batchSubData->qty_hasil_ng) }}</span> @endif
+                    </td>
+                    <td class="text-bold" style="color: #d97706;">
+                        {{ ($batchData && $batchData->qty_return_warehouse > 0) ? number_format($batchData->qty_return_warehouse) : '' }}
+                    </td>
 
                     <td class="text-left" style="font-size: 8px; line-height: 1.2;">
                         @if($batchData)
                             <strong>{{ $batchData->material_code }}</strong><br>
-                            Ambil: <b>{{ $batchData->qty_ambil_pcs }}</b> Sht<br>
+                            Ambil: <b>{{ number_format($batchData->qty_ambil_pcs) }}</b> Sht<br>
                             @if(($batchData->qty_return_warehouse ?? 0) > 0)
-                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ $batchData->qty_return_warehouse }} Sht</span><br>
-                                Pakai: <b>{{ $batchData->qty_ambil_pcs - $batchData->qty_return_warehouse }}</b> Sht<br>
+                                <span style="color: #dc2626; font-weight: bold;">Rtn: {{ number_format($batchData->qty_return_warehouse) }} Sht</span><br>
+                                Pakai: <b>{{ number_format($batchData->qty_ambil_pcs - $batchData->qty_return_warehouse) }}</b> Sht<br>
                             @endif
                             <small style="color: #555;">Coil: {{ $batchData->coil_id }}</small>
+
+                            {{-- ✨ RINCIAN SEPARATING ✨ --}}
+                            @if($isMainPair && $batchSubData)
+                                @php
+                                    $tOK1 = $batchData->qty_hasil_ok ?? 0; $tNG1 = $batchData->qty_hasil_ng ?? 0;
+                                    $tOK2 = $batchSubData->qty_hasil_ok ?? 0; $tNG2 = $batchSubData->qty_hasil_ng ?? 0;
+                                    $totPcs = $tOK1 + $tNG1 + $tOK2 + $tNG2;
+                                @endphp
+                                <div style="margin-top: 3px; padding-top: 3px; border-top: 1px dashed #999;">
+                                    <span style="color:#059669; font-weight:bold;">Total Hasil: {{ number_format($totPcs) }} Pcs</span><br>
+                                    <span style="color:#1e40af; font-weight:bold;">▶ Utama:</span> OK {{ number_format($tOK1) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG1) }}</span><br>
+                                    <span style="color:#d97706; font-weight:bold;">▶ Psg:</span> OK {{ number_format($tOK2) }}, NG <span style="color:#dc2626; font-weight:bold;">{{ number_format($tNG2) }}</span>
+                                </div>
+                            @endif
+
                         @else - @endif
                     </td>
                 </tr>
