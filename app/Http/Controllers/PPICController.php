@@ -162,7 +162,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ UPDATED: 3. STORE MPS (SMART INVENTORY GUARD)
+     * ✨ 3. STORE MPS (SMART INVENTORY GUARD + AUTO LOG OUT KE GUDANG RM)
      */
     public function mpsStore(Request $request)
     {
@@ -176,7 +176,7 @@ class PPICController extends Controller
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
             }
 
-            // 🌟 1. CEK MATERIAL & VALIDASI LIMIT STOK 🌟
+            // 1. CEK MATERIAL & VALIDASI LIMIT STOK
             $rm_stock = DB::table('rm_stocks')->where('material_code', $request->part_no)->where('stock_pcs', '>', 0)->first();
             if (!$rm_stock) {
                 throw new \Exception("Material untuk Part No [{$request->part_no}] kosong atau tidak terdaftar di Master RM!");
@@ -185,12 +185,12 @@ class PPICController extends Controller
             $cavity = $rm_stock->cavity > 0 ? $rm_stock->cavity : 1;
             $kebutuhan_lembar = ceil($total_target / $cavity);
 
-            // 🛑 STOP KALAU STOK KURANG!
+            // STOP KALAU STOK KURANG!
             if ($rm_stock->stock_pcs < $kebutuhan_lembar) {
-                throw new \Exception("❌ PLAN DITOLAK: STOK MATERIAL KURANG! Anda butuh {$kebutuhan_lembar} Lembar (Target {$total_target} Pcs), tapi Sisa di Gudang cuma {$rm_stock->stock_pcs} Lembar.");
+                throw new \Exception("❌ PLAN DITOLAK: STOK MATERIAL KURANG! Anda butuh {$kebutuhan_lembar} Lembar, tapi Sisa di Gudang cuma {$rm_stock->stock_pcs} Lembar.");
             }
 
-            // 🌟 2. SIMPAN PLAN
+            // 2. SIMPAN PLAN
             $planId = DB::table('production_plans')->insertGetId([
                 'plan_date' => $request->plan_date,
                 'part_no' => $request->part_no,
@@ -209,13 +209,22 @@ class PPICController extends Controller
                 'updated_at' => now()
             ]);
 
-            // 🌟 3. POTONG STOK MATERIAL OTOMATIS (AUTO DEDUCT)
+            // 3. POTONG STOK MATERIAL OTOMATIS
             DB::table('rm_stocks')->where('id', $rm_stock->id)->decrement('stock_pcs', $kebutuhan_lembar);
+
+            // ✨ 4. CATAT LOG OUT KE GUDANG RM (Waktu log disamakan dengan plan_date agar sinkron)
+            $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
+            DB::table('rm_production_logs')->insert([
+                'rm_stock_id'   => $rm_stock->id,
+                'material_code' => $request->part_no,
+                'pcs_used'      => $kebutuhan_lembar,
+                'no_produksi'   => 'WOS-PLAN-' . date('YmdHis'),
+                'created_at'    => $logTimestamp
+            ]);
 
             $mesin = DB::table('line')->where('kode_Line', $request->line_code)->first();
             $mesin_id = $mesin ? $mesin->id : null;
 
-            // Supaya alokasi lembar pas, S1 dihitung, sisa kebutuhan dikasih ke S2
             $qty_lembar_s1 = ceil($target_s1 / $cavity);
             if ($target_s1 == 0) $qty_lembar_s1 = 0;
             $qty_lembar_s2 = $kebutuhan_lembar - $qty_lembar_s1;
@@ -255,7 +264,7 @@ class PPICController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', "Sukses! Jadwal WOS Terkirim & {$kebutuhan_lembar} Lembar Material Otomatis Dibooking/Dipotong dari Gudang!");
+            return redirect()->back()->with('success', "Sukses! Jadwal WOS Terkirim & {$kebutuhan_lembar} Lembar Material Otomatis Tercatat di Dashboard RM!");
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
@@ -263,7 +272,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ UPDATED: 4. UPDATE & REVISI WOS (AUTO RETURN & AUTO ADD MATERIAL)
+     * ✨ 4. UPDATE & REVISI WOS (AUTO RETURN LOG & RE-SYNC)
      */
     public function updateWos(Request $request, $id)
     {
@@ -272,7 +281,6 @@ class PPICController extends Controller
             $plan = DB::table('production_plans')->where('id', $id)->first();
             if (!$plan) throw new \Exception("Schedule tidak ditemukan.");
 
-            // Hitung Target Lama vs Baru
             $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
             $old_target_s2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
             $old_total = $old_target_s1 + $old_target_s2;
@@ -281,7 +289,6 @@ class PPICController extends Controller
             $new_target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
             $new_total = $new_target_s1 + $new_target_s2;
 
-            // Cari Master RM nya
             $sampleBatch = DB::table('produksi_batches')->where('plan_id', $id)->first();
             if ($sampleBatch) {
                 $rm_stock = DB::table('rm_stocks')->where('id', $sampleBatch->rm_stock_id)->first();
@@ -293,23 +300,41 @@ class PPICController extends Controller
 
             $cavity = $rm_stock->cavity > 0 ? $rm_stock->cavity : 1;
             
-            // Hitung Lembaran Lama vs Baru
             $old_lembar = ceil($old_total / $cavity);
             $new_lembar = ceil($new_total / $cavity);
             $selisih_lembar = $new_lembar - $old_lembar;
 
-            // 🌟 VALIDASI & MANAJEMEN STOK REVISI 🌟
+            $logTimestamp = date('Y-m-d H:i:s', strtotime($plan->plan_date . ' ' . date('H:i:s')));
+
+            // SINKRONISASI STOK DAN LOG
             if ($selisih_lembar > 0) {
-                // Target Naik -> Potong Stok Tambahan
+                // Target Naik -> Potong Stok & Catat Log OUT
                 if ($rm_stock->stock_pcs < $selisih_lembar) {
-                    throw new \Exception("❌ REVISI DITOLAK! Butuh tambahan {$selisih_lembar} Lembar material. Sisa stok di gudang hanya {$rm_stock->stock_pcs} Lembar.");
+                    throw new \Exception("❌ REVISI DITOLAK! Butuh tambahan {$selisih_lembar} Lembar material. Sisa stok hanya {$rm_stock->stock_pcs}.");
                 }
                 DB::table('rm_stocks')->where('id', $rm_stock->id)->decrement('stock_pcs', $selisih_lembar);
+                
+                DB::table('rm_production_logs')->insert([
+                    'rm_stock_id'   => $rm_stock->id,
+                    'material_code' => $plan->part_no,
+                    'pcs_used'      => $selisih_lembar,
+                    'no_produksi'   => 'REV-OUT-' . date('YmdHis'),
+                    'created_at'    => $logTimestamp
+                ]);
             } 
             elseif ($selisih_lembar < 0) {
-                // Target Turun / Dibatalkan (0) -> AUTO RETURN STOK
+                // Target Turun / Dibatalkan -> Return Stok & Catat Log RETURN
                 $return_qty = abs($selisih_lembar);
                 DB::table('rm_stocks')->where('id', $rm_stock->id)->increment('stock_pcs', $return_qty);
+                
+                DB::table('rm_incoming_logs')->insert([
+                    'rm_stock_id'   => $rm_stock->id,
+                    'material_code' => $plan->part_no,
+                    'pcs_in'        => $return_qty,
+                    'source'        => 'return',
+                    'no_produksi'   => 'REV-RTN-' . date('YmdHis'),
+                    'created_at'    => $logTimestamp
+                ]);
             }
 
             // Update Master Plan
@@ -323,10 +348,8 @@ class PPICController extends Controller
                 'updated_at' => now()
             ]);
 
-            // Hapus terminal batch yang lama
             DB::table('produksi_batches')->where('plan_id', $id)->delete();
 
-            // Render ulang Batch baru (Biar pembagian material s1/s2 akurat)
             $qty_lembar_s1 = ceil($new_target_s1 / $cavity);
             if($new_target_s1 == 0) $qty_lembar_s1 = 0;
             $qty_lembar_s2 = $new_lembar - $qty_lembar_s1;
@@ -367,12 +390,9 @@ class PPICController extends Controller
                 ]);
             }
 
-            // Bikin Pesan Otomatis
-            if ($new_total == 0) {
-                $msg = "Plan DIBATALKAN! " . abs($selisih_lembar) . " Lembar material otomatis direturn ke Gudang RM.";
-            } else {
-                $msg = "Revisi Sukses! Material otomatis ter-syncronize.";
-            }
+            $msg = ($new_total == 0) 
+                ? "Plan DIBATALKAN! " . abs($selisih_lembar) . " Lembar material otomatis direturn ke Gudang RM."
+                : "Revisi Sukses! Log Material (IN/OUT) otomatis ter-syncronize.";
 
             DB::commit();
             return redirect()->back()->with('success', $msg);
