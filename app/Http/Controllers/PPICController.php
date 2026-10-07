@@ -713,19 +713,31 @@ class PPICController extends Controller
         return redirect()->back()->with('success', 'Batch resumed.'); 
     }
 
-    public function closeBatch($id)
+   public function closeBatch($id)
     {
         DB::beginTransaction();
         try {
             $batch = DB::table('produksi_batches')->where('id', $id)->first();
             if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan.');
 
-            $cavity = $batch->cavity > 0 ? $batch->cavity : 1;
-            $totalPcsProduced = (int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng;
-            $lembarTerpakai = ceil($totalPcsProduced / $cavity);
-            
-            $sisa = max(0, (int)$batch->qty_ambil_pcs - $lembarTerpakai);
+            // ✨ PENGAMAN 1: Kunci Ganda biar nggak diklik 2x (Penyebab data masuk dobel di Actual)
+            if ($batch->status === 'COMPLETED') {
+                throw new \Exception("❌ Batch ini sudah di-Close! Sistem menolak proses ganda agar data tidak terduplikasi.");
+            }
 
+            // ✨ PENGAMAN 2: BACA INPUTAN MANUAL DARI TERMINAL
+            // Kalau operator Terminal udah nginput Return (contoh: 190), sistem bakal patuh pakai angka itu!
+            // Tapi kalau belum nginput (0), baru sistem ngitung otomatis pakai rumus.
+            if ((int)$batch->qty_return_warehouse > 0) {
+                $sisa = (int)$batch->qty_return_warehouse;
+            } else {
+                $cavity = $batch->cavity > 0 ? $batch->cavity : 1;
+                $totalPcsProduced = (int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng;
+                $lembarTerpakai = ceil($totalPcsProduced / $cavity);
+                $sisa = max(0, (int)$batch->qty_ambil_pcs - $lembarTerpakai);
+            }
+
+            // Sisa material dikembalikan ke Gudang RM
             if ($sisa > 0 && $batch->rm_stock_id) {
                 DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa);
 
@@ -739,6 +751,7 @@ class PPICController extends Controller
                 ]);
             }
 
+            // Catat NG ke log khusus NG
             if ((int)$batch->qty_hasil_ng > 0) {
                 $hasNgLog = DB::table('production_ng_logs')->where('no_produksi', $batch->no_produksi)->exists();
                 if (!$hasNgLog) {
@@ -756,12 +769,14 @@ class PPICController extends Controller
                 }
             }
 
+            // Kunci Batch jadi COMPLETED
             DB::table('produksi_batches')->where('id', $id)->update([
                 'status'               => 'COMPLETED',
                 'qty_return_warehouse' => $sisa,
                 'updated_at'           => now()
             ]);
 
+            // Transfer ke Finished Goods
             $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
 
             if ($part && $part->next_process == 'WELDING') {
@@ -790,17 +805,17 @@ class PPICController extends Controller
                 ]);
             }
 
+            // Sinkronisasi ke production_actuals
             $this->syncToActual($id);
 
             DB::commit();
-            return redirect()->back()->with('success', "Batch Closed! Selesai diinput, sisa {$sisa} Lembar otomatis dicatat return ke Gudang RM.");
+            return redirect()->back()->with('success', "Batch Closed! Selesai diinput, {$sisa} Lembar otomatis dicatat return ke Gudang RM.");
 
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal memproses penutupan: ' . $e->getMessage());
         }
     }
-
     private function syncToActual($batchId) 
     {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first(); if (!$batch) return;
@@ -812,4 +827,5 @@ class PPICController extends Controller
             DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]); 
         }
     }
+    
 }
