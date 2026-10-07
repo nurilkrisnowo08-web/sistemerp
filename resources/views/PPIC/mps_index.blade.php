@@ -51,6 +51,9 @@
             <form action="" method="GET" class="d-flex mr-2">
                 <input type="date" name="date" class="form-control rounded-pill border-dark px-4 shadow-sm font-weight-bold" value="{{ $date }}" onchange="this.form.submit()">
             </form>
+            <a href="{{ route('ppic.wos.print_bundle', ['date' => $date]) }}" class="btn btn-dark shadow font-weight-bold rounded-pill px-4 mr-2" target="_blank">
+                <i class="fas fa-print mr-2 text-warning"></i> PRINT ALL WOS
+            </a>
             <button class="btn btn-primary shadow font-weight-bold rounded-pill px-4" data-toggle="modal" data-target="#modalAddPlan">
                 <i class="fas fa-plus-circle mr-2"></i> REGISTER PLAN
             </button>
@@ -160,14 +163,14 @@
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi Target">
+                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" title="Revisi Target">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                     </td>
                                 </tr>
 
                                 {{-- MODAL REVISI S1 --}}
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
+                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
@@ -181,7 +184,7 @@
                                                         <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
                                                     </div>
                                                     <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
-                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
+                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{$p->line_code }}</label>
                                                         <div class="row">
                                                             <div class="col-6">
                                                                 <label class="small font-weight-bold">S1 Reguler</label>
@@ -230,7 +233,7 @@
                                     <i class="fas fa-moon text-dark mr-1"></i> SHIFT 2 (NIGHT OPS)
                                 </td>
                             </tr>
-                            @foreach($s2Plans as $index => $p)
+                            @foreach($s2Plans as $index =>$p)
                                 @php 
                                     $balanceStatus = ($p->balance > 0) ? 'balance-danger' : 'balance-success';
                                     $balanceIcon = ($p->balance > 0) ? 'fa-exclamation-triangle' : 'fa-check-circle';
@@ -251,14 +254,14 @@
                                     <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
                                     <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi Target">
+                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" title="Revisi Target">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                     </td>
                                 </tr>
 
                                 {{-- MODAL REVISI S2 --}}
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
+                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
@@ -272,7 +275,7 @@
                                                         <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
                                                     </div>
                                                     <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
-                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
+                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{$p->line_code }}</label>
                                                         <div class="row">
                                                             <div class="col-6">
                                                                 <label class="small font-weight-bold">S1 Reguler</label>
@@ -352,8 +355,8 @@
                                 <label class="small font-weight-bold">Select Line</label>
                                 <select name="line_code" id="select_line" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE LINE --</option>
-                                    @foreach($availableLines as $l)
-                                        <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{ $l->nama_Line }}</option>
+                                    @foreach($availableLines as$l)
+                                        <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{$l->nama_Line }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -361,7 +364,7 @@
                                 <label class="small font-weight-bold">Customer</label>
                                 <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
                                     <option value="">-- CHOOSE --</option>
-                                    @foreach($availableCustomers as $c)
+                                    @foreach($availableCustomers as$c)
                                         <option value="{{ $c->code }}">{{ $c->name }}</option>
                                     @endforeach
                                 </select>
@@ -430,6 +433,7 @@
 </div>
 
 <script>
+    // ✨ FIX JAVASCRIPT: Bersihkan input shift lain agar tidak dikirim ganda
     function modalShiftSwitch(s) {
         const isS1 = s === 1;
         document.getElementById('m_btn_s1').style.background = isS1 ? '#4361ee' : 'none';
@@ -441,6 +445,16 @@
         document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
+
+        // Kosongkan nilai shift yang tidak dipilih agar tidak dikirim ke database
+        if (isS1) {
+            document.getElementById('s2_reg').value = 0;
+            document.getElementById('s2_ot').value = 0;
+        } else {
+            document.getElementById('s1_reg').value = 0;
+            document.getElementById('s1_ot').value = 0;
+        }
+
         calculateLiveHours();
     }
 
@@ -470,17 +484,30 @@
         });
     });
 
+    // ✨ FIX JAVASCRIPT: Hanya isi nilai sesuai shift yang sedang aktif
     document.getElementById('select_line').addEventListener('change', function() {
         let type = this.options[this.selectedIndex].getAttribute('data-type');
         let capInput = document.getElementById('input_cap');
+        let activeShift = document.getElementById('m_active_shift').value;
+        
         if(type === 'BIG') { 
             capInput.value = 320; 
-            document.getElementById('s1_reg').value = 2400; 
-            document.getElementById('s2_reg').value = 0; 
+            if (activeShift == 1) {
+                document.getElementById('s1_reg').value = 2400; 
+                document.getElementById('s2_reg').value = 0; 
+            } else {
+                document.getElementById('s1_reg').value = 0; 
+                document.getElementById('s2_reg').value = 2400; 
+            }
         } else { 
             capInput.value = 500; 
-            document.getElementById('s1_reg').value = 4000; 
-            document.getElementById('s2_reg').value = 0;
+            if (activeShift == 1) {
+                document.getElementById('s1_reg').value = 4000; 
+                document.getElementById('s2_reg').value = 0;
+            } else {
+                document.getElementById('s1_reg').value = 0; 
+                document.getElementById('s2_reg').value = 4000;
+            }
         }
         calculateLiveHours();
     });
