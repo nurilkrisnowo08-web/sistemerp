@@ -2,15 +2,17 @@
 
 @section('content')
 @php
-    $startDate = request('start_date') ? request('start_date') : date('Y-m-d');
-    $endDate = request('end_date') ? request('end_date') : date('Y-m-d');
+    // Setup Tanggal dari Controller
+    $startD =$startDate ?? date('Y-m-d', strtotime('-6 days'));
+    $endD =$endDate ?? date('Y-m-d');
     
-    if ($startDate ==$endDate) {
-        $periodString = date('d F Y', strtotime($startDate));
+    if ($startD ==$endD) {
+        $periodString = date('d F Y', strtotime($startD));
     } else {
-        $periodString = date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate));
+        $periodString = date('d M Y', strtotime($startD)) . ' - ' . date('d M Y', strtotime($endD));
     }
 
+    // Kalkulasi Data untuk KPI Box
     $totalTake = 0; 
     $totalOk = 0; 
     $totalNg = 0; 
@@ -119,7 +121,7 @@
             </thead>
             <tbody>
                 @if(isset($histories) && count($histories) > 0)
-                    @foreach($histories as $h)
+                    @foreach($histories as$h)
                     <tr>
                         <td>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
                         <td>{{ $h->no_produksi }}</td>
@@ -162,9 +164,9 @@
             </div>
             <div class="d-flex mt-3 mt-md-0">
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex align-items-center shadow-sm p-2 bg-white rounded-pill border mr-2">
-                    <input type="date" name="start_date" value="{{ $startDate }}" class="form-control form-control-sm border-0 bg-transparent shadow-none font-weight-bold" style="width: 140px;">
+                    <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent shadow-none font-weight-bold" style="width: 140px;">
                     <span class="mx-1 text-muted">to</span>
-                    <input type="date" name="end_date" value="{{ $endDate }}" class="form-control form-control-sm border-0 bg-transparent shadow-none font-weight-bold" style="width: 140px;">
+                    <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent shadow-none font-weight-bold" style="width: 140px;">
                     <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 ml-2"><i class="fas fa-sync-alt"></i></button>
                 </form>
                 <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 shadow-sm"><i class="fas fa-print mr-2"></i> PRINT REPORT</button>
@@ -179,8 +181,9 @@
             <div class="col-md-3 mb-3"><div class="stat-card bg-dark text-white"><div class="stat-label text-white-50">Global Performance</div><div class="stat-value text-white">{{ number_format($performance, 1) }}%</div></div></div>
         </div>
 
+        {{-- 📉 GRAFIK TREND PRODUKSI HARIAN --}}
         <div class="terminal-card p-4 mb-5 shadow-sm">
-            <h6 class="font-weight-bold text-muted small uppercase mb-4 tracking-widest"><i class="fas fa-chart-line mr-2 text-primary"></i> Production Trend Analysis</h6>
+            <h6 class="font-weight-bold text-muted small uppercase mb-4 tracking-widest"><i class="fas fa-chart-line mr-2 text-primary"></i> Daily Production Trend Analysis</h6>
             <div id="trendChart"></div>
         </div>
 
@@ -200,7 +203,7 @@
                     </thead>
                     <tbody>
                         @if(isset($histories) && count($histories) > 0)
-                            @foreach($histories as $h)
+                            @foreach($histories as$h)
                             @php 
                                 $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? $h->paired_ok : 0);
                                 $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? $h->paired_ng : 0);
@@ -239,7 +242,7 @@
             
             @if(isset($histories) && method_exists($histories, 'links'))
                 <div class="p-3 border-top d-flex justify-content-center">
-                    {{ $histories->links('pagination::bootstrap-4') }}
+                    {{ $histories->appends(request()->input())->links('pagination::bootstrap-4') }}
                 </div>
             @endif
         </div>
@@ -288,28 +291,38 @@
 </div>
 
 <script>
-    @if(isset($histories) && count($histories) > 0)
-        const historyData = @json($histories->take(20)->reverse()->values());
+    // 📊 SCRIPT GRAFIK TREND PRODUKSI HARIAN (DAILY AGGREGATION)
+    const chartLabels = @json($chartLabels ?? []);
+    const chartOk = @json($chartOk ?? []);
+    const chartNg = @json($chartNg ?? []);
+    const chartPerf = @json($chartPerf ?? []);
+
+    if(chartLabels.length > 0) {
         new ApexCharts(document.querySelector("#trendChart"), {
             series: [
-                { name: 'Perf %', type: 'line', data: historyData.map(h => {
-                    let ok = (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0);
-                    let ng = (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0);
-                    let t = ok + ng;
-                    return t > 0 ? ((ok/t)*100).toFixed(1) : 0;
-                })},
-                { name: 'OK Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ok)||0) + (h.is_separating ? parseFloat(h.paired_ok) : 0)) },
-                { name: 'NG Units', type: 'area', data: historyData.map(h => (parseFloat(h.qty_hasil_ng)||0) + (h.is_separating ? parseFloat(h.paired_ng) : 0)) }
+                { name: 'Performance %', type: 'line', data: chartPerf },
+                { name: 'OK Units', type: 'area', data: chartOk },
+                { name: 'NG Units', type: 'area', data: chartNg }
             ],
             chart: { height: 350, type: 'line', toolbar: { show: false } },
             stroke: { width: [4, 2, 2], curve: 'smooth' },
             colors: ['#2563eb', '#10b981', '#ef4444'],
-            xaxis: { categories: historyData.map(h => h.no_produksi.substr(-6)) },
-            yaxis: [{ title: { text: "Performance %" }, min: 0, max: 100 }, { opposite: true, title: { text: "Units" } }],
-            legend: { position: 'top', fontWeight: 700 }
+            xaxis: { 
+                categories: chartLabels, 
+                tooltip: { enabled: false },
+                labels: { style: { fontWeight: 700 } }
+            },
+            yaxis: [
+                { title: { text: "Performance %", style: { fontWeight: 800 } }, min: 0, max: 100, labels: { formatter: (val) => val.toFixed(1) + "%" } }, 
+                { opposite: true, title: { text: "Total Units (Pcs)", style: { fontWeight: 800 } }, min: 0, labels: { formatter: (val) => Math.round(val) } }
+            ],
+            legend: { position: 'top', fontWeight: 700 },
+            fill: { opacity: [1, 0.2, 0.2] },
+            dataLabels: { enabled: false }
         }).render();
-    @endif
+    }
 
+    // Modal Script
     let donut = null;
     let tempDonutData = { ok: 0, ng: 0 };
 

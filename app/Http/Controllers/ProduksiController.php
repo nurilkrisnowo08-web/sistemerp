@@ -291,10 +291,15 @@ class ProduksiController extends Controller
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
     
     /**
-     * ✨ FUNGSI HISTORY BARU (Membaca Part Normal & Separating)
+     * ✨ FUNGSI HISTORY BARU (DAILY AGGREGATION & RENTANG TANGGAL) ✨
      */
     public function history(Request $request) 
     { 
+        // 1. Setup Filter Tanggal (Default 7 Hari Terakhir jika tidak difilter)
+        $startDate = $request->start_date ?? date('Y-m-d', strtotime('-6 days'));
+        $endDate = $request->end_date ?? date('Y-m-d');
+
+        // 2. Query Tabel History (Data Lengkap untuk di bawah grafik)
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
@@ -308,20 +313,13 @@ class ProduksiController extends Controller
                 'rm_stocks.customer'
             )
             ->where('produksi_batches.status', 'COMPLETED')
-            // Jangan load sub part sebagai baris sendiri, gabungin aja ke baris Utama
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
+            ->whereBetween(DB::raw('DATE(produksi_batches.updated_at)'), [$startDate, $endDate])
             ->orderBy('produksi_batches.updated_at', 'desc');
 
-        if ($request->date) {
-            $query->whereDate('produksi_batches.created_at', $request->date);
-        }
-
-        // Ambil 50 data terbaru (Pagination biar enteng)
         $historiesRaw = $query->paginate(50); 
 
-        // Mapping buat baca data Kanan-Kiri dan NG
         $historiesRaw->getCollection()->transform(function ($item) {
-            // Cek apakah batch ini Part Separating Utama
             $isMainPair = str_ends_with($item->no_produksi, '-M');
             $item->is_separating = $isMainPair;
             $item->paired_part = null;
@@ -329,7 +327,6 @@ class ProduksiController extends Controller
             $item->paired_ng = 0;
 
             if ($isMainPair) {
-                // Ambil data pasangannya (yang ekornya -S)
                 $subNoProd = substr($item->no_produksi, 0, -2) . '-S';
                 $pairedBatch = DB::table('produksi_batches')->where('no_produksi', $subNoProd)->first();
                 
@@ -340,7 +337,6 @@ class ProduksiController extends Controller
                 }
             }
 
-            // Ambil rincian NG spesifik (Dented, Burry, dll)
             $item->ng_details = DB::table('production_ng_logs')
                 ->where('no_produksi', $item->no_produksi)
                 ->get();
@@ -348,11 +344,56 @@ class ProduksiController extends Controller
             return $item;
         });
 
-        // Supaya aman nembus ke Blade, kita parsing 2 variabel populer
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
-        return view('Produksi.history', compact('histories', 'activeProductions')); 
+        // 3. Query Khusus Grafik (Di-Group Murni Per Hari)
+        $dailyStats = DB::table('produksi_batches')
+            ->select(
+                DB::raw('DATE(updated_at) as tgl'),
+                DB::raw('SUM(qty_hasil_ok) as total_ok'),
+                DB::raw('SUM(qty_hasil_ng) as total_ng')
+            )
+            ->where('status', 'COMPLETED')
+            ->whereBetween(DB::raw('DATE(updated_at)'), [$startDate, $endDate])
+            // Sengaja GAK PAKAI where NOT LIKE '-S' biar part pasangan juga ikut kehitung totalnya di grafik
+            ->groupBy('tgl')
+            ->orderBy('tgl', 'asc')
+            ->get();
+
+        $chartLabels = []; 
+        $chartOk = []; 
+        $chartNg = []; 
+        $chartPerf = [];
+        
+        // Looping berdasarkan kalender (Untuk menghindari grafik bolong jika ada hari libur)
+        $currentDate = strtotime($startDate);
+        $lastDate = strtotime($endDate);
+        
+        while ($currentDate <= $lastDate) {
+            $dateStr = date('Y-m-d', $currentDate);
+            $chartLabels[] = date('d M', $currentDate);
+            
+            $stat = $dailyStats->firstWhere('tgl', $dateStr);
+            
+            if ($stat) {
+                $ok = (int)$stat->total_ok;
+                $ng = (int)$stat->total_ng;
+                $chartOk[] = $ok;
+                $chartNg[] = $ng;
+                
+                $total = $ok + $ng;
+                $chartPerf[] = $total > 0 ? round(($ok / $total) * 100, 1) : 0;
+            } else {
+                $chartOk[] = 0;
+                $chartNg[] = 0;
+                $chartPerf[] = 0;
+            }
+            
+            $currentDate = strtotime('+1 day', $currentDate);
+        }
+
+        return view('Produksi.history', compact('histories', 'activeProductions', 'startDate', 'endDate', 'chartLabels', 'chartOk', 'chartNg', 'chartPerf')); 
     }
     
     public function getSpecsByCustomer($customer) {
