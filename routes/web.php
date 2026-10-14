@@ -76,6 +76,8 @@ Route::middleware(['auth', 'role:produksi,staff_ppic,kepala_ppic'])->group(funct
     Route::get('/welding-history-prod', [WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
     Route::get('/inventory-welding/daily-recap', [WeldingStockController::class, 'dailyRecap'])->name('welding.daily_recap');
     Route::get('/inventory-welding/monthly-recap', [WeldingStockController::class, 'recap'])->name('welding.recap');
+    Route::get('/ppic/welding/print-wos/{date}/{line_code}', [PPICController::class, 'printWosWelding'])->name('ppic.welding.print_wos');
+    Route::get('/ppic/welding/print-serah-terima/{date}/{line_code}', [PPICController::class, 'printSerahTerimaWelding'])->name('ppic.welding.print_serah_terima');
 
     // 🏭 AREA LIVE MONITORING & STAMPING
     Route::get('/monitoring-produksi', [ProduksiController::class, 'index'])->name('produksi.index');
