@@ -178,7 +178,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. STORE MPS STAMPING (DENGAN SMART SEPARATING PART)
+     * 3. STORE MPS STAMPING
      */
     public function mpsStore(Request $request)
     {
@@ -289,7 +289,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. UPDATE & REVISI WOS
+     * 4. UPDATE & REVISI WOS STAMPING
      */
     public function updateWos(Request $request, $id)
     {
@@ -605,7 +605,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 9B. STORE WELDING MPS (OTOMATIS POTONG WIP SEBAGAI WELDING_OUT) ✨
+     * ✨ 9B. STORE WELDING MPS (SESUAI STRUKTUR WELDING_BATCHES ASLI) ✨
      */
     public function weldingMpsStore(Request $request)
     {
@@ -619,81 +619,104 @@ class PPICController extends Controller
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
             }
 
-            // 1. Cek stok WIP di finished_goods (Store Welding yang di dalam kamar)
-            $fg = DB::table('finished_goods')->where('part_no', $request->part_no)->first();
-            $wip_stock = $fg ? $fg->welding_stock : 0;
+            // Cek Plan Lama (Untuk Revisi)
+            $existingPlan = DB::table('welding_plans')
+                ->where('plan_date', $request->plan_date)
+                ->where('part_no', $request->part_no)
+                ->first();
 
-            if ($wip_stock < $total_target) {
-                throw new \Exception("❌ PLAN DITOLAK: STOK WIP WELDING KURANG! Sisa Stock: {$wip_stock} Pcs, Butuh: {$total_target} Pcs.");
-            }
-
-            // 2. Potong stok WIP otomatis (Diambil untuk Produksi)
-            DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $total_target);
-
-            // 3. Catat sbg OUT (DEPLOY) biar kebaca di Terminal
-            DB::table('production_logs')->insert([
-                'part_no' => $request->part_no,
-                'qty' => $total_target,
-                'process_type' => 'WELDING_OUT', 
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-
-            // 4. Simpan Welding Plan
             $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
-            
-            $planId = DB::table('welding_plans')->insertGetId([
-                'plan_date' => $request->plan_date,
-                'part_no' => $request->part_no,
-                'customer_code' => $partData->customer_code ?? 'UNK',
-                'line_code' => $request->line_code,
-                'manpower' => $request->manpower ?? 1,
-                'cap_per_hour' => $request->cap_per_hour ?? 0,
-                's1_plan_reg' => $request->s1_plan_reg ?? 0,
-                's1_plan_ot' => $request->s1_plan_ot ?? 0,
-                's2_plan_reg' => $request->s2_plan_reg ?? 0,
-                's2_plan_ot' => $request->s2_plan_ot ?? 0,
-                'dandory_time' => 15,
-                'process_qty' => 1,
-                'qty_lot' => 1,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-
-            // 5. Bikin Batch Otomatis Untuk Terminal Welding
             $line = DB::table('line_welding')->where('kode_line', $request->line_code)->first();
             $line_id = $line ? $line->id : null;
 
+            if ($existingPlan) {
+                // =============== MODE REVISI ===============
+                $old_total = ($existingPlan->s1_plan_reg + $existingPlan->s1_plan_ot + $existingPlan->s2_plan_reg + $existingPlan->s2_plan_ot);
+                $selisih = $total_target - $old_total;
+
+                if ($selisih > 0) {
+                    $fg = DB::table('finished_goods')->where('part_no', $request->part_no)->first();
+                    $wip_stock = $fg ? $fg->welding_stock : 0;
+                    
+                    if ($wip_stock < $selisih) {
+                        throw new \Exception("❌ REVISI DITOLAK: STOK WIP WELDING KURANG! Butuh tambahan {$selisih} Pcs, sisa WIP cuma {$wip_stock} Pcs.");
+                    }
+                    
+                    DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $selisih);
+                    DB::table('production_logs')->insert(['part_no' => $request->part_no, 'qty' => $selisih, 'process_type' => 'WELDING_OUT', 'created_at' => now()]);
+                } elseif ($selisih < 0) {
+                    $returnQty = abs($selisih);
+                    DB::table('finished_goods')->where('part_no', $request->part_no)->increment('welding_stock', $returnQty);
+                    DB::table('production_logs')->insert(['part_no' => $request->part_no, 'qty' => $returnQty, 'process_type' => 'WELDING_IN_RET', 'created_at' => now()]);
+                }
+
+                DB::table('welding_plans')->where('id', $existingPlan->id)->update([
+                    'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0,
+                    's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0,
+                    's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'updated_at' => now()
+                ]);
+
+                // Reset batch terminal yang belum diproses di hari itu
+                DB::table('welding_batches')
+                    ->where('part_no', $request->part_no)
+                    ->whereDate('created_at', $request->plan_date)
+                    ->where('status', '!=', 'COMPLETED')
+                    ->delete();
+                    
+                $msg = 'Revisi Welding Plan Berhasil dan Stok WIP udah disesuaikan!';
+            
+            } else {
+                // =============== MODE PLAN BARU ===============
+                $fg = DB::table('finished_goods')->where('part_no', $request->part_no)->first();
+                $wip_stock = $fg ? $fg->welding_stock : 0;
+
+                if ($wip_stock < $total_target) {
+                    throw new \Exception("❌ PLAN DITOLAK: STOK WIP WELDING KURANG! Sisa WIP: {$wip_stock} Pcs, Butuh: {$total_target} Pcs.");
+                }
+
+                DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $total_target);
+                DB::table('production_logs')->insert(['part_no' => $request->part_no, 'qty' => $total_target, 'process_type' => 'WELDING_OUT', 'created_at' => now()]);
+
+                DB::table('welding_plans')->insert([
+                    'plan_date' => $request->plan_date, 'part_no' => $request->part_no, 'customer_code' => $partData->customer_code ?? 'UNK',
+                    'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0,
+                    's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0,
+                    's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'dandory_time' => 15, 'process_qty' => 1, 'qty_lot' => 1, 'created_at' => now(), 'updated_at' => now()
+                ]);
+                $msg = 'Welding Plan Deployed! Barang otomatis diambil dan tercatat sebagai OUT Produksi.';
+            }
+
+            // =============== 5. LEMPAR BATCH KE TERMINAL WELDING ===============
             if ($target_s1 > 0 && $line_id) {
                 DB::table('welding_batches')->insert([
-                    'no_produksi' => 'W-S1-' . date('His'),
-                    'plan_id' => $planId,
-                    'shift' => 'Pagi',
-                    'line_id' => $line_id,
+                    'no_produksi_stamping' => 'W-S1-' . date('His'),
                     'part_no' => $request->part_no,
-                    'qty_ambil_pcs' => $target_s1,
+                    'line_id' => $line_id, 
+                    'qty_masuk' => $target_s1, 
+                    'shift' => 'Pagi', 
                     'status' => 'PROSES',
-                    'created_at' => now(),
+                    'keterangan' => 'AUTO-DEPLOY FROM PPIC',
+                    'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s'))), 
                     'updated_at' => now()
                 ]);
             }
 
             if ($target_s2 > 0 && $line_id) {
                 DB::table('welding_batches')->insert([
-                    'no_produksi' => 'W-S2-' . date('His'),
-                    'plan_id' => $planId,
-                    'shift' => 'Malam',
-                    'line_id' => $line_id,
+                    'no_produksi_stamping' => 'W-S2-' . date('His'),
                     'part_no' => $request->part_no,
-                    'qty_ambil_pcs' => $target_s2,
+                    'line_id' => $line_id, 
+                    'qty_masuk' => $target_s2, 
+                    'shift' => 'Malam', 
                     'status' => 'PROSES',
-                    'created_at' => now(),
+                    'keterangan' => 'AUTO-DEPLOY FROM PPIC',
+                    'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s'))), 
                     'updated_at' => now()
                 ]);
             }
 
             DB::commit();
-            return redirect()->back()->with('success', 'Welding Plan Deployed! Barang otomatis diambil dan tercatat sebagai OUT Produksi.');
+            return redirect()->back()->with('success', $msg);
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
@@ -701,7 +724,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 10. CLOSE BATCH (DENGAN PROTEKSI GANDA & PRIORITAS INPUT MANUAL TERMINAL)
+     * 10. CLOSE BATCH STAMPING 
      */
     public function resumeBatch($id) 
     { 
