@@ -107,7 +107,6 @@ class PPICController extends Controller
         $lineFinishTimeS2 = [];
 
         foreach($allPlans as $p) {
-            // ✨ FITUR BARU ANTI-WIPE: Sembunyikan Part Pasangan/Sub berdasarkan Ujung Kode Batch (-S)
             $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
             if ($cekSub) {
                 continue; 
@@ -179,7 +178,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. STORE MPS (DENGAN SMART SEPARATING PART)
+     * 3. STORE MPS STAMPING (DENGAN SMART SEPARATING PART)
      */
     public function mpsStore(Request $request)
     {
@@ -194,7 +193,6 @@ class PPICController extends Controller
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
             }
 
-            // --- 1. PROSES PART UTAMA ---
             $rm_stock = DB::table('rm_stocks')->where('material_code', $request->part_no)->where('stock_pcs', '>', 0)->first();
             if (!$rm_stock) {
                 throw new \Exception("Material untuk Part No [{$request->part_no}] kosong atau tidak terdaftar!");
@@ -227,7 +225,6 @@ class PPICController extends Controller
                 'dandory_time' => $request->dandory_time ?? 15, 'created_at' => now(), 'updated_at' => now()
             ]);
 
-            // --- 2. PROSES PART PASANGAN (SEPARATING MODE) ---
             $planIdSub = null;
             if (!empty($part_separator)) {
                 $planIdSub = DB::table('production_plans')->insertGetId([
@@ -240,7 +237,6 @@ class PPICController extends Controller
                 ]);
             }
 
-            // --- 3. BIKIN BATCH ---
             $mesin = DB::table('line')->where('kode_Line', $request->line_code)->first();
             $mesin_id = $mesin ? $mesin->id : null;
 
@@ -249,7 +245,6 @@ class PPICController extends Controller
             $qty_lembar_s2 = $kebutuhan_lembar - $qty_lembar_s1;
 
             $ket = "AUTO-DEPLOY FROM PPIC";
-            // KODE SAKTI: -M untuk part utama jika separating, -S untuk part sub.
             $main_suffix = $part_separator ? '-M' : '';
 
             if ($target_s1 > 0 && $mesin_id) {
@@ -316,7 +311,6 @@ class PPICController extends Controller
             $alreadyReturnedByProd = $existingBatches->sum('qty_return_warehouse');
             $sampleBatch = $existingBatches->first();
             
-            // Pertahankan suffix pasangan
             $suffix = '';
             if ($sampleBatch) {
                 if (str_ends_with($sampleBatch->no_produksi, '-M')) $suffix = '-M';
@@ -412,7 +406,6 @@ class PPICController extends Controller
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
-        // ✨ FILTER AJAIB: Jangan bawa Batch -S (Pasangan) ke kertas WOS biar jamnya gak berantakan!
         $plansS1 = $plansS1->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
             return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
@@ -441,7 +434,6 @@ class PPICController extends Controller
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
-        // ✨ FILTER AJAIB: Buang Batch -S dari daftar rencana bundle
         $allPlansFiltered = $allPlans->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->first();
             return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
@@ -463,7 +455,7 @@ class PPICController extends Controller
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->whereIn('produksi_batches.plan_id', $planIds)
-            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') // Jangan print material untuk separating part pasangan
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name', 'parts.part_name')
             ->orderBy('produksi_batches.shift', 'desc')->get();
 
@@ -612,14 +604,100 @@ class PPICController extends Controller
         ))->with('shift', $shiftParam);
     }
 
+    /**
+     * ✨ 9B. STORE WELDING MPS (OTOMATIS POTONG WIP SEBAGAI WELDING_OUT) ✨
+     */
     public function weldingMpsStore(Request $request)
     {
-        $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
-        DB::table('welding_plans')->updateOrInsert(
-            ['plan_date' => $request->plan_date, 'part_no' => $request->part_no],
-            ['customer_code' => $partData->customer_code ?? 'UNK', 'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0, 's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0, 's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'dandory_time' => 15, 'process_qty' => 1, 'qty_lot' => 1, 'updated_at' => now()]
-        );
-        return redirect()->back()->with('success', 'Welding Plan Authorized!');
+        DB::beginTransaction();
+        try {
+            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
+            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+            $total_target = $target_s1 + $target_s2;
+
+            if ($total_target <= 0) {
+                throw new \Exception("Target produksi tidak boleh kosong / 0.");
+            }
+
+            // 1. Cek stok WIP di finished_goods (Store Welding yang di dalam kamar)
+            $fg = DB::table('finished_goods')->where('part_no', $request->part_no)->first();
+            $wip_stock = $fg ? $fg->welding_stock : 0;
+
+            if ($wip_stock < $total_target) {
+                throw new \Exception("❌ PLAN DITOLAK: STOK WIP WELDING KURANG! Sisa Stock: {$wip_stock} Pcs, Butuh: {$total_target} Pcs.");
+            }
+
+            // 2. Potong stok WIP otomatis (Diambil untuk Produksi)
+            DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $total_target);
+
+            // 3. Catat sbg OUT (DEPLOY) biar kebaca di Terminal
+            DB::table('production_logs')->insert([
+                'part_no' => $request->part_no,
+                'qty' => $total_target,
+                'process_type' => 'WELDING_OUT', 
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 4. Simpan Welding Plan
+            $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
+            
+            $planId = DB::table('welding_plans')->insertGetId([
+                'plan_date' => $request->plan_date,
+                'part_no' => $request->part_no,
+                'customer_code' => $partData->customer_code ?? 'UNK',
+                'line_code' => $request->line_code,
+                'manpower' => $request->manpower ?? 1,
+                'cap_per_hour' => $request->cap_per_hour ?? 0,
+                's1_plan_reg' => $request->s1_plan_reg ?? 0,
+                's1_plan_ot' => $request->s1_plan_ot ?? 0,
+                's2_plan_reg' => $request->s2_plan_reg ?? 0,
+                's2_plan_ot' => $request->s2_plan_ot ?? 0,
+                'dandory_time' => 15,
+                'process_qty' => 1,
+                'qty_lot' => 1,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 5. Bikin Batch Otomatis Untuk Terminal Welding
+            $line = DB::table('line_welding')->where('kode_line', $request->line_code)->first();
+            $line_id = $line ? $line->id : null;
+
+            if ($target_s1 > 0 && $line_id) {
+                DB::table('welding_batches')->insert([
+                    'no_produksi' => 'W-S1-' . date('His'),
+                    'plan_id' => $planId,
+                    'shift' => 'Pagi',
+                    'line_id' => $line_id,
+                    'part_no' => $request->part_no,
+                    'qty_ambil_pcs' => $target_s1,
+                    'status' => 'PROSES',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            if ($target_s2 > 0 && $line_id) {
+                DB::table('welding_batches')->insert([
+                    'no_produksi' => 'W-S2-' . date('His'),
+                    'plan_id' => $planId,
+                    'shift' => 'Malam',
+                    'line_id' => $line_id,
+                    'part_no' => $request->part_no,
+                    'qty_ambil_pcs' => $target_s2,
+                    'status' => 'PROSES',
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Welding Plan Deployed! Barang otomatis diambil dan tercatat sebagai OUT Produksi.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 
     /**

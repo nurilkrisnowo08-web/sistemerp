@@ -161,6 +161,18 @@
 
 <div class="container-fluid py-4 px-lg-5 animate__animated animate__fadeIn">
     
+    {{-- ALERT PESAN --}}
+    @if(session('success'))
+        <div class="alert alert-success border-0 shadow-sm" style="border-radius: 16px;">
+            <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm" style="border-radius: 16px;">
+            <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
+        </div>
+    @endif
+
     {{-- 🛰️ TOP NAVIGATION & HEADER --}}
     <div class="header-container d-flex flex-column flex-md-row justify-content-between align-items-center">
         <div>
@@ -231,6 +243,7 @@
                         <th class="text-center">T-Start</th>
                         <th class="text-center">T-Finish</th>
                         <th class="text-center">Status</th>
+                        <th class="text-right pr-4">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -278,10 +291,22 @@
                                 <i class="far fa-clock text-muted"></i>
                             @endif
                         </td>
+                        <td class="text-right pr-4">
+                            {{-- ✨ FITUR LOCK OTOMATIS: Kunci tombol edit kalau udah diproses di Terminal ✨ --}}
+                            @if($plan->total_actual > 0)
+                                <button class="btn btn-sm text-muted rounded-pill px-3 shadow-none border" style="background:#f1f5f9; cursor:not-allowed;" title="LOCKED: Already in Process">
+                                    <i class="fas fa-lock mr-1"></i> LOCKED
+                                </button>
+                            @else
+                                <button class="btn btn-sm btn-warning rounded-pill px-3 font-weight-bold shadow-sm" data-toggle="modal" data-target="#modalEditPlan{{ $plan->id }}">
+                                    <i class="fas fa-edit mr-1"></i> REVISI
+                                </button>
+                            @endif
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="py-5 text-center">
+                        <td colspan="10" class="py-5 text-center">
                             <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" width="60" class="opacity-25 mb-3" style="filter: grayscale(1)">
                             <p class="text-muted font-weight-bold">NO SCHEDULED DATA DETECTED FOR {{ $shift == 'S1' ? 'SHIFT 1' : 'SHIFT 2' }}</p>
                         </td>
@@ -310,7 +335,7 @@
     </div>
 </div>
 
-{{-- 🛡️ MODAL: REGISTER PLAN --}}
+{{-- 🛡️ MODAL: REGISTER PLAN BARU --}}
 <div class="modal fade animate__animated animate__fadeIn" id="modalRegisterPlan" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content modal-industrial shadow-2xl">
@@ -325,7 +350,7 @@
                         <!-- Group 1: Part Info -->
                         <div class="col-md-4">
                             <div class="tech-input-group h-100">
-                                <h6 class="font-weight-black mb-3"><i class="fas fa-tag mr-2 text-primary"></i> 01. PRODUCT_ID</h6>
+                                <h6 class="font-weight-black mb-3"><i class="fas fa-tag mr-2 text-primary"></i>PRODUCT_ID</h6>
                                 <div class="form-group">
                                     <label class="small font-weight-bold">Station Code</label>
                                     <select name="line_code" class="form-control rounded-pill border-0 shadow-sm" required>
@@ -352,16 +377,16 @@
                                 <div class="row">
                                     <div class="col-6">
                                         <label class="small font-weight-bold">Manpower</label>
-                                        <input type="number" name="manpower" id="inp_mp" class="form-control rounded-pill border-0 shadow-sm" value="1" oninput="autoCalc()">
+                                        <input type="number" name="manpower" id="inp_mp_new" class="form-control rounded-pill border-0 shadow-sm" value="1" oninput="autoCalc('new')">
                                     </div>
                                     <div class="col-6">
                                         <label class="small font-weight-bold">Cap/Hr</label>
-                                        <input type="number" name="cap_per_hour" id="inp_cap" class="form-control rounded-pill border-0 shadow-sm" value="100" oninput="autoCalc()">
+                                        <input type="number" name="cap_per_hour" id="inp_cap_new" class="form-control rounded-pill border-0 shadow-sm" value="100" oninput="autoCalc('new')">
                                     </div>
                                 </div>
                                 <div class="mt-4 p-3 bg-white rounded-xl border text-center shadow-sm">
                                     <label class="small font-weight-black text-muted uppercase d-block">Expected Machine Load</label>
-                                    <h3 class="font-weight-black text-primary mb-0" id="display_hours">0.0H</h3>
+                                    <h3 class="font-weight-black text-primary mb-0" id="display_hours_new">0.0H</h3>
                                 </div>
                             </div>
                         </div>
@@ -372,11 +397,11 @@
                                 <h6 class="font-weight-black mb-3"><i class="fas fa-layer-group mr-2 text-info"></i> 03. QUANTITY_ALLOC</h6>
                                 <div class="form-group">
                                     <label class="small font-weight-bold text-primary">Shift 1 (Day) Target</label>
-                                    <input type="number" name="s1_plan_reg" id="inp_s1" class="form-control rounded-pill border-0 shadow-sm" value="0" oninput="autoCalc()">
+                                    <input type="number" name="s1_plan_reg" id="inp_s1_new" class="form-control rounded-pill border-0 shadow-sm" value="0" oninput="autoCalc('new')">
                                 </div>
                                 <div class="form-group">
                                     <label class="small font-weight-bold text-danger">Shift 2 (Night) Target</label>
-                                    <input type="number" name="s2_plan_reg" id="inp_s2" class="form-control rounded-pill border-0 shadow-sm" value="0" oninput="autoCalc()">
+                                    <input type="number" name="s2_plan_reg" id="inp_s2_new" class="form-control rounded-pill border-0 shadow-sm" value="0" oninput="autoCalc('new')">
                                 </div>
                             </div>
                         </div>
@@ -393,14 +418,101 @@
     </div>
 </div>
 
+{{-- 🛡️ MODAL LOOP: REVISI PLAN --}}
+@foreach($plans as $plan)
+    @if($plan->total_actual == 0)
+    <div class="modal fade animate__animated animate__fadeIn" id="modalEditPlan{{ $plan->id }}" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content modal-industrial shadow-2xl border-warning">
+                <div class="modal-header bg-warning text-dark p-4 border-0">
+                    <h5 class="modal-title font-weight-black" style="font-family: 'Orbitron'">REVISI_PRODUCTION_PLAN</h5>
+                    <button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
+                    @csrf
+                    <div class="modal-body p-5">
+                        <div class="row">
+                            <!-- Group 1: Part Info (Locked) -->
+                            <div class="col-md-4">
+                                <div class="tech-input-group h-100 border-warning">
+                                    <h6 class="font-weight-black mb-3"><i class="fas fa-tag mr-2 text-primary"></i>PRODUCT_ID</h6>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Station Code</label>
+                                        <select name="line_code" class="form-control rounded-pill border-0 shadow-sm" required>
+                                            @foreach($availableLines as $line)
+                                                <option value="{{ $line->kode_line }}" {{ $plan->line_code == $line->kode_line ? 'selected' : '' }}>{{ $line->kode_line }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Part No <span class="text-danger">*Readonly</span></label>
+                                        <input type="text" class="form-control rounded-pill border-0 shadow-sm bg-light" value="{{ $plan->part_no }}" disabled>
+                                        <input type="hidden" name="part_no" value="{{ $plan->part_no }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 2: Performance (Editable) -->
+                            <div class="col-md-4">
+                                <div class="tech-input-group h-100 border-warning">
+                                    <h6 class="font-weight-black mb-3"><i class="fas fa-bolt mr-2 text-warning"></i> 02. CAP_METRICS</h6>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label class="small font-weight-bold">Manpower</label>
+                                            <input type="number" name="manpower" id="inp_mp_{{ $plan->id }}" class="form-control rounded-pill border-0 shadow-sm" value="{{ $plan->manpower }}" oninput="autoCalc('{{ $plan->id }}')">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="small font-weight-bold">Cap/Hr</label>
+                                            <input type="number" name="cap_per_hour" id="inp_cap_{{ $plan->id }}" class="form-control rounded-pill border-0 shadow-sm" value="{{ $plan->cap_per_hour }}" oninput="autoCalc('{{ $plan->id }}')">
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 p-3 bg-white rounded-xl border text-center shadow-sm">
+                                        <label class="small font-weight-black text-muted uppercase d-block">Expected Machine Load</label>
+                                        @php
+                                            $loadH = ($plan->cap_per_hour > 0 && ($plan->s1_plan_reg + $plan->s2_plan_reg) > 0) ? (($plan->s1_plan_reg + $plan->s2_plan_reg) / $plan->cap_per_hour) : 0;
+                                        @endphp
+                                        <h3 class="font-weight-black text-warning mb-0" id="display_hours_{{ $plan->id }}">{{ number_format($loadH, 1) }}H</h3>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group 3: Shift Target (Editable) -->
+                            <div class="col-md-4">
+                                <div class="tech-input-group h-100 border-warning">
+                                    <h6 class="font-weight-black mb-3"><i class="fas fa-layer-group mr-2 text-info"></i> 03. QUANTITY_ALLOC</h6>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold text-primary">Shift 1 (Day) Target</label>
+                                        <input type="number" name="s1_plan_reg" id="inp_s1_{{ $plan->id }}" class="form-control rounded-pill border-0 shadow-sm" value="{{ $plan->s1_plan_reg }}" oninput="autoCalc('{{ $plan->id }}')">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold text-danger">Shift 2 (Night) Target</label>
+                                        <input type="number" name="s2_plan_reg" id="inp_s2_{{ $plan->id }}" class="form-control rounded-pill border-0 shadow-sm" value="{{ $plan->s2_plan_reg }}" oninput="autoCalc('{{ $plan->id }}')">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 p-5 pt-0">
+                        <input type="hidden" name="plan_date" value="{{ $date }}">
+                        <button type="submit" class="btn btn-warning btn-block py-4 font-weight-black rounded-pill shadow-xl text-dark" style="font-size: 1.1rem; letter-spacing: 1px;">
+                            UPDATE SCHEDULE
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+@endforeach
+
 <script>
-    function autoCalc() {
-        let cap = parseFloat(document.getElementById('inp_cap').value) || 0;
-        let s1 = parseFloat(document.getElementById('inp_s1').value) || 0;
-        let s2 = parseFloat(document.getElementById('inp_s2').value) || 0;
+    function autoCalc(suffix) {
+        let cap = parseFloat(document.getElementById('inp_cap_' + suffix).value) || 0;
+        let s1 = parseFloat(document.getElementById('inp_s1_' + suffix).value) || 0;
+        let s2 = parseFloat(document.getElementById('inp_s2_' + suffix).value) || 0;
         let total = s1 + s2;
         let hours = (cap > 0 && total > 0) ? (total / cap) : 0;
-        document.getElementById('display_hours').innerText = hours.toFixed(1) + 'H';
+        document.getElementById('display_hours_' + suffix).innerText = hours.toFixed(1) + 'H';
     }
 </script>
 @endsection
