@@ -607,7 +607,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 9B. STORE WELDING MPS (SISTEM REVISI + BATALKAN 0) ✨
+     * ✨ 9B. STORE WELDING MPS (REVISI 0 = BATAL OTOMATIS & SYNC TERMINAL) ✨
      */
     public function weldingMpsStore(Request $request)
     {
@@ -657,15 +657,14 @@ class PPICController extends Controller
                     $returnQty = abs($selisih);
                     DB::table('finished_goods')->where('part_no', $request->part_no)->increment('welding_stock', $returnQty);
                     
-                    // LANGSUNG KURANGI NILAI "OUT (DEPLOY)" DI TERMINAL, BUKAN JADI IN (RET QC) LAGI!
-                    $todayLog = DB::table('production_logs')->where('part_no', $request->part_no)->where('process_type', 'WELDING_OUT')->whereDate('created_at', $request->plan_date)->first();
-                    if($todayLog) {
-                        if($todayLog->qty <= $returnQty) {
-                            DB::table('production_logs')->where('id', $todayLog->id)->delete();
-                        } else {
-                            DB::table('production_logs')->where('id', $todayLog->id)->decrement('qty', $returnQty);
-                        }
-                    }
+                    // MENGISI "IN (RET QC)" DI TERMINAL
+                    DB::table('production_logs')->insert([
+                        'part_no' => $request->part_no, 
+                        'qty' => $returnQty, 
+                        'process_type' => 'WELDING_IN_RET', 
+                        'created_at' => now(), 
+                        'updated_at' => now()
+                    ]);
                 }
 
                 // EKSEKUSI PEMBATALAN JIKA TARGET DI REVISI JADI 0
@@ -692,6 +691,7 @@ class PPICController extends Controller
                         
                     $msg = 'Revisi Welding Plan Berhasil dan OUT DEPLOY Terminal disesuaikan otomatis!';
                 }
+                $planId = $existingPlan->id;
 
             } else {
                 // =============== MODE PLAN BARU ===============
@@ -705,7 +705,7 @@ class PPICController extends Controller
                 DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $total_target);
                 DB::table('production_logs')->insert(['part_no' => $request->part_no, 'qty' => $total_target, 'process_type' => 'WELDING_OUT', 'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' 08:00:00'))]);
 
-                DB::table('welding_plans')->insert([
+                $planId = DB::table('welding_plans')->insertGetId([
                     'plan_date' => $request->plan_date, 'part_no' => $request->part_no, 'customer_code' => $partData->customer_code ?? 'UNK',
                     'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0,
                     's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0,
@@ -714,7 +714,7 @@ class PPICController extends Controller
                 $msg = 'Welding Plan Deployed! Barang tercatat di Terminal sebagai OUT.';
             }
 
-            // =============== 5. LEMPAR BATCH KE TERMINAL WELDING ===============
+            // =============== BUAT BATCH WELDING BARU (Kecuali Dibatalkan) ===============
             if ($total_target > 0) {
                 if ($target_s1 > 0 && $line_id) {
                     DB::table('welding_batches')->insert([
@@ -724,7 +724,7 @@ class PPICController extends Controller
                         'qty_masuk' => $target_s1, 
                         'shift' => 'Pagi', 
                         'status' => 'PROSES',
-                        'keterangan' => 'AUTO-DEPLOY FROM PPIC',
+                        'keterangan' => 'AUTO-DEPLOY',
                         'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s'))), 
                         'updated_at' => now()
                     ]);
@@ -738,7 +738,7 @@ class PPICController extends Controller
                         'qty_masuk' => $target_s2, 
                         'shift' => 'Malam', 
                         'status' => 'PROSES',
-                        'keterangan' => 'AUTO-DEPLOY FROM PPIC',
+                        'keterangan' => 'AUTO-DEPLOY',
                         'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s'))), 
                         'updated_at' => now()
                     ]);
@@ -753,18 +753,210 @@ class PPICController extends Controller
         }
     }
 
-    public function resumeBatch($id) { /* Tetap */ }
-    public function closeBatch($id) { /* Tetap */ }
+    /**
+     * ========================================================
+     * 10. RESUME & CLOSE BATCH STAMPING (LAMA)
+     * ========================================================
+     */
+    public function resumeBatch($id) 
+    { 
+        DB::table('produksi_batches')->where('id', $id)->update(['status' => 'PROSES', 'updated_at' => now()]); 
+        return redirect()->back()->with('success', 'Batch resumed.'); 
+    }
+
+    public function closeBatch($id)
+    {
+        DB::beginTransaction();
+        try {
+            $batch = DB::table('produksi_batches')->where('id', $id)->first();
+            if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan.');
+
+            if ($batch->status === 'COMPLETED') {
+                throw new \Exception("❌ Batch ini sudah di-Close! Sistem menolak proses ganda agar data tidak terduplikasi.");
+            }
+
+            $is_separating_sub = str_ends_with($batch->no_produksi, '-S');
+
+            if (!$is_separating_sub) {
+                if ((int)$batch->qty_return_warehouse > 0) {
+                    $sisa = (int)$batch->qty_return_warehouse;
+                } else {
+                    $cavity = $batch->cavity > 0 ? $batch->cavity : 1;
+                    $totalPcsProduced = (int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng;
+                    $lembarTerpakai = ceil($totalPcsProduced / $cavity);
+                    $sisa = max(0, (int)$batch->qty_ambil_pcs - $lembarTerpakai);
+                }
+
+                if ($sisa > 0 && $batch->rm_stock_id > 0) {
+                    DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa);
+                    DB::table('rm_incoming_logs')->insert([
+                        'rm_stock_id' => $batch->rm_stock_id, 'material_code' => $batch->material_code,
+                        'pcs_in' => $sisa, 'source' => 'return', 'no_produksi' => $batch->no_produksi, 'created_at' => now()
+                    ]);
+                }
+            } else {
+                $sisa = 0; 
+            }
+
+            if ((int)$batch->qty_hasil_ng > 0) {
+                $hasNgLog = DB::table('production_ng_logs')->where('no_produksi', $batch->no_produksi)->exists();
+                if (!$hasNgLog) {
+                    $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+                    DB::table('production_ng_logs')->insert([
+                        'no_produksi' => $batch->no_produksi, 'part_no' => $batch->material_code, 'line_code' => $lineCode,
+                        'shift' => $batch->shift, 'ng_type' => 'PROD_DEFECT', 'qty' => (int)$batch->qty_hasil_ng,
+                        'created_at' => now(), 'updated_at' => now()
+                    ]);
+                }
+            }
+
+            DB::table('produksi_batches')->where('id', $id)->update(['status' => 'COMPLETED', 'qty_return_warehouse' => $sisa, 'updated_at' => now()]);
+
+            $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
+            if ($part && $part->next_process == 'WELDING') {
+                DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('welding_stock', (int)$batch->qty_hasil_ok, ['updated_at' => now()]);
+                DB::table('production_logs')->insert(['part_no' => $batch->material_code, 'qty' => (int)$batch->qty_hasil_ok, 'process_type' => 'WELDING', 'created_at' => now(), 'updated_at' => now()]);
+            } else {
+                DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('stock', (int)$batch->qty_hasil_ok, ['updated_at' => now()]);
+                DB::table('production_logs')->insert(['part_no' => $batch->material_code, 'qty' => (int)$batch->qty_hasil_ok, 'process_type' => 'STAMPING', 'created_at' => now(), 'updated_at' => now()]);
+            }
+
+            $this->syncToActual($id);
+            DB::commit();
+            
+            $msg = $is_separating_sub ? "Batch Separating Closed! Barang jadi ditambahkan." : "Batch Closed! {$sisa} Lembar dicatat return ke Gudang RM.";
+            return redirect()->back()->with('success', $msg);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses penutupan: ' . $e->getMessage());
+        }
+    }
+
+    private function syncToActual($batchId) 
+    {
+        $batch = DB::table('produksi_batches')->where('id', $batchId)->first(); if (!$batch) return;
+        $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+        $actual = DB::table('production_actuals')->where('part_no', $batch->material_code)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
+        if ($actual) { 
+            DB::table('production_actuals')->where('id', $actual->id)->update(['qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok, 'qty_ng' => $actual->qty_ng + $batch->qty_hasil_ng, 'updated_at' => now()]); 
+        } else { 
+            DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]); 
+        }
+    }
 
     /**
-     * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
+     * ========================================================
+     * ✨ 10B. RESUME & CLOSE BATCH WELDING DARI TERMINAL ✨
+     * (INI YANG BIKIN ANGKA RETURN_TO_WIP_RACK KESIMPEN)
+     * ========================================================
      */
+    public function resumeBatchWelding($id) 
+    { 
+        DB::table('welding_batches')->where('id', $id)->update(['status' => 'PROSES', 'updated_at' => now()]); 
+        return redirect()->back()->with('success', 'Batch Welding resumed.'); 
+    }
+
+    public function closeBatchWelding(Request $request, $id)
+    {
+        DB::beginTransaction();
+        try {
+            // 1. Cari Batch yang lagi dikerjain
+            $batch = DB::table('welding_batches')->where('id', $id)->first();
+            if (!$batch) throw new \Exception("Batch tidak ditemukan.");
+            if ($batch->status === 'COMPLETED') throw new \Exception("❌ Batch ini sudah ditutup!");
+
+            // 2. Ambil Inputan dari Modal Terminal (Kalau form-nya gak ke-submit, ambil dari database bawaan)
+            $qty_ok = $request->has('qty_ok') ? (int) $request->qty_ok : (int) $batch->qty_ok;
+            $qty_ng = $request->has('qty_ng') ? (int) $request->qty_ng : (int) $batch->qty_ng;
+            $qty_return = $request->has('qty_return') ? (int) $request->qty_return : (int) $batch->qty_return;
+            $notes = $request->has('notes') ? $request->notes : $batch->keterangan;
+
+            // Pastikan tidak masukin angka ngawur (Total gak boleh lebih dari barang masuk)
+            $total_input = $qty_ok + $qty_ng + $qty_return;
+            if ($request->has('qty_ok') && $total_input > (int)$batch->qty_masuk) {
+                throw new \Exception("Total (OK + NG + RETURN) melebihi jumlah material yang di-Take! ($total_input > $batch->qty_masuk)");
+            }
+
+            // 3. Update tabel welding_batches dengan nilai RETURN
+            DB::table('welding_batches')->where('id', $id)->update([
+                'qty_ok' => $qty_ok,
+                'qty_ng' => $qty_ng,
+                'qty_return' => $qty_return,
+                'keterangan' => $notes,
+                'status' => 'COMPLETED',
+                'updated_at' => now()
+            ]);
+
+            // 4. Proses Return 250 itu kembali ke Rak WIP Gudang (Jadi RET_QC)
+            if ($qty_return > 0) {
+                DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('welding_stock', $qty_return);
+                DB::table('production_logs')->insert([
+                    'part_no' => $batch->part_no, 'qty' => $qty_return, 'process_type' => 'WELDING_IN_RET', 
+                    'created_at' => now(), 'updated_at' => now()
+                ]);
+            }
+
+            // 5. Proses Barang OK (Jadi Finish Good beneran)
+            if ($qty_ok > 0) {
+                DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('stock', $qty_ok);
+                DB::table('production_logs')->insert([
+                    'part_no' => $batch->part_no, 'qty' => $qty_ok, 'process_type' => 'WELDING_IN', 
+                    'created_at' => now(), 'updated_at' => now()
+                ]);
+            }
+
+            // 6. Sinkronisasi Actual untuk Dashboard PPIC
+            $actual = DB::table('welding_actuals')->where('part_no', $batch->part_no)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
+            if ($actual) { 
+                DB::table('welding_actuals')->where('id', $actual->id)->update([
+                    'qty_ok' => $actual->qty_ok + $qty_ok, 'qty_ng' => $actual->qty_ng + $qty_ng, 'updated_at' => now()
+                ]); 
+            } else { 
+                $lineCode = DB::table('line_welding')->where('id', $batch->line_id)->value('kode_line') ?? 'UNKNOWN';
+                DB::table('welding_actuals')->insert([
+                    'part_no' => $batch->part_no, 'line_code' => $lineCode, 'shift' => $batch->shift, 
+                    'qty_ok' => $qty_ok, 'qty_ng' => $qty_ng, 'created_at' => $batch->created_at, 'updated_at' => now()
+                ]); 
+            }
+
+            // 7. Simpan Breakdown Defect / NG
+            if ($qty_ng > 0) {
+                $lineCode = DB::table('line_welding')->where('id', $batch->line_id)->value('kode_line') ?? 'UNKNOWN';
+                if ($request->has('ng_type') && $request->has('ng_qty')) {
+                    foreach($request->ng_type as $index => $type) {
+                        $qty_defect = (int) $request->ng_qty[$index];
+                        if($qty_defect > 0) {
+                            DB::table('welding_ng_logs')->insert([
+                                'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' => $lineCode, 
+                                'shift' => $batch->shift, 'ng_type' => $type, 'qty' => $qty_defect, 'created_at' => now(), 'updated_at' => now()
+                            ]);
+                        }
+                    }
+                } elseif ($request->has('qty_ok')) {
+                    // Kalau di terminal gak ngisi detail NG, pukul rata jadi UNCATEGORIZED
+                    DB::table('welding_ng_logs')->insert([
+                        'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' => $lineCode, 
+                        'shift' => $batch->shift, 'ng_type' => 'UNCATEGORIZED_DEFECT', 'qty' => $qty_ng, 'created_at' => now(), 'updated_at' => now()
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', "✅ Batch Welding berhasil ditutup! (Return $qty_return Pcs dikembalikan ke Gudang WIP)");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal memproses penutupan: ' . $e->getMessage());
+        }
+    }
+
+
     /**
      * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
      */
     public function printWosWelding($date, $line_code)
     {
-        // Join ke tabel parts biar nama part-nya muncul dan gak N/A lagi
         $plansS1 = DB::table('welding_plans')
             ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
             ->where('welding_plans.plan_date', $date)
