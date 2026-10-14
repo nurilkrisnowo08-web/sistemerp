@@ -759,12 +759,33 @@ class PPICController extends Controller
     /**
      * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
      */
+    /**
+     * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
+     */
     public function printWosWelding($date, $line_code)
     {
-        $plansS1 = DB::table('welding_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
-        $plansS2 = DB::table('welding_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
+        // Join ke tabel parts biar nama part-nya muncul dan gak N/A lagi
+        $plansS1 = DB::table('welding_plans')
+            ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
+            ->where('welding_plans.plan_date', $date)
+            ->where('welding_plans.line_code', $line_code)
+            ->where(DB::raw('welding_plans.s1_plan_reg + welding_plans.s1_plan_ot'), '>', 0)
+            ->select('welding_plans.*', 'parts.part_name')
+            ->orderBy('welding_plans.id', 'asc')
+            ->get();
 
-        if ($plansS1->isEmpty() && $plansS2->isEmpty()) return redirect()->back()->with('error', 'Tidak ada jadwal Welding di mesin ini untuk dicetak.');
+        $plansS2 = DB::table('welding_plans')
+            ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
+            ->where('welding_plans.plan_date', $date)
+            ->where('welding_plans.line_code', $line_code)
+            ->where(DB::raw('welding_plans.s2_plan_reg + welding_plans.s2_plan_ot'), '>', 0)
+            ->select('welding_plans.*', 'parts.part_name')
+            ->orderBy('welding_plans.id', 'asc')
+            ->get();
+
+        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada jadwal Welding di mesin ini untuk dicetak.');
+        }
 
         $parts = collect()->merge($plansS1)->merge($plansS2)->pluck('part_no')->unique()->toArray();
         $batches = DB::table('welding_batches')
