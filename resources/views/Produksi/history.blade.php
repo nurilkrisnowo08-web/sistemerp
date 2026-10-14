@@ -25,8 +25,9 @@
         }
     }
 
-    $performance = ($totalTake -$totalRet) > 0 ? ($totalOk / ($totalTake - $totalRet)) * 100 : 0;          // Format tanggal untuk laporan$startDate = request('start_date') ?? date('Y-m-d');
+    $performance = ($totalTake -$totalRet) > 0 ? ($totalOk / ($totalTake - $totalRet)) * 100 : 0;  // Format tanggal untuk laporan (SUDAH DIPISAH BARISNYA BIAR GAK JADI KOMENTAR)$startDate = request('start_date') ?? date('Y-m-d');
     $endDate = request('end_date') ?? date('Y-m-d');
+    
     $periodString = ($startDate ==$endDate) 
         ? date('d F Y', strtotime($startDate)) 
         : date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate));
