@@ -1,23 +1,28 @@
 @extends('layout.admin')
 
 @section('content')
-{{-- ✨ PERHITUNGAN GLOBAL --}}
 @php
+    $startDate = request('start_date') ? request('start_date') : date('Y-m-d');
+    $endDate = request('end_date') ? request('end_date') : date('Y-m-d');
+    
+    if ($startDate ==$endDate) {
+        $periodString = date('d F Y', strtotime($startDate));
+    } else {
+        $periodString = date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate));
+    }
+
     $totalTake = 0; 
     $totalOk = 0; 
     $totalNg = 0; 
     $totalRet = 0;
     
-    // Looping buat ngitung total (termasuk part pasangannya)
     if(isset($histories) && count($histories) > 0) {
         foreach($histories as$h) {
             $totalTake +=$h->qty_ambil_pcs;
             $totalRet +=$h->qty_return_warehouse;
-            
             $totalOk +=$h->qty_hasil_ok;
             $totalNg +=$h->qty_hasil_ng;
 
-            // Tambahin total pasangan kalau ada
             if ($h->is_separating) {
                 $totalOk +=$h->paired_ok;
                 $totalNg +=$h->paired_ng;
@@ -25,12 +30,8 @@
         }
     }
 
-    $performance = ($totalTake -$totalRet) > 0 ? ($totalOk / ($totalTake - $totalRet)) * 100 : 0;  // Format tanggal untuk laporan (SUDAH DIPISAH BARISNYA BIAR GAK JADI KOMENTAR)$startDate = request('start_date') ?? date('Y-m-d');
-    $endDate = request('end_date') ?? date('Y-m-d');
-    
-    $periodString = ($startDate ==$endDate) 
-        ? date('d F Y', strtotime($startDate)) 
-        : date('d M Y', strtotime($startDate)) . ' - ' . date('d M Y', strtotime($endDate));
+    $penyebut = $totalTake -$totalRet;
+    $performance =$penyebut > 0 ? ($totalOk / $penyebut) * 100 : 0;
 @endphp
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -80,7 +81,6 @@
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
 
-    {{-- 🏛️ CLEAN PRINT TEMPLATE --}}
     <div class="print-template">
         <div class="print-header">
             <table style="width: 100%;">
@@ -119,7 +119,7 @@
             </thead>
             <tbody>
                 @if(isset($histories) && count($histories) > 0)
-                    @foreach($histories as $h)
+                    @foreach($histories as$h)
                     <tr>
                         <td>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</td>
                         <td>{{ $h->no_produksi }}</td>
@@ -154,7 +154,6 @@
         </div>
     </div>
 
-    {{-- 🛰️ SCREEN UI HEADER --}}
     <div class="screen-only">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
             <div>
@@ -172,7 +171,6 @@
             </div>
         </div>
 
-        {{-- 📊 MAIN STATS --}}
         <div class="row mb-5">
             <div class="col-md-3 mb-3"><div class="stat-card"><div class="card-strip bg-primary"></div><div class="stat-label">Total Material Take</div><div class="stat-value text-primary">{{ number_format($totalTake) }}</div></div></div>
             <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-success"></div><div class="stat-label">Verified OK</div><div class="stat-value text-success">{{ number_format($totalOk) }}</div></div></div>
@@ -181,13 +179,11 @@
             <div class="col-md-3 mb-3"><div class="stat-card bg-dark text-white"><div class="stat-label text-white-50">Global Performance</div><div class="stat-value text-white">{{ number_format($performance, 1) }}%</div></div></div>
         </div>
 
-        {{-- 📈 TREND CHART --}}
         <div class="terminal-card p-4 mb-5 shadow-sm">
             <h6 class="font-weight-bold text-muted small uppercase mb-4 tracking-widest"><i class="fas fa-chart-line mr-2 text-primary"></i> Production Trend Analysis</h6>
             <div id="trendChart"></div>
         </div>
 
-        {{-- 📋 TABLE LOG --}}
         <div class="terminal-card shadow-sm mb-5">
             <div class="table-responsive">
                 <table class="table table-hud mb-0 text-center">
@@ -204,7 +200,7 @@
                     </thead>
                     <tbody>
                         @if(isset($histories) && count($histories) > 0)
-                            @foreach($histories as $h)
+                            @foreach($histories as$h)
                             @php 
                                 $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? $h->paired_ok : 0);
                                 $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? $h->paired_ng : 0);
@@ -241,7 +237,6 @@
                 </table>
             </div>
             
-            {{-- PAGINATION --}}
             @if(isset($histories) && method_exists($histories, 'links'))
                 <div class="p-3 border-top d-flex justify-content-center">
                     {{ $histories->links('pagination::bootstrap-4') }}
@@ -251,7 +246,6 @@
     </div>
 </div>
 
-{{-- 🛡️ DETAIL MODAL --}}
 <div class="modal fade" id="deepDiveModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modal-audit">
@@ -286,7 +280,6 @@
                 <div class="p-3 bg-light rounded-lg border">
                     <small class="stat-label d-block mb-2">Detailed NG (Reject Types)</small>
                     <div id="det-ng-list" class="row">
-                        <!-- Disuntik lewat JS -->
                     </div>
                 </div>
             </div>
@@ -295,7 +288,6 @@
 </div>
 
 <script>
-    // 📊 TREND CHART
     @if(isset($histories) && count($histories) > 0)
         const historyData = @json($histories->take(20)->reverse()->values());
         new ApexCharts(document.querySelector("#trendChart"), {
@@ -318,7 +310,6 @@
         }).render();
     @endif
 
-    // 🛡️ MODAL LOGIC
     let donut = null;
     let tempDonutData = { ok: 0, ng: 0 };
 
@@ -344,7 +335,6 @@
         document.getElementById('det-yield-val').innerText = yld + "%";
         document.getElementById('det-yield-val').style.color = yld >= 90 ? '#10b981' : '#ef4444';
         
-        // Render List NG Spesifik
         let ngHtml = '';
         if(h.ng_details && h.ng_details.length > 0) {
             h.ng_details.forEach(item => {
