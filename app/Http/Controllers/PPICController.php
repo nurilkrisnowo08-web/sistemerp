@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class PPICController extends Controller
 {
@@ -451,12 +452,27 @@ class PPICController extends Controller
     public function printSerahTerima($date, $shift, $line_code)
     {
         $planIds = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->pluck('id');
+        
+        $selectCols = [
+            'produksi_batches.*', 
+            'rm_stocks.coil_id', 
+            'rm_stocks.spec', 
+            'rm_stocks.size', 
+            'rm_stocks.material_name', 
+            'parts.part_name'
+        ];
+
+        // Otomatis ambil no_surat_jalan jika kolomnya ada di rm_stocks
+        if (Schema::hasColumn('rm_stocks', 'no_surat_jalan')) {
+            $selectCols[] = 'rm_stocks.no_surat_jalan';
+        }
+
         $batches = DB::table('produksi_batches')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->whereIn('produksi_batches.plan_id', $planIds)
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
-            ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name', 'parts.part_name')
+            ->select($selectCols)
             ->orderBy('produksi_batches.shift', 'desc')->get();
 
         if ($batches->isEmpty()) return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
@@ -627,7 +643,6 @@ class PPICController extends Controller
 
             if ($existingPlan) {
                 // =============== MODE EXISTING / REVISI ===============
-                // Pertahankan shift lain jika user membuat jadwal lewat modal NEW PLAN (tidak menimpa shift lama jadi 0)
                 if ($input_s1 === 0 && (int)$existingPlan->s1_plan_reg > 0 && $input_s2 > 0 && (int)$existingPlan->s2_plan_reg === 0) {
                     $target_s1 = (int)$existingPlan->s1_plan_reg;
                     $target_s2 = $input_s2;
@@ -797,9 +812,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ========================================================
      * 10. RESUME & CLOSE BATCH STAMPING (LAMA)
-     * ========================================================
      */
     public function resumeBatch($id) 
     { 
@@ -890,9 +903,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ========================================================
-     * ✨ 10B. RESUME & CLOSE BATCH WELDING DARI TERMINAL ✨
-     * ========================================================
+     * 10B. RESUME & CLOSE BATCH WELDING DARI TERMINAL
      */
     public function resumeBatchWelding($id) 
     { 
