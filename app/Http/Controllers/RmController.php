@@ -148,6 +148,10 @@ class RmController extends Controller
                 if($exists) continue; 
 
                 $pData = DB::table('parts')->where('part_no', trim($partNo))->first();
+                
+                // Cari riwayat cavity part ini dari rm_stocks
+                $autoCavity = (int) ($request->cavity ?? DB::table('rm_stocks')->where('material_code', trim($partNo))->where('cavity', '>', 0)->value('cavity') ?? 1);
+
                 $rmId = DB::table('rm_stocks')->insertGetId([
                     'material_code' => trim($partNo),
                     'coil_id' => $coilId,
@@ -156,6 +160,7 @@ class RmController extends Controller
                     'size' => trim($request->size),
                     'customer' => $request->customer_code, 
                     'stock_pcs' => $request->stock_pcs,
+                    'cavity' => $autoCavity,
                     'min_stock' => $request->min_stock, 
                     'max_stock' => $request->max_stock,
                     'std_qty_batch' => $request->std_qty_batch,
@@ -208,6 +213,10 @@ class RmController extends Controller
         if(!$source) return back()->with('error', 'Source not found.');
         
         $part = DB::table('parts')->where('part_no', $request->part_no)->first();
+        
+        // Auto-ambil cavity dari rm_stocks yang sudah ada sebelumnya
+        $autoCavity = (int) ($request->cavity ?? DB::table('rm_stocks')->where('material_code', $request->part_no)->where('cavity', '>', 0)->value('cavity') ?? 1);
+
         $targetCoils = DB::table('rm_stocks')
                         ->where('customer', trim($source->customer))
                         ->where(DB::raw('TRIM(spec)'), trim($source->spec))
@@ -229,6 +238,7 @@ class RmController extends Controller
                         'size' => $source->size, 
                         'coil_id' => $coilId, 
                         'stock_pcs' => $ref->stock_pcs, 
+                        'cavity' => $autoCavity,
                         'min_stock' => $ref->min_stock, 
                         'max_stock' => $ref->max_stock, 
                         'created_at' => now(), 
@@ -286,21 +296,158 @@ class RmController extends Controller
         return view('Gudang.po_supplier_index', compact('pos', 'clients', 'selectedCustomer'));
     }
 
+    /**
+     * ✨ PO ARRIVAL STORE (AUTO-DETECT PART ASLI & CAVITY DARI RM_STOCKS + NO SURAT JALAN) ✨
+     */
     public function poArrivalStore(Request $request, $id) 
     {
-        $coilId = strtoupper(trim($request->coil_id));
         DB::beginTransaction();
         try {
-            $item = DB::table('supplier_po_items')->where('id', $request->item_id)->first();
-            $m = DB::table('master_materials')->where('alias_code', $item->material_code)->first();
-            $exists = DB::table('rm_stocks')->where('coil_id', $coilId)->where('material_code', $m->alias_code)->exists();
-            if(!$exists) {
-                $newId = DB::table('rm_stocks')->insertGetId(['material_code' => $m->alias_code, 'material_name' => $m->material_type, 'customer' => trim($m->customer_code), 'spec' => trim($m->material_type), 'size' => trim($m->thickness).' X '.trim($m->size), 'coil_id' => $coilId, 'stock_pcs' => $request->qty_arrival, 'min_stock' => 500, 'max_stock' => 1000, 'created_at' => now(), 'updated_at' => now()]);
-                DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $newId, 'material_code' => $m->alias_code, 'pcs_in' => $request->qty_arrival, 'source' => 'supplier', 'po_id' => $id, 'no_produksi' => $coilId, 'created_at' => now()]);
+            $po = DB::table('supplier_pos')->where('id', $id)->first();
+            if (!$po) throw new \Exception("PO Supplier tidak ditemukan!");
+
+            // Ambil Nomor Surat Jalan yang diinput
+            $noSJ = strtoupper(trim($request->no_surat_jalan ?? $request->no_sj ?? 'SJ-' . date('YmdHis')));
+
+            // Siapkan daftar bundle (Bisa single bundle form lama atau multi-bundle array)
+            $bundles = [];
+            if ($request->has('bundles') && is_array($request->bundles)) {
+                $bundles = $request->bundles;
+            } elseif ($request->filled('coil_id') && $request->filled('item_id')) {
+                $bundles[] = [
+                    'item_id' => $request->item_id,
+                    'coil_id' => $request->coil_id,
+                    'qty_arrival' => $request->qty_arrival ?? 0,
+                    'part_no' => $request->part_no ?? null,
+                    'cavity' => $request->cavity ?? null
+                ];
             }
-            DB::table('supplier_po_items')->where('id', $request->item_id)->increment('qty_received', $request->qty_arrival);
-            DB::commit(); return redirect()->back()->with('success', 'Inbound Processed Successfully!');
-        } catch (\Exception $e) { DB::rollback(); return back()->with('error', $e->getMessage()); }
+
+            if (empty($bundles)) {
+                throw new \Exception("Data penerimaan bundle/coil kosong!");
+            }
+
+            foreach ($bundles as $b) {
+                $coilId = strtoupper(trim($b['coil_id']));
+                $qtyArrival = (int) ($b['qty_arrival'] ?? $b['qty_pcs'] ?? 0);
+                $itemId = $b['item_id'] ?? null;
+
+                if ($qtyArrival <= 0 || empty($coilId)) continue;
+
+                $item = DB::table('supplier_po_items')->where('id', $itemId)->first();
+                if (!$item) continue;
+
+                $m = DB::table('master_materials')->where('alias_code', $item->material_code)->first();
+                $spec = $m ? trim($m->material_type) : '-';
+                $size = $m ? (trim($m->thickness) . ' X ' . trim($m->size)) : '-';
+                $customerCode = $m ? trim($m->customer_code) : trim($po->customer_code);
+
+                // ✨ 1. CARI PART ASLI & CAVITY DARI RIWAYAT RM_STOCKS YANG SUDAH ADA ✨
+                $knownMappings = DB::table('rm_stocks')
+                    ->where('customer', $customerCode)
+                    ->where(DB::raw('TRIM(spec)'), $spec)
+                    ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $size))
+                    ->where('material_code', 'NOT LIKE', 'SAI%') // Bukan nama alias
+                    ->where('cavity', '>', 0)
+                    ->select('material_code', 'material_name', 'cavity')
+                    ->distinct()
+                    ->get();
+
+                // Tentukan daftar target part yang akan dimasukkan ke rm_stocks
+                $targetParts = collect();
+
+                if (!empty($b['part_no'])) {
+                    // Kalau di form modal user milih part spesifik
+                    $pData = DB::table('parts')->where('part_no', trim($b['part_no']))->first();
+                    $cav = (int) ($b['cavity'] ?? DB::table('rm_stocks')->where('material_code', trim($b['part_no']))->where('cavity', '>', 0)->value('cavity') ?? 1);
+                    $targetParts->push((object)[
+                        'material_code' => trim($b['part_no']),
+                        'material_name' => $pData->part_name ?? $m->material_type,
+                        'cavity'        => $cav
+                    ]);
+                } elseif ($knownMappings->isNotEmpty()) {
+                    // Otomatis pakai riwayat part & cavity yang cocok dari rm_stocks
+                    $targetParts = $knownMappings;
+                } else {
+                    // Jika benar-benar baru pertama kali ada di pabrik
+                    $targetParts->push((object)[
+                        'material_code' => $item->material_code,
+                        'material_name' => $m ? $m->material_type : $item->material_code,
+                        'cavity'        => (int) ($b['cavity'] ?? 1)
+                    ]);
+                }
+
+                // ✨ 2. SIMPAN TIAP PART KE RM_STOCKS LENGKAP DENGAN CAVITY ✨
+                $primaryRmId = null;
+
+                foreach ($targetParts as $tPart) {
+                    $existingStock = DB::table('rm_stocks')
+                        ->where('coil_id', $coilId)
+                        ->where('material_code', $tPart->material_code)
+                        ->first();
+
+                    if (!$existingStock) {
+                        $newId = DB::table('rm_stocks')->insertGetId([
+                            'material_code' => $tPart->material_code, // Part Number Asli (Contoh: 74562B010P)
+                            'material_name' => $tPart->material_name, 
+                            'customer'      => $customerCode, 
+                            'spec'          => $spec, 
+                            'size'          => $size, 
+                            'coil_id'       => $coilId, 
+                            'stock_pcs'     => $qtyArrival, 
+                            'cavity'        => (int) $tPart->cavity, // Cavity Asli (Contoh: 14 atau 7)
+                            'min_stock'     => 500, 
+                            'max_stock'     => 1000, 
+                            'created_at'    => now(), 
+                            'updated_at'    => now()
+                        ]);
+                        if (!$primaryRmId) $primaryRmId = $newId;
+                    } else {
+                        DB::table('rm_stocks')->where('id', $existingStock->id)->update([
+                            'stock_pcs'  => $existingStock->stock_pcs + $qtyArrival,
+                            'cavity'     => (int) $tPart->cavity,
+                            'updated_at' => now()
+                        ]);
+                        if (!$primaryRmId) $primaryRmId = $existingStock->id;
+                    }
+                }
+
+                // ✨ 3. CATAT LOG INCOMING SEKALI SAJA DENGAN NOMOR SURAT JALAN ✨
+                if ($primaryRmId) {
+                    DB::table('rm_incoming_logs')->insert([
+                        'rm_stock_id'   => $primaryRmId, 
+                        'material_code' => $targetParts->first()->material_code, 
+                        'pcs_in'        => $qtyArrival, 
+                        'source'        => 'supplier', 
+                        'po_id'         => $id, 
+                        'no_produksi'   => $noSJ, // Nomor Surat Jalan Tercatat
+                        'created_at'    => now()
+                    ]);
+                }
+
+                // Update saldo PO item
+                DB::table('supplier_po_items')->where('id', $itemId)->increment('qty_received', $qtyArrival);
+            }
+
+            // ✨ 4. SINKRONISASI STATUS PO (PENDING -> PARTIAL -> COMPLETED) ✨
+            $poItems = DB::table('supplier_po_items')->where('supplier_po_id', $id)->get();
+            $totalOrder = $poItems->sum('qty_order');
+            $totalReceived = $poItems->sum('qty_received');
+
+            $newStatus = 'PENDING';
+            if ($totalReceived >= $totalOrder && $totalOrder > 0) {
+                $newStatus = 'COMPLETED';
+            } elseif ($totalReceived > 0) {
+                $newStatus = 'PARTIAL';
+            }
+            DB::table('supplier_pos')->where('id', $id)->update(['status' => $newStatus, 'updated_at' => now()]);
+
+            DB::commit(); 
+            return redirect()->back()->with('success', "Penerimaan Surat Jalan [{$noSJ}] Sukses! Bundle masuk ke RM Stock dengan Part Asli & Cavity otomatis.");
+        } catch (\Exception $e) { 
+            DB::rollback(); 
+            return back()->with('error', $e->getMessage()); 
+        }
     }
 
     public function poSupplierStore(Request $request) 
