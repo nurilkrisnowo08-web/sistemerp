@@ -607,34 +607,41 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 9B. STORE WELDING MPS (REVISI 0 = BATAL OTOMATIS & SYNC TERMINAL) ✨
+     * ✨ 9B. STORE WELDING MPS (SMART SHIFT ACCUMULATION & REVISI) ✨
      */
     public function weldingMpsStore(Request $request)
     {
         DB::beginTransaction();
         try {
-            $target_s1 = (int)($request->s1_plan_reg ?? 0) + (int)($request->s1_plan_ot ?? 0);
-            $target_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
-            $total_target = $target_s1 + $target_s2;
+            $input_s1 = (int)($request->s1_plan_reg ?? 0) + (int)($request->s1_plan_ot ?? 0);
+            $input_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
 
             $existingPlan = DB::table('welding_plans')
                 ->where('plan_date', $request->plan_date)
                 ->where('part_no', $request->part_no)
                 ->first();
 
-            // Kalau ini jadwal baru, target 0 DITOLAK. Tapi kalau revisi batal, diizinkan.
-            if (!$existingPlan && $total_target <= 0) {
-                throw new \Exception("Target produksi tidak boleh kosong / 0 untuk pembuatan jadwal baru.");
-            }
-
             $partData = DB::table('parts')->where('part_no', $request->part_no)->first();
             $line = DB::table('line_welding')->where('kode_line', $request->line_code)->first();
             $line_id = $line ? $line->id : null;
 
             if ($existingPlan) {
-                // =============== MODE REVISI / BATALKAN ===============
-                $old_total = ($existingPlan->s1_plan_reg + $existingPlan->s1_plan_ot + $existingPlan->s2_plan_reg + $existingPlan->s2_plan_ot);
-                $selisih = $total_target - $old_total;
+                // =============== MODE EXISTING / REVISI ===============
+                // Pertahankan shift lain jika user membuat jadwal lewat modal NEW PLAN (tidak menimpa shift lama jadi 0)
+                if ($input_s1 === 0 && (int)$existingPlan->s1_plan_reg > 0 && $input_s2 > 0 && (int)$existingPlan->s2_plan_reg === 0) {
+                    $target_s1 = (int)$existingPlan->s1_plan_reg;
+                    $target_s2 = $input_s2;
+                } elseif ($input_s2 === 0 && (int)$existingPlan->s2_plan_reg > 0 && $input_s1 > 0 && (int)$existingPlan->s1_plan_reg === 0) {
+                    $target_s1 = $input_s1;
+                    $target_s2 = (int)$existingPlan->s2_plan_reg;
+                } else {
+                    $target_s1 = $input_s1;
+                    $target_s2 = $input_s2;
+                }
+
+                $new_total = $target_s1 + $target_s2;
+                $old_total = (int)$existingPlan->s1_plan_reg + (int)$existingPlan->s2_plan_reg;
+                $selisih = $new_total - $old_total;
 
                 if ($selisih > 0) {
                     $fg = DB::table('finished_goods')->where('part_no', $request->part_no)->first();
@@ -645,19 +652,16 @@ class PPICController extends Controller
                     }
                     
                     DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $selisih);
-                    
-                    // Nambah deploy terminal
-                    $todayLog = DB::table('production_logs')->where('part_no', $request->part_no)->where('process_type', 'WELDING_OUT')->whereDate('created_at', $request->plan_date)->first();
-                    if($todayLog) {
-                        DB::table('production_logs')->where('id', $todayLog->id)->increment('qty', $selisih);
-                    } else {
-                        DB::table('production_logs')->insert(['part_no' => $request->part_no, 'qty' => $selisih, 'process_type' => 'WELDING_OUT', 'created_at' => date('Y-m-d 08:00:00', strtotime($request->plan_date))]);
-                    }
+                    DB::table('production_logs')->insert([
+                        'part_no' => $request->part_no, 
+                        'qty' => $selisih, 
+                        'process_type' => 'WELDING_OUT', 
+                        'created_at' => now(), 
+                        'updated_at' => now()
+                    ]);
                 } elseif ($selisih < 0) {
                     $returnQty = abs($selisih);
                     DB::table('finished_goods')->where('part_no', $request->part_no)->increment('welding_stock', $returnQty);
-                    
-                    // MENGISI "IN (RET QC)" DI TERMINAL
                     DB::table('production_logs')->insert([
                         'part_no' => $request->part_no, 
                         'qty' => $returnQty, 
@@ -667,8 +671,7 @@ class PPICController extends Controller
                     ]);
                 }
 
-                // EKSEKUSI PEMBATALAN JIKA TARGET DI REVISI JADI 0
-                if ($total_target == 0) {
+                if ($new_total == 0) {
                     DB::table('welding_plans')->where('id', $existingPlan->id)->delete();
                     DB::table('welding_batches')
                         ->where('part_no', $request->part_no)
@@ -678,23 +681,59 @@ class PPICController extends Controller
                     $msg = 'Jadwal Welding DIBATALKAN (0). Stok WIP utuh dikembalikan ke Gudang.';
                 } else {
                     DB::table('welding_plans')->where('id', $existingPlan->id)->update([
-                        'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0,
-                        's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0,
-                        's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'updated_at' => now()
+                        'line_code' => $request->line_code, 
+                        'manpower' => $request->manpower ?? $existingPlan->manpower, 
+                        'cap_per_hour' => $request->cap_per_hour ?? $existingPlan->cap_per_hour,
+                        's1_plan_reg' => $target_s1, 
+                        's1_plan_ot' => 0,
+                        's2_plan_reg' => $target_s2, 
+                        's2_plan_ot' => 0, 
+                        'updated_at' => now()
                     ]);
 
-                    DB::table('welding_batches')
-                        ->where('part_no', $request->part_no)
-                        ->whereDate('created_at', $request->plan_date)
-                        ->where('status', '!=', 'COMPLETED')
-                        ->delete();
-                        
-                    $msg = 'Revisi Welding Plan Berhasil dan OUT DEPLOY Terminal disesuaikan otomatis!';
-                }
-                $planId = $existingPlan->id;
+                    // Sync Antrean Batch Shift 1 (Pagi)
+                    if ($target_s1 > 0 && $line_id) {
+                        $bS1 = DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Pagi')->whereDate('created_at', $request->plan_date)->first();
+                        if ($bS1) {
+                            DB::table('welding_batches')->where('id', $bS1->id)->update(['qty_masuk' => $target_s1, 'line_id' => $line_id, 'updated_at' => now()]);
+                        } else {
+                            DB::table('welding_batches')->insert([
+                                'no_produksi_stamping' => 'W-S1-' . date('His'), 'part_no' => $request->part_no,
+                                'line_id' => $line_id, 'qty_masuk' => $target_s1, 'shift' => 'Pagi', 
+                                'status' => 'PROSES', 'keterangan' => 'AUTO-DEPLOY', 
+                                'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s'))), 'updated_at' => now()
+                            ]);
+                        }
+                    } else {
+                        DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Pagi')->whereDate('created_at', $request->plan_date)->where('status', '!=', 'COMPLETED')->delete();
+                    }
 
+                    // Sync Antrean Batch Shift 2 (Malam)
+                    if ($target_s2 > 0 && $line_id) {
+                        $bS2 = DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Malam')->whereDate('created_at', $request->plan_date)->first();
+                        if ($bS2) {
+                            DB::table('welding_batches')->where('id', $bS2->id)->update(['qty_masuk' => $target_s2, 'line_id' => $line_id, 'updated_at' => now()]);
+                        } else {
+                            DB::table('welding_batches')->insert([
+                                'no_produksi_stamping' => 'W-S2-' . date('His'), 'part_no' => $request->part_no,
+                                'line_id' => $line_id, 'qty_masuk' => $target_s2, 'shift' => 'Malam', 
+                                'status' => 'PROSES', 'keterangan' => 'AUTO-DEPLOY', 
+                                'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s'))), 'updated_at' => now()
+                            ]);
+                        }
+                    } else {
+                        DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Malam')->whereDate('created_at', $request->plan_date)->where('status', '!=', 'COMPLETED')->delete();
+                    }
+
+                    $msg = "Jadwal Shift berhasil disinkronkan! (Shift 1: {$target_s1} Pcs | Shift 2: {$target_s2} Pcs)";
+                }
             } else {
                 // =============== MODE PLAN BARU ===============
+                $total_target = $input_s1 + $input_s2;
+                if ($total_target <= 0) {
+                    throw new \Exception("Target produksi tidak boleh kosong / 0 untuk pembuatan jadwal baru.");
+                }
+
                 $fg = DB::table('finished_goods')->where('part_no', $request->part_no)->first();
                 $wip_stock = $fg ? $fg->welding_stock : 0;
 
@@ -703,25 +742,27 @@ class PPICController extends Controller
                 }
 
                 DB::table('finished_goods')->where('part_no', $request->part_no)->decrement('welding_stock', $total_target);
-                DB::table('production_logs')->insert(['part_no' => $request->part_no, 'qty' => $total_target, 'process_type' => 'WELDING_OUT', 'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' 08:00:00'))]);
+                DB::table('production_logs')->insert([
+                    'part_no' => $request->part_no, 
+                    'qty' => $total_target, 
+                    'process_type' => 'WELDING_OUT', 
+                    'created_at' => date('Y-m-d H:i:s', strtotime($request->plan_date . ' 08:00:00')),
+                    'updated_at' => now()
+                ]);
 
-                $planId = DB::table('welding_plans')->insertGetId([
+                DB::table('welding_plans')->insert([
                     'plan_date' => $request->plan_date, 'part_no' => $request->part_no, 'customer_code' => $partData->customer_code ?? 'UNK',
                     'line_code' => $request->line_code, 'manpower' => $request->manpower ?? 1, 'cap_per_hour' => $request->cap_per_hour ?? 0,
-                    's1_plan_reg' => $request->s1_plan_reg ?? 0, 's1_plan_ot' => $request->s1_plan_ot ?? 0,
-                    's2_plan_reg' => $request->s2_plan_reg ?? 0, 's2_plan_ot' => $request->s2_plan_ot ?? 0, 'dandory_time' => 15, 'process_qty' => 1, 'qty_lot' => 1, 'created_at' => now(), 'updated_at' => now()
+                    's1_plan_reg' => $input_s1, 's1_plan_ot' => 0, 's2_plan_reg' => $input_s2, 's2_plan_ot' => 0, 
+                    'dandory_time' => 15, 'process_qty' => 1, 'qty_lot' => 1, 'created_at' => now(), 'updated_at' => now()
                 ]);
-                $msg = 'Welding Plan Deployed! Barang tercatat di Terminal sebagai OUT.';
-            }
 
-            // =============== BUAT BATCH WELDING BARU (Kecuali Dibatalkan) ===============
-            if ($total_target > 0) {
-                if ($target_s1 > 0 && $line_id) {
+                if ($input_s1 > 0 && $line_id) {
                     DB::table('welding_batches')->insert([
                         'no_produksi_stamping' => 'W-S1-' . date('His'),
                         'part_no' => $request->part_no,
                         'line_id' => $line_id, 
-                        'qty_masuk' => $target_s1, 
+                        'qty_masuk' => $input_s1, 
                         'shift' => 'Pagi', 
                         'status' => 'PROSES',
                         'keterangan' => 'AUTO-DEPLOY',
@@ -730,12 +771,12 @@ class PPICController extends Controller
                     ]);
                 }
 
-                if ($target_s2 > 0 && $line_id) {
+                if ($input_s2 > 0 && $line_id) {
                     DB::table('welding_batches')->insert([
                         'no_produksi_stamping' => 'W-S2-' . date('His'),
                         'part_no' => $request->part_no,
                         'line_id' => $line_id, 
-                        'qty_masuk' => $target_s2, 
+                        'qty_masuk' => $input_s2, 
                         'shift' => 'Malam', 
                         'status' => 'PROSES',
                         'keterangan' => 'AUTO-DEPLOY',
@@ -743,6 +784,8 @@ class PPICController extends Controller
                         'updated_at' => now()
                     ]);
                 }
+
+                $msg = 'Welding Plan Deployed! Barang tercatat di Terminal sebagai OUT.';
             }
 
             DB::commit();
@@ -835,7 +878,8 @@ class PPICController extends Controller
 
     private function syncToActual($batchId) 
     {
-        $batch = DB::table('produksi_batches')->where('id', $batchId)->first(); if (!$batch) return;
+        $batch = DB::table('produksi_batches')->where('id', $batchId)->first(); 
+        if (!$batch) return;
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
         $actual = DB::table('production_actuals')->where('part_no', $batch->material_code)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
         if ($actual) { 
@@ -848,7 +892,6 @@ class PPICController extends Controller
     /**
      * ========================================================
      * ✨ 10B. RESUME & CLOSE BATCH WELDING DARI TERMINAL ✨
-     * (INI YANG BIKIN ANGKA RETURN_TO_WIP_RACK KESIMPEN)
      * ========================================================
      */
     public function resumeBatchWelding($id) 
@@ -861,24 +904,20 @@ class PPICController extends Controller
     {
         DB::beginTransaction();
         try {
-            // 1. Cari Batch yang lagi dikerjain
             $batch = DB::table('welding_batches')->where('id', $id)->first();
             if (!$batch) throw new \Exception("Batch tidak ditemukan.");
             if ($batch->status === 'COMPLETED') throw new \Exception("❌ Batch ini sudah ditutup!");
 
-            // 2. Ambil Inputan dari Modal Terminal (Kalau form-nya gak ke-submit, ambil dari database bawaan)
             $qty_ok = $request->has('qty_ok') ? (int) $request->qty_ok : (int) $batch->qty_ok;
             $qty_ng = $request->has('qty_ng') ? (int) $request->qty_ng : (int) $batch->qty_ng;
             $qty_return = $request->has('qty_return') ? (int) $request->qty_return : (int) $batch->qty_return;
             $notes = $request->has('notes') ? $request->notes : $batch->keterangan;
 
-            // Pastikan tidak masukin angka ngawur (Total gak boleh lebih dari barang masuk)
             $total_input = $qty_ok + $qty_ng + $qty_return;
             if ($request->has('qty_ok') && $total_input > (int)$batch->qty_masuk) {
                 throw new \Exception("Total (OK + NG + RETURN) melebihi jumlah material yang di-Take! ($total_input > $batch->qty_masuk)");
             }
 
-            // 3. Update tabel welding_batches dengan nilai RETURN
             DB::table('welding_batches')->where('id', $id)->update([
                 'qty_ok' => $qty_ok,
                 'qty_ng' => $qty_ng,
@@ -888,25 +927,28 @@ class PPICController extends Controller
                 'updated_at' => now()
             ]);
 
-            // 4. Proses Return 250 itu kembali ke Rak WIP Gudang (Jadi RET_QC)
             if ($qty_return > 0) {
                 DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('welding_stock', $qty_return);
                 DB::table('production_logs')->insert([
-                    'part_no' => $batch->part_no, 'qty' => $qty_return, 'process_type' => 'WELDING_IN_RET', 
-                    'created_at' => now(), 'updated_at' => now()
+                    'part_no' => $batch->part_no, 
+                    'qty' => $qty_return, 
+                    'process_type' => 'WELDING_IN_RET', 
+                    'created_at' => now(), 
+                    'updated_at' => now()
                 ]);
             }
 
-            // 5. Proses Barang OK (Jadi Finish Good beneran)
             if ($qty_ok > 0) {
                 DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('stock', $qty_ok);
                 DB::table('production_logs')->insert([
-                    'part_no' => $batch->part_no, 'qty' => $qty_ok, 'process_type' => 'WELDING_IN', 
-                    'created_at' => now(), 'updated_at' => now()
+                    'part_no' => $batch->part_no, 
+                    'qty' => $qty_ok, 
+                    'process_type' => 'WELDING_IN', 
+                    'created_at' => now(), 
+                    'updated_at' => now()
                 ]);
             }
 
-            // 6. Sinkronisasi Actual untuk Dashboard PPIC
             $actual = DB::table('welding_actuals')->where('part_no', $batch->part_no)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
             if ($actual) { 
                 DB::table('welding_actuals')->where('id', $actual->id)->update([
@@ -920,7 +962,6 @@ class PPICController extends Controller
                 ]); 
             }
 
-            // 7. Simpan Breakdown Defect / NG
             if ($qty_ng > 0) {
                 $lineCode = DB::table('line_welding')->where('id', $batch->line_id)->value('kode_line') ?? 'UNKNOWN';
                 if ($request->has('ng_type') && $request->has('ng_qty')) {
@@ -934,7 +975,6 @@ class PPICController extends Controller
                         }
                     }
                 } elseif ($request->has('qty_ok')) {
-                    // Kalau di terminal gak ngisi detail NG, pukul rata jadi UNCATEGORIZED
                     DB::table('welding_ng_logs')->insert([
                         'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' => $lineCode, 
                         'shift' => $batch->shift, 'ng_type' => 'UNCATEGORIZED_DEFECT', 'qty' => $qty_ng, 'created_at' => now(), 'updated_at' => now()
@@ -950,7 +990,6 @@ class PPICController extends Controller
             return redirect()->back()->with('error', 'Gagal memproses penutupan: ' . $e->getMessage());
         }
     }
-
 
     /**
      * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
