@@ -68,7 +68,7 @@
                 <label class="small font-weight-black text-primary mb-2 uppercase">Client Entity</label>
                 <select name="customer" class="form-control tech-input w-100" onchange="this.form.submit()">
                     <option value="">-- ALL CLIENTS --</option>
-                    @foreach($availableCustomers as$c) 
+                    @foreach($availableCustomers as $c) 
                         <option value="{{ trim($c->code) }}" {{ $customer == trim($c->code) ? 'selected' : '' }}>{{$c->name }}</option> 
                     @endforeach
                 </select>
@@ -101,7 +101,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($groupedMaterials as$group)
+                    @foreach($groupedMaterials as $group)
                     @php $slug = Str::slug($group->group_key .$loop->iteration); @endphp
                     <tr class="rm-row-header" data-toggle="collapse" data-target="#det-{{ $slug }}">
                         <td class="pl-5 py-4 text-left">
@@ -121,7 +121,7 @@
                             <div class="row">
                                 {{-- 📦 KIRI: PHYSICAL UNIT CARDS --}}
                                 <div class="col-md-7">
-                                    @foreach($group->details as$p)
+                                    @foreach($group->details as $p)
                                     @php 
                                         $subParts = DB::table('rm_stocks')
                                             ->where('coil_id', trim($p->coil_id))
@@ -157,7 +157,7 @@
                                         <div class="bg-light p-3 rounded-2xl border" style="border-style: dashed !important;">
                                             <small class="font-weight-black text-muted d-block mb-3 uppercase tracking-tighter">Mapped Components</small>
                                             <div class="row">
-                                                @foreach($subParts as$sp)
+                                                @foreach($subParts as $sp)
                                                 <div class="col-md-6 mb-2">
                                                     <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-xl border shadow-sm">
                                                         <div>
@@ -188,7 +188,7 @@
                                         </div>
                                         
                                         <div class="log-container" style="max-height: 550px; overflow-y:auto;">
-                                            @forelse($group->combined_logs as$log)
+                                            @forelse($group->combined_logs as $log)
                                                 {{-- Format Grouped Inbound (Per Surat Jalan) --}}
                                                 @if(isset($log->type) &&$log->type === 'INBOUND_GROUP')
                                                     <div class="log-entry-card in">
@@ -220,7 +220,7 @@
                                                             <div class="mt-2 pt-2 border-top" style="border-color: #dcfce7 !important;">
                                                                 <small class="text-muted font-weight-bold d-block mb-1" style="font-size: 8.5px;">BUNDLE BREAKDOWN:</small>
                                                                 <div class="d-flex flex-wrap gap-1">
-                                                                    @foreach($log->bundles as$b)
+                                                                    @foreach($log->bundles as $b)
                                                                         <span class="badge badge-white border px-2 py-1 rounded-pill text-dark font-weight-bold mr-1 mb-1" style="font-size: 9px; background:#fff;">
                                                                             🏷️ {{ $b->coil_id ?? 'TAG' }}: <b>+{{ number_format($b->pcs_in) }}</b>
                                                                         </span>
