@@ -89,7 +89,7 @@
            class="entity-pill {{ (!$selectedCustomer ||$selectedCustomer == 'ALL') ? 'active' : '' }}">
             <i class="fas fa-layer-group mr-2"></i> GLOBAL ENTITIES
         </a>
-        @foreach($clients as$c)
+        @foreach($clients as $c)
             <a href="{{ route('rm.po_supplier_index', ['customer' => trim($c->code)]) }}" 
                class="entity-pill {{ ($selectedCustomer == trim($c->code)) ? 'active' : '' }}">
                 <i class="fas fa-building mr-2"></i> {{ strtoupper($c->name) }}
@@ -122,7 +122,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($pos as$po)
+                    @forelse($pos as $po)
                     @php
                         $totalItems = $po->items->count();$receivedItems = $po->items->filter(fn($it) => $it->qty_received >=$it->qty_order)->count();
                         $isFulfilled = ($totalItems > 0 && $totalItems ==$receivedItems);
@@ -136,7 +136,7 @@
                         <td class="font-weight-bold expand-trigger" data-toggle="collapse" data-target="#po-detail-{{ $po->id }}">{{ strtoupper($po->supplier_name) }}</td>
                         <td class="expand-trigger" data-toggle="collapse" data-target="#po-detail-{{ $po->id }}">
                             <div class="d-flex flex-column">
-                                @foreach($po->items->take(1) as$item)
+                                @foreach($po->items->take(1) as $item)
                                     <span class="font-weight-bold text-dark" style="font-size: 13px;">{{ $item->alias_real ?? $item->material_code }}</span>
                                 @endforeach
                                 @if($totalItems > 1) <span class="text-indigo font-weight-extrabold" style="font-size: 10px;">+ {{ $totalItems - 1 }} ADDITIONAL ITEMS</span> @endif
@@ -168,7 +168,7 @@
                         <td colspan="5" class="p-0">
                             <div class="p-4" style="background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);">
                                 <div class="row">
-                                    @foreach($po->items as$item)
+                                    @foreach($po->items as $item)
                                     @php $p = ($item->qty_order > 0) ? ($item->qty_received / $item->qty_order) * 100 : 0; @endphp
                                     <div class="col-md-6 mb-4">
                                         <div class="bg-white border rounded-24 p-4 shadow-sm">
@@ -220,7 +220,7 @@
                         <div class="col-md-4"><label class="x-small font-weight-bold text-muted text-uppercase ml-2">Client Assign</label>
                             <select id="client_filter" name="customer_code" class="form-control-premium w-100" required>
                                 <option value="" disabled selected>Select Destination</option>
-                                @foreach($clients as$c) <option value="{{ trim($c->code) }}">{{ $c->name }}</option> @endforeach
+                                @foreach($clients as $c) <option value="{{ trim($c->code) }}">{{ $c->name }}</option> @endforeach
                             </select>
                         </div>
                     </div>
@@ -247,7 +247,7 @@
 </div>
 
 {{-- MODAL RECEIVE PO (DENGAN INPUT NO SURAT JALAN & MULTI-BUNDLE BUILDER) --}}
-@foreach($pos as$po)
+@foreach($pos as $po)
 <div class="modal fade" id="modalArrival{{ $po->id }}" tabindex="-1" style="z-index: 1060;">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-2xl" style="border-radius:32px; overflow:hidden;">
@@ -297,7 +297,7 @@
                                         <td>
                                             <select name="bundles[0][item_id]" class="form-control-premium py-2 px-3 select-bundle-item" style="font-size:13px;" required>
                                                 <option value="">-- Pilih Material --</option>
-                                                @foreach($po->items as$it) 
+                                                @foreach($po->items as $it) 
                                                     @php $sisa = $it->qty_order -$it->qty_received; @endphp
                                                     @if($sisa > 0) 
                                                         <option value="{{ $it->id }}" data-sisa="{{ $sisa }}">
