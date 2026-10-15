@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 class RmController extends Controller
 {
     /**
-     * 1. MONITORING STOK RM - DASHBOARD SINKRONISASI
+     * 1. MONITORING STOK RM - DASHBOARD SINKRONISASI (GROUPED BY SURAT JALAN)
      */
     public function storeIndex(Request $request)
     {
@@ -48,29 +48,75 @@ class RmController extends Controller
                 ->where('size', $rep->size)
                 ->pluck('id')->toArray();
 
-            $logsIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
-            $logsOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get();
+            // Ambil Log Inbound & join rm_stocks untuk membaca identitas Coil ID
+            $logsInRaw = DB::table('rm_incoming_logs')
+                ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
+                ->whereIn('rm_incoming_logs.rm_stock_id', $allHistoricalIds)
+                ->whereBetween('rm_incoming_logs.created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
+                ->select('rm_incoming_logs.*', 'rm_stocks.coil_id')
+                ->get();
+
+            $logsOut = DB::table('rm_production_logs')
+                ->whereIn('rm_stock_id', $allHistoricalIds)
+                ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
+                ->get();
 
             $totalLive = $itemsInGroup->unique('coil_id')->sum('stock_pcs'); 
-            $inS = $logsIn->whereIn('source', ['supplier', null])->sum('pcs_in');
-            $inR = $logsIn->where('source', 'return')->sum('pcs_in');
+            $inS = $logsInRaw->whereIn('source', ['supplier', null])->sum('pcs_in');
+            $inR = $logsInRaw->where('source', 'return')->sum('pcs_in');
             $outT = $logsOut->sum('pcs_used');
 
             $futureIn = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
             $futureOut = DB::table('rm_production_logs')->whereIn('rm_stock_id', $allHistoricalIds)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
             
-            // Rumus matematika diperbaiki (tidak terpotong baris)
+            // Perbaikan rumus perhitungan stok
             $stokAkhirPeriod = $totalLive + $futureOut - $futureIn;
             $totalInit = $stokAkhirPeriod - ($inS + $inR) + $outT;
 
+            // Grouping log Inbound per Nomor Surat Jalan (no_produksi)
+            $groupedInboundLogs = $logsInRaw->groupBy(function($item) {
+                return $item->no_produksi ?? 'TANPA-SJ';
+            })->map(function($bundleGroup, $sjNumber) {
+                return (object)[
+                    'type'         => 'INBOUND_GROUP',
+                    'no_sj'        => $sjNumber,
+                    'source'       => $bundleGroup->first()->source ?? 'supplier',
+                    'total_qty'    => $bundleGroup->sum('pcs_in'),
+                    'bundle_count' => $bundleGroup->count(),
+                    'bundles'      => $bundleGroup,
+                    'created_at'   => $bundleGroup->first()->created_at
+                ];
+            });
+
+            // Log Keluar Produksi (WOS)
+            $formattedOutLogs = $logsOut->map(function($item) {
+                return (object)[
+                    'type'         => 'PROD_EXIT',
+                    'no_sj'        => $item->no_produksi,
+                    'total_qty'    => $item->pcs_used,
+                    'bundle_count' => 1,
+                    'created_at'   => $item->created_at
+                ];
+            });
+
+            // Gabungkan mutasi terkelompok dan urutkan waktu terbaru
+            $combinedMutations = $groupedInboundLogs->concat($formattedOutLogs)->sortByDesc('created_at')->values();
+
             return (object)[
-                'group_key' => trim($rep->spec) . ' (' . str_replace(' ', '', $rep->size) . ')',
-                'alias_code' => $rep->alias_code, 'spec' => $rep->spec, 'size' => $rep->size, 'customer' => $rep->customer,
-                'std_qty_batch' => $rep->std_qty_batch, 'total_live' => $totalLive, 'total_init' => $totalInit,
-                'total_in_s' => $inS, 'total_in_r' => $inR, 'total_out' => $outT,
-                'details' => $itemsInGroup->where('stock_pcs', '>', 0)->unique('coil_id'), 
-                'all_parts' => $itemsInGroup,
-                'combined_logs' => $logsIn->concat($logsOut)->sortByDesc('created_at')
+                'group_key'     => trim($rep->spec) . ' (' . str_replace(' ', '', $rep->size) . ')',
+                'alias_code'    => $rep->alias_code, 
+                'spec'          => $rep->spec, 
+                'size'          => $rep->size, 
+                'customer'      => $rep->customer,
+                'std_qty_batch' => $rep->std_qty_batch, 
+                'total_live'    => $totalLive, 
+                'total_init'    => $totalInit,
+                'total_in_s'    => $inS, 
+                'total_in_r'    => $inR, 
+                'total_out'     => $outT,
+                'details'       => $itemsInGroup->where('stock_pcs', '>', 0)->unique('coil_id'), 
+                'all_parts'     => $itemsInGroup,
+                'combined_logs' => $combinedMutations
             ];
         })->filter(fn($group) => $group->total_live > 0 || $group->combined_logs->count() > 0); 
 
@@ -79,9 +125,10 @@ class RmController extends Controller
     }
 
     /**
-     * 2. REKAP LOG PRINT
+     * 2. REKAP LOG PRINT (AUDIT TRAIL GROUPED BY SURAT JALAN)
      */
-    public function recapLogPrint(Request $request) {
+    public function recapLogPrint(Request $request) 
+    {
         $availableCustomers = DB::table('customers')->get(); 
         $availableSpecs = DB::table('rm_stocks')->distinct()->pluck('spec');
         
@@ -111,29 +158,64 @@ class RmController extends Controller
                 ->where('size', $rep->size)
                 ->pluck('id')->toArray();
             
-            $in_qty = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
-                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_in');
+            $logsInRaw = DB::table('rm_incoming_logs')
+                ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
+                ->whereIn('rm_incoming_logs.rm_stock_id', $ids)
+                ->whereBetween(DB::raw('DATE(rm_incoming_logs.created_at)'), [$startDate, $endDate])
+                ->select('rm_incoming_logs.*', 'rm_stocks.coil_id')
+                ->get();
             
-            $out_qty = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
-                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('pcs_used');
+            $logsOut = DB::table('rm_production_logs')
+                ->whereIn('rm_stock_id', $ids)
+                ->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])
+                ->get();
 
             $liveNow = $group->unique('coil_id')->sum('stock_pcs');
 
             $future_in = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_in');
             $future_out = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)->where('created_at', '>', $endDate.' 23:59:59')->sum('pcs_used');
 
-            // Rumus matematika diperbaiki (tidak terpotong baris)
+            $in_qty = $logsInRaw->sum('pcs_in');
+            $out_qty = $logsOut->sum('pcs_used');
+
+            // Perbaikan rumus perhitungan saldo audit
             $stockAkhirPeriod = $liveNow - $future_in + $future_out;
             $stockAwalPeriod = $stockAkhirPeriod - $in_qty + $out_qty;
 
+            // Grouping log Inbound audit trail per Surat Jalan
+            $auditTrailIn = $logsInRaw->groupBy(function($item) {
+                return $item->no_produksi ?? '-';
+            })->map(function($bundleGroup, $sjNo) {
+                return (object)[
+                    'created_at'   => $bundleGroup->first()->created_at,
+                    'type'         => 'SUPPLY_IN (SJ)',
+                    'ref_id'       => $sjNo,
+                    'qty'          => $bundleGroup->sum('pcs_in'),
+                    'bundle_count' => $bundleGroup->count(),
+                    'bundle_list'  => $bundleGroup->pluck('coil_id')->filter()->unique()->implode(', ')
+                ];
+            });
+
+            $auditTrailOut = $logsOut->map(function($item) {
+                return (object)[
+                    'created_at'   => $item->created_at,
+                    'type'         => 'USAGE_OUT',
+                    'ref_id'       => $item->no_produksi,
+                    'qty'          => -$item->pcs_used,
+                    'bundle_count' => 1,
+                    'bundle_list'  => '-'
+                ];
+            });
+
             return (object)[
-                'alias' => $rep->alias_code, 'spec' => $rep->spec, 'size' => $rep->size,
-                'initial' => $stockAwalPeriod, 'in_qty' => $in_qty, 'out_qty' => $out_qty, 'final' => $stockAkhirPeriod,
-                'logs' => DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)
-                    ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get()
-                    ->concat(DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)
-                    ->whereBetween('created_at', [$startDate.' 00:00:00', $endDate.' 23:59:59'])->get())
-                    ->sortByDesc('created_at')
+                'alias'      => $rep->alias_code, 
+                'spec'       => $rep->spec, 
+                'size'       => $rep->size,
+                'initial'    => $stockAwalPeriod, 
+                'in_qty'     => $in_qty, 
+                'out_qty'    => $out_qty, 
+                'final'      => $stockAkhirPeriod,
+                'logs'       => $auditTrailIn->concat($auditTrailOut)->sortByDesc('created_at')
             ];
         })->filter(fn($item) => $item->final > 0 || $item->in_qty > 0 || $item->out_qty > 0); 
 
@@ -157,24 +239,22 @@ class RmController extends Controller
                 if($exists) continue; 
 
                 $pData = DB::table('parts')->where('part_no', trim($partNo))->first();
-                
-                // Cari riwayat cavity part ini dari rm_stocks
                 $autoCavity = (int) ($request->cavity ?? DB::table('rm_stocks')->where('material_code', trim($partNo))->where('cavity', '>', 0)->value('cavity') ?? 1);
 
                 $insertData = [
                     'material_code' => trim($partNo),
-                    'coil_id' => $coilId,
+                    'coil_id'       => $coilId,
                     'material_name' => $pData->part_name ?? 'N/A', 
-                    'spec' => trim($request->spec), 
-                    'size' => trim($request->size),
-                    'customer' => $request->customer_code, 
-                    'stock_pcs' => $request->stock_pcs,
-                    'cavity' => $autoCavity,
-                    'min_stock' => $request->min_stock, 
-                    'max_stock' => $request->max_stock,
+                    'spec'          => trim($request->spec), 
+                    'size'          => trim($request->size),
+                    'customer'      => $request->customer_code, 
+                    'stock_pcs'     => $request->stock_pcs,
+                    'cavity'        => $autoCavity,
+                    'min_stock'     => $request->min_stock, 
+                    'max_stock'     => $request->max_stock,
                     'std_qty_batch' => $request->std_qty_batch,
-                    'created_at' => now(), 
-                    'updated_at' => now(),
+                    'created_at'    => now(), 
+                    'updated_at'    => now(),
                 ];
 
                 if (Schema::hasColumn('rm_stocks', 'no_surat_jalan') && $request->filled('no_surat_jalan')) {
@@ -185,12 +265,12 @@ class RmController extends Controller
 
                 if (!$logInserted) {
                     DB::table('rm_incoming_logs')->insert([
-                        'rm_stock_id' => $rmId, 
+                        'rm_stock_id'   => $rmId, 
                         'material_code' => trim($partNo), 
-                        'pcs_in' => $request->stock_pcs, 
-                        'source' => 'supplier', 
-                        'no_produksi' => 'REG-' . date('Ymd'), 
-                        'created_at' => now()
+                        'pcs_in'        => $request->stock_pcs, 
+                        'source'        => 'supplier', 
+                        'no_produksi'   => 'REG-' . date('Ymd'), 
+                        'created_at'    => now()
                     ]);
                     $logInserted = true;
                 }
@@ -232,13 +312,12 @@ class RmController extends Controller
     /**
      * 6. ASSIGN PART MAPPING
      */
-    public function assignPart(Request $request) {
+    public function assignPart(Request $request) 
+    {
         $source = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
         if(!$source) return back()->with('error', 'Source not found.');
         
         $part = DB::table('parts')->where('part_no', $request->part_no)->first();
-        
-        // Auto-ambil cavity dari rm_stocks yang sudah ada sebelumnya
         $autoCavity = (int) ($request->cavity ?? DB::table('rm_stocks')->where('material_code', $request->part_no)->where('cavity', '>', 0)->value('cavity') ?? 1);
 
         $targetCoils = DB::table('rm_stocks')
@@ -257,16 +336,16 @@ class RmController extends Controller
                     $insertData = [
                         'material_code' => $request->part_no, 
                         'material_name' => $part->part_name ?? 'N/A', 
-                        'customer' => $source->customer, 
-                        'spec' => $source->spec, 
-                        'size' => $source->size, 
-                        'coil_id' => $coilId, 
-                        'stock_pcs' => $ref->stock_pcs, 
-                        'cavity' => $autoCavity,
-                        'min_stock' => $ref->min_stock, 
-                        'max_stock' => $ref->max_stock, 
-                        'created_at' => now(), 
-                        'updated_at' => now()
+                        'customer'      => $source->customer, 
+                        'spec'          => $source->spec, 
+                        'size'          => $source->size, 
+                        'coil_id'       => $coilId, 
+                        'stock_pcs'     => $ref->stock_pcs, 
+                        'cavity'        => $autoCavity,
+                        'min_stock'     => $ref->min_stock, 
+                        'max_stock'     => $ref->max_stock, 
+                        'created_at'    => now(), 
+                        'updated_at'    => now()
                     ];
 
                     if (Schema::hasColumn('rm_stocks', 'no_surat_jalan') && isset($ref->no_surat_jalan)) {
@@ -283,7 +362,8 @@ class RmController extends Controller
     /**
      * 7. REMOVE PART FROM UNIT
      */
-    public function removePartFromUnit($id) {
+    public function removePartFromUnit($id) 
+    {
         $target = DB::table('rm_stocks')->where('id', $id)->first();
         if(!$target) return back()->with('error', 'Not found.');
         DB::table('rm_stocks')->where('customer', trim($target->customer))->where(DB::raw('TRIM(spec)'), trim($target->spec))->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $target->size))->where('material_code', $target->material_code)->delete();
@@ -293,7 +373,8 @@ class RmController extends Controller
     /**
      * 8. RECAP PRINT
      */
-    public function recapPrint(Request $request) {
+    public function recapPrint(Request $request) 
+    {
         $targetDate = $request->date ?? date('Y-m-d'); 
         $customer = $request->customer;
         $startDaily = $targetDate . ' 00:00:00'; 
@@ -312,7 +393,7 @@ class RmController extends Controller
             $group->daily_in_r = DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)->where('source', 'return')->whereBetween('created_at', [$startDaily, $endDaily])->sum('pcs_in') ?? 0;
             $group->daily_out = DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)->whereBetween('created_at', [$startDaily, $endDaily])->sum('pcs_used') ?? 0;
             
-            // Rumus matematika diperbaiki (tidak terpotong baris)
+            // Perbaikan rumus perhitungan stok awal (tanda minus dikembalikan utuh)
             $group->stok_awal = $group->total_live_now - (DB::table('rm_incoming_logs')->whereIn('rm_stock_id', $ids)->where('created_at', '>=', $startDaily)->sum('pcs_in') ?? 0) + (DB::table('rm_production_logs')->whereIn('rm_stock_id', $ids)->where('created_at', '>=', $startDaily)->sum('pcs_used') ?? 0); 
             $group->stok_akhir_hari_ini = $group->stok_awal + ($group->daily_in_s + $group->daily_in_r) - $group->daily_out;
             return $group;
@@ -346,20 +427,20 @@ class RmController extends Controller
             $po = DB::table('supplier_pos')->where('id', $id)->first();
             if (!$po) throw new \Exception("PO Supplier tidak ditemukan!");
 
-            // Ambil Nomor Surat Jalan yang diinput
+            // Ambil Nomor Surat Jalan
             $noSJ = strtoupper(trim($request->no_surat_jalan ?? $request->no_sj ?? 'SJ-' . date('YmdHis')));
 
-            // Siapkan daftar bundle (Mendukung single bundle form lama atau multi-bundle array)
+            // Siapkan daftar bundle
             $bundles = [];
             if ($request->has('bundles') && is_array($request->bundles)) {
                 $bundles = $request->bundles;
             } elseif ($request->filled('coil_id') && $request->filled('item_id')) {
                 $bundles[] = [
-                    'item_id' => $request->item_id,
-                    'coil_id' => $request->coil_id,
+                    'item_id'     => $request->item_id,
+                    'coil_id'     => $request->coil_id,
                     'qty_arrival' => $request->qty_arrival ?? 0,
-                    'part_no' => $request->part_no ?? null,
-                    'cavity' => $request->cavity ?? null
+                    'part_no'     => $request->part_no ?? null,
+                    'cavity'      => $request->cavity ?? null
                 ];
             }
 
@@ -387,7 +468,7 @@ class RmController extends Controller
                     ->where('customer', $customerCode)
                     ->where(DB::raw('TRIM(spec)'), $spec)
                     ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $size))
-                    ->where('material_code', 'NOT LIKE', 'SAI%') // Bukan kode alias
+                    ->where('material_code', 'NOT LIKE', 'SAI%')
                     ->where('cavity', '>', 0)
                     ->select('material_code', 'material_name', 'cavity')
                     ->distinct()
@@ -413,7 +494,7 @@ class RmController extends Controller
                     ]);
                 }
 
-                // 2. Simpan setiap part ke rm_stocks lengkap dengan Cavity & No Surat Jalan (jika kolom tersedia)
+                // 2. Simpan setiap part ke rm_stocks lengkap dengan Cavity & No Surat Jalan
                 $primaryRmId = null;
                 $hasSjCol = Schema::hasColumn('rm_stocks', 'no_surat_jalan');
 

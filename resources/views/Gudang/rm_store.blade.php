@@ -2,7 +2,7 @@
 
 @section('content')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 
 <style>
     :root { 
@@ -30,13 +30,14 @@
     .unit-tag-card { background: #fff; border-radius: 25px; border: 1px solid #eef2f6; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; }
     .unit-tag-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.06); border-color: var(--primary); }
     .badge-coil { background: var(--dark-surface); color: #fff; padding: 8px 18px; border-radius: 12px; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    .badge-sj-tag { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; font-family: 'JetBrains Mono'; display: inline-flex; align-items: center; }
 
-    /* 📋 MUTATION FEED STYLE */
-    .log-container { background: #f8fafc; border-radius: 24px; padding: 20px; border: 1px solid #e2e8f0; }
-    .log-entry { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: white; border-radius: 18px; margin-bottom: 12px; border-left: 6px solid #cbd5e1; box-shadow: 0 4px 6px rgba(0,0,0,0.02); transition: 0.3s; }
-    .log-entry.in { border-left-color: var(--brand-success); }
-    .log-entry.out { border-left-color: var(--brand-danger); }
-    .log-entry.ret { border-left-color: var(--brand-return); }
+    /* 📋 MUTATION FEED STYLE (GROUPED BY SJ) */
+    .log-container { background: #f8fafc; border-radius: 24px; padding: 18px; border: 1px solid #e2e8f0; }
+    .log-entry-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.3s; }
+    .log-entry-card.in { border-left: 5px solid var(--brand-success); background: #f0fdf4; }
+    .log-entry-card.out { border-left: 5px solid var(--brand-danger); background: #fef2f2; }
+    .log-entry-card.ret { border-left: 5px solid var(--brand-return); background: #eef2ff; }
 
     .tech-input { border-radius: 16px; border: 2.5px solid #f1f5f9; padding: 12px 18px; font-weight: 700; background: #f8fafc; transition: 0.3s; }
     .tech-input:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 5px rgba(67, 97, 238, 0.1); }
@@ -67,8 +68,8 @@
                 <label class="small font-weight-black text-primary mb-2 uppercase">Client Entity</label>
                 <select name="customer" class="form-control tech-input w-100" onchange="this.form.submit()">
                     <option value="">-- ALL CLIENTS --</option>
-                    @foreach($availableCustomers as $c) 
-                        <option value="{{ trim($c->code) }}" {{ $customer == trim($c->code) ? 'selected' : '' }}>{{ $c->name }}</option> 
+                    @foreach($availableCustomers as$c) 
+                        <option value="{{ trim($c->code) }}" {{ $customer == trim($c->code) ? 'selected' : '' }}>{{$c->name }}</option> 
                     @endforeach
                 </select>
             </div>
@@ -100,12 +101,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($groupedMaterials as $group)
-                    @php $slug = Str::slug($group->group_key . $loop->iteration); @endphp
+                    @foreach($groupedMaterials as$group)
+                    @php $slug = Str::slug($group->group_key .$loop->iteration); @endphp
                     <tr class="rm-row-header" data-toggle="collapse" data-target="#det-{{ $slug }}">
                         <td class="pl-5 py-4 text-left">
                             <div class="font-weight-black text-primary" style="font-size: 16px; font-family: 'JetBrains Mono';">{{ $group->alias_code ?? $group->group_key }}</div>
-                            <small class="text-muted font-weight-bold uppercase">{{ $group->spec }} | {{ $group->size }}</small>
+                            <small class="text-muted font-weight-bold uppercase">{{ $group->spec }} \vert{} {{$group->size }}</small>
                         </td>
                         <td class="text-muted font-weight-bold">{{ number_format($group->total_init) }}</td>
                         <td class="text-success font-weight-black">+{{ number_format($group->total_in_s) }}</td>
@@ -118,11 +119,10 @@
                     <tr id="det-{{ $slug }}" class="collapse bg-light">
                         <td colspan="7" class="p-4">
                             <div class="row">
+                                {{-- 📦 KIRI: PHYSICAL UNIT CARDS --}}
                                 <div class="col-md-7">
-                                    {{-- ✨ FIX: Pastikan memanggil 'details' yang dikirim Controller --}}
-                                    @foreach($group->details as $p)
+                                    @foreach($group->details as$p)
                                     @php 
-                                        // Cari semua part yang nempel di fisik Coil ini rill
                                         $subParts = DB::table('rm_stocks')
                                             ->where('coil_id', trim($p->coil_id))
                                             ->where('customer', trim($p->customer))
@@ -132,15 +132,22 @@
                                     <div class="unit-tag-card p-4 bg-white mb-3 shadow-sm">
                                         <div class="d-flex justify-content-between align-items-start mb-4">
                                             <div>
-                                                <span class="badge-coil">{{ $p->coil_id }}</span>
+                                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                                    <span class="badge-coil mr-2">{{ $p->coil_id }}</span>
+                                                    @if(!empty($p->no_surat_jalan))
+                                                        <span class="badge-sj-tag">
+                                                            <i class="fas fa-file-invoice mr-1 text-primary"></i> SJ: {{ $p->no_surat_jalan }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                                 <div class="mt-3">
                                                     <small class="text-muted font-weight-black uppercase d-block">Unit Saldo</small>
                                                     <span class="h4 font-weight-black text-primary" style="font-family: 'Orbitron';">{{ number_format($p->stock_pcs) }} <small class="h6">PCS</small></span>
                                                 </div>
                                             </div>
                                             <div class="btn-group shadow-sm rounded-pill overflow-hidden">
-                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openAssignPart('{{ $p->id }}', '{{ $p->customer }}')"><i class="fas fa-plus mr-1 text-primary"></i> PART</button>
-                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{ $p->stock_pcs }}')"><i class="fas fa-edit mr-1 text-warning"></i> ADJUST</button>
+                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openAssignPart('{{ $p->id }}', '{{$p->customer }}')"><i class="fas fa-plus mr-1 text-primary"></i> PART</button>
+                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{$p->stock_pcs }}')"><i class="fas fa-edit mr-1 text-warning"></i> ADJUST</button>
                                                 <form action="{{ route('rm.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Erase this physical unit?')">
                                                     @csrf @method('DELETE')
                                                     <button type="submit" class="btn btn-white btn-sm px-3"><i class="fas fa-trash text-danger"></i></button>
@@ -150,10 +157,15 @@
                                         <div class="bg-light p-3 rounded-2xl border" style="border-style: dashed !important;">
                                             <small class="font-weight-black text-muted d-block mb-3 uppercase tracking-tighter">Mapped Components</small>
                                             <div class="row">
-                                                @foreach($subParts as $sp)
+                                                @foreach($subParts as$sp)
                                                 <div class="col-md-6 mb-2">
                                                     <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-xl border shadow-sm">
-                                                        <span class="font-weight-bold text-dark small">{{ $sp->material_code }}</span>
+                                                        <div>
+                                                            <span class="font-weight-bold text-dark small d-block">{{ $sp->material_code }}</span>
+                                                            @if(!empty($sp->cavity) &&$sp->cavity > 0)
+                                                                <small class="badge badge-light border text-muted px-2 py-0">Cavity: {{ $sp->cavity }}</small>
+                                                            @endif
+                                                        </div>
                                                         <form action="{{ route('rm.remove_part_from_unit', $sp->id) }}" method="POST">
                                                             @csrf @method('DELETE')
                                                             <button type="submit" class="border-0 bg-transparent p-0"><i class="fas fa-unlink text-danger opacity-50"></i></button>
@@ -166,25 +178,101 @@
                                     </div>
                                     @endforeach
                                 </div>
+
+                                {{-- 📋 KANAN: RECENT MUTATIONS (GROUPED BY SURAT JALAN) --}}
                                 <div class="col-md-5">
                                     <div class="card border-0 shadow-sm rounded-3xl p-4 bg-white h-100">
-                                        <h6 class="font-weight-black text-dark mb-4 uppercase tracking-widest"><i class="fas fa-stream mr-2 text-primary"></i>Recent_Mutations</h6>
+                                        <div class="d-flex justify-content-between align-items-center mb-4">
+                                            <h6 class="font-weight-black text-dark m-0 uppercase tracking-widest"><i class="fas fa-stream mr-2 text-primary"></i>Recent_Mutations</h6>
+                                            <span class="badge badge-light border rounded-pill px-3 py-1 font-weight-bold text-muted" style="font-size: 9.5px;">MANIFEST GROUPED</span>
+                                        </div>
+                                        
                                         <div class="log-container" style="max-height: 550px; overflow-y:auto;">
-                                            {{-- ✨ FIX: Menampilkan history mutasi lengkap dari Controller rill --}}
-                                            @forelse($group->combined_logs as $log)
-                                                @php $isOut = isset($log->pcs_used); $isRet = !$isOut && ($log->source == 'return'); @endphp
-                                                <div class="log-entry {{ $isOut ? 'out' : ($isRet ? 'ret' : 'in') }}">
-                                                    <div>
-                                                        <div class="d-flex justify-content-between mb-1">
-                                                            <span class="font-weight-black uppercase" style="font-size: 9px;">{{ $isOut ? 'PROD_EXIT' : ($isRet ? 'RETURN' : 'INBOUND') }}</span>
-                                                            <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                            @forelse($group->combined_logs as$log)
+                                                {{-- Format Grouped Inbound (Per Surat Jalan) --}}
+                                                @if(isset($log->type) &&$log->type === 'INBOUND_GROUP')
+                                                    <div class="log-entry-card in">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <div>
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <span class="badge badge-success px-2 py-1 rounded-pill font-weight-black uppercase mr-2" style="font-size: 8.5px;">
+                                                                        {{ $log->source == 'return' ? 'RETURN' : 'INBOUND' }}
+                                                                    </span>
+                                                                    <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                                                </div>
+                                                                <div class="font-weight-black text-dark" style="font-size: 13px; font-family: 'JetBrains Mono';">
+                                                                    📄 {{ $log->no_sj }}
+                                                                </div>
+                                                                <div class="badge badge-light border text-dark font-weight-bold mt-1 px-2 py-1 rounded-pill" style="font-size: 9.5px;">
+                                                                    📦 {{ $log->bundle_count }} BUNDLE / COIL
+                                                                </div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="h5 font-weight-black text-success mb-0" style="font-family: 'Orbitron';">
+                                                                    +{{ number_format($log->total_qty) }}
+                                                                </div>
+                                                                <small class="text-muted font-weight-bold">PCS</small>
+                                                            </div>
                                                         </div>
-                                                        <div class="text-dark font-weight-bold small" style="font-family: 'JetBrains Mono';">{{ $log->no_produksi ?? $log->po_identitas ?? 'ADJUSTMENT' }}</div>
+
+                                                        {{-- Rincian Coil di dalam Surat Jalan --}}
+                                                        @if(isset($log->bundles) && count($log->bundles) > 0)
+                                                            <div class="mt-2 pt-2 border-top" style="border-color: #dcfce7 !important;">
+                                                                <small class="text-muted font-weight-bold d-block mb-1" style="font-size: 8.5px;">BUNDLE BREAKDOWN:</small>
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                    @foreach($log->bundles as$b)
+                                                                        <span class="badge badge-white border px-2 py-1 rounded-pill text-dark font-weight-bold mr-1 mb-1" style="font-size: 9px; background:#fff;">
+                                                                            🏷️ {{ $b->coil_id ?? 'TAG' }}: <b>+{{ number_format($b->pcs_in) }}</b>
+                                                                        </span>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @endif
                                                     </div>
-                                                    <div class="ml-4 h5 font-weight-black mb-0" style="font-family: 'Orbitron';">{{ $isOut ? '-' : '+' }}{{ number_format($log->pcs_used ?? $log->pcs_in) }}</div>
-                                                </div>
+
+                                                {{-- Format Produksi Keluar (WOS Out) --}}
+                                                @elseif(isset($log->type) &&$log->type === 'PROD_EXIT')
+                                                    <div class="log-entry-card out">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <span class="badge badge-danger px-2 py-1 rounded-pill font-weight-black uppercase mr-2" style="font-size: 8.5px;">PROD_EXIT</span>
+                                                                    <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                                                </div>
+                                                                <div class="font-weight-black text-dark small" style="font-family: 'JetBrains Mono';">⚙️ {{ $log->no_sj }}</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="h5 font-weight-black text-danger mb-0" style="font-family: 'Orbitron';">-{{ number_format($log->total_qty) }}</div>
+                                                                <small class="text-muted font-weight-bold">PCS</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                {{-- Fallback Log Legacy Biasa --}}
+                                                @else
+                                                    @php $isOut = isset($log->pcs_used); $isRet = !$isOut && (isset($log->source) &&$log->source == 'return'); @endphp
+                                                    <div class="log-entry-card {{ $isOut ? 'out' : ($isRet ? 'ret' : 'in') }}">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <span class="badge {{ $isOut ? 'badge-danger' : ($isRet ? 'badge-primary' : 'badge-success') }} px-2 py-1 rounded-pill font-weight-black uppercase mr-2" style="font-size: 8.5px;">
+                                                                        {{ $isOut ? 'PROD_EXIT' : ($isRet ? 'RETURN' : 'INBOUND') }}
+                                                                    </span>
+                                                                    <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                                                </div>
+                                                                <div class="text-dark font-weight-bold small" style="font-family: 'JetBrains Mono';">{{ $log->no_produksi ?? 'TRANSACTION' }}</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="h5 font-weight-black {{ $isOut ? 'text-danger' : 'text-success' }} mb-0" style="font-family: 'Orbitron';">
+                                                                    {{ $isOut ? '-' : '+' }}{{ number_format($log->pcs_used ?? $log->pcs_in ?? 0) }}
+                                                                </div>
+                                                                <small class="text-muted font-weight-bold">PCS</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endif
                                             @empty
-                                                <div class="text-center py-5 text-muted small">Zero Mutations</div>
+                                                <div class="text-center py-5 text-muted small font-weight-bold">Zero Mutations Recorded</div>
                                             @endforelse
                                         </div>
                                     </div>
@@ -293,13 +381,11 @@
     });
 
     $(document).on('change', '#selectMasterSpec', function() {
-        let selected = $(this).find(':selected');
-        $('#autoSpec').val(selected.data('spec'));
+        let selected = $(this).find(':selected');$('#autoSpec').val(selected.data('spec'));
         $('#autoSize').val(selected.data('size'));
     });
 
-    $(document).on('click', '.rm-row-header', function() {
-        $(this).find('.transition-icon').toggleClass('fa-rotate-90');
+    $(document).on('click', '.rm-row-header', function() {$(this).find('.transition-icon').toggleClass('fa-rotate-90');
     });
 
     function openEditUnit(id, coil, qty) { 
@@ -317,7 +403,9 @@
             type: "GET",
             success: function(res) {
                 let options = '<option value="">-- SELECT PART --</option>';
-                $.each(res.parts, function(k, v) { options += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; });
+                $.each(res.parts, function(k, v) { 
+                    options += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; 
+                });
                 $('#assign_select_part').html(options);
                 $('#modalAssignPart').modal('show');
             }
