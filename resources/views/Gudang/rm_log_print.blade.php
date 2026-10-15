@@ -10,7 +10,7 @@
     <style>
         :root { 
             --dark: #0f172a; 
-            --slate: #334155;
+            --slate: #475569;
             --muted: #64748b;
             --border-thick: #0f172a;
             --border-thin: #cbd5e1;
@@ -34,23 +34,23 @@
             color: var(--dark); 
             margin: 0; 
             padding: 20px 0; 
-            background: #e2e8f0; /* Background abu-abu agar lembar kertas menonjol di monitor */
+            background: #cbd5e1; /* Background abu-abu agar lembar kertas terlihat tegas di tengah layar */
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact; 
         }
 
-        /* 📑 CONTAINER LEMBAR KERTAS FISIK (TIDAK MELEBAR KOSONG DI MONITOR) */
+        /* 📑 KERTAS DOKUMEN CETAK (TERPUSAT, TIDAK MELAR KOSONG DI MONITOR LEBAR) */
         .paper-sheet { 
             max-width: 1220px; 
             margin: 0 auto; 
             background: #ffffff; 
-            padding: 25px 30px; 
+            padding: 24px 28px; 
             border-radius: 8px; 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); 
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12); 
             position: relative;
         }
 
-        /* 🔘 ACTION BAR (Hanya di layar monitor) */
+        /* 🔘 SCREEN ACTION BAR */
         .no-print-bar {
             max-width: 1220px;
             margin: 0 auto 15px auto;
@@ -71,9 +71,14 @@
             border-radius: 6px;
             border: none;
             cursor: pointer;
+            text-decoration: none !important;
+            display: inline-flex;
+            align-items: center;
         }
-        .btn-close { background: #64748b; color: #fff; }
+        .btn-back { background: #475569; color: #fff; }
+        .btn-back:hover { background: #334155; color: #fff; }
         .btn-print { background: #2563eb; color: #fff; }
+        .btn-print:hover { background: #1d4ed8; color: #fff; }
 
         /* 🏛️ INDUSTRIAL DOCUMENT HEADER */
         .doc-header { 
@@ -82,7 +87,7 @@
             align-items: flex-start; 
             border-bottom: 3.5px solid var(--border-thick); 
             padding-bottom: 10px; 
-            margin-bottom: 15px; 
+            margin-bottom: 14px; 
         }
         .header-left h1 { 
             margin: 0; 
@@ -202,30 +207,32 @@
         .sj-title { font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #1e3a8a; font-size: 10px; }
         .badge-count { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 8px; font-weight: 800; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
 
-        /* ✨ KOTAK RINCIAN BUNDLE FISIK ✨ */
+        /* ✨ KOTAK RINCIAN TAG BUNDLE FISIK ✨ */
         .breakdown-wrapper {
-            margin-top: 4px;
-            padding: 4px 8px;
+            margin-top: 5px;
+            padding: 5px 8px;
             background: #f8fafc;
-            border-radius: 5px;
+            border-radius: 6px;
             border: 1px dashed #cbd5e1;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
         }
-        .breakdown-label { font-size: 7.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-right: 5px; }
+        .breakdown-label { font-size: 7.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-right: 4px; }
         .bundle-chip {
             background: #ffffff;
             border: 1px solid #cbd5e1;
-            padding: 2px 6px;
+            padding: 2px 7px;
             border-radius: 4px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 8px;
+            font-size: 8.5px;
             font-weight: 700;
             color: var(--dark);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         }
-        .bundle-chip b { color: var(--success-green); }
+        .bundle-chip b { color: #1e40af; }
+        .bundle-chip .chip-qty { color: var(--success-green); font-weight: 800; }
 
         /* ✍️ SIGNATURE SECTION & STEMPEL */
         .doc-footer { 
@@ -287,34 +294,48 @@
 </head>
 <body>
 
-    {{-- Screen Toolbar --}}
+    {{-- Screen Toolbar: Tombol KEMBALI Tidak Akan Menutup Web --}}
     <div class="no-print no-print-bar">
         <div>
             <b>LOGISTICS AUDIT TRAIL PREVIEW</b> — Arsip Mutasi Raw Material PT Asalta Mandiri Agung
         </div>
         <div>
-            <button class="btn-screen btn-close" onclick="window.close()">TUTUP</button>
-            <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK DOKUMEN (A4)</button>
+            <a href="{{ route('rm.store') }}" class="btn-screen btn-back" onclick="if(window.history.length > 1){ window.history.back(); return false; }">
+                <i class="fas fa-arrow-left mr-2"></i> KEMBALI KE RM HUB
+            </a>
+            <button class="btn-screen btn-print ml-2" onclick="window.print()">
+                <i class="fas fa-print mr-2"></i> CETAK DOKUMEN (A4)
+            </button>
         </div>
     </div>
 
     @php
-        // 1. Amankan peta identitas Coil fisik dari database jika belum di-join di controller
-        $allStockIds = collect();
+        // 1. Ambil Semua Referensi No Surat Jalan yang muncul di log transaksi
+        $allSjNumbers = collect();
         foreach($historyData as $mat) {
             if(isset($mat->logs)) {
                 foreach($mat->logs as $l) {
-                    if(isset($l->rm_stock_id) && $l->rm_stock_id > 0) {
-                        $allStockIds->push($l->rm_stock_id);
-                    }
+                    $ref = $l->ref_id ?? $l->no_produksi ?? null;
+                    if($ref) $allSjNumbers->push(trim($ref));
                 }
             }
         }
-        $coilMap = \Illuminate\Support\Facades\DB::table('rm_stocks')
-            ->whereIn('id', $allStockIds->unique())
-            ->pluck('coil_id', 'id');
 
-        // 2. Grand Total Section I
+        // 2. ✨ PENGAMBILAN DATA BUNDLE ASLI LANGSUNG DARI RM_INCOMING_LOGS JOIN RM_STOCKS ✨
+        // Logika ini memastikan tag bundle fisik (seperti SAI7898246719, dll) selalu muncul presisi per No SJ
+        $inboundBundleMap = \Illuminate\Support\Facades\DB::table('rm_incoming_logs')
+            ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
+            ->whereIn('rm_incoming_logs.no_produksi', $allSjNumbers->unique())
+            ->select(
+                'rm_incoming_logs.no_produksi',
+                'rm_incoming_logs.pcs_in',
+                'rm_incoming_logs.material_code',
+                'rm_stocks.coil_id'
+            )
+            ->get()
+            ->groupBy('no_produksi');
+
+        // 3. Grand Total Section I
         $totInit = 0; $totIn = 0; $totOut = 0; $totFinal = 0;
         foreach($historyData as $item) {
             $totInit += $item->initial;
@@ -323,7 +344,7 @@
             $totFinal += $item->final;
         }
 
-        // 3. ✨ GROUPING AUDIT TRAIL PER SURAT JALAN & SIMPAN RINCIAN BUNDLE ✨
+        // 4. Susun Daftar Transaksi Audit Trail yang Ter-grouping
         $allTransactions = collect();
 
         foreach($historyData as $mat) {
@@ -341,27 +362,22 @@
 
             // Grouping log Inbound per Nomor Surat Jalan
             $groupedInbound = $inboundLogs->groupBy(function($l) {
-                return $l->ref_id ?? $l->no_produksi ?? 'INBOUND-DIRECT';
-            })->map(function($bundleGroup, $sjNo) use ($mat, $coilMap) {
-                $totalQty = $bundleGroup->sum(fn($b) => $b->qty ?? $b->pcs_in ?? 0);
-
-                // Tarik rincian coil fisik di dalam Surat Jalan ini
-                $bundleList = $bundleGroup->map(function($b) use ($coilMap) {
-                    $cid = $b->coil_id ?? (isset($b->rm_stock_id) ? ($coilMap[$b->rm_stock_id] ?? null) : null) ?? 'COIL';
-                    $q = $b->qty ?? $b->pcs_in ?? 0;
-                    return (object)[
-                        'coil_id' => $cid,
-                        'qty'     => $q
-                    ];
-                });
+                return trim($l->ref_id ?? $l->no_produksi ?? 'INBOUND-DIRECT');
+            })->map(function($bundleGroup, $sjNo) use ($mat, $inboundBundleMap) {
+                // Ambil daftar bundle fisik langsung dari database map
+                $realBundles = $inboundBundleMap->get($sjNo, collect());
+                
+                $totalQty = $realBundles->isNotEmpty() 
+                    ? $realBundles->sum('pcs_in') 
+                    : $bundleGroup->sum(fn($b) => $b->qty ?? $b->pcs_in ?? 0);
 
                 return (object)[
                     'created_at'   => $bundleGroup->first()->created_at ?? now(),
                     'alias'        => $mat->alias ?? $mat->spec ?? '-',
                     'type'         => 'SUPPLY_IN (SJ)',
                     'ref_id'       => $sjNo,
-                    'bundle_count' => count($bundleGroup),
-                    'bundles'      => $bundleList,
+                    'bundle_count' => $realBundles->count() > 0 ? $realBundles->count() : count($bundleGroup),
+                    'bundles'      => $realBundles,
                     'qty'          => $totalQty
                 ];
             });
@@ -385,7 +401,7 @@
             $allTransactions = $allTransactions->concat($groupedInbound)->concat($formattedOutbound);
         }
 
-        // Urutkan transaksi terbaru di paling atas
+        // Urutkan transaksi secara kronologis terbaru
         $auditTrailList = $allTransactions->sortByDesc('created_at')->values();
     @endphp
 
@@ -499,18 +515,18 @@
                             <span class="sj-title">{{ $tx->ref_id }}</span>
                             @if(isset($tx->bundle_count) && $tx->bundle_count > 1)
                                 <span class="badge-count">
-                                    <i class="fas fa-boxes mr-1"></i> {{ $tx->bundle_count }} BUNDLE
+                                    <i class="fas fa-boxes mr-1"></i> {{ $tx->bundle_count }} BUNDLES
                                 </span>
                             @endif
                         </div>
 
-                        {{-- 📦 KOTAK RINCIAN BUNDLE FISIK DI DALAM SURAT JALAN --}}
+                        {{-- 📦 KOTAK RINCIAN TAG BUNDLE FISIK ASLI --}}
                         @if(isset($tx->bundles) && count($tx->bundles) > 0)
                             <div class="breakdown-wrapper">
-                                <span class="breakdown-label">RINCIAN:</span>
+                                <span class="breakdown-label"><i class="fas fa-tags mr-1"></i> RINCIAN COIL:</span>
                                 @foreach($tx->bundles as $b)
                                     <span class="bundle-chip">
-                                        🏷️ {{ $b->coil_id }}: <b>+{{ number_format($b->qty) }}</b>
+                                        🏷️ <b>{{ $b->coil_id ?? $b->material_code ?? 'TAG' }}</b>: <span class="chip-qty">+{{ number_format($b->pcs_in ?? $b->qty ?? 0) }}</span>
                                     </span>
                                 @endforeach
                             </div>
