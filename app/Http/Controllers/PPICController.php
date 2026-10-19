@@ -448,6 +448,7 @@ class PPICController extends Controller
 
     /**
      * 6. PRINT SURAT SERAH TERIMA MATERIAL (BPRM OTOMATIS)
+     * ✨ FIX: AMBIL SURAT JALAN & COIL TANPA RAW SQL FRAGILE (BEBAS ERROR HY093) ✨
      */
     public function printSerahTerima($date, $shift, $line_code)
     {
@@ -455,13 +456,6 @@ class PPICController extends Controller
             ->where('plan_date', $date)
             ->where('line_code', $line_code)
             ->pluck('id');
-
-        $sjSubQuery = DB::table('rm_incoming_logs')
-            ->select('no_produksi')
-            ->whereColumn('rm_incoming_logs.rm_stock_id', 'produksi_batches.rm_stock_id')
-            ->where('source', 'supplier')
-            ->orderBy('id', 'desc')
-            ->limit(1);
 
         $hasSjCol = Schema::hasColumn('rm_stocks', 'no_surat_jalan');
 
@@ -481,15 +475,30 @@ class PPICController extends Controller
             );
 
         if ($hasSjCol) {
-            $query->addSelect(DB::raw("COALESCE(rm_stocks.no_surat_jalan, ({$sjSubQuery->toSql()}), '-') as no_surat_jalan"));
-        } else {
-            $query->addSelect(DB::raw("COALESCE(({$sjSubQuery->toSql()}), '-') as no_surat_jalan"));
+            $query->addSelect('rm_stocks.no_surat_jalan as stock_sj');
         }
 
         $allBatches = $query->orderBy('produksi_batches.id', 'asc')->get();
 
         if ($allBatches->isEmpty()) {
             return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
+        }
+
+        // Ambil No Surat Jalan dari rm_incoming_logs secara aman & efisien (0% eror binding PDO)
+        $stockIds = $allBatches->pluck('rm_stock_id')->filter()->unique();
+        $incomingSjs = DB::table('rm_incoming_logs')
+            ->whereIn('rm_stock_id', $stockIds)
+            ->where('source', 'supplier')
+            ->orderBy('id', 'desc')
+            ->pluck('no_produksi', 'rm_stock_id');
+
+        foreach ($allBatches as $b) {
+            $sjFromStock = $b->stock_sj ?? null;
+            if (!empty($sjFromStock) && $sjFromStock !== '-') {
+                $b->no_surat_jalan = $sjFromStock;
+            } else {
+                $b->no_surat_jalan = $incomingSjs[$b->rm_stock_id] ?? '-';
+            }
         }
 
         $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
