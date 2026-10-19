@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>RM_RECAP_{{ date('Ymd', strtotime($targetDate ?? now())) }}</title>
+    <title>RM_RECAP_{{ strtoupper($filterType ?? 'DAILY') }}_{{ date('Ymd', strtotime($targetDate ?? now())) }}</title>
     <!-- Font Standar Industri Manufaktur -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -38,7 +38,7 @@
 
         .report-wrapper { max-width: 100%; margin: 0 auto; position: relative; }
 
-        /* 🔘 SCREEN ACTION BAR (Hanya di layar monitor) */
+        /* 🔘 SCREEN ACTION & FILTER BAR */
         .no-print-bar {
             display: flex;
             justify-content: space-between;
@@ -48,16 +48,43 @@
             border-radius: 8px;
             margin-bottom: 16px;
             border: 1px solid #cbd5e1;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-select, .filter-input {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border: 1.5px solid #94a3b8;
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--dark);
+            outline: none;
+        }
+        .filter-select:focus, .filter-input:focus {
+            border-color: #2563eb;
         }
         .btn-screen {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
             font-size: 11px;
-            padding: 8px 18px;
+            padding: 7px 16px;
             border-radius: 6px;
             border: none;
             cursor: pointer;
+            text-decoration: none !important;
+            display: inline-flex;
+            align-items: center;
         }
+        .btn-apply { background: #0f172a; color: #fff; }
+        .btn-apply:hover { background: #1e293b; }
         .btn-close { background: #64748b; color: #fff; }
         .btn-print { background: #2563eb; color: #fff; }
 
@@ -77,7 +104,7 @@
 
         .report-title-box { width: 40%; text-align: center; }
         .report-title-box h1 { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-        .report-title-box span { font-size: 9.5px; font-weight: 700; color: #2563eb; font-family: 'JetBrains Mono', monospace; }
+        .report-title-box span { font-size: 10.5px; font-weight: 800; color: #2563eb; font-family: 'JetBrains Mono', monospace; display: block; margin-top: 2px; }
 
         .doc-meta { width: 25%; text-align: right; font-size: 8.5px; line-height: 1.4; font-weight: 600; }
         .doc-meta b { color: var(--dark); font-weight: 800; }
@@ -118,7 +145,7 @@
         table.recap-table td { 
             border: 1px solid #94a3b8; 
             padding: 5px 6px; 
-            vertical-align: middle; 
+            vertical-align: top; 
             font-size: 9.5px;
         }
 
@@ -141,6 +168,19 @@
         .val-in-s { color: var(--success-green); }
         .val-in-r { color: var(--return-indigo); }
         .val-out { color: var(--danger-red); }
+
+        /* ✨ CHIP RINCIAN COIL KELUAR & MASUK ✨ */
+        .coil-breakdown-box {
+            font-size: 7.5px; 
+            margin-top: 4px; 
+            font-weight: 700; 
+            text-align: right; 
+            color: #475569;
+            line-height: 1.4;
+            padding-top: 3px;
+            border-top: 1px dashed #cbd5e1;
+        }
+        .coil-chip-row { white-space: nowrap; font-family: 'JetBrains Mono', monospace; }
 
         tr.grand-total {
             background: #e2e8f0 !important;
@@ -174,7 +214,6 @@
         .sig-title { font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 45px; }
         .sig-name { font-size: 9.5px; font-weight: 800; text-transform: uppercase; border-top: 1px solid var(--border-thick); padding-top: 3px; }
 
-        /* 🏆 THE LOGISTICS REAL STAMP */
         .stamp-wrapper {
             position: absolute;
             top: 12px;
@@ -206,19 +245,41 @@
 </head>
 <body>
 
-    {{-- Screen Action Toolbar --}}
+    {{-- 🔘 SCREEN ACTION & FILTER BAR --}}
     <div class="no-print no-print-bar">
+        <form action="{{ route('rm.recap.print') }}" method="GET" class="filter-form">
+            <span style="font-weight: 800;">MODE FILTER:</span>
+            
+            <select name="filter_type" class="filter-select" onchange="toggleFilterMode(this.value)">
+                <option value="daily" {{ ($filterType ?? 'daily') === 'daily' ? 'selected' : '' }}>📅 Per Tanggal (Harian)</option>
+                <option value="monthly" {{ ($filterType ?? '') === 'monthly' ? 'selected' : '' }}>🗓️ Per Bulan (Bulanan)</option>
+            </select>
+
+            <span id="date-input-wrap" style="{{ ($filterType ?? 'daily') === 'monthly' ? 'display:none;' : '' }}">
+                <input type="date" name="date" class="filter-input" value="{{ $startDate ?? date('Y-m-d') }}">
+            </span>
+
+            <span id="month-input-wrap" style="{{ ($filterType ?? 'daily') === 'monthly' ? '' : 'display:none;' }}">
+                <input type="month" name="month" class="filter-input" value="{{ $selectedMonth ?? date('Y-m') }}">
+            </span>
+
+            <select name="customer" class="filter-select">
+                <option value="">-- SEMUA CLIENT / CUSTOMER --</option>
+                @foreach($availableCustomers ?? [] as $c)
+                    <option value="{{ $c->code }}" {{ ($customer ?? '') === $c->code ? 'selected' : '' }}>{{ $c->name }} ({{ $c->code }})</option>
+                @endforeach
+            </select>
+
+            <button type="submit" class="btn-screen btn-apply">🔍 TERAPKAN FILTER</button>
+        </form>
+
         <div>
-            <b>INVENTORY AUDIT PREVIEW</b> — Lembar Rekapitulasi Fisik Raw Material
-        </div>
-        <div>
-            <button class="btn-screen btn-close" onclick="window.close()">TUTUP</button>
-            <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK DOKUMEN (A4)</button>
+            <button class="btn-screen btn-close" onclick="window.history.back()">KEMBALI</button>
+            <button class="btn-screen btn-print ml-2" onclick="window.print()">🖨️ CETAK DOKUMEN (A4)</button>
         </div>
     </div>
 
     @php
-        // Akumulasi Total Keseluruhan
         $sumAwal = 0; $sumInS = 0; $sumInR = 0; $sumOut = 0; $sumAkhir = 0;
         foreach($data as $d) {
             $sumAwal += ($d->stok_awal ?? 0);
@@ -238,11 +299,11 @@
             </div>
             <div class="header-col report-title-box">
                 <h1>RAW MATERIAL RECAP REGISTRY</h1>
-                <span>DATE: {{ date('d F Y', strtotime($targetDate ?? now())) }}</span>
+                <span>{{ $periodTitle ?? ('PERIODE: ' . date('d F Y', strtotime($targetDate ?? now()))) }}</span>
             </div>
             <div class="header-col doc-meta">
                 FORM NO : <b>AMA-LOG-REC-01</b><br>
-                CLIENT SCOPE : <b>{{ strtoupper($customer ?? 'ALL CLIENT ENTITIES') }}</b><br>
+                CLIENT SCOPE : <b>{{ !empty($customer) ? strtoupper($customer) : 'ALL CLIENT ENTITIES' }}</b><br>
                 PRINTED AT : {{ date('d/m/Y H:i') }}
             </div>
         </div>
@@ -250,12 +311,12 @@
         {{-- KPI Ribbon --}}
         <div class="kpi-bar">
             <div class="kpi-card">
-                <div class="kpi-title">Beginning Balance (Awal)</div>
+                <div class="kpi-title">Beginning Balance (Stok Awal)</div>
                 <div class="kpi-value">{{ number_format($sumAwal) }} <span style="font-size:8px;">PCS</span></div>
             </div>
             <div class="kpi-card" style="border-left: 3px solid var(--success-green);">
                 <div class="kpi-title" style="color: var(--success-green);">Total Inbound (Supplier)</div>
-                <div class="kpi-value text-success">+{{ number_format($sumInS) }}</div>
+                <div class="kpi-value" style="color: var(--success-green);">+{{ number_format($sumInS) }}</div>
             </div>
             <div class="kpi-card" style="border-left: 3px solid var(--return-indigo);">
                 <div class="kpi-title" style="color: var(--return-indigo);">Total Return (Shop Floor)</div>
@@ -266,7 +327,7 @@
                 <div class="kpi-value" style="color: var(--danger-red);">-{{ number_format($sumOut) }}</div>
             </div>
             <div class="kpi-card" style="border-left: 4px solid var(--border-thick); background:#e2e8f0;">
-                <div class="kpi-title" style="color: var(--dark);">Ending Stock Balance</div>
+                <div class="kpi-title" style="color: var(--dark);">Ending Stock Balance (Stok Akhir)</div>
                 <div class="kpi-value">{{ number_format($sumAkhir) }} <span style="font-size:8px;">PCS</span></div>
             </div>
         </div>
@@ -276,9 +337,11 @@
             <thead>
                 <tr>
                     <th rowspan="2" width="28%">Material Identification & Spec</th>
-                    <th colspan="4" width="38%">Daily Movement Ledger (PCS)</th>
+                    <th colspan="4" width="38%">
+                        {{ ($filterType ?? 'daily') === 'monthly' ? 'Monthly Movement Ledger (PCS)' : 'Daily Movement Ledger (PCS)' }}
+                    </th>
                     <th colspan="3" width="22%" style="background: #e2e8f0 !important;">Monthly Accumulation</th>
-                    <th rowspan="2" width="12%" class="col-final-stock">Ending Balance</th>
+                    <th rowspan="2" width="12%" class="col-final-stock">Ending Balance (Stok Akhir)</th>
                 </tr>
                 <tr>
                     <th width="9.5%">Stok Awal</th>
@@ -295,31 +358,54 @@
                 <tr>
                     <td class="text-left">
                         <span class="item-alias">{{ $rm->alias_code ?? 'UNREGISTERED' }}</span>
-                        <span class="item-spec">{{ $rm->spec }}</span>
+                        <span class="item-spec">{{ $rm->spec }} ({{ $rm->customer }})</span>
                         <span class="item-dim">DIM: {{ $rm->size }}</span>
                     </td>
                     
-                    {{-- Nilai Mutasi Harian (Rata Kanan) --}}
-                    <td class="num-val" style="color: var(--slate);">{{ number_format($rm->stok_awal) }}</td>
-                    <td class="num-val val-in-s">{{ $rm->daily_in_s > 0 ? '+'.number_format($rm->daily_in_s) : '-' }}</td>
-                    <td class="num-val val-in-r">{{ $rm->daily_in_r > 0 ? '+'.number_format($rm->daily_in_r) : '-' }}</td>
-                    <td class="num-val val-out">{{ $rm->daily_out > 0 ? '-'.number_format($rm->daily_out) : '-' }}</td>
+                    {{-- Stok Awal Periode Terpilih --}}
+                    <td class="num-val" style="color: var(--slate); font-weight:800;">{{ number_format($rm->stok_awal) }}</td>
                     
-                    {{-- Akumulasi Bulanan --}}
+                    {{-- In (Supplier) beserta rincian coil --}}
+                    <td class="num-val val-in-s">
+                        <div>{{ $rm->daily_in_s > 0 ? '+'.number_format($rm->daily_in_s) : '-' }}</div>
+                        @if(isset($rm->coils_in) && count($rm->coils_in) > 0)
+                            <div class="coil-breakdown-box">
+                                @foreach($rm->coils_in as $ci)
+                                    <div class="coil-chip-row">🏷️ {{ $ci->coil_id }}: <b style="color: var(--success-green);">+{{ number_format($ci->qty) }}</b></div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </td>
+
+                    {{-- In (Return) --}}
+                    <td class="num-val val-in-r">{{ $rm->daily_in_r > 0 ? '+'.number_format($rm->daily_in_r) : '-' }}</td>
+                    
+                    {{-- Out (Prod) beserta rincian coil yang keluar --}}
+                    <td class="num-val val-out">
+                        <div>{{ $rm->daily_out > 0 ? '-'.number_format($rm->daily_out) : '-' }}</div>
+                        @if(isset($rm->coils_out) && count($rm->coils_out) > 0)
+                            <div class="coil-breakdown-box">
+                                @foreach($rm->coils_out as $co)
+                                    <div class="coil-chip-row">🏷️ {{ $co->coil_id }}: <b style="color: var(--danger-red);">-{{ number_format($co->qty) }}</b></div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </td>
+                    
+                    {{-- Akumulasi Bulanan Berjalan --}}
                     <td class="num-val" style="background: #f8fafc;">{{ number_format($rm->monthly_in_s ?? 0) }}</td>
                     <td class="num-val" style="background: #f8fafc;">{{ number_format($rm->monthly_in_r ?? 0) }}</td>
                     <td class="num-val" style="background: #f8fafc; color:#991b1b;">{{ number_format($rm->monthly_out ?? 0) }}</td>
                     
-                    {{-- Saldo Akhir --}}
+                    {{-- Saldo Akhir Periode Terpilih --}}
                     <td class="num-val col-final-stock">{{ number_format($rm->stok_akhir_hari_ini) }}</td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="9" class="text-center py-4 text-muted italic">-- Tidak ada transaksi mutasi raw material pada periode ini --</td>
+                    <td colspan="9" class="text-center py-4 text-muted italic">-- Tidak ada transaksi mutasi raw material pada periode / filter ini --</td>
                 </tr>
                 @endforelse
 
-                {{-- Baris Grand Total --}}
                 @if(count($data) > 0)
                 <tr class="grand-total">
                     <td class="text-left" style="padding-left: 10px; font-weight: 900; font-size: 10px;">GRAND TOTAL BALANCE :</td>
@@ -346,7 +432,6 @@
             <div class="sig-col">
                 <div class="sig-box">
                     <div class="sig-title">Divalidasi Oleh (PPIC)</div>
-                    {{-- Stempel Validasi PPIC Department --}}
                     <div class="stamp-wrapper">
                         <span class="stamp-top">PT ASALTA MANDIRI AGUNG</span>
                         <span class="stamp-mid">LOGISTICS DEPT</span>
@@ -364,6 +449,20 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function toggleFilterMode(mode) {
+            const dateWrap = document.getElementById('date-input-wrap');
+            const monthWrap = document.getElementById('month-input-wrap');
+            if (mode === 'monthly') {
+                dateWrap.style.display = 'none';
+                monthWrap.style.display = 'inline-block';
+            } else {
+                dateWrap.style.display = 'inline-block';
+                monthWrap.style.display = 'none';
+            }
+        }
+    </script>
 
 </body>
 </html>
