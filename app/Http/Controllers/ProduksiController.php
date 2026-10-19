@@ -159,7 +159,7 @@ class ProduksiController extends Controller
     public function storeResult(Request $request, $id) { return back(); }
 
     /**
-     * ✨ UPDATE RESULT: SINKRON HASIL DENGAN actual_stock & OTOMATIS DISPATCH KE TERMINAL WELDING ✨
+     * ✨ UPDATE RESULT: SINKRON HASIL DENGAN actual_stock, DEFAULT VALUE PALLET, & DISPATCH WELDING ✨
      */
     public function updateResult(Request $request, $id)
     {
@@ -197,17 +197,21 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
 
-                // 1. SINKRONISASI KE FINISHED_GOODS (MENGGUNAKAN actual_stock BUKAN stock)
+                // 1. SINKRONISASI KE FINISHED_GOODS (MENGGUNAKAN actual_stock & MENGISI qty_per_pallet DENGAN 0)
                 $fg = DB::table('finished_goods')->where('part_no', $p->material_code)->first();
                 if (!$fg) {
                     $insertFg = [
-                        'part_no'       => $p->material_code,
-                        'part_name'     => $partMaster->part_name ?? $p->material_code,
-                        'customer'      => $partMaster->customer_code ?? 'SAI',
-                        'actual_stock'  => ($target == 'WELDING') ? 0 : $qty_ok_new,
-                        'welding_stock' => ($target == 'WELDING') ? $qty_ok_new : 0,
-                        'created_at'    => now(),
-                        'updated_at'    => now()
+                        'part_no'        => $p->material_code,
+                        'part_name'      => $partMaster->part_name ?? $p->material_code,
+                        'customer'       => $partMaster->customer_code ?? 'SAI',
+                        'customer_code'  => $partMaster->customer_code ?? 'SAI',
+                        'actual_stock'   => ($target == 'WELDING') ? 0 : $qty_ok_new,
+                        'welding_stock'  => ($target == 'WELDING') ? $qty_ok_new : 0,
+                        'qty_per_unit'   => 1,
+                        'qty_per_pallet' => 0, // Mencegah error 1364 default value
+                        'qty_order'      => 0,
+                        'created_at'     => now(),
+                        'updated_at'     => now()
                     ];
                     DB::table('finished_goods')->insert($insertFg);
                 } else {
@@ -234,6 +238,10 @@ class ProduksiController extends Controller
                             'line_id'              => $weldingLineId,
                             'qty_masuk'            => $qty_ok_new,
                             'shift'                => $p->shift ?? 'Pagi',
+                            'qty_ok'               => 0,
+                            'total_checked'        => 0,
+                            'qty_ng'               => 0,
+                            'qty_return'           => 0,
                             'status'               => 'PROSES',
                             'keterangan'           => 'TRANSFER DARI STAMPING',
                             'created_at'           => now(),
@@ -318,13 +326,17 @@ class ProduksiController extends Controller
                         $subFg = DB::table('finished_goods')->where('part_no', $p_sub->material_code)->first();
                         if (!$subFg) {
                             DB::table('finished_goods')->insert([
-                                'part_no'       => $p_sub->material_code,
-                                'part_name'     => $subPartMaster->part_name ?? $p_sub->material_code,
-                                'customer'      => $subPartMaster->customer_code ?? 'SAI',
-                                'actual_stock'  => ($subTarget == 'WELDING') ? 0 : $qty_ok_sub,
-                                'welding_stock' => ($subTarget == 'WELDING') ? $qty_ok_sub : 0,
-                                'created_at'    => now(),
-                                'updated_at'    => now()
+                                'part_no'        => $p_sub->material_code,
+                                'part_name'      => $subPartMaster->part_name ?? $p_sub->material_code,
+                                'customer'       => $subPartMaster->customer_code ?? 'SAI',
+                                'customer_code'  => $subPartMaster->customer_code ?? 'SAI',
+                                'actual_stock'   => ($subTarget == 'WELDING') ? 0 : $qty_ok_sub,
+                                'welding_stock'  => ($subTarget == 'WELDING') ? $qty_ok_sub : 0,
+                                'qty_per_unit'   => 1,
+                                'qty_per_pallet' => 0,
+                                'qty_order'      => 0,
+                                'created_at'     => now(),
+                                'updated_at'     => now()
                             ]);
                         } else {
                             if ($subTarget == 'WELDING') {
@@ -349,6 +361,10 @@ class ProduksiController extends Controller
                                     'line_id'              => $weldingLineId,
                                     'qty_masuk'            => $qty_ok_sub,
                                     'shift'                => $p_sub->shift ?? 'Pagi',
+                                    'qty_ok'               => 0,
+                                    'total_checked'        => 0,
+                                    'qty_ng'               => 0,
+                                    'qty_return'           => 0,
                                     'status'               => 'PROSES',
                                     'keterangan'           => 'TRANSFER DARI STAMPING (PAIR)',
                                     'created_at'           => now(),
