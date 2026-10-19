@@ -260,7 +260,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($histories as$h)
+                        @forelse($histories as $h)
                         @php 
                             $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
                             $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
@@ -294,7 +294,7 @@
                                 {{-- Rincian Coil Fisik yang Dipakai --}}
                                 @if(isset($h->coils_used) && count($h->coils_used) > 0)
                                     <div class="d-flex flex-column">
-                                        @foreach($h->coils_used as$c)
+                                        @foreach($h->coils_used as $c)
                                             <span class="coil-badge">
                                                 🏷️ {{ $c->coil_id }}: <b>{{ number_format($c->pcs_used) }} lbr</b>
                                             </span>
@@ -323,7 +323,7 @@
                                 {{-- Rincian Jenis NG --}}
                                 @if(isset($h->ng_details) && count($h->ng_details) > 0)
                                     <div class="d-flex flex-wrap mb-1">
-                                        @foreach($h->ng_details as$ng)
+                                        @foreach($h->ng_details as $ng)
                                             <span class="ng-chip">⚠️ {{ $ng->ng_type }}: {{$ng->qty }}</span>
                                         @endforeach
                                     </div>
