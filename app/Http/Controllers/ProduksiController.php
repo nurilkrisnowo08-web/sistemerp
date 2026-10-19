@@ -380,7 +380,10 @@ class ProduksiController extends Controller
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
     
     /**
-     * 8. FUNGSI HISTORY
+     * ✨ 8. FUNGSI HISTORY DIPERBAIKI LENGKAP:
+     * - BACA SEMUA COIL/BUNDLE YANG TERPAKAI
+     * - RINCIAN REMARK NG SPESIFIK
+     * - DETAIL LENGKAP HASIL SEPARATING PART
      */
     public function history(Request $request) 
     { 
@@ -390,10 +393,12 @@ class ProduksiController extends Controller
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+            ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->select(
                 'produksi_batches.*',
                 'line.kode_Line',
                 'line.nama_Line',
+                'parts.part_name',
                 'rm_stocks.coil_id',
                 'rm_stocks.spec',
                 'rm_stocks.size',
@@ -407,26 +412,87 @@ class ProduksiController extends Controller
         $historiesRaw = $query->paginate(50); 
 
         $historiesRaw->getCollection()->transform(function ($item) {
-            $isMainPair = str_ends_with($item->no_produksi, '-M');
+            // 1. Deteksi dan Ambil Rincian Lengkap Separating Sub-Part
+            $isMainPair = (strpos($item->keterangan, 'PAIR_MAIN:') === 0) || str_ends_with($item->no_produksi, '-M');
             $item->is_separating = $isMainPair;
             $item->paired_part = null;
+            $item->paired_part_name = null;
             $item->paired_ok = 0;
             $item->paired_ng = 0;
+            $item->paired_ng_remark = '-';
 
             if ($isMainPair) {
-                $subNoProd = substr($item->no_produksi, 0, -2) . '-S';
-                $pairedBatch = DB::table('produksi_batches')->where('no_produksi', $subNoProd)->first();
+                $lastDash = strrpos($item->no_produksi, '-');
+                $timePrefix = $lastDash !== false ? substr($item->no_produksi, 0, $lastDash) : $item->no_produksi;
                 
+                $pairedBatch = DB::table('produksi_batches')
+                    ->where('no_produksi', $timePrefix . '-S')
+                    ->first();
+                
+                if (!$pairedBatch && strpos($item->keterangan, 'PAIR_MAIN:') === 0) {
+                    $subPartCode = str_replace('PAIR_MAIN:', '', $item->keterangan);
+                    $pairedBatch = DB::table('produksi_batches')
+                        ->where('material_code', $subPartCode)
+                        ->whereDate('created_at', date('Y-m-d', strtotime($item->created_at)))
+                        ->first();
+                }
+
                 if ($pairedBatch) {
                     $item->paired_part = $pairedBatch->material_code;
-                    $item->paired_ok = $pairedBatch->qty_hasil_ok;
-                    $item->paired_ng = $pairedBatch->qty_hasil_ng;
+                    $item->paired_part_name = DB::table('parts')->where('part_no', $pairedBatch->material_code)->value('part_name') ?? $pairedBatch->material_code;
+                    $item->paired_ok = (int) $pairedBatch->qty_hasil_ok;
+                    $item->paired_ng = (int) $pairedBatch->qty_hasil_ng;
+
+                    // Detail log NG untuk pasangan separating
+                    $subNgLogs = DB::table('production_ng_logs')
+                        ->where('no_produksi', $pairedBatch->no_produksi)
+                        ->get();
+                    
+                    $item->paired_ng_details = $subNgLogs;
+                    $item->paired_ng_remark = $subNgLogs->isNotEmpty()
+                        ? $subNgLogs->map(fn($n) => "{$n->ng_type}: {$n->qty}")->implode(', ')
+                        : ($pairedBatch->qty_hasil_ng > 0 ? "Defect: {$pairedBatch->qty_hasil_ng} pcs" : '-');
                 }
             }
 
-            $item->ng_details = DB::table('production_ng_logs')
+            // 2. Baca Seluruh Coil / Bundle Fisik yang Dipakai di Batch Ini (Multi-Bundle FIFO)
+            $coilsUsed = DB::table('rm_production_logs')
+                ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
+                ->where('rm_production_logs.no_produksi', $item->no_produksi)
+                ->select(
+                    'rm_stocks.coil_id',
+                    'rm_stocks.spec',
+                    'rm_stocks.size',
+                    'rm_production_logs.pcs_used'
+                )
+                ->get();
+
+            if ($coilsUsed->isNotEmpty()) {
+                $item->coils_used = $coilsUsed;
+                $item->coils_summary = $coilsUsed->map(function($c) {
+                    return ($c->coil_id ?? 'COIL') . ' (' . number_format($c->pcs_used) . ' lbr)';
+                })->implode(', ');
+            } else {
+                $item->coils_used = collect([
+                    (object)[
+                        'coil_id'  => $item->coil_id ?? '-',
+                        'spec'     => $item->spec ?? '-',
+                        'size'     => $item->size ?? '-',
+                        'pcs_used' => $item->qty_ambil_pcs
+                    ]
+                ]);
+                $item->coils_summary = $item->coil_id ? ($item->coil_id . ' (' . number_format($item->qty_ambil_pcs) . ' lbr)') : '-';
+            }
+
+            // 3. Baca Detail NG & Buat Ringkasan Remark NG
+            $ngLogs = DB::table('production_ng_logs')
                 ->where('no_produksi', $item->no_produksi)
                 ->get();
+
+            $item->ng_details = $ngLogs;
+            $item->ng_remark = $ngLogs->isNotEmpty() 
+                ? $ngLogs->map(fn($n) => "{$n->ng_type}: {$n->qty}")->implode(', ')
+                : ($item->qty_hasil_ng > 0 ? "Defect: {$item->qty_hasil_ng} pcs" : '-');
 
             return $item;
         });
@@ -434,6 +500,7 @@ class ProduksiController extends Controller
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
+        // Query Statistik Grafik Harian
         $dailyStats = DB::table('produksi_batches')
             ->select(
                 DB::raw('DATE(updated_at) as tgl'),
