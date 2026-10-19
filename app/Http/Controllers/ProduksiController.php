@@ -159,7 +159,7 @@ class ProduksiController extends Controller
     public function storeResult(Request $request, $id) { return back(); }
 
     /**
-     * ✨ UPDATE RESULT: SINKRON HASIL KE GUDANG DAN OTOMATIS DISPATCH KE TERMINAL WELDING ✨
+     * ✨ UPDATE RESULT: SINKRON HASIL DENGAN actual_stock & OTOMATIS DISPATCH KE TERMINAL WELDING ✨
      */
     public function updateResult(Request $request, $id)
     {
@@ -197,40 +197,37 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
 
-                // 1. Pastikan Part Sudah Terdaftar di finished_goods
-                $fgExists = DB::table('finished_goods')->where('part_no', $p->material_code)->exists();
-                if (!$fgExists) {
-                    DB::table('finished_goods')->insert([
+                // 1. SINKRONISASI KE FINISHED_GOODS (MENGGUNAKAN actual_stock BUKAN stock)
+                $fg = DB::table('finished_goods')->where('part_no', $p->material_code)->first();
+                if (!$fg) {
+                    $insertFg = [
                         'part_no'       => $p->material_code,
                         'part_name'     => $partMaster->part_name ?? $p->material_code,
                         'customer'      => $partMaster->customer_code ?? 'SAI',
-                        'stock'         => ($target == 'WELDING') ? 0 : $qty_ok_new,
+                        'actual_stock'  => ($target == 'WELDING') ? 0 : $qty_ok_new,
                         'welding_stock' => ($target == 'WELDING') ? $qty_ok_new : 0,
                         'created_at'    => now(),
                         'updated_at'    => now()
-                    ]);
+                    ];
+                    DB::table('finished_goods')->insert($insertFg);
                 } else {
                     if ($target == 'WELDING') {
                         DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
                     } else {
-                        if (Schema::hasColumn('finished_goods', 'actual_stock')) {
-                            DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
-                        } else {
-                            DB::table('finished_goods')->where('part_no', $p->material_code)->increment('stock', $qty_ok_new, ['updated_at' => now()]);
-                        }
+                        DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
                     }
                 }
 
-                // 2. Jika Next Process adalah WELDING, Buatkan Tiket Kerja di Terminal Welding (welding_batches)
+                // 2. JIKA NEXT PROCESS WELDING -> OTOMATIS DISPATCH TIKET KE TERMINAL WELDING (welding_batches)
                 if ($target == 'WELDING') {
-                    $defaultWeldingLine = DB::table('line_welding')->first();
-                    $weldingLineId = $defaultWeldingLine ? $defaultWeldingLine->id : 1;
+                    $weldingLine = DB::table('line_welding')->first();
+                    $weldingLineId = $weldingLine ? $weldingLine->id : 1;
 
-                    $existingWeldingBatch = DB::table('welding_batches')
+                    $existingWelding = DB::table('welding_batches')
                         ->where('no_produksi_stamping', $p->no_produksi)
                         ->first();
 
-                    if (!$existingWeldingBatch) {
+                    if (!$existingWelding) {
                         DB::table('welding_batches')->insert([
                             'no_produksi_stamping' => $p->no_produksi,
                             'part_no'              => $p->material_code,
@@ -238,21 +235,20 @@ class ProduksiController extends Controller
                             'qty_masuk'            => $qty_ok_new,
                             'shift'                => $p->shift ?? 'Pagi',
                             'status'               => 'PROSES',
-                            'keterangan'           => 'AUTO-DISPATCH FROM STAMPING',
+                            'keterangan'           => 'TRANSFER DARI STAMPING',
                             'created_at'           => now(),
                             'updated_at'           => now()
                         ]);
                     } else {
                         DB::table('welding_batches')
-                            ->where('id', $existingWeldingBatch->id)
+                            ->where('id', $existingWelding->id)
                             ->increment('qty_masuk', $qty_ok_new, ['updated_at' => now()]);
                     }
                 }
             }
 
-            // Return Sisa Lembaran ke Gudang RM
+            // Return sisa lembaran sheet ke RM
             $qty_return_sheet = (int)$request->qty_return_warehouse; 
-
             if ($qty_return_sheet > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
@@ -296,7 +292,7 @@ class ProduksiController extends Controller
                 }
             }
 
-            // 3. Sinkronisasi Part Pasangan (Separating Sub-Part jika ada)
+            // 3. SINKRONISASI SUB-PART / SEPARATING PART (JIKA ADA)
             if ($request->has('paired_batch_id') && !empty($request->paired_batch_id)) {
                 $sub_id = $request->paired_batch_id;
                 $p_sub = DB::table('produksi_batches')->where('id', $sub_id)->first();
@@ -319,13 +315,13 @@ class ProduksiController extends Controller
                             'updated_at'   => now()
                         ]);
 
-                        $subFgExists = DB::table('finished_goods')->where('part_no', $p_sub->material_code)->exists();
-                        if (!$subFgExists) {
+                        $subFg = DB::table('finished_goods')->where('part_no', $p_sub->material_code)->first();
+                        if (!$subFg) {
                             DB::table('finished_goods')->insert([
                                 'part_no'       => $p_sub->material_code,
                                 'part_name'     => $subPartMaster->part_name ?? $p_sub->material_code,
                                 'customer'      => $subPartMaster->customer_code ?? 'SAI',
-                                'stock'         => ($subTarget == 'WELDING') ? 0 : $qty_ok_sub,
+                                'actual_stock'  => ($subTarget == 'WELDING') ? 0 : $qty_ok_sub,
                                 'welding_stock' => ($subTarget == 'WELDING') ? $qty_ok_sub : 0,
                                 'created_at'    => now(),
                                 'updated_at'    => now()
@@ -334,18 +330,13 @@ class ProduksiController extends Controller
                             if ($subTarget == 'WELDING') {
                                 DB::table('finished_goods')->where('part_no', $p_sub->material_code)->increment('welding_stock', $qty_ok_sub, ['updated_at' => now()]);
                             } else {
-                                if (Schema::hasColumn('finished_goods', 'actual_stock')) {
-                                    DB::table('finished_goods')->where('part_no', $p_sub->material_code)->increment('actual_stock', $qty_ok_sub, ['updated_at' => now()]);
-                                } else {
-                                    DB::table('finished_goods')->where('part_no', $p_sub->material_code)->increment('stock', $qty_ok_sub, ['updated_at' => now()]);
-                                }
+                                DB::table('finished_goods')->where('part_no', $p_sub->material_code)->increment('actual_stock', $qty_ok_sub, ['updated_at' => now()]);
                             }
                         }
 
-                        // Auto-dispatch sub part ke Terminal Welding jika next_process adalah WELDING
                         if ($subTarget == 'WELDING') {
-                            $defaultWeldingLine = DB::table('line_welding')->first();
-                            $weldingLineId = $defaultWeldingLine ? $defaultWeldingLine->id : 1;
+                            $weldingLine = DB::table('line_welding')->first();
+                            $weldingLineId = $weldingLine ? $weldingLine->id : 1;
 
                             $existingSubWelding = DB::table('welding_batches')
                                 ->where('no_produksi_stamping', $p_sub->no_produksi)
@@ -359,7 +350,7 @@ class ProduksiController extends Controller
                                     'qty_masuk'            => $qty_ok_sub,
                                     'shift'                => $p_sub->shift ?? 'Pagi',
                                     'status'               => 'PROSES',
-                                    'keterangan'           => 'AUTO-DISPATCH FROM STAMPING (PAIR)',
+                                    'keterangan'           => 'TRANSFER DARI STAMPING (PAIR)',
                                     'created_at'           => now(),
                                     'updated_at'           => now()
                                 ]);
