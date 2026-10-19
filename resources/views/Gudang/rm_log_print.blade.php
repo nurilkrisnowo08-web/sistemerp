@@ -378,7 +378,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($historyData as$mat)
+                @forelse($historyData as $mat)
                     {{-- Baris Header Material Group --}}
                     <tr class="mat-group-row">
                         <td colspan="6">
@@ -399,7 +399,7 @@
                     </tr>
 
                     {{-- Baris Rincian Log Mutasi --}}
-                    @forelse($mat->logs as$log)
+                    @forelse($mat->logs as $log)
                         <tr>
                             <td class="text-center font-weight-bold" style="font-family:'JetBrains Mono'; font-size:8px;">
                                 {{ date('d/m/Y H:i', strtotime($log->created_at)) }}
@@ -417,7 +417,7 @@
                             <td class="text-left">
                                 <div class="coil-tag-list">
                                     @if(isset($log->bundles) && count($log->bundles) > 0)
-                                        @foreach($log->bundles as$b)
+                                        @foreach($log->bundles as $b)
                                             <span class="coil-tag">
                                                 🏷️ {{ $b->coil_id }}: <b>{{ number_format($b->qty) }}</b>
                                             </span>
