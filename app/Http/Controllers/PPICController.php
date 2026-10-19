@@ -447,36 +447,56 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. PRINT SURAT SERAH TERIMA MATERIAL
+     * 6. PRINT SURAT SERAH TERIMA MATERIAL (BPRM OTOMATIS)
      */
     public function printSerahTerima($date, $shift, $line_code)
     {
-        $planIds = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->pluck('id');
-        
-        $selectCols = [
-            'produksi_batches.*', 
-            'rm_stocks.coil_id', 
-            'rm_stocks.spec', 
-            'rm_stocks.size', 
-            'rm_stocks.material_name', 
-            'parts.part_name'
-        ];
+        $planIds = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', $line_code)
+            ->pluck('id');
 
-        // Otomatis ambil no_surat_jalan jika kolomnya ada di rm_stocks
-        if (Schema::hasColumn('rm_stocks', 'no_surat_jalan')) {
-            $selectCols[] = 'rm_stocks.no_surat_jalan';
-        }
+        $sjSubQuery = DB::table('rm_incoming_logs')
+            ->select('no_produksi')
+            ->whereColumn('rm_incoming_logs.rm_stock_id', 'produksi_batches.rm_stock_id')
+            ->where('source', 'supplier')
+            ->orderBy('id', 'desc')
+            ->limit(1);
 
-        $batches = DB::table('produksi_batches')
+        $hasSjCol = Schema::hasColumn('rm_stocks', 'no_surat_jalan');
+
+        $query = DB::table('produksi_batches')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->whereIn('produksi_batches.plan_id', $planIds)
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
-            ->select($selectCols)
-            ->orderBy('produksi_batches.shift', 'desc')->get();
+            ->select(
+                'produksi_batches.*', 
+                'rm_stocks.coil_id', 
+                'rm_stocks.spec', 
+                'rm_stocks.size', 
+                'rm_stocks.material_name', 
+                'parts.part_name',
+                DB::raw("COALESCE(parts.customer_code, rm_stocks.customer, 'SAI') as customer_code")
+            );
 
-        if ($batches->isEmpty()) return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
-        return view('PPIC.print_serah_terima', compact('batches', 'date', 'line_code'));
+        if ($hasSjCol) {
+            $query->addSelect(DB::raw("COALESCE(rm_stocks.no_surat_jalan, ({$sjSubQuery->toSql()}), '-') as no_surat_jalan"));
+        } else {
+            $query->addSelect(DB::raw("COALESCE(({$sjSubQuery->toSql()}), '-') as no_surat_jalan"));
+        }
+
+        $allBatches = $query->orderBy('produksi_batches.id', 'asc')->get();
+
+        if ($allBatches->isEmpty()) {
+            return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
+        }
+
+        $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
+        $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
+        $batches = $allBatches;
+
+        return view('PPIC.print_serah_terima', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
     }
 
     /**
@@ -623,7 +643,7 @@ class PPICController extends Controller
     }
 
     /**
-     * ✨ 9B. STORE WELDING MPS (SMART SHIFT ACCUMULATION & REVISI) ✨
+     * 9B. STORE WELDING MPS (SMART SHIFT ACCUMULATION & REVISI)
      */
     public function weldingMpsStore(Request $request)
     {
@@ -642,7 +662,6 @@ class PPICController extends Controller
             $line_id = $line ? $line->id : null;
 
             if ($existingPlan) {
-                // =============== MODE EXISTING / REVISI ===============
                 if ($input_s1 === 0 && (int)$existingPlan->s1_plan_reg > 0 && $input_s2 > 0 && (int)$existingPlan->s2_plan_reg === 0) {
                     $target_s1 = (int)$existingPlan->s1_plan_reg;
                     $target_s2 = $input_s2;
@@ -706,7 +725,6 @@ class PPICController extends Controller
                         'updated_at' => now()
                     ]);
 
-                    // Sync Antrean Batch Shift 1 (Pagi)
                     if ($target_s1 > 0 && $line_id) {
                         $bS1 = DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Pagi')->whereDate('created_at', $request->plan_date)->first();
                         if ($bS1) {
@@ -723,7 +741,6 @@ class PPICController extends Controller
                         DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Pagi')->whereDate('created_at', $request->plan_date)->where('status', '!=', 'COMPLETED')->delete();
                     }
 
-                    // Sync Antrean Batch Shift 2 (Malam)
                     if ($target_s2 > 0 && $line_id) {
                         $bS2 = DB::table('welding_batches')->where('part_no', $request->part_no)->where('shift', 'Malam')->whereDate('created_at', $request->plan_date)->first();
                         if ($bS2) {
@@ -743,7 +760,6 @@ class PPICController extends Controller
                     $msg = "Jadwal Shift berhasil disinkronkan! (Shift 1: {$target_s1} Pcs | Shift 2: {$target_s2} Pcs)";
                 }
             } else {
-                // =============== MODE PLAN BARU ===============
                 $total_target = $input_s1 + $input_s2;
                 if ($total_target <= 0) {
                     throw new \Exception("Target produksi tidak boleh kosong / 0 untuk pembuatan jadwal baru.");
