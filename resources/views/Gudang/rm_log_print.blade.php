@@ -2,11 +2,9 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>RM_HISTORICAL_LEDGER_{{ date('Ymd') }}</title>
-    <!-- Font Standar Industri Manufaktur Tier-1 -->
+    <title>RM_MUTATION_AUDIT_{{ date('Ymd', strtotime($startDate ?? now())) }}</title>
+    <!-- Font Standar Industri Manufaktur -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
-    
     <style>
         :root { 
             --dark: #0f172a; 
@@ -14,15 +12,14 @@
             --muted: #64748b;
             --border-thick: #0f172a;
             --border-thin: #cbd5e1;
-            --primary-blue: #1e40af;
             --stamp-blue: #1d4ed8;
             --success-green: #047857;
             --danger-red: #b91c1c;
+            --return-indigo: #4338ca;
         }
         
         * { box-sizing: border-box; }
         
-        /* 📄 PENGATURAN KERTAS A4 LANDSCAPE */
         @page { 
             size: A4 landscape; 
             margin: 8mm 10mm; 
@@ -33,41 +30,52 @@
             font-size: 9px; 
             color: var(--dark); 
             margin: 0; 
-            padding: 20px 0; 
-            background: #cbd5e1; /* Background abu-abu agar lembar kertas terlihat tegas di tengah layar */
+            padding: 12px; 
+            background: #fff; 
             -webkit-print-color-adjust: exact; 
             print-color-adjust: exact; 
         }
 
-        /* 📑 KERTAS DOKUMEN CETAK (TERPUSAT, TIDAK MELAR KOSONG DI MONITOR LEBAR) */
-        .paper-sheet { 
-            max-width: 1220px; 
-            margin: 0 auto; 
-            background: #ffffff; 
-            padding: 24px 28px; 
-            border-radius: 8px; 
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12); 
-            position: relative;
-        }
+        .report-wrapper { max-width: 100%; margin: 0 auto; position: relative; }
 
-        /* 🔘 SCREEN ACTION BAR */
+        /* 🔘 SCREEN ACTION & FILTER BAR */
         .no-print-bar {
-            max-width: 1220px;
-            margin: 0 auto 15px auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #ffffff;
-            padding: 10px 20px;
+            background: #f8fafc;
+            padding: 10px 16px;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+            margin-bottom: 16px;
             border: 1px solid #cbd5e1;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .filter-form {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-select, .filter-input {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 6px 10px;
+            border: 1.5px solid #94a3b8;
+            border-radius: 6px;
+            background: #ffffff;
+            color: var(--dark);
+            outline: none;
+        }
+        .filter-select:focus, .filter-input:focus {
+            border-color: #2563eb;
         }
         .btn-screen {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
             font-size: 11px;
-            padding: 8px 18px;
+            padding: 7px 16px;
             border-radius: 6px;
             border: none;
             cursor: pointer;
@@ -75,194 +83,176 @@
             display: inline-flex;
             align-items: center;
         }
-        .btn-back { background: #475569; color: #fff; }
-        .btn-back:hover { background: #334155; color: #fff; }
+        .btn-apply { background: #0f172a; color: #fff; }
+        .btn-apply:hover { background: #1e293b; }
+        .btn-close { background: #64748b; color: #fff; }
         .btn-print { background: #2563eb; color: #fff; }
-        .btn-print:hover { background: #1d4ed8; color: #fff; }
 
         /* 🏛️ INDUSTRIAL DOCUMENT HEADER */
         .doc-header { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: flex-start; 
+            display: table; 
+            width: 100%; 
             border-bottom: 3.5px solid var(--border-thick); 
             padding-bottom: 10px; 
-            margin-bottom: 14px; 
+            margin-bottom: 12px; 
         }
-        .header-left h1 { 
-            margin: 0; 
-            font-size: 19px; 
-            font-weight: 900; 
-            letter-spacing: -0.5px; 
-            text-transform: uppercase; 
-            color: var(--dark);
-        }
-        .header-left p { 
-            margin: 2px 0 0; 
-            font-size: 9px; 
-            color: var(--muted); 
-            font-weight: 700; 
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
+        .header-col { display: table-cell; vertical-align: middle; }
+        
+        .company-identity { width: 35%; }
+        .company-identity h2 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 0.5px; }
+        .company-identity p { margin: 2px 0 0; font-size: 8.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
 
-        .header-right { text-align: right; font-size: 8.5px; line-height: 1.4; }
-        .period-pill {
-            background: var(--dark);
-            color: #fff;
-            padding: 4px 10px;
-            border-radius: 5px;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 800;
-            font-size: 9.5px;
-            display: inline-block;
-            margin-bottom: 3px;
-        }
-        .header-right span { font-weight: 600; color: var(--muted); text-transform: uppercase; }
-        .header-right b { color: var(--dark); }
+        .report-title-box { width: 40%; text-align: center; }
+        .report-title-box h1 { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+        .report-title-box span { font-size: 10px; font-weight: 800; color: #2563eb; font-family: 'JetBrains Mono', monospace; display: block; margin-top: 2px; }
 
-        /* 📋 SECTION I: INVENTORY MUTATION LEDGER */
-        table.ledger-table { 
+        .doc-meta { width: 25%; text-align: right; font-size: 8.5px; line-height: 1.4; font-weight: 600; }
+        .doc-meta b { color: var(--dark); font-weight: 800; }
+
+        /* 📊 KPI METRIC STRIP */
+        .kpi-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .kpi-card {
+            flex: 1;
+            border: 1px solid var(--border-thick);
+            padding: 6px 12px;
+            background: #f8fafc;
+            border-radius: 4px;
+        }
+        .kpi-title { font-size: 7.5px; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+        .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 13.5px; font-weight: 800; color: var(--dark); margin-top: 1px; }
+
+        /* 📋 INDUSTRIAL TABLE */
+        table.recap-table { 
             width: 100%; 
             border-collapse: collapse; 
             border: 1.5px solid var(--border-thick); 
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
-        table.ledger-table th { 
+        table.recap-table th { 
             border: 1px solid var(--border-thick); 
-            padding: 7px 5px; 
+            padding: 6px 4px; 
             font-size: 8px; 
             font-weight: 800; 
             text-transform: uppercase; 
-            background: #f8fafc !important; 
-            letter-spacing: 0.5px;
+            background: #f1f5f9 !important; 
             text-align: center;
+            letter-spacing: 0.5px;
         }
-        table.ledger-table td { 
-            border: 1px solid var(--border-thin); 
-            padding: 6px 8px; 
+        table.recap-table td { 
+            border: 1px solid #cbd5e1; 
+            padding: 5px 6px; 
             vertical-align: middle; 
-            font-size: 9.5px;
+            font-size: 8.5px;
         }
 
         .text-left { text-align: left !important; }
         .text-center { text-align: center !important; }
-        .num-cell { text-align: right !important; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 10.5px; }
+        .num-val { text-align: right !important; font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 9.5px; }
 
-        .mat-alias { font-weight: 800; font-size: 11px; color: var(--primary-blue); font-family: 'JetBrains Mono', monospace; display: block; }
-        .mat-spec { font-size: 8.5px; font-weight: 700; color: var(--dark); }
-        .mat-dim { font-size: 7.5px; color: var(--muted); font-family: 'JetBrains Mono', monospace; display: block; }
-
-        .cell-final { background: #f1f5f9 !important; font-weight: 800; color: #1e3a8a; border-left: 1.5px solid var(--border-thick) !important; font-size: 11px; }
-        .val-in { color: var(--success-green); }
-        .val-out { color: var(--danger-red); }
-
-        .status-badge { 
-            font-size: 8px; font-weight: 800; padding: 3px 8px; 
-            border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px; 
-            display: inline-block; border: 1px solid transparent;
+        /* 🏷️ MATERIAL GROUP HEADER BAR */
+        tr.mat-group-row {
+            background: #0f172a !important;
+            color: #ffffff !important;
+            font-weight: 800;
         }
-        .status-available { background: #dcfce7; color: #15803d; border-color: #bbf7d0; }
-        .status-low { background: #fef3c7; color: #b45309; border-color: #fde68a; }
-        .status-depleted { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
-
-        /* 📑 SECTION III: DETAILED TRANSACTION AUDIT TRAIL */
-        .section-header { 
-            display: flex; 
-            align-items: center; 
-            margin-bottom: 8px; 
-            border-left: 4px solid var(--primary-blue); 
-            padding-left: 10px;
+        tr.mat-group-row td {
+            border: 1px solid var(--border-thick);
+            padding: 6px 10px;
         }
-        .section-header h3 { 
-            margin: 0; 
-            font-size: 10.5px; 
-            font-weight: 900; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            color: var(--dark);
+        .mat-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 9.5px;
         }
-        .section-header span { font-size: 8.5px; color: var(--muted); margin-left: 10px; font-weight: 600; }
-
-        table.audit-table { width: 100%; border-collapse: collapse; border: 1.5px solid var(--border-thick); margin-bottom: 25px; }
-        table.audit-table th { 
-            border: 1px solid var(--border-thick); 
-            padding: 6px 5px; 
-            font-size: 8px; 
-            font-weight: 800; 
-            text-transform: uppercase; 
-            background: #f8fafc !important; 
-        }
-        table.audit-table td { 
-            border: 1px solid var(--border-thin); 
-            padding: 6px 8px; 
-            vertical-align: middle; 
+        .mat-stat-pills {
+            display: flex;
+            gap: 12px;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 9px;
         }
+        .pill-awal { color: #93c5fd; }
+        .pill-in { color: #86efac; }
+        .pill-out { color: #fca5a5; }
+        .pill-final { color: #fde047; font-weight: 900; }
 
-        .type-badge { font-weight: 800; font-size: 7.5px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; }
-        .type-in { background: #dcfce7; color: #047857; }
-        .type-out { background: #fee2e2; color: #b91c1c; }
+        /* 🏷️ BADGE MUTASI */
+        .badge-type {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 7.5px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .type-in { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .type-out { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 
-        .sj-title { font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #1e3a8a; font-size: 10px; }
-        .badge-count { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 8px; font-weight: 800; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
-
-        /* ✨ KOTAK RINCIAN TAG BUNDLE FISIK ✨ */
-        .breakdown-wrapper {
-            margin-top: 5px;
-            padding: 5px 8px;
-            background: #f8fafc;
-            border-radius: 6px;
-            border: 1px dashed #cbd5e1;
+        /* 🏷️ BREAKDOWN COIL CHIP */
+        .coil-tag-list {
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
-        .breakdown-label { font-size: 7.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; margin-right: 4px; }
-        .bundle-chip {
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            padding: 2px 7px;
-            border-radius: 4px;
+        .coil-tag {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 8.5px;
+            font-size: 7.5px;
             font-weight: 700;
-            color: var(--dark);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #1e293b;
+            white-space: nowrap;
         }
-        .bundle-chip b { color: #1e40af; }
-        .bundle-chip .chip-qty { color: var(--success-green); font-weight: 800; }
+
+        .val-in-s { color: var(--success-green); }
+        .val-out { color: var(--danger-red); }
+
+        tr.grand-total {
+            background: #e2e8f0 !important;
+            font-weight: 900;
+            border-top: 2px solid var(--border-thick);
+            border-bottom: 2px solid var(--border-thick);
+        }
 
         /* ✍️ SIGNATURE SECTION & STEMPEL */
         .doc-footer { 
-            display: flex; 
-            justify-content: space-between; 
-            margin-top: 20px; 
+            display: table; 
+            width: 100%; 
+            margin-top: 15px; 
             page-break-inside: avoid; 
         }
-        .sig-box { 
+        .sig-col { 
+            display: table-cell; 
+            width: 33.33%; 
             text-align: center; 
-            width: 210px; 
+            vertical-align: top; 
+            padding: 0 25px; 
+        }
+        .sig-box { 
+            border: 1px solid #cbd5e1; 
+            background: #fff; 
+            border-radius: 6px; 
+            padding: 8px; 
             position: relative; 
+            height: 95px;
         }
-        .sig-line { 
-            height: 55px; 
-            border-bottom: 1.5px solid var(--border-thick); 
-            margin-bottom: 6px; 
-            position: relative;
-        }
-        .sig-box p { margin: 0; font-weight: 800; font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .sig-box small { color: var(--muted); font-size: 7.5px; font-weight: 600; text-transform: uppercase; }
+        .sig-title { font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 45px; }
+        .sig-name { font-size: 9.5px; font-weight: 800; text-transform: uppercase; border-top: 1px solid var(--border-thick); padding-top: 3px; }
 
-        /* 🏆 LOGISTICS STAMP */
-        .stamp-box {
+        .stamp-wrapper {
             position: absolute;
-            top: -12px;
+            top: 12px;
             left: 50%;
             transform: translateX(-50%) rotate(-12deg);
-            width: 78px;
-            height: 78px;
+            width: 82px;
+            height: 82px;
             border: 2.5px dashed var(--stamp-blue);
             border-radius: 50%;
             display: flex;
@@ -275,306 +265,282 @@
             background: rgba(255, 255, 255, 0.45);
             text-align: center;
         }
-        .stamp-t { font-size: 5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stamp-c { font-size: 7.5px; font-weight: 900; border-top: 1px solid var(--stamp-blue); border-bottom: 1px solid var(--stamp-blue); padding: 1px 0; margin: 1.5px 0; width: 85%; }
-        .stamp-b { font-size: 5px; font-weight: 800; text-transform: uppercase; }
+        .stamp-top { font-size: 5.5px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stamp-mid { font-size: 8px; font-weight: 900; border-top: 1px solid var(--stamp-blue); border-bottom: 1px solid var(--stamp-blue); padding: 1.5px 0; margin: 2px 0; width: 85%; }
+        .stamp-bot { font-size: 5.5px; font-weight: 800; text-transform: uppercase; }
 
         @media print {
             .no-print { display: none !important; }
-            body { padding: 0; margin: 0; background: #fff; }
-            .paper-sheet { 
-                max-width: 100% !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                box-shadow: none !important; 
-                border-radius: 0 !important;
-            }
+            body { padding: 0; margin: 0; }
         }
     </style>
 </head>
 <body>
 
-    {{-- Screen Toolbar: Tombol KEMBALI Tidak Akan Menutup Web --}}
+    {{-- 🔘 SCREEN ACTION & FILTER BAR --}}
     <div class="no-print no-print-bar">
+        <form id="filterForm" action="{{ route('rm.log.print') }}" method="GET" class="filter-form">
+            <input type="hidden" name="start_date" id="hidden_start_date" value="{{ $startDate ?? date('Y-m-d') }}">
+            <input type="hidden" name="end_date" id="hidden_end_date" value="{{ $endDate ?? date('Y-m-d') }}">
+
+            <span style="font-weight: 800;">MODE FILTER:</span>
+            
+            <select id="mode_selector" class="filter-select" onchange="toggleFilterMode(this.value)">
+                <option value="daily" selected>📅 Per Tanggal (Harian)</option>
+                <option value="monthly">🗓️ Per Bulan (Bulanan)</option>
+            </select>
+
+            <span id="date-input-wrap">
+                <input type="date" id="date_picker" class="filter-input" value="{{ $startDate ?? date('Y-m-d') }}" onchange="syncDates()">
+            </span>
+
+            <span id="month-input-wrap" style="display: none;">
+                <input type="month" id="month_picker" class="filter-input" value="{{ date('Y-m', strtotime($startDate ?? now())) }}" onchange="syncDates()">
+            </span>
+
+            <select name="customer" class="filter-select">
+                <option value="">-- SEMUA CLIENT / CUSTOMER --</option>
+                @foreach($availableCustomers ?? [] as $c)
+                    <option value="{{ $c->code }}" {{ ($customer ?? '') === $c->code ? 'selected' : '' }}>{{ $c->name }} ({{$c->code }})</option>
+                @endforeach
+            </select>
+
+            <button type="submit" class="btn-screen btn-apply" onclick="prepareSubmit()">🔍 TERAPKAN FILTER</button>
+        </form>
+
         <div>
-            <b>LOGISTICS AUDIT TRAIL PREVIEW</b> — Arsip Mutasi Raw Material PT Asalta Mandiri Agung
-        </div>
-        <div>
-            <a href="{{ route('rm.store') }}" class="btn-screen btn-back" onclick="if(window.history.length > 1){ window.history.back(); return false; }">
-                <i class="fas fa-arrow-left mr-2"></i> KEMBALI KE RM HUB
-            </a>
-            <button class="btn-screen btn-print ml-2" onclick="window.print()">
-                <i class="fas fa-print mr-2"></i> CETAK DOKUMEN (A4)
-            </button>
+            <button class="btn-screen btn-close" onclick="window.history.back()">KEMBALI</button>
+            <button class="btn-screen btn-print ml-2" onclick="window.print()">🖨️ CETAK DOKUMEN (A4)</button>
         </div>
     </div>
 
     @php
-        // 1. Ambil Semua Referensi No Surat Jalan yang muncul di log transaksi
-        $allSjNumbers = collect();
-        foreach($historyData as $mat) {
-            if(isset($mat->logs)) {
-                foreach($mat->logs as $l) {
-                    $ref = $l->ref_id ?? $l->no_produksi ?? null;
-                    if($ref) $allSjNumbers->push(trim($ref));
-                }
-            }
+        $sumAwal = 0; $sumIn = 0; $sumOut = 0; $sumAkhir = 0;
+        foreach($historyData as$mat) {
+            $sumAwal += ($mat->initial ?? 0);
+            $sumIn += ($mat->in_qty ?? 0);
+            $sumOut += ($mat->out_qty ?? 0);
+            $sumAkhir += ($mat->final ?? 0);
         }
-
-        // 2. ✨ PENGAMBILAN DATA BUNDLE ASLI LANGSUNG DARI RM_INCOMING_LOGS JOIN RM_STOCKS ✨
-        // Logika ini memastikan tag bundle fisik (seperti SAI7898246719, dll) selalu muncul presisi per No SJ
-        $inboundBundleMap = \Illuminate\Support\Facades\DB::table('rm_incoming_logs')
-            ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
-            ->whereIn('rm_incoming_logs.no_produksi', $allSjNumbers->unique())
-            ->select(
-                'rm_incoming_logs.no_produksi',
-                'rm_incoming_logs.pcs_in',
-                'rm_incoming_logs.material_code',
-                'rm_stocks.coil_id'
-            )
-            ->get()
-            ->groupBy('no_produksi');
-
-        // 3. Grand Total Section I
-        $totInit = 0; $totIn = 0; $totOut = 0; $totFinal = 0;
-        foreach($historyData as $item) {
-            $totInit += $item->initial;
-            $totIn += $item->in_qty;
-            $totOut += $item->out_qty;
-            $totFinal += $item->final;
-        }
-
-        // 4. Susun Daftar Transaksi Audit Trail yang Ter-grouping
-        $allTransactions = collect();
-
-        foreach($historyData as $mat) {
-            $rawLogs = collect($mat->logs ?? []);
-
-            $inboundLogs = $rawLogs->filter(function($l) {
-                $type = strtoupper($l->type ?? '');
-                return str_contains($type, 'IN') || isset($l->pcs_in) || (isset($l->source) && $l->source != 'return');
-            });
-
-            $outboundLogs = $rawLogs->filter(function($l) {
-                $type = strtoupper($l->type ?? '');
-                return str_contains($type, 'OUT') || str_contains($type, 'EXIT') || isset($l->pcs_used);
-            });
-
-            // Grouping log Inbound per Nomor Surat Jalan
-            $groupedInbound = $inboundLogs->groupBy(function($l) {
-                return trim($l->ref_id ?? $l->no_produksi ?? 'INBOUND-DIRECT');
-            })->map(function($bundleGroup, $sjNo) use ($mat, $inboundBundleMap) {
-                // Ambil daftar bundle fisik langsung dari database map
-                $realBundles = $inboundBundleMap->get($sjNo, collect());
-                
-                $totalQty = $realBundles->isNotEmpty() 
-                    ? $realBundles->sum('pcs_in') 
-                    : $bundleGroup->sum(fn($b) => $b->qty ?? $b->pcs_in ?? 0);
-
-                return (object)[
-                    'created_at'   => $bundleGroup->first()->created_at ?? now(),
-                    'alias'        => $mat->alias ?? $mat->spec ?? '-',
-                    'type'         => 'SUPPLY_IN (SJ)',
-                    'ref_id'       => $sjNo,
-                    'bundle_count' => $realBundles->count() > 0 ? $realBundles->count() : count($bundleGroup),
-                    'bundles'      => $realBundles,
-                    'qty'          => $totalQty
-                ];
-            });
-
-            // Format Outbound Produksi (WOS)
-            $formattedOutbound = $outboundLogs->map(function($l) use ($mat) {
-                $qty = isset($l->qty) ? $l->qty : -(int)($l->pcs_used ?? 0);
-                if ($qty > 0) $qty = -$qty;
-
-                return (object)[
-                    'created_at'   => $l->created_at ?? now(),
-                    'alias'        => $mat->alias ?? $mat->spec ?? '-',
-                    'type'         => 'USAGE_OUT',
-                    'ref_id'       => $l->ref_id ?? $l->no_produksi ?? 'WOS-PRODUCTION',
-                    'bundle_count' => 1,
-                    'bundles'      => collect(),
-                    'qty'          => $qty
-                ];
-            });
-
-            $allTransactions = $allTransactions->concat($groupedInbound)->concat($formattedOutbound);
-        }
-
-        // Urutkan transaksi secara kronologis terbaru
-        $auditTrailList = $allTransactions->sortByDesc('created_at')->values();
+        $formattedPeriod = ($startDate ===$endDate)
+            ? date('d F Y', strtotime($startDate))
+            : date('d M Y', strtotime($startDate)) . ' s/d ' . date('d M Y', strtotime($endDate));
     @endphp
 
-    <div class="paper-sheet">
-        
+    <div class="report-wrapper">
         {{-- Header Dokumen Resmi --}}
         <div class="doc-header">
-            <div class="header-left">
-                <h1>RM HISTORICAL LEDGER</h1>
-                <p>Industrial Logistics Archive & Traceability Audit // PT. Asalta Mandiri Agung</p>
+            <div class="header-col company-identity">
+                <h2>PT ASALTA MANDIRI AGUNG</h2>
+                <p>Plant Karawang // Warehouse & Logistics Department</p>
             </div>
-            <div class="header-right">
-                <div class="period-pill">
-                    {{ date('d/m/Y', strtotime($startDate ?? now())) }} — {{ date('d/m/Y', strtotime($endDate ?? now())) }}
-                </div>
-                <div><span>CLIENT:</span> <b>{{ strtoupper($customer ?? 'ALL CLIENT ENTITIES') }}</b></div>
-                <div><span>DOC NUMBER:</span> <b>AMA-LOG-LEDGER-{{ date('Ymd') }}</b></div>
+            <div class="header-col report-title-box">
+                <h1>RAW MATERIAL AUDIT & MUTATION LOG</h1>
+                <span>PERIODE: {{ $formattedPeriod }}</span>
+            </div>
+            <div class="header-col doc-meta">
+                FORM NO : <b>AMA-LOG-MUT-01</b><br>
+                CLIENT SCOPE : <b>{{ !empty($customer) ? strtoupper($customer) : 'ALL CLIENT ENTITIES' }}</b><br>
+                PRINTED AT : {{ date('d/m/Y H:i') }}
             </div>
         </div>
 
-        {{-- SECTION I: INVENTORY MUTATION LEDGER --}}
-        <table class="ledger-table">
+        {{-- KPI Ribbon --}}
+        <div class="kpi-bar">
+            <div class="kpi-card">
+                <div class="kpi-title">Beginning Balance (Stok Awal)</div>
+                <div class="kpi-value">{{ number_format($sumAwal) }} <span style="font-size:8px;">PCS</span></div>
+            </div>
+            <div class="kpi-card" style="border-left: 3px solid var(--success-green);">
+                <div class="kpi-title" style="color: var(--success-green);">Total Inbound (Supplier)</div>
+                <div class="kpi-value" style="color: var(--success-green);">+{{ number_format($sumIn) }}</div>
+            </div>
+            <div class="kpi-card" style="border-left: 3px solid var(--danger-red);">
+                <div class="kpi-title" style="color: var(--danger-red);">Total Issued (Produksi)</div>
+                <div class="kpi-value" style="color: var(--danger-red);">-{{ number_format($sumOut) }}</div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--border-thick); background:#e2e8f0;">
+                <div class="kpi-title" style="color: var(--dark);">Ending Stock Balance (Stok Akhir)</div>
+                <div class="kpi-value">{{ number_format($sumAkhir) }} <span style="font-size:8px;">PCS</span></div>
+            </div>
+        </div>
+
+        {{-- Tabel Mutasi Utama Terjabar --}}
+        <table class="recap-table">
             <thead>
                 <tr>
-                    <th width="35%" class="text-left">MATERIAL IDENTIFICATION & SPEC</th>
-                    <th width="13%">STOK AWAL</th>
-                    <th width="13%">IN (+)</th>
-                    <th width="13%">OUT (-)</th>
-                    <th width="14%" style="background:#f1f5f9 !important;">FINAL STOCK</th>
-                    <th width="12%">STATUS</th>
+                    <th width="12%">Waktu / Tanggal</th>
+                    <th width="20%">No. Dokumen (SJ / WOS)</th>
+                    <th width="13%">Tipe Mutasi</th>
+                    <th width="35%">Rincian Coil / Bundle Fisik Terlibat</th>
+                    <th width="10%">Masuk (+)</th>
+                    <th width="10%">Keluar (-)</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($historyData as $mat)
-                <tr>
-                    <td class="text-left">
-                        <span class="mat-alias">{{ $mat->alias ?? 'UNREGISTERED' }}</span>
-                        <span class="mat-spec">{{ $mat->spec }}</span>
-                        <span class="mat-dim">DIM: {{ $mat->size }}</span>
-                    </td>
-                    <td class="num-cell" style="color: var(--slate);">{{ number_format($mat->initial) }}</td>
-                    <td class="num-cell val-in">{{ $mat->in_qty > 0 ? '+'.number_format($mat->in_qty) : '0' }}</td>
-                    <td class="num-cell val-out">{{ $mat->out_qty > 0 ? '-'.number_format($mat->out_qty) : '0' }}</td>
-                    <td class="num-cell cell-final">{{ number_format($mat->final) }}</td>
-                    <td class="text-center">
-                        @if($mat->final <= 0)
-                            <span class="status-badge status-depleted">DEPLETED</span>
-                        @elseif($mat->final < 500)
-                            <span class="status-badge status-low">LOW_STOCK</span>
-                        @else
-                            <span class="status-badge status-available">AVAILABLE</span>
-                        @endif
-                    </td>
-                </tr>
+                @forelse($historyData as$mat)
+                    {{-- Baris Header Material Group --}}
+                    <tr class="mat-group-row">
+                        <td colspan="6">
+                            <div class="mat-title">
+                                <div>
+                                    <span style="color:#60a5fa;">[{{ $mat->alias ?? 'UNREGISTERED' }}]</span> 
+                                    <span>{{ $mat->spec }}</span> 
+                                    <span style="color:#94a3b8; font-size:8px;">(DIM: {{ $mat->size }})</span>
+                                </div>
+                                <div class="mat-stat-pills">
+                                    <span class="pill-awal">AWAL: {{ number_format($mat->initial) }}</span>
+                                    <span class="pill-in">IN: +{{ number_format($mat->in_qty) }}</span>
+                                    <span class="pill-out">OUT: -{{ number_format($mat->out_qty) }}</span>
+                                    <span class="pill-final">AKHIR: {{ number_format($mat->final) }} PCS</span>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+
+                    {{-- Baris Rincian Log Mutasi --}}
+                    @forelse($mat->logs as$log)
+                        <tr>
+                            <td class="text-center font-weight-bold" style="font-family:'JetBrains Mono'; font-size:8px;">
+                                {{ date('d/m/Y H:i', strtotime($log->created_at)) }}
+                            </td>
+                            <td class="text-left font-weight-bold" style="font-family:'JetBrains Mono'; color:#1e40af;">
+                                {{ $log->ref_id ?? '-' }}
+                            </td>
+                            <td class="text-center">
+                                @if(str_contains($log->type, 'IN'))
+                                    <span class="badge-type type-in">MASUK (SJ)</span>
+                                @else
+                                    <span class="badge-type type-out">KELUAR (PROD)</span>
+                                @endif
+                            </td>
+                            <td class="text-left">
+                                <div class="coil-tag-list">
+                                    @if(isset($log->bundles) && count($log->bundles) > 0)
+                                        @foreach($log->bundles as$b)
+                                            <span class="coil-tag">
+                                                🏷️ {{ $b->coil_id }}: <b>{{ number_format($b->qty) }}</b>
+                                            </span>
+                                        @endforeach
+                                    @else
+                                        <span class="text-muted italic" style="font-size:7.5px;">-</span>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="num-val val-in-s">
+                                {{ $log->qty > 0 ? '+'.number_format($log->qty) : '-' }}
+                            </td>
+                            <td class="num-val val-out">
+                                {{ $log->qty < 0 ? number_format($log->qty) : '-' }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center py-2 text-muted italic" style="background:#fafafa;">
+                                -- Tidak ada mutasi fisik coil pada periode ini (Stok Tetap) --
+                            </td>
+                        </tr>
+                    @endforelse
+
                 @empty
-                <tr>
-                    <td colspan="6" class="text-center py-4 text-muted italic">-- Tidak ada data mutasi inventori pada periode ini --</td>
-                </tr>
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted italic">
+                            -- Tidak ada data mutasi raw material yang ditemukan pada periode ini --
+                        </td>
+                    </tr>
                 @endforelse
 
                 {{-- Baris Grand Total --}}
                 @if(count($historyData) > 0)
-                <tr style="background:#e2e8f0; font-weight:900; border-top:2px solid var(--border-thick);">
-                    <td class="text-left" style="font-weight:900; padding-left:10px;">TOTAL INVENTORY MUTATION :</td>
-                    <td class="num-cell">{{ number_format($totInit) }}</td>
-                    <td class="num-cell val-in">+{{ number_format($totIn) }}</td>
-                    <td class="num-cell val-out">-{{ number_format($totOut) }}</td>
-                    <td class="num-cell cell-final" style="font-size:11.5px;">{{ number_format($totFinal) }}</td>
-                    <td class="text-center">
-                        <span class="status-badge status-available">BALANCED</span>
+                <tr class="grand-total">
+                    <td colspan="4" class="text-left" style="padding-left: 12px; font-weight: 900; font-size: 10px;">
+                        TOTAL MUTASI KESELURUHAN (PERIODE INI) :
                     </td>
+                    <td class="num-val val-in-s" style="font-size: 11px;">+{{ number_format($sumIn) }}</td>
+                    <td class="num-val val-out" style="font-size: 11px;">-{{ number_format($sumOut) }}</td>
                 </tr>
                 @endif
             </tbody>
         </table>
 
-        {{-- SECTION III: DETAILED TRANSACTION AUDIT TRAIL --}}
-        <div class="section-header">
-            <h3>Section III: Detailed Transaction Audit Trail</h3>
-            <span>(Tergrup Berdasarkan Nomor Surat Jalan & Work Order Stamping)</span>
-        </div>
-
-        <table class="audit-table">
-            <thead>
-                <tr>
-                    <th width="14%" class="text-center">TIMESTAMP</th>
-                    <th width="14%" class="text-center">ALIAS / MATERIAL</th>
-                    <th width="16%" class="text-center">TYPE</th>
-                    <th width="42%" class="text-left" style="padding-left:12px;">REFERENCE ID / MANIFEST DETAILS</th>
-                    <th width="14%" class="text-center">QUANTITY</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($auditTrailList as $tx)
-                <tr>
-                    <td class="text-center" style="font-family:'JetBrains Mono', monospace; font-size:8.5px; color:var(--slate);">
-                        {{ date('d/m/Y H:i', strtotime($tx->created_at)) }}
-                    </td>
-                    <td class="text-center font-weight-bold" style="font-family:'JetBrains Mono', monospace;">
-                        {{ $tx->alias }}
-                    </td>
-                    <td class="text-center">
-                        @if(str_contains($tx->type, 'IN'))
-                            <span class="type-badge type-in"><i class="fas fa-arrow-down mr-1"></i> SUPPLY_IN (SJ)</span>
-                        @else
-                            <span class="type-badge type-out"><i class="fas fa-arrow-up mr-1"></i> USAGE_OUT</span>
-                        @endif
-                    </td>
-                    <td class="text-left" style="padding-left:12px;">
-                        <div class="d-flex align-items-center">
-                            <span class="sj-title">{{ $tx->ref_id }}</span>
-                            @if(isset($tx->bundle_count) && $tx->bundle_count > 1)
-                                <span class="badge-count">
-                                    <i class="fas fa-boxes mr-1"></i> {{ $tx->bundle_count }} BUNDLES
-                                </span>
-                            @endif
-                        </div>
-
-                        {{-- 📦 KOTAK RINCIAN TAG BUNDLE FISIK ASLI --}}
-                        @if(isset($tx->bundles) && count($tx->bundles) > 0)
-                            <div class="breakdown-wrapper">
-                                <span class="breakdown-label"><i class="fas fa-tags mr-1"></i> RINCIAN COIL:</span>
-                                @foreach($tx->bundles as $b)
-                                    <span class="bundle-chip">
-                                        🏷️ <b>{{ $b->coil_id ?? $b->material_code ?? 'TAG' }}</b>: <span class="chip-qty">+{{ number_format($b->pcs_in ?? $b->qty ?? 0) }}</span>
-                                    </span>
-                                @endforeach
-                            </div>
-                        @endif
-                    </td>
-                    <td class="num-cell" style="{{ $tx->qty > 0 ? 'color:var(--success-green);' : 'color:var(--danger-red);' }}">
-                        {{ $tx->qty > 0 ? '+'.number_format($tx->qty) : number_format($tx->qty) }}
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" class="text-center py-4 text-muted italic">-- Tidak ada transaksi mutasi yang tercatat --</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-
-        {{-- Lembar Otorisasi & Stempel --}}
+        {{-- Lembar Otorisasi & Stempel Resmi --}}
         <div class="doc-footer">
-            <div class="sig-box">
-                <p>REPORT PREPARED BY,</p>
-                <div class="sig-line"></div>
-                <p>Logistics Administrator</p>
-                <small>WAREHOUSE & STORAGE DEPT</small>
-            </div>
-
-            <div class="sig-box">
-                <p>VALIDATED BY,</p>
-                <div class="sig-line">
-                    <div class="stamp-box">
-                        <span class="stamp-t">PT ASALTA MANDIRI AGUNG</span>
-                        <span class="stamp-c">LOGISTICS<br>DEPARTMENT</span>
-                        <span class="stamp-b">KARAWANG PLANT</span>
-                    </div>
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Disiapkan Oleh (Warehouse)</div>
+                    <div class="sig-name">Admin Gudang RM</div>
                 </div>
-                <p>PPIC Supervisor</p>
-                <small>PRODUCTION PLANNING & CONTROL</small>
             </div>
 
-            <div class="sig-box">
-                <p>AUTHORIZED BY,</p>
-                <div class="sig-line"></div>
-                <p>Plant Manager</p>
-                <small>OPERATIONAL MANAGEMENT</small>
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Divalidasi Oleh (PPIC)</div>
+                    <div class="stamp-wrapper">
+                        <span class="stamp-top">PT ASALTA MANDIRI AGUNG</span>
+                        <span class="stamp-mid">LOGISTICS DEPT</span>
+                        <span class="stamp-bot">KARAWANG PLANT</span>
+                    </div>
+                    <div class="sig-name">PPIC Supervisor</div>
+                </div>
+            </div>
+
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Disetujui Oleh (Plant)</div>
+                    <div class="sig-name">Plant Manager</div>
+                </div>
             </div>
         </div>
-
     </div>
+
+    <script>
+        function toggleFilterMode(mode) {
+            const dateWrap = document.getElementById('date-input-wrap');
+            const monthWrap = document.getElementById('month-input-wrap');
+            if (mode === 'monthly') {
+                dateWrap.style.display = 'none';
+                monthWrap.style.display = 'inline-block';
+            } else {
+                dateWrap.style.display = 'inline-block';
+                monthWrap.style.display = 'none';
+            }
+            syncDates();
+        }
+
+        function syncDates() {
+            const mode = document.getElementById('mode_selector').value;
+            const startInput = document.getElementById('hidden_start_date');
+            const endInput = document.getElementById('hidden_end_date');
+
+            if (mode === 'monthly') {
+                const monthVal = document.getElementById('month_picker').value; // YYYY-MM
+                if (monthVal) {
+                    const parts = monthVal.split('-');
+                    const year = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10);
+                    const lastDay = new Date(year, month, 0).getDate();
+                    
+                    const padMonth = String(month).padStart(2, '0');
+                    startInput.value = `${year}-${padMonth}-01`;
+                    endInput.value = `${year}-${padMonth}-${lastDay}`;
+                }
+            } else {
+                const dateVal = document.getElementById('date_picker').value;
+                if (dateVal) {
+                    startInput.value = dateVal;
+                    endInput.value = dateVal;
+                }
+            }
+        }
+
+        function prepareSubmit() {
+            syncDates();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            syncDates();
+        });
+    </script>
 
 </body>
 </html>
