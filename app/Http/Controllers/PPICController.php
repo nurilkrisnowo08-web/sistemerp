@@ -179,7 +179,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. STORE MPS STAMPING (MENDUKUNG MULTI-BUNDLE FIFO SECARA OTOMATIS)
+     * 3. STORE MPS STAMPING (1 BATCH TUNGGAL UTUH + MULTI-BUNDLE FIFO DI BELAKANG LAYAR)
      */
     public function mpsStore(Request $request)
     {
@@ -194,7 +194,7 @@ class PPICController extends Controller
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
             }
 
-            // 1. Ambil SEMUA bundle yang tersedia untuk part ini (Urutkan FIFO: ID terlama keluar duluan)
+            // Ambil semua bundle fisik yang tersedia untuk part ini
             $availableCoils = DB::table('rm_stocks')
                 ->where('material_code', trim($request->part_no))
                 ->where('stock_pcs', '>', 0)
@@ -205,19 +205,17 @@ class PPICController extends Controller
                 throw new \Exception("Material untuk Part No [{$request->part_no}] kosong atau tidak terdaftar!");
             }
 
-            // Deteksi cavity
             $firstCoil = $availableCoils->first();
             $cavity = $firstCoil->cavity > 0 ? (int)$firstCoil->cavity : 1;
             
             $kebutuhan_lembar = (int) ceil($total_target / $cavity);
             $total_stok_tersedia = (int) $availableCoils->sum('stock_pcs');
 
-            // Cek apakah TOTAL stok dari SEMUA bundle cukup
             if ($total_stok_tersedia < $kebutuhan_lembar) {
                 throw new \Exception("❌ PLAN DITOLAK: TOTAL STOK KURANG! Butuh {$kebutuhan_lembar} Lembar, namun total dari seluruh bundle hanya {$total_stok_tersedia} Lembar.");
             }
 
-            // 2. Simpan Rencana Produksi (Production Plan)
+            // Simpan Rencana Produksi (MPS Header)
             $planIdMain = DB::table('production_plans')->insertGetId([
                 'plan_date'     => $request->plan_date, 
                 'part_no'       => $request->part_no, 
@@ -267,23 +265,21 @@ class PPICController extends Controller
             $ket = "AUTO-DEPLOY FROM PPIC";
             $main_suffix = $part_separator ? '-M' : '';
 
-            // Setup coil pool untuk alokasi FIFO
+            // Siapkan pool bundle untuk alokasi FIFO
             $coilPool = [];
             foreach ($availableCoils as $c) {
                 $coilPool[$c->id] = [
                     'id'            => $c->id,
-                    'coil_id'       => $c->coil_id,
                     'stock'         => (int)$c->stock_pcs,
                     'material_code' => $c->material_code
                 ];
             }
 
-            // 3. ALOKASI MULTI-BUNDLE FIFO UNTUK SHIFT 1
-            $remS1 = $qty_lembar_s1;
-            $s1Index = 1;
-            $base_time_s1 = date('His');
-
+            // ✨ 1. SHIFT 1: BUAT 1 BATCH TUNGGAL SAJA, TAPI POTONG MATERIAL MULTI-BUNDLE DENGAN NO WOS YANG SAMA ✨
             if ($qty_lembar_s1 > 0 && $mesin_id) {
+                $base_prod_s1 = 'WOS-S1-' . date('His') . $main_suffix;
+                $remS1 = $qty_lembar_s1;
+
                 foreach ($coilPool as $cId => &$cData) {
                     if ($remS1 <= 0) break;
                     if ($cData['stock'] <= 0) continue;
@@ -292,65 +288,59 @@ class PPICController extends Controller
                     $cData['stock'] -= $take;
                     $remS1 -= $take;
 
-                    // Potong stok fisik per bundle
+                    // Potong stok masing-masing bundle
                     DB::table('rm_stocks')->where('id', $cId)->decrement('stock_pcs', $take);
 
-                    $no_prod_batch = 'WOS-S1-' . $base_time_s1 . ($s1Index > 1 ? "-{$s1Index}" : '') . $main_suffix;
-
-                    // Log pemakaian material per bundle
+                    // Ikat riwayat coil ke nomor WOS tunggal ini
                     DB::table('rm_production_logs')->insert([
                         'rm_stock_id'   => $cId,
                         'material_code' => $request->part_no,
                         'pcs_used'      => $take,
-                        'no_produksi'   => $no_prod_batch,
+                        'no_produksi'   => $base_prod_s1,
                         'created_at'    => $logTimestamp
                     ]);
+                }
+                unset($cData);
 
-                    // Batch utama per bundle
+                // Buat 1 KARTU BATCH UTUH (900 PCS / sesuai target)
+                DB::table('produksi_batches')->insert([
+                    'no_produksi'   => $base_prod_s1,
+                    'plan_id'       => $planIdMain,
+                    'shift'         => 'Pagi',
+                    'mesin_id'      => $mesin_id,
+                    'rm_stock_id'   => $firstCoil->id,
+                    'material_code' => $request->part_no,
+                    'qty_ambil_pcs' => $qty_lembar_s1, // Angka utuh 1 kartu!
+                    'cavity'        => $cavity,
+                    'status'        => 'PROSES',
+                    'keterangan'    => $ket,
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
+
+                if ($planIdSub) {
                     DB::table('produksi_batches')->insert([
-                        'no_produksi'   => $no_prod_batch,
-                        'plan_id'       => $planIdMain,
+                        'no_produksi'   => substr($base_prod_s1, 0, strrpos($base_prod_s1, '-')) . '-S',
+                        'plan_id'       => $planIdSub,
                         'shift'         => 'Pagi',
                         'mesin_id'      => $mesin_id,
-                        'rm_stock_id'   => $cId,
-                        'material_code' => $request->part_no,
-                        'qty_ambil_pcs' => $take,
-                        'cavity'        => $cavity,
+                        'rm_stock_id'   => 0,
+                        'material_code' => $part_separator,
+                        'qty_ambil_pcs' => 0,
+                        'cavity'        => 1,
                         'status'        => 'PROSES',
                         'keterangan'    => $ket,
                         'created_at'    => now(),
                         'updated_at'    => now()
                     ]);
-
-                    if ($planIdSub) {
-                        $no_prod_sub = 'WOS-S1-' . $base_time_s1 . ($s1Index > 1 ? "-{$s1Index}" : '') . '-S';
-                        DB::table('produksi_batches')->insert([
-                            'no_produksi'   => $no_prod_sub,
-                            'plan_id'       => $planIdSub,
-                            'shift'         => 'Pagi',
-                            'mesin_id'      => $mesin_id,
-                            'rm_stock_id'   => 0,
-                            'material_code' => $part_separator,
-                            'qty_ambil_pcs' => 0,
-                            'cavity'        => 1,
-                            'status'        => 'PROSES',
-                            'keterangan'    => $ket,
-                            'created_at'    => now(),
-                            'updated_at'    => now()
-                        ]);
-                    }
-
-                    $s1Index++;
                 }
-                unset($cData);
             }
 
-            // 4. ALOKASI MULTI-BUNDLE FIFO UNTUK SHIFT 2 (MELANJUTKAN SISA COIL POOL)
-            $remS2 = $qty_lembar_s2;
-            $s2Index = 1;
-            $base_time_s2 = date('His', strtotime('+1 second'));
-
+            // ✨ 2. SHIFT 2: BUAT 1 BATCH TUNGGAL SAJA ✨
             if ($qty_lembar_s2 > 0 && $mesin_id) {
+                $base_prod_s2 = 'WOS-S2-' . date('His', strtotime('+1 second')) . $main_suffix;
+                $remS2 = $qty_lembar_s2;
+
                 foreach ($coilPool as $cId => &$cData) {
                     if ($remS2 <= 0) break;
                     if ($cData['stock'] <= 0) continue;
@@ -361,58 +351,51 @@ class PPICController extends Controller
 
                     DB::table('rm_stocks')->where('id', $cId)->decrement('stock_pcs', $take);
 
-                    $no_prod_batch_s2 = 'WOS-S2-' . $base_time_s2 . ($s2Index > 1 ? "-{$s2Index}" : '') . $main_suffix;
-
                     DB::table('rm_production_logs')->insert([
                         'rm_stock_id'   => $cId,
                         'material_code' => $request->part_no,
                         'pcs_used'      => $take,
-                        'no_produksi'   => $no_prod_batch_s2,
+                        'no_produksi'   => $base_prod_s2,
                         'created_at'    => $logTimestamp
                     ]);
+                }
+                unset($cData);
 
+                DB::table('produksi_batches')->insert([
+                    'no_produksi'   => $base_prod_s2,
+                    'plan_id'       => $planIdMain,
+                    'shift'         => 'Malam',
+                    'mesin_id'      => $mesin_id,
+                    'rm_stock_id'   => $firstCoil->id,
+                    'material_code' => $request->part_no,
+                    'qty_ambil_pcs' => $qty_lembar_s2,
+                    'cavity'        => $cavity,
+                    'status'        => 'PROSES',
+                    'keterangan'    => $ket,
+                    'created_at'    => now(),
+                    'updated_at'    => now()
+                ]);
+
+                if ($planIdSub) {
                     DB::table('produksi_batches')->insert([
-                        'no_produksi'   => $no_prod_batch_s2,
-                        'plan_id'       => $planIdMain,
+                        'no_produksi'   => substr($base_prod_s2, 0, strrpos($base_prod_s2, '-')) . '-S',
+                        'plan_id'       => $planIdSub,
                         'shift'         => 'Malam',
                         'mesin_id'      => $mesin_id,
-                        'rm_stock_id'   => $cId,
-                        'material_code' => $request->part_no,
-                        'qty_ambil_pcs' => $take,
-                        'cavity'        => $cavity,
+                        'rm_stock_id'   => 0,
+                        'material_code' => $part_separator,
+                        'qty_ambil_pcs' => 0,
+                        'cavity'        => 1,
                         'status'        => 'PROSES',
                         'keterangan'    => $ket,
                         'created_at'    => now(),
                         'updated_at'    => now()
                     ]);
-
-                    if ($planIdSub) {
-                        $no_prod_sub_s2 = 'WOS-S2-' . $base_time_s2 . ($s2Index > 1 ? "-{$s2Index}" : '') . '-S';
-                        DB::table('produksi_batches')->insert([
-                            'no_produksi'   => $no_prod_sub_s2,
-                            'plan_id'       => $planIdSub,
-                            'shift'         => 'Malam',
-                            'mesin_id'      => $mesin_id,
-                            'rm_stock_id'   => 0,
-                            'material_code' => $part_separator,
-                            'qty_ambil_pcs' => 0,
-                            'cavity'        => 1,
-                            'status'        => 'PROSES',
-                            'keterangan'    => $ket,
-                            'created_at'    => now(),
-                            'updated_at'    => now()
-                        ]);
-                    }
-
-                    $s2Index++;
                 }
-                unset($cData);
             }
 
             DB::commit();
-            $coilsUsedCount = ($s1Index - 1) + ($s2Index - 1);
-            $msg = "✅ Jadwal Berhasil Dideploy! Mengambil total {$kebutuhan_lembar} Lembar dari {$coilsUsedCount} Bundle/Coil.";
-            return redirect()->back()->with('success', $msg);
+            return redirect()->back()->with('success', "✅ Jadwal 1 Batch Tunggal Berhasil Dibuat ({$kebutuhan_lembar} Lembar)! Alokasi bundle otomatis terhubung.");
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
@@ -474,7 +457,6 @@ class PPICController extends Controller
                 if ($selisih_lembar > 0) {
                     if ($totalStockNow < $selisih_lembar) throw new \Exception("❌ REVISI DITOLAK! Sisa total stok hanya {$totalStockNow}.");
                     
-                    // Alokasi FIFO penambahan
                     $remAdd = $selisih_lembar;
                     foreach ($availableStocks as $stk) {
                         if ($remAdd <= 0) break;
@@ -589,7 +571,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. PRINT SURAT SERAH TERIMA MATERIAL (BPRM OTOMATIS)
+     * 6. PRINT SURAT SERAH TERIMA MATERIAL (BPRM OTOMATIS MENAMPILKAN SEMUA COIL FISIK)
      */
     public function printSerahTerima($date, $shift, $line_code)
     {
@@ -598,47 +580,63 @@ class PPICController extends Controller
             ->where('line_code', $line_code)
             ->pluck('id');
 
-        $hasSjCol = Schema::hasColumn('rm_stocks', 'no_surat_jalan');
-
-        $query = DB::table('produksi_batches')
-            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+        $batchesRaw = DB::table('produksi_batches')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->whereIn('produksi_batches.plan_id', $planIds)
-            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
-            ->select(
-                'produksi_batches.*', 
-                'rm_stocks.coil_id', 
-                'rm_stocks.spec', 
-                'rm_stocks.size', 
-                'rm_stocks.material_name', 
-                'parts.part_name',
-                DB::raw("COALESCE(parts.customer_code, rm_stocks.customer, 'SAI') as customer_code")
-            );
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
+            ->select('produksi_batches.*', 'parts.part_name', 'parts.customer_code as part_cust')
+            ->orderBy('produksi_batches.id', 'asc')
+            ->get();
 
-        if ($hasSjCol) {
-            $query->addSelect('rm_stocks.no_surat_jalan as stock_sj');
-        }
-
-        $allBatches = $query->orderBy('produksi_batches.id', 'asc')->get();
-
-        if ($allBatches->isEmpty()) {
+        if ($batchesRaw->isEmpty()) {
             return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
         }
 
-        // Ambil No Surat Jalan aman dari rm_incoming_logs
-        $stockIds = $allBatches->pluck('rm_stock_id')->filter()->unique();
-        $incomingSjs = DB::table('rm_incoming_logs')
-            ->whereIn('rm_stock_id', $stockIds)
-            ->where('source', 'supplier')
-            ->orderBy('id', 'desc')
-            ->pluck('no_produksi', 'rm_stock_id');
+        // Ambil rincian setiap coil fisik yang terikat ke no_produksi tersebut dari rm_production_logs
+        $allBatches = collect();
 
-        foreach ($allBatches as $b) {
-            $sjFromStock = $b->stock_sj ?? null;
-            if (!empty($sjFromStock) && $sjFromStock !== '-') {
-                $b->no_surat_jalan = $sjFromStock;
+        foreach ($batchesRaw as $batch) {
+            $coilsUsed = DB::table('rm_production_logs')
+                ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
+                ->where('rm_production_logs.no_produksi', $batch->no_produksi)
+                ->select(
+                    'rm_production_logs.pcs_used',
+                    'rm_production_logs.rm_stock_id',
+                    'rm_stocks.coil_id',
+                    'rm_stocks.spec',
+                    'rm_stocks.size',
+                    'rm_stocks.material_name',
+                    'rm_stocks.customer as stock_cust',
+                    'rm_stocks.no_surat_jalan as stock_sj'
+                )
+                ->get();
+
+            if ($coilsUsed->isNotEmpty()) {
+                foreach ($coilsUsed as $c) {
+                    $item = clone $batch;
+                    $item->qty_ambil_pcs = $c->pcs_used; // Jumlah lembar spesifik per bundle (misal: 300)
+                    $item->coil_id = $c->coil_id;
+                    $item->spec = $c->spec;
+                    $item->size = $c->size;
+                    $item->material_name = $c->material_name;
+                    $item->customer_code = $batch->part_cust ?? $c->stock_cust ?? 'SAI';
+
+                    // Ambil No SJ dari stock atau log penerimaan supplier
+                    if (!empty($c->stock_sj) && $c->stock_sj !== '-') {
+                        $item->no_surat_jalan = $c->stock_sj;
+                    } else {
+                        $incomingSj = DB::table('rm_incoming_logs')
+                            ->where('rm_stock_id', $c->rm_stock_id)
+                            ->where('source', 'supplier')
+                            ->orderBy('id', 'desc')
+                            ->value('no_produksi');
+                        $item->no_surat_jalan = $incomingSj ?? '-';
+                    }
+
+                    $allBatches->push($item);
+                }
             } else {
-                $b->no_surat_jalan = $incomingSjs[$b->rm_stock_id] ?? '-';
+                $allBatches->push($batch);
             }
         }
 
