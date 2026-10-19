@@ -86,14 +86,22 @@ class PPICController extends Controller
     }
 
     /**
-     * 2. DAILY MPS (GABUNG S1 & S2)
+     * 2. DAILY MPS KHUSUS BIG PRESS (LINE A, LINE B)
      */
     public function mpsIndex(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
 
+        // Filter hanya mesin Big Press
+        $availableLines = DB::table('line')
+            ->where('kode_Line', 'NOT LIKE', '%C%')
+            ->where('kode_Line', 'NOT LIKE', '%SMALL%')
+            ->get();
+        $bigLineCodes = $availableLines->pluck('kode_Line')->toArray();
+
         $allPlans = DB::table('production_plans')
             ->where('plan_date', $date)
+            ->whereIn('line_code', $bigLineCodes)
             ->orderBy('line_code', 'asc')
             ->orderBy('id', 'asc')
             ->get();
@@ -169,10 +177,112 @@ class PPICController extends Controller
         }
 
         $groupedPlans = $processedPlans->groupBy('line_code');
-        $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
 
         return view('PPIC.mps_index', compact(
+            'groupedPlans', 'date', 'availableLines', 'availableCustomers', 
+            'totalPlanQty', 'totalWorkingHoursS1', 'totalWorkingHoursS2', 'totalDandory'
+        ));
+    }
+
+    /**
+     * 2B. DAILY MPS KHUSUS SMALL PRESS (LINE C, SMALL PRESS)
+     */
+    public function mpsSmallIndex(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+
+        // Filter hanya mesin Small Press
+        $availableLines = DB::table('line')
+            ->where(function($q) {
+                $q->where('kode_Line', 'LIKE', '%C%')
+                  ->orWhere('kode_Line', 'LIKE', '%SMALL%')
+                  ->orWhere('nama_Line', 'LIKE', '%SMALL%');
+            })
+            ->get();
+        $smallLineCodes = $availableLines->pluck('kode_Line')->toArray();
+
+        $allPlans = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->whereIn('line_code', $smallLineCodes)
+            ->orderBy('line_code', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $totalPlanQty = 0;
+        $totalWorkingHoursS1 = 0; 
+        $totalWorkingHoursS2 = 0; 
+        $totalDandory = 0;
+
+        $processedPlans = collect();
+        $lineFinishTimeS1 = []; 
+        $lineFinishTimeS2 = [];
+
+        foreach($allPlans as $p) {
+            $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
+            if ($cekSub) {
+                continue; 
+            }
+
+            $t_s1 = $p->s1_plan_reg + $p->s1_plan_ot;
+            $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
+            $dandory = $p->dandory_time ?? 15;
+
+            if ($t_s1 > 0) {
+                $actualS1 = DB::table('production_actuals')
+                    ->where('part_no', $p->part_no)->where('shift', 'Pagi')
+                    ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
+                    ->sum('qty_ok');
+
+                $dur = ($p->cap_per_hour > 0) ? ($t_s1 / $p->cap_per_hour) + ($dandory / 60) : 0;
+                $start = $lineFinishTimeS1[$p->line_code] ?? "07:30";
+                $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
+                $lineFinishTimeS1[$p->line_code] = $finish;
+
+                $item = clone $p; 
+                $item->display_shift = 'S1';
+                $item->total_target = $t_s1;
+                $item->total_actual = (int)$actualS1;
+                $item->balance = $t_s1 - $actualS1;
+                $item->start_time = $start;
+                $item->ahir_time = $finish;
+                $processedPlans->push($item);
+
+                $totalPlanQty += $t_s1;
+                $totalWorkingHoursS1 += $dur; 
+                $totalDandory += $dandory;
+            }
+
+            if ($t_s2 > 0) {
+                $actualS2 = DB::table('production_actuals')
+                    ->where('part_no', $p->part_no)->where('shift', 'Malam')
+                    ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
+                    ->sum('qty_ok');
+
+                $dur = ($p->cap_per_hour > 0) ? ($t_s2 / $p->cap_per_hour) + ($dandory / 60) : 0;
+                $start = $lineFinishTimeS2[$p->line_code] ?? "19:30";
+                $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
+                $lineFinishTimeS2[$p->line_code] = $finish;
+
+                $item = clone $p; 
+                $item->display_shift = 'S2';
+                $item->total_target = $t_s2;
+                $item->total_actual = (int)$actualS2;
+                $item->balance = $t_s2 - $actualS2;
+                $item->start_time = $start;
+                $item->ahir_time = $finish;
+                $processedPlans->push($item);
+
+                $totalPlanQty += $t_s2;
+                $totalWorkingHoursS2 += $dur; 
+                $totalDandory += $dandory;
+            }
+        }
+
+        $groupedPlans = $processedPlans->groupBy('line_code');
+        $availableCustomers = DB::table('customers')->get();
+
+        return view('PPIC.small_mps', compact(
             'groupedPlans', 'date', 'availableLines', 'availableCustomers', 
             'totalPlanQty', 'totalWorkingHoursS1', 'totalWorkingHoursS2', 'totalDandory'
         ));
@@ -501,7 +611,6 @@ class PPICController extends Controller
                     $raw_return = abs($selisih_lembar);
                     $net_return = max(0, $raw_return - $alreadyReturnedByProd);
                     if ($net_return > 0) {
-                        // Kembalikan proporsional ke coil yang pernah dipotong
                         $usedLogs = DB::table('rm_production_logs')
                             ->whereIn('no_produksi', $existingBatches->pluck('no_produksi'))
                             ->orderBy('id', 'desc')
@@ -661,7 +770,6 @@ class PPICController extends Controller
             $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
             $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
 
-            // Ambil rincian setiap coil fisik yang terikat ke no_produksi ini
             $coilsUsed = DB::table('rm_production_logs')
                 ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
                 ->where('rm_production_logs.no_produksi', $batch->no_produksi)
@@ -1065,7 +1173,7 @@ class PPICController extends Controller
     {
         DB::beginTransaction();
         try {
-            $batch = DB::table('produksi_batches')->where('id', $id)->first();
+            $batch = DB::table('produksi_batches')->where('id',$id)->first();
             if (!$batch) return redirect()->back()->with('error', 'Batch tidak ditemukan.');
 
             if ($batch->status === 'COMPLETED') {
@@ -1078,23 +1186,22 @@ class PPICController extends Controller
                 if ((int)$batch->qty_return_warehouse > 0) {
                     $sisa = (int)$batch->qty_return_warehouse;
                 } else {
-                    $cavity = $batch->cavity > 0 ? $batch->cavity : 1;
+                    $cavity = $batch->cavity > 0 ?$batch->cavity : 1;
                     $totalPcsProduced = (int)$batch->qty_hasil_ok + (int)$batch->qty_hasil_ng;
-                    $lembarTerpakai = ceil($totalPcsProduced / $cavity);
-                    $sisa = max(0, (int)$batch->qty_ambil_pcs - $lembarTerpakai);
+                    $lembarTerpakai = ceil($totalPcsProduced / $cavity);$sisa = max(0, (int)$batch->qty_ambil_pcs -$lembarTerpakai);
                 }
 
-                if ($sisa > 0 && $batch->rm_stock_id > 0) {
-                    $stockRef = DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->first();
+                if ($sisa > 0 &&$batch->rm_stock_id > 0) {
+                    $stockRef = DB::table('rm_stocks')->where('id',$batch->rm_stock_id)->first();
                     if ($stockRef) {
-                        DB::table('rm_stocks')->where('coil_id', trim($stockRef->coil_id))->increment('stock_pcs', $sisa);
+                        DB::table('rm_stocks')->where('coil_id', trim($stockRef->coil_id))->increment('stock_pcs',$sisa);
                     } else {
-                        DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs', $sisa);
+                        DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->increment('stock_pcs',$sisa);
                     }
                     
                     DB::table('rm_incoming_logs')->insert([
-                        'rm_stock_id' => $batch->rm_stock_id, 'material_code' => $batch->material_code,
-                        'pcs_in' => $sisa, 'source' => 'return', 'no_produksi' => $batch->no_produksi, 'created_at' => now()
+                        'rm_stock_id' => $batch->rm_stock_id, 'material_code' =>$batch->material_code,
+                        'pcs_in' => $sisa, 'source' => 'return', 'no_produksi' =>$batch->no_produksi, 'created_at' => now()
                     ]);
                 }
             } else {
@@ -1102,21 +1209,21 @@ class PPICController extends Controller
             }
 
             if ((int)$batch->qty_hasil_ng > 0) {
-                $hasNgLog = DB::table('production_ng_logs')->where('no_produksi', $batch->no_produksi)->exists();
+                $hasNgLog = DB::table('production_ng_logs')->where('no_produksi',$batch->no_produksi)->exists();
                 if (!$hasNgLog) {
-                    $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+                    $lineCode = DB::table('line')->where('id',$batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
                     DB::table('production_ng_logs')->insert([
-                        'no_produksi' => $batch->no_produksi, 'part_no' => $batch->material_code, 'line_code' => $lineCode,
+                        'no_produksi' => $batch->no_produksi, 'part_no' => $batch->material_code, 'line_code' =>$lineCode,
                         'shift' => $batch->shift, 'ng_type' => 'PROD_DEFECT', 'qty' => (int)$batch->qty_hasil_ng,
                         'created_at' => now(), 'updated_at' => now()
                     ]);
                 }
             }
 
-            DB::table('produksi_batches')->where('id', $id)->update(['status' => 'COMPLETED', 'qty_return_warehouse' => $sisa, 'updated_at' => now()]);
+            DB::table('produksi_batches')->where('id', $id)->update(['status' => 'COMPLETED', 'qty_return_warehouse' =>$sisa, 'updated_at' => now()]);
 
-            $part = DB::table('parts')->where('part_no', $batch->material_code)->first();
-            if ($part && $part->next_process == 'WELDING') {
+            $part = DB::table('parts')->where('part_no',$batch->material_code)->first();
+            if ($part &&$part->next_process == 'WELDING') {
                 DB::table('finished_goods')->where('part_no', $batch->material_code)->increment('welding_stock', (int)$batch->qty_hasil_ok, ['updated_at' => now()]);
                 DB::table('production_logs')->insert(['part_no' => $batch->material_code, 'qty' => (int)$batch->qty_hasil_ok, 'process_type' => 'WELDING', 'created_at' => now(), 'updated_at' => now()]);
             } else {
@@ -1127,7 +1234,7 @@ class PPICController extends Controller
             $this->syncToActual($id);
             DB::commit();
             
-            $msg = $is_separating_sub ? "Batch Separating Closed! Barang jadi ditambahkan." : "Batch Closed! {$sisa} Lembar dicatat return ke Gudang RM.";
+            $msg =$is_separating_sub ? "Batch Separating Closed! Barang jadi ditambahkan." : "Batch Closed! {$sisa} Lembar dicatat return ke Gudang RM.";
             return redirect()->back()->with('success', $msg);
 
         } catch (\Exception $e) {
@@ -1138,14 +1245,14 @@ class PPICController extends Controller
 
     private function syncToActual($batchId) 
     {
-        $batch = DB::table('produksi_batches')->where('id', $batchId)->first(); 
+        $batch = DB::table('produksi_batches')->where('id',$batchId)->first(); 
         if (!$batch) return;
-        $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
-        $actual = DB::table('production_actuals')->where('part_no', $batch->material_code)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
+        $lineCode = DB::table('line')->where('id',$batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
+        $actual = DB::table('production_actuals')->where('part_no',$batch->material_code)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
         if ($actual) { 
-            DB::table('production_actuals')->where('id', $actual->id)->update(['qty_ok' => $actual->qty_ok + $batch->qty_hasil_ok, 'qty_ng' => $actual->qty_ng + $batch->qty_hasil_ng, 'updated_at' => now()]); 
+            DB::table('production_actuals')->where('id', $actual->id)->update(['qty_ok' => $actual->qty_ok +$batch->qty_hasil_ok, 'qty_ng' => $actual->qty_ng +$batch->qty_hasil_ng, 'updated_at' => now()]); 
         } else { 
-            DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' => $lineCode, 'shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' => $batch->created_at, 'updated_at' => now()]); 
+            DB::table('production_actuals')->insert(['part_no' => $batch->material_code, 'line_code' =>$lineCode, 'shift' => $batch->shift, 'qty_ok' =>$batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'created_at' =>$batch->created_at, 'updated_at' => now()]); 
         }
     }
 
@@ -1158,22 +1265,22 @@ class PPICController extends Controller
         return redirect()->back()->with('success', 'Batch Welding resumed.'); 
     }
 
-    public function closeBatchWelding(Request $request, $id)
+    public function closeBatchWelding(Request $request,$id)
     {
         DB::beginTransaction();
         try {
-            $batch = DB::table('welding_batches')->where('id', $id)->first();
+            $batch = DB::table('welding_batches')->where('id',$id)->first();
             if (!$batch) throw new \Exception("Batch tidak ditemukan.");
             if ($batch->status === 'COMPLETED') throw new \Exception("❌ Batch ini sudah ditutup!");
 
-            $qty_ok = $request->has('qty_ok') ? (int) $request->qty_ok : (int) $batch->qty_ok;
-            $qty_ng = $request->has('qty_ng') ? (int) $request->qty_ng : (int) $batch->qty_ng;
-            $qty_return = $request->has('qty_return') ? (int) $request->qty_return : (int) $batch->qty_return;
-            $notes = $request->has('notes') ? $request->notes : $batch->keterangan;
+            $qty_ok =$request->has('qty_ok') ? (int) $request->qty_ok : (int)$batch->qty_ok;
+            $qty_ng =$request->has('qty_ng') ? (int) $request->qty_ng : (int)$batch->qty_ng;
+            $qty_return =$request->has('qty_return') ? (int) $request->qty_return : (int)$batch->qty_return;
+            $notes = $request->has('notes') ? $request->notes :$batch->keterangan;
 
-            $total_input = $qty_ok + $qty_ng + $qty_return;
+            $total_input =$qty_ok + $qty_ng +$qty_return;
             if ($request->has('qty_ok') && $total_input > (int)$batch->qty_masuk) {
-                throw new \Exception("Total (OK + NG + RETURN) melebihi jumlah material yang di-Take! ($total_input > $batch->qty_masuk)");
+                throw new \Exception("Total (OK + NG + RETURN) melebihi jumlah material yang di-Take! ($total_input >$batch->qty_masuk)");
             }
 
             DB::table('welding_batches')->where('id', $id)->update([
@@ -1186,7 +1293,7 @@ class PPICController extends Controller
             ]);
 
             if ($qty_return > 0) {
-                DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('welding_stock', $qty_return);
+                DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('welding_stock',$qty_return);
                 DB::table('production_logs')->insert([
                     'part_no' => $batch->part_no, 
                     'qty' => $qty_return, 
@@ -1197,7 +1304,7 @@ class PPICController extends Controller
             }
 
             if ($qty_ok > 0) {
-                DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('actual_stock', $qty_ok);
+                DB::table('finished_goods')->where('part_no', $batch->part_no)->increment('actual_stock',$qty_ok);
                 DB::table('production_logs')->insert([
                     'part_no' => $batch->part_no, 
                     'qty' => $qty_ok, 
@@ -1207,35 +1314,34 @@ class PPICController extends Controller
                 ]);
             }
 
-            $actual = DB::table('welding_actuals')->where('part_no', $batch->part_no)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
+            $actual = DB::table('welding_actuals')->where('part_no',$batch->part_no)->where('shift', $batch->shift)->whereDate('created_at', date('Y-m-d', strtotime($batch->created_at)))->first();
             if ($actual) { 
                 DB::table('welding_actuals')->where('id', $actual->id)->update([
-                    'qty_ok' => $actual->qty_ok + $qty_ok, 'qty_ng' => $actual->qty_ng + $qty_ng, 'updated_at' => now()
+                    'qty_ok' => $actual->qty_ok +$qty_ok, 'qty_ng' => $actual->qty_ng +$qty_ng, 'updated_at' => now()
                 ]); 
             } else { 
-                $lineCode = DB::table('line_welding')->where('id', $batch->line_id)->value('kode_line') ?? 'UNKNOWN';
+                $lineCode = DB::table('line_welding')->where('id',$batch->line_id)->value('kode_line') ?? 'UNKNOWN';
                 DB::table('welding_actuals')->insert([
-                    'part_no' => $batch->part_no, 'line_code' => $lineCode, 'shift' => $batch->shift, 
-                    'qty_ok' => $qty_ok, 'qty_ng' => $qty_ng, 'created_at' => $batch->created_at, 'updated_at' => now()
+                    'part_no' => $batch->part_no, 'line_code' => $lineCode, 'shift' =>$batch->shift, 
+                    'qty_ok' => $qty_ok, 'qty_ng' => $qty_ng, 'created_at' =>$batch->created_at, 'updated_at' => now()
                 ]); 
             }
 
             if ($qty_ng > 0) {
-                $lineCode = DB::table('line_welding')->where('id', $batch->line_id)->value('kode_line') ?? 'UNKNOWN';
-                if ($request->has('ng_type') && $request->has('ng_qty')) {
-                    foreach($request->ng_type as $index => $type) {
-                        $qty_defect = (int) $request->ng_qty[$index];
+                $lineCode = DB::table('line_welding')->where('id',$batch->line_id)->value('kode_line') ?? 'UNKNOWN';
+                if ($request->has('ng_type') &&$request->has('ng_qty')) {
+                    foreach($request->ng_type as$index => $type) {$qty_defect = (int) $request->ng_qty[$index];
                         if($qty_defect > 0) {
                             DB::table('welding_ng_logs')->insert([
-                                'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' => $lineCode, 
-                                'shift' => $batch->shift, 'ng_type' => $type, 'qty' => $qty_defect, 'created_at' => now(), 'updated_at' => now()
+                                'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' =>$lineCode, 
+                                'shift' => $batch->shift, 'ng_type' => $type, 'qty' =>$qty_defect, 'created_at' => now(), 'updated_at' => now()
                             ]);
                         }
                     }
                 } elseif ($request->has('qty_ok')) {
                     DB::table('welding_ng_logs')->insert([
-                        'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' => $lineCode, 
-                        'shift' => $batch->shift, 'ng_type' => 'UNCATEGORIZED_DEFECT', 'qty' => $qty_ng, 'created_at' => now(), 'updated_at' => now()
+                        'no_produksi' => $batch->no_produksi_stamping, 'part_no' => $batch->part_no, 'line_code' =>$lineCode, 
+                        'shift' => $batch->shift, 'ng_type' => 'UNCATEGORIZED_DEFECT', 'qty' =>$qty_ng, 'created_at' => now(), 'updated_at' => now()
                     ]);
                 }
             }
@@ -1252,7 +1358,7 @@ class PPICController extends Controller
     /**
      * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
      */
-    public function printWosWelding($date, $line_code)
+    public function printWosWelding($date,$line_code)
     {
         $plansS1 = DB::table('welding_plans')
             ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
@@ -1272,12 +1378,11 @@ class PPICController extends Controller
             ->orderBy('welding_plans.id', 'asc')
             ->get();
 
-        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
+        if ($plansS1->isEmpty() &&$plansS2->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada jadwal Welding di mesin ini untuk dicetak.');
         }
 
-        $parts = collect()->merge($plansS1)->merge($plansS2)->pluck('part_no')->unique()->toArray();
-        $batches = DB::table('welding_batches')
+        $parts = collect()->merge($plansS1)->merge($plansS2)->pluck('part_no')->unique()->toArray();$batches = DB::table('welding_batches')
             ->whereIn('part_no', $parts)
             ->whereDate('created_at', $date)
             ->get();
@@ -1288,12 +1393,12 @@ class PPICController extends Controller
     /**
      * 12. PRINT SERAH TERIMA WELDING (WIP)
      */
-    public function printSerahTerimaWelding($date, $line_code)
+    public function printSerahTerimaWelding($date,$line_code)
     {
-        $plans = DB::table('welding_plans')->where('plan_date', $date)->where('line_code', $line_code)->get();
+        $plans = DB::table('welding_plans')->where('plan_date', $date)->where('line_code',$line_code)->get();
         if ($plans->isEmpty()) return redirect()->back()->with('error', 'Belum ada Material Request (WIP) untuk mesin ini.');
 
-        $parts = $plans->pluck('part_no')->toArray();
+        $parts =$plans->pluck('part_no')->toArray();
 
         $batches = DB::table('welding_batches')
             ->leftJoin('parts', 'welding_batches.part_no', '=', 'parts.part_no')
