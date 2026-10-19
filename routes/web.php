@@ -276,6 +276,7 @@ Route::prefix('welding')->group(function () {
     
     Route::get('/history', [WeldingStockController::class, 'history'])->name('welding.history');
     Route::get('/history-audit', [WeldingStockController::class, 'historyWelding'])->name('welding.history.weldig');
+    Route::get('/rm-log-print', [RmController::class, 'recapLogPrint'])->name('rm.log.print');
 });
 
 // --- MASTER REGISTRY WELDING (MESIN & NG) ---

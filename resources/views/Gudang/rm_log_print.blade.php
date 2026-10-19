@@ -279,7 +279,7 @@
 
     {{-- 🔘 SCREEN ACTION & FILTER BAR --}}
     <div class="no-print no-print-bar">
-        <form id="filterForm" action="{{ route('rm.log.print') }}" method="GET" class="filter-form">
+        <form id="filterForm" action="{{ url()->current() }}" method="GET" class="filter-form">
             <input type="hidden" name="start_date" id="hidden_start_date" value="{{ $startDate ?? date('Y-m-d') }}">
             <input type="hidden" name="end_date" id="hidden_end_date" value="{{ $endDate ?? date('Y-m-d') }}">
 
