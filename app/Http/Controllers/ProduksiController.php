@@ -159,7 +159,7 @@ class ProduksiController extends Controller
     public function storeResult(Request $request, $id) { return back(); }
 
     /**
-     * ✨ UPDATE RESULT: KEBAL ERROR 1364 DENGAN DETEKSI FIELD OTOMATIS & SINKRON WELDING ✨
+     * ✨ UPDATE RESULT: SIMPAN KE GUDANG WIP SAJA (TIDAK BOLEH AUTO-TAKE KE WELDING BATCHES) ✨
      */
     public function updateResult(Request $request, $id)
     {
@@ -189,6 +189,7 @@ class ProduksiController extends Controller
             $target = ($partMaster && !empty($partMaster->next_process)) ? strtoupper(trim($partMaster->next_process)) : 'FG';
 
             if ($qty_ok_new > 0) {
+                // Catat log produksi
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code, 
                     'qty'          => $qty_ok_new, 
@@ -197,8 +198,7 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
 
-                // 🛡️ BENTENG PENGAMAN OTOMATIS: Ambil seluruh struktur kolom finished_goods
-                // Menjamin tidak akan pernah ada kolom NOT NULL yang memicu error 1364 lagi!
+                // Pengaman otomatis struktur kolom finished_goods
                 $fgColumns = DB::select("SHOW COLUMNS FROM finished_goods");
                 $defaultValues = [];
                 foreach ($fgColumns as $col) {
@@ -212,7 +212,7 @@ class ProduksiController extends Controller
                     }
                 }
 
-                // 1. SINKRONISASI KE FINISHED_GOODS
+                // 1. SIMPAN/TAMBAH STOK DI FINISHED_GOODS (WIP WELDING)
                 $fg = DB::table('finished_goods')->where('part_no', $p->material_code)->first();
                 if (!$fg) {
                     $insertFg = array_merge($defaultValues, [
@@ -221,7 +221,7 @@ class ProduksiController extends Controller
                         'customer'       => $partMaster->customer_code ?? 'SAI',
                         'customer_code'  => $partMaster->customer_code ?? 'SAI',
                         'actual_stock'   => ($target == 'WELDING') ? 0 : $qty_ok_new,
-                        'welding_stock'  => ($target == 'WELDING') ? $qty_ok_new : 0,
+                        'welding_stock'  => ($target == 'WELDING') ? $qty_ok_new : 0, // Mengendap di WIP
                         'qty_per_unit'   => 1,
                         'qty_per_pallet' => 0,
                         'qty_order'      => 0,
@@ -232,41 +232,10 @@ class ProduksiController extends Controller
                     DB::table('finished_goods')->insert($insertFg);
                 } else {
                     if ($target == 'WELDING') {
+                        // Cukup tambah stok WIP! JANGAN dimasukkan ke welding_batches!
                         DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
                     } else {
                         DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
-                    }
-                }
-
-                // 2. DISPATCH TIKET KE TERMINAL WELDING (welding_batches)
-                if ($target == 'WELDING') {
-                    $weldingLine = DB::table('line_welding')->first();
-                    $weldingLineId = $weldingLine ? $weldingLine->id : 1;
-
-                    $existingWelding = DB::table('welding_batches')
-                        ->where('no_produksi_stamping', $p->no_produksi)
-                        ->first();
-
-                    if (!$existingWelding) {
-                        DB::table('welding_batches')->insert([
-                            'no_produksi_stamping' => $p->no_produksi,
-                            'part_no'              => $p->material_code,
-                            'line_id'              => $weldingLineId,
-                            'qty_masuk'            => $qty_ok_new,
-                            'shift'                => $p->shift ?? 'Pagi',
-                            'qty_ok'               => 0,
-                            'total_checked'        => 0,
-                            'qty_ng'               => 0,
-                            'qty_return'           => 0,
-                            'status'               => 'PROSES',
-                            'keterangan'           => 'TRANSFER DARI STAMPING',
-                            'created_at'           => now(),
-                            'updated_at'           => now()
-                        ]);
-                    } else {
-                        DB::table('welding_batches')
-                            ->where('id', $existingWelding->id)
-                            ->increment('qty_masuk', $qty_ok_new, ['updated_at' => now()]);
                     }
                 }
             }
@@ -316,7 +285,7 @@ class ProduksiController extends Controller
                 }
             }
 
-            // 3. SINKRONISASI SUB-PART / SEPARATING PART (JIKA ADA)
+            // 2. SINKRONISASI SUB-PART / SEPARATING PART (JIKA ADA)
             if ($request->has('paired_batch_id') && !empty($request->paired_batch_id)) {
                 $sub_id = $request->paired_batch_id;
                 $p_sub = DB::table('produksi_batches')->where('id', $sub_id)->first();
@@ -363,37 +332,6 @@ class ProduksiController extends Controller
                                 DB::table('finished_goods')->where('part_no', $p_sub->material_code)->increment('actual_stock', $qty_ok_sub, ['updated_at' => now()]);
                             }
                         }
-
-                        if ($subTarget == 'WELDING') {
-                            $weldingLine = DB::table('line_welding')->first();
-                            $weldingLineId = $weldingLine ? $weldingLine->id : 1;
-
-                            $existingSubWelding = DB::table('welding_batches')
-                                ->where('no_produksi_stamping', $p_sub->no_produksi)
-                                ->first();
-
-                            if (!$existingSubWelding) {
-                                DB::table('welding_batches')->insert([
-                                    'no_produksi_stamping' => $p_sub->no_produksi,
-                                    'part_no'              => $p_sub->material_code,
-                                    'line_id'              => $weldingLineId,
-                                    'qty_masuk'            => $qty_ok_sub,
-                                    'shift'                => $p_sub->shift ?? 'Pagi',
-                                    'qty_ok'               => 0,
-                                    'total_checked'        => 0,
-                                    'qty_ng'               => 0,
-                                    'qty_return'           => 0,
-                                    'status'               => 'PROSES',
-                                    'keterangan'           => 'TRANSFER DARI STAMPING (PAIR)',
-                                    'created_at'           => now(),
-                                    'updated_at'           => now()
-                                ]);
-                            } else {
-                                DB::table('welding_batches')
-                                    ->where('id', $existingSubWelding->id)
-                                    ->increment('qty_masuk', $qty_ok_sub, ['updated_at' => now()]);
-                            }
-                        }
                     }
 
                     DB::table('produksi_batches')->where('id', $sub_id)->update([
@@ -422,7 +360,7 @@ class ProduksiController extends Controller
             }
 
             DB::commit(); 
-            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Tersimpan & Ditransfer ke Terminal Welding!');
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Tersimpan di Gudang WIP Welding!');
         } catch (\Exception $e) { 
             DB::rollback(); 
             return back()->with('error', $e->getMessage()); 
