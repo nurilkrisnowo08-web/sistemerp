@@ -179,7 +179,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 3. STORE MPS STAMPING: POTONG SEMUA ROW COIL_ID & CATAT PAIR_MAIN UNTUK SEPARATING
+     * 3. STORE MPS STAMPING: KELOLA MULTI-BUNDLE FIFO & SIMPAN PENANDA SEPARATING
      */
     public function mpsStore(Request $request)
     {
@@ -194,8 +194,9 @@ class PPICController extends Controller
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
             }
 
-            // Cari seluruh coil_id yang terikat ke part ini
             $cleanPart = trim($request->part_no);
+
+            // Ambil semua bundle fisik yang terikat ke part ini
             $mappedCoilIds = DB::table('rm_stocks')
                 ->where(function($q) use ($cleanPart) {
                     $q->where('material_code', $cleanPart)
@@ -205,7 +206,6 @@ class PPICController extends Controller
                 ->pluck('coil_id')
                 ->unique();
 
-            // Ambil coil fisik yang memiliki stok > 0
             $availableCoils = DB::table('rm_stocks')
                 ->whereIn('coil_id', $mappedCoilIds)
                 ->where('stock_pcs', '>', 0)
@@ -213,7 +213,7 @@ class PPICController extends Controller
                 ->get()
                 ->unique('coil_id');
 
-            // Fallback mencari berdasarkan spesifikasi yang cocok
+            // Fallback spesifikasi material
             if ($availableCoils->isEmpty()) {
                 $refStock = DB::table('rm_stocks')->where('material_code', $cleanPart)->first();
                 if ($refStock) {
@@ -261,7 +261,7 @@ class PPICController extends Controller
                 'updated_at'    => now()
             ]);
 
-            // Simpan Plan Pasangan Separating
+            // Simpan Plan Sub (Separating)
             $planIdSub = null;
             if (!empty($part_separator)) {
                 $planIdSub = DB::table('production_plans')->insertGetId([
@@ -291,11 +291,10 @@ class PPICController extends Controller
 
             $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
             
-            // Penanda PAIR_MAIN agar terbaca otomatis di Terminal
+            // Penanda PAIR_MAIN wajib ada agar terbaca di Terminal Line Control
             $ket = !empty($part_separator) ? "PAIR_MAIN:{$part_separator}" : "AUTO-DEPLOY FROM PPIC";
             $main_suffix = !empty($part_separator) ? '-M' : '';
 
-            // Setup coil pool
             $coilPool = [];
             foreach ($availableCoils as $c) {
                 $coilPool[$c->coil_id] = [
@@ -306,7 +305,7 @@ class PPICController extends Controller
                 ];
             }
 
-            // 1. ALOKASI SHIFT 1
+            // 1. ALOKASI SHIFT 1 (POTONG BERTAHAP MAKSIMAL SESUAI SALDO TIAP BUNDLE)
             if ($qty_lembar_s1 > 0 && $mesin_id) {
                 $base_prod_s1 = 'WOS-S1-' . date('His') . $main_suffix;
                 $remS1 = $qty_lembar_s1;
@@ -319,10 +318,10 @@ class PPICController extends Controller
                     $cData['stock'] -= $take;
                     $remS1 -= $take;
 
-                    // Potong seluruh baris yang memiliki coil_id ini (termasuk induk AMA 27)
+                    // Potong seluruh part pada coil_id ini di rm_stocks
                     DB::table('rm_stocks')->where('coil_id', trim($cData['coil_id']))->decrement('stock_pcs', $take);
 
-                    // Catat riwayat pemakaian per coil
+                    // Catat log per bundle fisik dengan no_produksi batch utama
                     DB::table('rm_production_logs')->insert([
                         'rm_stock_id'   => $cData['id'],
                         'material_code' => $request->part_no,
@@ -333,7 +332,6 @@ class PPICController extends Controller
                 }
                 unset($cData);
 
-                // Buat 1 batch utama tunggal di antrean
                 DB::table('produksi_batches')->insert([
                     'no_produksi'   => $base_prod_s1,
                     'plan_id'       => $planIdMain,
@@ -349,7 +347,6 @@ class PPICController extends Controller
                     'updated_at'    => now()
                 ]);
 
-                // Buat sub-batch separating (-S)
                 if ($planIdSub) {
                     $subNoProdS1 = substr($base_prod_s1, 0, strrpos($base_prod_s1, '-')) . '-S';
                     DB::table('produksi_batches')->insert([
@@ -504,8 +501,23 @@ class PPICController extends Controller
                     $raw_return = abs($selisih_lembar);
                     $net_return = max(0, $raw_return - $alreadyReturnedByProd);
                     if ($net_return > 0) {
-                        DB::table('rm_stocks')->where('coil_id', trim($firstStock->coil_id))->increment('stock_pcs', $net_return);
-                        DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $firstStock->id, 'material_code' => $plan->part_no, 'pcs_in' => $net_return, 'source' => 'return', 'no_produksi' => 'REV-RTN-' . date('YmdHis'), 'created_at' => $logTimestamp]);
+                        // Kembalikan proporsional ke coil yang pernah dipotong
+                        $usedLogs = DB::table('rm_production_logs')
+                            ->whereIn('no_produksi', $existingBatches->pluck('no_produksi'))
+                            ->orderBy('id', 'desc')
+                            ->get();
+
+                        $remReturn = $net_return;
+                        foreach ($usedLogs as $log) {
+                            if ($remReturn <= 0) break;
+                            $refCoil = DB::table('rm_stocks')->where('id', $log->rm_stock_id)->first();
+                            if ($refCoil) {
+                                $ret = min($log->pcs_used, $remReturn);
+                                DB::table('rm_stocks')->where('coil_id', trim($refCoil->coil_id))->increment('stock_pcs', $ret);
+                                DB::table('rm_incoming_logs')->insert(['rm_stock_id' => $refCoil->id, 'material_code' => $plan->part_no, 'pcs_in' => $ret, 'source' => 'return', 'no_produksi' => 'REV-RTN-' . date('YmdHis'), 'created_at' => $logTimestamp]);
+                                $remReturn -= $ret;
+                            }
+                        }
                     }
                 }
                 $rm_stock_id = $firstStock->id;
@@ -629,7 +641,6 @@ class PPICController extends Controller
         $allBatches = collect();
 
         foreach ($batchesRaw as $batch) {
-            // Deteksi apakah batch ini memiliki pasangan separating
             $isPair = strpos($batch->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($batch->no_produksi, '-M');
             $subPartNo = null;
             $subPartName = null;

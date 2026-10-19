@@ -52,23 +52,26 @@ class ProduksiController extends Controller
 
         $activeProductionsRaw = $query->orderBy('batch_id', 'desc')->get();
         
+        // ✨ DETEKSI SEPARATING PART DENGAN AMAN (MEMBACA PAIR_MAIN ATAU AKHIRAN -M) ✨
         $activeProductions = $activeProductionsRaw->map(function ($item) {
-            $isMainPair = strpos($item->keterangan, 'PAIR_MAIN:') === 0;
+            $isMainPair = (strpos($item->keterangan, 'PAIR_MAIN:') === 0) || str_ends_with($item->no_produksi, '-M');
             $item->is_separating = $isMainPair;
             $item->paired_part = null;
             $item->paired_batch_id = null;
 
             if ($isMainPair) {
-                $pairedPartCode = str_replace('PAIR_MAIN:', '', $item->keterangan);
-                $timePrefix = substr($item->no_produksi, 0, strrpos($item->no_produksi, '-'));
+                $lastDash = strrpos($item->no_produksi, '-');
+                $timePrefix = $lastDash !== false ? substr($item->no_produksi, 0, $lastDash) : $item->no_produksi;
+                
                 $pairedBatch = DB::table('produksi_batches')
                     ->where('no_produksi', $timePrefix . '-S')
-                    ->where('material_code', $pairedPartCode)
                     ->first();
 
                 if ($pairedBatch) {
-                    $item->paired_part = $pairedPartCode;
+                    $item->paired_part = $pairedBatch->material_code;
                     $item->paired_batch_id = $pairedBatch->id;
+                } elseif (strpos($item->keterangan, 'PAIR_MAIN:') === 0) {
+                    $item->paired_part = str_replace('PAIR_MAIN:', '', $item->keterangan);
                 }
             }
             return $item;
@@ -137,7 +140,10 @@ class ProduksiController extends Controller
                 }
             }
 
-            DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->decrement('stock_pcs', $request->qty_ambil_pcs);
+            // Pemotongan stok berbasis coil_id yang aman terhadap spasi
+            DB::table('rm_stocks')
+                ->whereRaw("REPLACE(coil_id, ' ', '') = ?", [str_replace(' ', '', $rmInfo->coil_id)])
+                ->decrement('stock_pcs', $request->qty_ambil_pcs);
 
             DB::table('rm_production_logs')->insert([
                 'rm_stock_id'   => $request->rm_stock_id,
@@ -159,7 +165,7 @@ class ProduksiController extends Controller
     public function storeResult(Request $request, $id) { return back(); }
 
     /**
-     * ✨ UPDATE RESULT: SIMPAN KE GUDANG WIP SAJA (TIDAK BOLEH AUTO-TAKE KE WELDING BATCHES) ✨
+     * ✨ UPDATE RESULT: SINKRON HASIL DENGAN actual_stock & UPDATE SEPARATING SUB-PART ✨
      */
     public function updateResult(Request $request, $id)
     {
@@ -189,7 +195,6 @@ class ProduksiController extends Controller
             $target = ($partMaster && !empty($partMaster->next_process)) ? strtoupper(trim($partMaster->next_process)) : 'FG';
 
             if ($qty_ok_new > 0) {
-                // Catat log produksi
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code, 
                     'qty'          => $qty_ok_new, 
@@ -198,13 +203,13 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
 
-                // Pengaman otomatis struktur kolom finished_goods
+                // Auto-shield struktur kolom finished_goods
                 $fgColumns = DB::select("SHOW COLUMNS FROM finished_goods");
                 $defaultValues = [];
                 foreach ($fgColumns as $col) {
                     if ($col->Null === 'NO' && is_null($col->Default) && $col->Extra !== 'auto_increment') {
                         $type = strtolower($col->Type);
-                        if (str_contains($type, 'int') || str_contains($type, 'decimal') || str_contains($type, 'float') || str_contains($type, 'double')) {
+                        if (str_contains($type, 'int') || str_contains($type, 'decimal') || str_contains($type, 'float')) {
                             $defaultValues[$col->Field] = 0;
                         } else {
                             $defaultValues[$col->Field] = '';
@@ -212,7 +217,6 @@ class ProduksiController extends Controller
                     }
                 }
 
-                // 1. SIMPAN/TAMBAH STOK DI FINISHED_GOODS (WIP WELDING)
                 $fg = DB::table('finished_goods')->where('part_no', $p->material_code)->first();
                 if (!$fg) {
                     $insertFg = array_merge($defaultValues, [
@@ -221,7 +225,7 @@ class ProduksiController extends Controller
                         'customer'       => $partMaster->customer_code ?? 'SAI',
                         'customer_code'  => $partMaster->customer_code ?? 'SAI',
                         'actual_stock'   => ($target == 'WELDING') ? 0 : $qty_ok_new,
-                        'welding_stock'  => ($target == 'WELDING') ? $qty_ok_new : 0, // Mengendap di WIP
+                        'welding_stock'  => ($target == 'WELDING') ? $qty_ok_new : 0,
                         'qty_per_unit'   => 1,
                         'qty_per_pallet' => 0,
                         'qty_order'      => 0,
@@ -232,7 +236,6 @@ class ProduksiController extends Controller
                     DB::table('finished_goods')->insert($insertFg);
                 } else {
                     if ($target == 'WELDING') {
-                        // Cukup tambah stok WIP! JANGAN dimasukkan ke welding_batches!
                         DB::table('finished_goods')->where('part_no', $p->material_code)->increment('welding_stock', $qty_ok_new, ['updated_at' => now()]);
                     } else {
                         DB::table('finished_goods')->where('part_no', $p->material_code)->increment('actual_stock', $qty_ok_new, ['updated_at' => now()]);
@@ -240,12 +243,15 @@ class ProduksiController extends Controller
                 }
             }
 
-            // Return sisa lembaran sheet ke RM
+            // Return sisa lembaran sheet ke RM jika diinput operator
             $qty_return_sheet = (int)$request->qty_return_warehouse; 
             if ($qty_return_sheet > 0) {
                 $rmInfo = DB::table('rm_stocks')->where('id', $p->rm_stock_id)->first();
                 if ($rmInfo) {
-                    DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $qty_return_sheet);
+                    DB::table('rm_stocks')
+                        ->whereRaw("REPLACE(coil_id, ' ', '') = ?", [str_replace(' ', '', $rmInfo->coil_id)])
+                        ->increment('stock_pcs', $qty_return_sheet);
+                    
                     DB::table('rm_incoming_logs')->insert([
                         'rm_stock_id'   => $p->rm_stock_id, 
                         'material_code' => $p->material_code,
@@ -285,14 +291,19 @@ class ProduksiController extends Controller
                 }
             }
 
-            // 2. SINKRONISASI SUB-PART / SEPARATING PART (JIKA ADA)
-            if ($request->has('paired_batch_id') && !empty($request->paired_batch_id)) {
-                $sub_id = $request->paired_batch_id;
+            // Update pasangan Separating Sub-Part jika ada
+            $sub_id = $request->paired_batch_id;
+            if (empty($sub_id) && str_ends_with($p->no_produksi, '-M')) {
+                $lastDash = strrpos($p->no_produksi, '-');
+                $timePrefix = $lastDash !== false ? substr($p->no_produksi, 0, $lastDash) : $p->no_produksi;
+                $sub_id = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->value('id');
+            }
+
+            if (!empty($sub_id)) {
                 $p_sub = DB::table('produksi_batches')->where('id', $sub_id)->first();
-                
                 if ($p_sub) {
-                    $qty_ok_sub = (int)$request->paired_qty_ok;
-                    $qty_ng_sub = (int)$request->paired_qty_ng;
+                    $qty_ok_sub = $request->has('paired_qty_ok') ? (int)$request->paired_qty_ok : $qty_ok_new;
+                    $qty_ng_sub = $request->has('paired_qty_ng') ? (int)$request->paired_qty_ng : $ng_parent_update;
 
                     $cleanSubPart = str_replace([' ', '-'], '', trim($p_sub->material_code));
                     $subPartMaster = DB::table('parts')->where('part_no', trim($p_sub->material_code))->first()
@@ -343,24 +354,11 @@ class ProduksiController extends Controller
                     ]);
 
                     $this->syncToActual($sub_id);
-
-                    if ($qty_ng_sub > 0) {
-                        $actualSub = DB::table('production_actuals')->where('part_no', $p_sub->material_code)->whereDate('created_at', date('Y-m-d', strtotime($p_sub->created_at)))->first();
-                        if ($actualSub) {
-                            DB::table('production_ng_logs')->insert([
-                                'actual_id'   => $actualSub->id, 
-                                'no_produksi' => $p_sub->no_produksi, 
-                                'ng_type'     => 'PROD_DEFECT', 
-                                'qty'         => $qty_ng_sub, 
-                                'created_at'  => now()
-                            ]);
-                        }
-                    }
                 }
             }
 
             DB::commit(); 
-            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Tersimpan di Gudang WIP Welding!');
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Berhasil Disimpan!');
         } catch (\Exception $e) { 
             DB::rollback(); 
             return back()->with('error', $e->getMessage()); 
@@ -544,11 +542,15 @@ class ProduksiController extends Controller
         DB::beginTransaction();
         try { 
             if ($p && $rmInfo) { 
-                DB::table('rm_stocks')->where('coil_id', trim($rmInfo->coil_id))->increment('stock_pcs', $p->qty_ambil_pcs); 
+                DB::table('rm_stocks')
+                    ->whereRaw("REPLACE(coil_id, ' ', '') = ?", [str_replace(' ', '', $rmInfo->coil_id)])
+                    ->increment('stock_pcs', $p->qty_ambil_pcs); 
+                
                 DB::table('rm_production_logs')->where('no_produksi', $p->no_produksi)->delete(); 
             } 
             DB::table('produksi_batches')->where('no_produksi', $p->no_produksi)->delete(); 
-            DB::commit(); return redirect()->route('produksi.index')->with('success', 'Batch Dibatalkan.'); 
+            DB::commit(); 
+            return redirect()->route('produksi.index')->with('success', 'Batch Dibatalkan.'); 
         } catch (\Exception $e) { DB::rollback(); return back(); }
     }
 
