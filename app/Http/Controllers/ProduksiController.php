@@ -159,7 +159,7 @@ class ProduksiController extends Controller
     public function storeResult(Request $request, $id) { return back(); }
 
     /**
-     * ✨ UPDATE RESULT: SINKRON HASIL DENGAN actual_stock, DEFAULT VALUE PALLET, & DISPATCH WELDING ✨
+     * ✨ UPDATE RESULT: KEBAL ERROR 1364 DENGAN DETEKSI FIELD OTOMATIS & SINKRON WELDING ✨
      */
     public function updateResult(Request $request, $id)
     {
@@ -197,10 +197,25 @@ class ProduksiController extends Controller
                     'updated_at'   => now()
                 ]);
 
-                // 1. SINKRONISASI KE FINISHED_GOODS (MENGGUNAKAN actual_stock & MENGISI qty_per_pallet DENGAN 0)
+                // 🛡️ BENTENG PENGAMAN OTOMATIS: Ambil seluruh struktur kolom finished_goods
+                // Menjamin tidak akan pernah ada kolom NOT NULL yang memicu error 1364 lagi!
+                $fgColumns = DB::select("SHOW COLUMNS FROM finished_goods");
+                $defaultValues = [];
+                foreach ($fgColumns as $col) {
+                    if ($col->Null === 'NO' && is_null($col->Default) && $col->Extra !== 'auto_increment') {
+                        $type = strtolower($col->Type);
+                        if (str_contains($type, 'int') || str_contains($type, 'decimal') || str_contains($type, 'float') || str_contains($type, 'double')) {
+                            $defaultValues[$col->Field] = 0;
+                        } else {
+                            $defaultValues[$col->Field] = '';
+                        }
+                    }
+                }
+
+                // 1. SINKRONISASI KE FINISHED_GOODS
                 $fg = DB::table('finished_goods')->where('part_no', $p->material_code)->first();
                 if (!$fg) {
-                    $insertFg = [
+                    $insertFg = array_merge($defaultValues, [
                         'part_no'        => $p->material_code,
                         'part_name'      => $partMaster->part_name ?? $p->material_code,
                         'customer'       => $partMaster->customer_code ?? 'SAI',
@@ -208,11 +223,12 @@ class ProduksiController extends Controller
                         'actual_stock'   => ($target == 'WELDING') ? 0 : $qty_ok_new,
                         'welding_stock'  => ($target == 'WELDING') ? $qty_ok_new : 0,
                         'qty_per_unit'   => 1,
-                        'qty_per_pallet' => 0, // Mencegah error 1364 default value
+                        'qty_per_pallet' => 0,
                         'qty_order'      => 0,
+                        'needs_per_day'  => 0,
                         'created_at'     => now(),
                         'updated_at'     => now()
-                    ];
+                    ]);
                     DB::table('finished_goods')->insert($insertFg);
                 } else {
                     if ($target == 'WELDING') {
@@ -222,7 +238,7 @@ class ProduksiController extends Controller
                     }
                 }
 
-                // 2. JIKA NEXT PROCESS WELDING -> OTOMATIS DISPATCH TIKET KE TERMINAL WELDING (welding_batches)
+                // 2. DISPATCH TIKET KE TERMINAL WELDING (welding_batches)
                 if ($target == 'WELDING') {
                     $weldingLine = DB::table('line_welding')->first();
                     $weldingLineId = $weldingLine ? $weldingLine->id : 1;
@@ -325,7 +341,7 @@ class ProduksiController extends Controller
 
                         $subFg = DB::table('finished_goods')->where('part_no', $p_sub->material_code)->first();
                         if (!$subFg) {
-                            DB::table('finished_goods')->insert([
+                            $insertSubFg = array_merge($defaultValues ?? [], [
                                 'part_no'        => $p_sub->material_code,
                                 'part_name'      => $subPartMaster->part_name ?? $p_sub->material_code,
                                 'customer'       => $subPartMaster->customer_code ?? 'SAI',
@@ -335,9 +351,11 @@ class ProduksiController extends Controller
                                 'qty_per_unit'   => 1,
                                 'qty_per_pallet' => 0,
                                 'qty_order'      => 0,
+                                'needs_per_day'  => 0,
                                 'created_at'     => now(),
                                 'updated_at'     => now()
                             ]);
+                            DB::table('finished_goods')->insert($insertSubFg);
                         } else {
                             if ($subTarget == 'WELDING') {
                                 DB::table('finished_goods')->where('part_no', $p_sub->material_code)->increment('welding_stock', $qty_ok_sub, ['updated_at' => now()]);
