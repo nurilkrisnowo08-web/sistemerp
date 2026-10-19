@@ -381,7 +381,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($mutationData as$mat)
+                @forelse($mutationData as $mat)
                     @php
                         $initVal = $mat->initial ?? $mat->stok_awal ?? 0;
                         $inVal =$mat->in_qty ?? (($mat->daily_in_s ?? 0) + ($mat->daily_in_r ?? 0));
@@ -413,7 +413,7 @@
                     </tr>
 
                     {{-- Baris Rincian Log Mutasi --}}
-                    @forelse($logs as$log)
+                    @forelse($logs as $log)
                         @php
                             $logType =$log->type ?? 'MUTATION';
                             $refId = $log->ref_id ?? $log->no_sj ?? '-';
@@ -440,7 +440,7 @@
                             <td class="text-left">
                                 <div class="coil-tag-list">
                                     @if(count($bundles) > 0)
-                                        @foreach($bundles as$b)
+                                        @foreach($bundles as $b)
                                             @php
                                                 $cId = is_object($b) ? ($b->coil_id ?? 'COIL') : ($b['coil_id'] ?? 'COIL');
                                                 $bQty = is_object($b) ? ($b->qty ?? $b->pcs_in ?? $b->pcs_used ?? 0) : ($b['qty'] ?? 0);
