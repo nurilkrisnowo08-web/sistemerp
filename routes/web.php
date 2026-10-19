@@ -171,6 +171,7 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::get('/po/edit/{id}', [PurchaseOrderController::class, 'edit'])->name('po.edit');
     Route::delete('/po/delete/{id}', [PurchaseOrderController::class, 'destroy'])->name('po.destroy');
     Route::put('/delivery/update', [App\Http\Controllers\DeliveryController::class, 'update'])->name('delivery.update');
+    Route::get('/planning/ppic/mps-small', [App\Http\Controllers\PPICController::class, 'mpsSmallIndex'])->name('ppic.mps.small');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
