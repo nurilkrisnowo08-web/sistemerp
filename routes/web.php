@@ -172,6 +172,7 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::delete('/po/delete/{id}', [PurchaseOrderController::class, 'destroy'])->name('po.destroy');
     Route::put('/delivery/update', [App\Http\Controllers\DeliveryController::class, 'update'])->name('delivery.update');
     Route::get('/planning/ppic/mps-small', [App\Http\Controllers\PPICController::class, 'mpsSmallIndex'])->name('ppic.mps.small');
+    Route::match(['put', 'post'], '/planning/ppic/mps/wos/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWos'])->name('ppic.wos.update');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
