@@ -30,29 +30,23 @@
         color: #1e293b;
     }
 
-    .main-terminal {
-        min-height: 100vh;
-        padding-bottom: 60px;
-    }
+    .main-terminal { min-height: 100vh; padding-bottom: 60px; }
 
-    /* 🔘 SPRING BUTTON EFFECT */
     .btn-spring {
         border-radius: 9999px;
         font-weight: 700;
         font-size: 11.5px;
-        padding: 8px 18px;
+        letter-spacing: 0.3px;
+        padding: 9px 20px;
         border: none;
-        transition: transform 0.2s var(--ios-spring), box-shadow 0.2s ease;
+        transition: transform 0.2s var(--ios-spring), box-shadow 0.2s ease, background-color 0.2s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 6px;
     }
-    .btn-spring:active {
-        transform: scale(0.95) !important;
-    }
+    .btn-spring:active { transform: scale(0.95) !important; }
 
-    /* 🏛️ TOP COMMAND HEADER */
     .command-header {
         background: #ffffff;
         padding: 22px 35px;
@@ -60,7 +54,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
     }
     .hud-title {
         font-weight: 900;
@@ -70,7 +64,6 @@
         color: var(--ios-dark);
     }
 
-    /* 🎛️ SEGMENTED NAV RAIL */
     .nav-rail {
         padding: 12px 35px;
         display: flex;
@@ -83,7 +76,7 @@
     .tab-btn {
         background: var(--ios-bg);
         border: 1px solid transparent;
-        padding: 7px 16px;
+        padding: 8px 18px;
         border-radius: 9999px;
         color: var(--ios-muted);
         font-weight: 700;
@@ -92,14 +85,13 @@
         text-decoration: none !important;
         white-space: nowrap;
     }
-    .tab-btn:hover { color: var(--ios-dark); background: #e2e8f0; }
+    .tab-btn:hover { color: var(--ios-dark); background: #e5e9f0; }
     .tab-btn.active {
         background: var(--ios-blue);
         color: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.28);
     }
 
-    /* 📋 MAIN TABLE SQUIRCLE CARD */
     .table-container {
         background: #ffffff;
         margin: 25px 35px;
@@ -115,8 +107,8 @@
     }
     .table-industrial thead th {
         background: #f8fafc;
-        color: var(--ios-muted);
-        padding: 14px 20px;
+        color: #64748b;
+        padding: 14px 22px;
         font-size: 10px;
         text-transform: uppercase;
         font-weight: 800;
@@ -125,16 +117,13 @@
         border-bottom: 1px solid var(--ios-border);
     }
     .table-industrial tbody td {
-        padding: 16px 20px;
+        padding: 16px 22px;
         border-top: 1px solid #f1f5f9;
         font-size: 12.5px;
         vertical-align: middle;
     }
-    .table-industrial tbody tr:hover {
-        background-color: #fbfcfe;
-    }
+    .table-industrial tbody tr:hover { background-color: #fbfcfe; }
 
-    /* 🏷️ BADGES & LABELS */
     .id-tag {
         font-family: 'JetBrains Mono', monospace;
         color: var(--ios-blue);
@@ -156,21 +145,16 @@
         gap: 4px;
     }
     
-    /* Area Badges */
     .badge-area-big { background: var(--ios-blue-soft); color: var(--ios-blue); border: 1px solid rgba(0, 122, 255, 0.2); }
     .badge-area-small { background: var(--ios-amber-soft); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.25); }
-
-    /* Shift Badges */
     .badge-shift-s1 { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
     .badge-shift-s2 { background: var(--ios-purple-soft); color: #4338ca; border: 1px solid #c7d2fe; }
 
-    /* Destination & Status */
-    .badge-fg { background: var(--ios-green-soft); color: #047857; }
+    .badge-fg { background: var(--ios-green-soft); color: #059669; }
     .badge-welding { background: #fef3c7; color: #b45309; }
     .badge-proses { background: #e0f2fe; color: #0369a1; }
     .badge-problem { background: var(--ios-red-soft); color: var(--ios-red); }
 
-    /* 🛡️ MODAL STYLING */
     .modal-ios .modal-content {
         border-radius: 24px;
         border: none;
@@ -220,11 +204,30 @@
         background: var(--ios-green);
         transition: width 0.4s var(--ios-spring);
     }
+    
+    /* MODAL HEADER KHUSUS ID WOS */
+    .wos-giant-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding: 25px 20px;
+        text-align: center;
+        border-bottom: 1px solid var(--ios-border);
+    }
+    .wos-giant-badge {
+        font-family: 'JetBrains Mono', monospace;
+        background: #0f172a;
+        color: #fff;
+        padding: 6px 16px;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        display: inline-block;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
 </style>
 
 <div class="container-fluid p-0 main-terminal animate__animated animate__fadeIn">
 
-    {{-- ALERT NOTIFIKASI --}}
     <div class="px-5 pt-3">
         @if(session('success'))
             <div class="alert alert-success border-0 shadow-sm alert-dismissible fade show" style="border-radius: 14px; background: #e8f9ee; color: #166534;">
@@ -252,7 +255,6 @@
         @endif
     </div>
 
-    {{-- TOP COMMAND HEADER --}}
     <div class="command-header">
         <div>
             <h1 class="hud-title">Terminal <span style="color: var(--ios-blue);">Line Control</span></h1>
@@ -268,33 +270,65 @@
         </div>
     </div>
 
-    {{-- FILTER CUSTOMER NAV RAIL --}}
-    <div class="nav-rail">
-        <a href="{{ route('produksi.index') }}" class="tab-btn {{ !request('customer') ? 'active' : '' }}">ALL OPERATIONS</a>
-        @foreach($customers as $cust)
-            <a href="{{ route('produksi.index', ['customer' => trim($cust->code)]) }}" class="tab-btn {{ request('customer') == trim($cust->code) ? 'active' : '' }}">
-                {{ strtoupper($cust->code) }}
+    <div class="nav-rail d-flex align-items-center justify-content-between">
+        <div class="d-flex gap-2">
+            <a href="{{ route('produksi.index', ['area' => 'all', 'shift' => $selectedShift, 'customer' => $customerFilter, 'date' => $date]) }}" class="tab-btn {{ $area === 'all' ? 'active' : '' }}">
+                🌐 SEMUA LINE
+            </a>
+            <a href="{{ route('produksi.index', ['area' => 'big', 'shift' => $selectedShift, 'customer' => $customerFilter, 'date' => $date]) }}" class="tab-btn {{ $area === 'big' ? 'active' : '' }}">
+                🏭 BIG PRESS
+            </a>
+            <a href="{{ route('produksi.index', ['area' => 'small', 'shift' => $selectedShift, 'customer' => $customerFilter, 'date' => $date]) }}" class="tab-btn {{ $area === 'small' ? 'active' : '' }}">
+                ⚙️ SMALL PRESS
+            </a>
+        </div>
+        
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group bg-white border p-1" style="border-radius: 9999px;">
+                <a href="{{ route('produksi.index', ['area' => $area, 'shift' => 'ALL', 'customer' => $customerFilter, 'date' => $date]) }}" class="btn btn-sm btn-spring py-1 px-3 {{ $selectedShift === 'ALL' ? 'btn-dark' : 'text-muted' }}">ALL SHIFT</a>
+                <a href="{{ route('produksi.index', ['area' => $area, 'shift' => 'S1', 'customer' => $customerFilter, 'date' => $date]) }}" class="btn btn-sm btn-spring py-1 px-3 {{ $selectedShift === 'S1' ? 'btn-warning text-dark' : 'text-muted' }}">SHIFT 1</a>
+                <a href="{{ route('produksi.index', ['area' => $area, 'shift' => 'S2', 'customer' => $customerFilter, 'date' => $date]) }}" class="btn btn-sm btn-spring py-1 px-3 {{ $selectedShift === 'S2' ? 'btn-primary' : 'text-muted' }}">SHIFT 2</a>
+            </div>
+            <form action="{{ route('produksi.index') }}" method="GET" class="m-0">
+                <input type="hidden" name="area" value="{{ $area }}">
+                <input type="hidden" name="shift" value="{{ $selectedShift }}">
+                <input type="hidden" name="customer" value="{{ $customerFilter }}">
+                <input type="date" name="date" value="{{ $date ?? date('Y-m-d') }}" class="form-control font-weight-bold border" onchange="this.form.submit()" style="border-radius: 9999px; font-size: 12px; padding: 6px 14px; height: auto;">
+            </form>
+        </div>
+    </div>
+
+    <div class="nav-rail mt-2 border-top-0">
+        <a href="{{ route('produksi.index', ['area' => $area, 'shift' => $selectedShift, 'customer' => 'ALL', 'date' => $date]) }}" 
+           class="tab-btn {{ (!$customerFilter || $customerFilter === 'ALL') ? 'active' : '' }}" style="{{ (!$customerFilter || $customerFilter === 'ALL') ? 'background:#10b981;box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);' : '' }}">
+            ALL CUSTOMER
+        </a>
+        @foreach($customers as $c)
+            <a href="{{ route('produksi.index', ['area' => $area, 'shift' => $selectedShift, 'customer' => trim($c->code), 'date' => $date]) }}" 
+               class="tab-btn {{ request('customer') == trim($c->code) ? 'active' : '' }}" style="{{ request('customer') == trim($c->code) ? 'background:#10b981;box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);' : '' }}">
+                {{ strtoupper($c->code) }}
             </a>
         @endforeach
     </div>
 
-    {{-- MAIN TABLE TERPADU (BIG PRESS + SMALL PRESS) --}}
     <div class="table-container">
         <table class="table-industrial">
             <thead>
                 <tr>
-                    <th width="14%">Batch ID</th>
+                    <th width="4%" class="text-center">No.</th>
+                    <th width="14%">ID WOS</th>
                     <th width="24%">Part Identification</th>
                     <th width="15%">Workstation & Shift</th>
-                    <th width="13%">Destination</th>
-                    <th width="12%" class="text-right">Total Jatah</th>
+                    <th width="12%">Destination</th>
+                    <th width="11%" class="text-right">Total Jatah</th>
                     <th width="9%" class="text-center">Status</th>
-                    <th width="13%" class="text-right">Action</th>
+                    <th width="11%" class="text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
-                @forelse($activeProductions as $p)
+                @forelse($activeProductions as $idx => $p)
                 <tr>
+                    <td class="text-center font-weight-bold text-muted">{{ $idx + 1 }}</td>
                     <td>
                         @if($p->qty_return > 0)
                             <span class="badge mb-1 animate__animated animate__pulse animate__infinite" style="background: #6366f1; color: #fff; font-size: 8px; padding: 3px 6px; border-radius: 4px;">
@@ -307,16 +341,11 @@
                         @php 
                             $isMainPair = isset($p->is_separating) && $p->is_separating;
                             $pairedPartCode = $isMainPair ? $p->paired_part : null;
-                            
                             $childParts = DB::table('produksi_batch_parts')->where('batch_id', $p->batch_id)->pluck('part_no')->toArray();
                             
-                            if ($isMainPair) {
-                                $displayParts = $p->material_code . ' & ' . $pairedPartCode;
-                            } elseif (count($childParts) > 0) {
-                                $displayParts = implode(' & ', $childParts);
-                            } else {
-                                $displayParts = $p->material_code;
-                            }
+                            if ($isMainPair) { $displayParts = $p->material_code . ' & ' . $pairedPartCode; } 
+                            elseif (count($childParts) > 0) { $displayParts = implode(' & ', $childParts); } 
+                            else { $displayParts = $p->material_code; }
                         @endphp
                         <div class="font-weight-bold text-dark font-family-jetbrains" style="font-size: 13px;">{{ $displayParts }}</div>
                         <small class="text-muted font-weight-bold">
@@ -325,23 +354,12 @@
                             <span class="text-muted ml-1">• {{ $p->customer ?? 'CLIENT' }}</span>
                         </small>
                     </td>
-
-                    {{-- 🎯 INFORMASI WORKSTATION (BIG vs SMALL) & SHIFT (1 vs 2) --}}
                     <td>
                         <div class="d-flex flex-column gap-1">
-                            <div>
-                                <span class="badge-pill-ios {{ $p->area_type === 'SMALL' ? 'badge-area-small' : 'badge-area-big' }}">
-                                    {{ $p->area_type === 'SMALL' ? '⚙️' : '🏭' }} {{ $p->area_label }} ({{ $p->line_names ?? $p->kode_Line }})
-                                </span>
-                            </div>
-                            <div>
-                                <span class="badge-pill-ios {{ $p->shift_code === 'S1' ? 'badge-shift-s1' : 'badge-shift-s2' }}">
-                                    {{ $p->shift_code === 'S1' ? '☀️' : '🌙' }} {{ $p->shift_label }}
-                                </span>
-                            </div>
+                            <div><span class="badge-pill-ios {{ $p->area_type === 'SMALL' ? 'badge-area-small' : 'badge-area-big' }}">{{ $p->area_type === 'SMALL' ? '⚙️' : '🏭' }} {{ $p->area_label }} ({{ $p->line_names ?? $p->kode_Line }})</span></div>
+                            <div><span class="badge-pill-ios {{ $p->shift_code === 'S1' ? 'badge-shift-s1' : 'badge-shift-s2' }}">{{ $p->shift_code === 'S1' ? '☀️' : '🌙' }} {{ $p->shift_label }}</span></div>
                         </div>
                     </td>
-
                     <td>
                         @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
                         @if(strtoupper($route) == 'WELDING') 
@@ -350,7 +368,6 @@
                             <span class="badge-pill-ios badge-fg">FINISHED GOOD</span> 
                         @endif
                     </td>
-                    
                     <td class="text-right font-family-jetbrains font-weight-bold">
                         @if($p->qty_return > 0)
                             <span class="text-primary" style="font-size: 14px;">{{ number_format($p->qty_return) }}</span>
@@ -360,12 +377,9 @@
                             <small class="text-muted">({{ number_format($p->qty_ambil_pcs) }} lbr)</small>
                         @endif
                     </td>
-
                     <td class="text-center">
                         @if($p->status == 'PROBLEM')
-                            <span class="badge-pill-ios badge-problem animate__animated animate__flash animate__infinite">
-                                <i class="fas fa-exclamation-triangle"></i> PROBLEM
-                            </span>
+                            <span class="badge-pill-ios badge-problem animate__animated animate__flash animate__infinite"><i class="fas fa-exclamation-triangle"></i> PROBLEM</span>
                         @else
                             <span class="badge-pill-ios badge-proses">{{ $p->status }}</span>
                         @endif
@@ -383,7 +397,7 @@
                 </tr>
                 @empty 
                 <tr>
-                    <td colspan="7" class="py-5 text-center text-muted">
+                    <td colspan="8" class="py-5 text-center text-muted">
                         <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
                         <span class="font-weight-bold">-- SISTEM IDLE: TIDAK ADA BATCH AKTIF BERJALAN --</span>
                     </td>
@@ -394,35 +408,25 @@
     </div>
 </div>
 
-{{-- MODAL INPUT HASIL & REPORT PROBLEM --}}
 @foreach($activeProductions as $p)
 @php 
     $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; 
-    $isMainPair = isset($p->is_separating) &&$p->is_separating;
+    $isMainPair = isset($p->is_separating) && $p->is_separating;
     $pairedPartCode = $isMainPair ? $p->paired_part : null;
-    
-    // Rute fleksibel (kebal error 500 RouteNotFoundException)
-    $actionUrl = Route::has('produksi.update_result') 
-        ? route('produksi.update_result', $p->batch_id) 
-        : (Route::has('produksi.updateResult') ? route('produksi.updateResult', $p->batch_id) : url('/produksi/update-result/' . $p->batch_id));$problemUrl = Route::has('produksi.report_problem') 
-        ? route('produksi.report_problem', $p->batch_id) 
-        : (Route::has('produksi.reportProblem') ? route('produksi.reportProblem', $p->batch_id) : url('/produksi/report-problem/' .$p->batch_id));
+    $actionUrl = Route::has('produksi.update_result') ? route('produksi.update_result', $p->batch_id) : (Route::has('produksi.updateResult') ? route('produksi.updateResult', $p->batch_id) : url('/produksi/update-result/' . $p->batch_id));
+    $problemUrl = Route::has('produksi.report_problem') ? route('produksi.report_problem', $p->batch_id) : (Route::has('produksi.reportProblem') ? route('produksi.reportProblem', $p->batch_id) : url('/produksi/report-problem/' . $p->batch_id));
 @endphp
 
 {{-- 1. MODAL INPUT RESULT --}}
 <div class="modal fade modal-ios" id="modalInputHasil{{ $p->batch_id }}" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h6 class="modal-title font-weight-bold text-dark m-0">
-                        <i class="fas fa-microchip text-success mr-2"></i> 
-                        {{ $p->qty_return > 0 ? 'REWORK PROCESS' : 'FINISH BATCH' }}
-                    </h6>
-                    <span class="small font-weight-bold text-muted font-family-jetbrains">Batch ID: [{{ $p->no_produksi }}] // {{$p->area_label }}</span>
-                </div>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            <div class="wos-giant-header">
+                <div class="text-muted font-weight-bold small text-uppercase mb-1">INPUT HASIL PRODUKSI UNTUK:</div>
+                <div class="wos-giant-badge mb-2"><i class="fas fa-qrcode mr-2"></i> {{ $p->no_produksi }}</div>
+                <div class="font-weight-bold text-dark" style="font-size: 13px;">{{ $p->display_part }} • {{ $p->area_label }} ({{ $p->shift_code }})</div>
             </div>
+            
             <form action="{{ $actionUrl }}" method="POST">
                 @csrf 
                 @method('PUT')
@@ -434,7 +438,7 @@
                         👮 STATUS: STANDBY FOR SYNC...
                     </div>
                     
-                    {{-- DUAL INPUT (SEPARATING PART WOS PPIC) --}}
+                    {{-- DUAL INPUT (SEPARATING PART) --}}
                     @if($isMainPair)
                         <div class="row mb-3">
                             <div class="col-md-6 border-right">
@@ -489,15 +493,21 @@
                                 @else
                                     <div class="form-group">
                                         <label class="text-success font-weight-bold">QTY HASIL OK (PCS)</label>
-                                        <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical mb-3" required value="0">
+                                        {{-- ✨ PERBAIKAN: CLASS calc-input DITAMBAHKAN ✨ --}}
+                                        <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-3" required value="0">
                                     </div>
                                 @endif
                             </div>
 
                             <div class="col-md-4">
                                 <label class="font-weight-bold text-danger">Return Sheet (Lbr)</label>
-                                <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical mb-2" value="0">
-                                <small class="text-muted d-block" style="font-size:10px; line-height: 1.3;">Return dikalikan {{ $p->cavity ?? 1 }} Pcs saat sinkronisasi Gap</small>
+                                {{-- ✨ PERBAIKAN: CLASS calc-input DITAMBAHKAN ✨ --}}
+                                <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-2" value="0">
+                                
+                                {{-- ✨ PERBAIKAN: CLASS calc-input UNTUK INPUT NG BIASA ✨ --}}
+                                <label class="font-weight-bold text-danger mt-3">NG Biasa (Pcs)</label>
+                                <input type="number" name="qty_hasil_ng" id="ng_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-2" value="0">
+                                <small class="text-muted d-block mt-2" style="font-size:10px; line-height: 1.3;">Return dikalikan {{ $p->cavity ?? 1 }} Pcs saat sinkronisasi Gap</small>
                             </div>
                         </div>
                     @endif
@@ -506,13 +516,12 @@
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label class="font-weight-bold text-danger">Return Sheet Utama ke Gudang (Lbr)</label>
-                            <input type="number" name="qty_return_warehouse" id="return_dual_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical mb-1" value="0">
+                            <input type="number" name="qty_return_warehouse" id="return_dual_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input-dual mb-1" value="0">
                             <small class="text-muted d-block" style="font-size:10px;">Return dihitung dari Plat Utama (Dikalikan Cavity: {{ $p->cavity ?? 1 }})</small>
                         </div>
                     </div>
                     @endif
 
-                    {{-- RINCIAN NG SPESIFIK --}}
                     <div class="mt-2 border-top pt-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <label class="font-weight-bold text-danger m-0"><i class="fas fa-exclamation-triangle mr-1"></i> Rincian Reject (NG Spesifik)</label>
@@ -523,13 +532,11 @@
                         <div id="ng_container_{{ $p->batch_id }}"></div>
                     </div>
 
-                    {{-- KETERANGAN --}}
                     <div class="form-group mt-3 mb-3">
                         <label>Keterangan / Remark Tambahan</label>
                         <textarea name="keterangan" class="input-tactical" rows="2" placeholder="Catatan tambahan operator..."></textarea>
                     </div>
 
-                    {{-- GAP STATUS BOX --}}
                     <div class="p-3 bg-light rounded-xl border text-center" style="border-radius: 16px;">
                         <small class="text-muted font-weight-bold uppercase" style="font-size: 10px;">Gap Status (Target Material x Cavity):</small>
                         <h4 class="mb-0 font-weight-bold text-danger font-family-jetbrains" id="gap_{{ $p->batch_id }}">{{ number_format($currentTarget) }}</h4>
@@ -702,7 +709,7 @@
     }
 
     $(document).ready(function() {
-        // ✨ PERHITUNGAN GAP & SINKRONISASI HASIL BERSIH TANPA SYNTAX ERROR ✨
+        // ✨ PERHITUNGAN GAP & SINKRONISASI HASIL BERSIH ✨
         $(document).on('input', '.calc-input, .calc-input-dual, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
@@ -729,7 +736,9 @@
                 // Perhitungan form Biasa
                 retVal = parseInt($(`#return_${id}`).val()) || 0;
                 
+                let hasParts = false;
                 $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).each(function() {
+                    hasParts = true;
                     let currentOk = parseInt($(this).val()) || 0;
                     let partIdMatch = $(this).attr('name').match(/\[(\d+)\]/);
                     if(partIdMatch) {
@@ -742,9 +751,10 @@
                     }
                 });
 
-                if (maxPartUsage === 0 && $(`input[name^="qty_hasil_ok_parts"][data-id="${id}"]`).length === 0) {
+                if (!hasParts) {
                      let oldOk = parseInt($(`#ok_${id}`).val()) || 0;
-                     maxPartUsage = oldOk;
+                     let oldNg = parseInt($(`#ng_${id}`).val()) || 0; // ✨ NG Biasa Ditambahkan
+                     maxPartUsage = oldOk + oldNg;
                 }
             }
 
