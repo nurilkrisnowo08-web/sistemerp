@@ -2,13 +2,12 @@
 
 @section('content')
 <style>
-    /* 🏛️ CLEAN INDUSTRIAL WOS THEME */
     .wos-container {
         font-family: 'Plus Jakarta Sans', Arial, sans-serif;
     }
     
     .wos-title-box h3 {
-        font-family: 'JetBrains Mono', 'Plus Jakarta Sans', monospace;
+        font-family: 'JetBrains Mono', monospace;
         font-weight: 800;
         letter-spacing: -0.5px;
         color: #0f172a;
@@ -19,13 +18,12 @@
     .metric-card {
         background: #ffffff;
         border: 1px solid #cbd5e1;
-        border-radius: 12px;
-        padding: 18px 20px;
+        border-radius: 10px;
+        padding: 16px 20px;
         height: 100%;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        position: relative;
     }
     .metric-card .card-label {
         font-size: 11px;
@@ -51,7 +49,7 @@
     .line-block {
         background: #ffffff;
         border: 1px solid #cbd5e1;
-        border-radius: 12px;
+        border-radius: 10px;
         overflow: hidden;
         margin-bottom: 24px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.03);
@@ -65,7 +63,7 @@
         align-items: center;
     }
     .line-header-title {
-        font-size: 14px;
+        font-size: 13.5px;
         font-weight: 800;
         color: #0f172a;
         margin: 0;
@@ -82,7 +80,7 @@
     .table-wos thead th {
         background: #f8fafc;
         color: #475569;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -106,7 +104,7 @@
     .shift-header-row td {
         background: #f1f5f9;
         font-weight: 800;
-        font-size: 10.5px;
+        font-size: 10px;
         text-transform: uppercase;
         color: #475569;
         padding: 8px 14px;
@@ -153,18 +151,18 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 12.5px;
+        font-size: 12px;
         font-weight: 800;
     }
     .line-footer-summary span b {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
+        font-size: 13.5px;
     }
 </style>
 
 <div class="wos-container mb-5">
 
-    {{-- 🔘 HEADER ATAS & KAMAR SWITCHER --}}
+    {{-- HEADER ATAS & KAMAR SWITCHER --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-3 border-bottom">
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
@@ -177,7 +175,7 @@
         </div>
 
         <div class="d-flex align-items-center flex-wrap gap-2 mt-3 mt-md-0">
-            {{-- Navigasi Switcher Kamar (Big vs Small Press) --}}
+            {{-- Switcher Kamar --}}
             <div class="btn-group mr-3 border bg-white rounded p-1">
                 <a href="{{ route('ppic.mps.index') }}" class="btn btn-sm btn-light font-weight-bold text-muted px-3">
                     <i class="fas fa-industry mr-1"></i> BIG PRESS
@@ -187,7 +185,7 @@
                 </a>
             </div>
 
-            {{-- Date Picker --}}
+            {{-- Filter Tanggal --}}
             <form action="{{ url('/planning/ppic/mps-small') }}" method="GET" class="d-flex align-items-center mr-2">
                 <input type="date" name="date" value="{{ $date }}" class="form-control form-control-sm font-weight-bold border" onchange="this.form.submit()" style="width: 140px;">
             </form>
@@ -202,7 +200,7 @@
         </div>
     </div>
 
-    {{-- 📊 4 KARTU KPI METRIC ATAS (PERSIS BIG PRESS) --}}
+    {{-- 4 KARTU METRIC KPI --}}
     <div class="row mb-4">
         <div class="col-md-3 mb-2">
             <div class="metric-card" style="border-top: 4px solid #2563eb;">
@@ -232,7 +230,7 @@
         </div>
     </div>
 
-    {{-- 📋 DAFTAR JADWAL PER LINE MESIN SMALL PRESS --}}
+    {{-- DAFTAR JADWAL PER MESIN SMALL PRESS --}}
     @forelse($groupedPlans as $lineCode => $plans)
     <div class="line-block">
         <div class="line-header">
@@ -377,15 +375,15 @@
                     <div class="modal-body p-4">
                         <div class="form-group mb-3">
                             <label class="small font-weight-bold">Target Shift 1 (Reguler + OT)</label>
-                            <input type="number" name="s1_plan_reg" class="form-control" value="{{ $p->s1_plan_reg }}">
+                            <input type="number" name="s1_plan_reg" class="form-control font-weight-bold" value="{{ $p->s1_plan_reg }}">
                         </div>
                         <div class="form-group mb-3">
                             <label class="small font-weight-bold">Target Shift 2 (Reguler + OT)</label>
-                            <input type="number" name="s2_plan_reg" class="form-control" value="{{ $p->s2_plan_reg }}">
+                            <input type="number" name="s2_plan_reg" class="form-control font-weight-bold" value="{{ $p->s2_plan_reg }}">
                         </div>
                         <div class="form-group mb-0">
                             <label class="small font-weight-bold">Kapasitas Mesin / Jam (PCS)</label>
-                            <input type="number" name="cap_per_hour" class="form-control" value="{{ $p->cap_per_hour }}">
+                            <input type="number" name="cap_per_hour" class="form-control font-weight-bold" value="{{ $p->cap_per_hour }}">
                         </div>
                     </div>
                     <div class="modal-footer bg-light">
@@ -399,16 +397,16 @@
     @endforeach
 
     @empty
-    <div class="card border p-5 text-center bg-white shadow-sm" style="border-radius: 12px;">
+    <div class="card border p-5 text-center bg-white shadow-sm" style="border-radius: 10px;">
         <i class="fas fa-calendar-times text-muted fa-3x mb-3"></i>
         <h6 class="font-weight-bold text-dark">Belum Ada Jadwal Small Press</h6>
-        <p class="text-muted small">Klik tombol <b>Register Plan</b> di pojok kanan atas untuk menambahkan antrean Small Press pada tanggal {{ date('d F Y', strtotime($date)) }}.</p>
+        <p class="text-muted small">Klik tombol <b>Register Plan</b> di pojok kanan atas untuk mendaftarkan antrean Small Press pada tanggal {{ date('d F Y', strtotime($date)) }}.</p>
     </div>
     @endforelse
 
 </div>
 
-{{-- 🛡️ MODAL REGISTER PLAN (KHUSUS SMALL PRESS) --}}
+{{-- MODAL REGISTER PLAN (DENGAN AUTO-FILTER DROPDOWN PART SESUAI CUSTOMER) --}}
 <div class="modal fade" id="registerPlanSmallModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -423,7 +421,7 @@
                     <div class="row">
                         <div class="col-md-6 form-group">
                             <label class="small font-weight-bold">Line Mesin (Small Press Only)</label>
-                            <select name="line_code" class="form-control" required>
+                            <select name="line_code" class="form-control font-weight-bold" required>
                                 @foreach($availableLines as $l)
                                     <option value="{{ $l->kode_Line }}">{{ $l->kode_Line }} - {{ $l->nama_Line }}</option>
                                 @endforeach
@@ -431,7 +429,8 @@
                         </div>
                         <div class="col-md-6 form-group">
                             <label class="small font-weight-bold">Customer Entity</label>
-                            <select name="customer_code" class="form-control" required>
+                            <select name="customer_code" id="customer_select" class="form-control font-weight-bold" required onchange="filterPartsByCustomer(this.value)">
+                                <option value="">-- PILIH CUSTOMER --</option>
                                 @foreach($availableCustomers as $c)
                                     <option value="{{ $c->code }}">{{ $c->name }} ({{ $c->code }})</option>
                                 @endforeach
@@ -440,24 +439,51 @@
                     </div>
 
                     <div class="row">
+                        {{-- Dropdown Part Number Utama Terfilter Otomatis --}}
                         <div class="col-md-6 form-group">
-                            <label class="small font-weight-bold">Part Number Utama</label>
-                            <input type="text" name="part_no" class="form-control text-uppercase" placeholder="Contoh: 61635-BZ050" required>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small font-weight-bold m-0">Part Number Utama</label>
+                                <a href="javascript:void(0)" onclick="toggleManualInput('part_no')" class="text-primary font-weight-bold" style="font-size: 10px; text-decoration: none;">
+                                    <i class="fas fa-keyboard mr-1"></i> Mode Ketik Manual
+                                </a>
+                            </div>
+                            <div id="part_no_select_wrap">
+                                <select name="part_no" id="part_no_select" class="form-control font-weight-bold" required>
+                                    <option value="">-- PILIH CUSTOMER TERLEBIH DAHULU --</option>
+                                </select>
+                            </div>
+                            <div id="part_no_manual_wrap" style="display: none;">
+                                <input type="text" id="part_no_manual" class="form-control text-uppercase font-weight-bold" placeholder="Ketik Part No manual...">
+                            </div>
                         </div>
+
+                        {{-- Dropdown Separating Part Terfilter Otomatis --}}
                         <div class="col-md-6 form-group">
-                            <label class="small font-weight-bold">Separating Part (Opsional)</label>
-                            <input type="text" name="part_no_separator" class="form-control text-uppercase" placeholder="Contoh: 61636-BZ050">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="small font-weight-bold m-0">Separating Part (Opsional)</label>
+                                <a href="javascript:void(0)" onclick="toggleManualInput('part_separator')" class="text-primary font-weight-bold" style="font-size: 10px; text-decoration: none;">
+                                    <i class="fas fa-keyboard mr-1"></i> Mode Ketik Manual
+                                </a>
+                            </div>
+                            <div id="part_separator_select_wrap">
+                                <select name="part_no_separator" id="part_separator_select" class="form-control font-weight-bold">
+                                    <option value="">-- TIDAK ADA / OPSIONAL --</option>
+                                </select>
+                            </div>
+                            <div id="part_separator_manual_wrap" style="display: none;">
+                                <input type="text" id="part_separator_manual" class="form-control text-uppercase font-weight-bold" placeholder="Ketik Part Separator manual...">
+                            </div>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6 form-group">
                             <label class="small font-weight-bold">Target Shift 1 (Reguler + OT)</label>
-                            <input type="number" name="s1_plan_reg" class="form-control" value="0" min="0">
+                            <input type="number" name="s1_plan_reg" class="form-control font-weight-bold" value="0" min="0">
                         </div>
                         <div class="col-md-6 form-group">
                             <label class="small font-weight-bold">Target Shift 2 (Reguler + OT)</label>
-                            <input type="number" name="s2_plan_reg" class="form-control" value="0" min="0">
+                            <input type="number" name="s2_plan_reg" class="form-control font-weight-bold" value="0" min="0">
                         </div>
                     </div>
 
@@ -482,10 +508,79 @@
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary btn-sm px-4">Deploy Jadwal</button>
+                    <button type="submit" class="btn btn-primary btn-sm px-4 font-weight-bold">Deploy Jadwal</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Data seluruh master parts yang dikirim dari controller
+    const allParts = @json($availableParts ?? []);
+
+    function filterPartsByCustomer(customerCode) {
+        const partSelect = document.getElementById('part_no_select');
+        const partSeparatorSelect = document.getElementById('part_separator_select');
+
+        // Reset isi dropdown
+        partSelect.innerHTML = '';
+        partSeparatorSelect.innerHTML = '<option value="">-- TIDAK ADA / OPSIONAL --</option>';
+
+        if (!customerCode) {
+            partSelect.innerHTML = '<option value="">-- PILIH CUSTOMER TERLEBIH DAHULU --</option>';
+            return;
+        }
+
+        const cleanCust = customerCode.trim().toUpperCase();
+
+        // Filter part milik customer yang dipilih
+        const filteredParts = allParts.filter(p => {
+            const pCust = (p.customer_code || '').trim().toUpperCase();
+            return pCust === cleanCust;
+        });
+
+        if (filteredParts.length === 0) {
+            partSelect.innerHTML = '<option value="">-- TIDAK ADA PART UNTUK CUSTOMER INI --</option>';
+        } else {
+            partSelect.innerHTML = '<option value="">-- PILIH PART NUMBER UTAMA --</option>';
+            filteredParts.forEach(p => {
+                const label = p.part_no + (p.part_name ? ' - ' + p.part_name : '');
+                
+                // Tambah ke Part Utama
+                const opt1 = document.createElement('option');
+                opt1.value = p.part_no;
+                opt1.textContent = label;
+                partSelect.appendChild(opt1);
+
+                // Tambah ke Separating Part
+                const opt2 = document.createElement('option');
+                opt2.value = p.part_no;
+                opt2.textContent = label;
+                partSeparatorSelect.appendChild(opt2);
+            });
+        }
+    }
+
+    // Toggle Mode Input (Dropdown vs Ketik Manual)
+    function toggleManualInput(field) {
+        const selectWrap = document.getElementById(field + '_select_wrap');
+        const manualWrap = document.getElementById(field + '_manual_wrap');
+        const selectEl = document.getElementById(field + '_select');
+        const manualEl = document.getElementById(field + '_manual');
+
+        if (manualWrap.style.display === 'none') {
+            manualWrap.style.display = 'block';
+            selectWrap.style.display = 'none';
+            selectEl.removeAttribute('name');
+            manualEl.setAttribute('name', field === 'part_separator' ? 'part_no_separator' : 'part_no');
+            manualEl.focus();
+        } else {
+            manualWrap.style.display = 'none';
+            selectWrap.style.display = 'block';
+            manualEl.removeAttribute('name');
+            selectEl.setAttribute('name', field === 'part_separator' ? 'part_no_separator' : 'part_no');
+        }
+    }
+</script>
 @endsection
