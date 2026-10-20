@@ -1523,4 +1523,143 @@ class PPICController extends Controller
 
         return view('PPIC.print_serah_terima_welding', compact('batches', 'date', 'line_code'));
     }
+
+    /**
+     * 5C. PRINT WOS KHUSUS SMALL PRESS
+     */
+    public function printWosSmall($date, $shift, $line_code)
+    {
+        $plansS1 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
+        $plansS2 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
+
+        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada jadwal Small Press di mesin ini untuk dicetak.');
+        }
+
+        $planIds = collect()->merge($plansS1)->merge($plansS2)->pluck('id')->unique()->toArray();
+        $batches = DB::table('produksi_batches')
+            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+            ->whereIn('produksi_batches.plan_id', $planIds)
+            ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
+            ->get();
+
+        $plansS1 = $plansS1->filter(function($plan) use ($batches) {
+            $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
+            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+        })->values();
+
+        $plansS2 = $plansS2->filter(function($plan) use ($batches) {
+            $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
+            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+        })->values();
+
+        return view('PPIC.print_wos_small', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
+    }
+
+    /**
+     * 6B. PRINT SURAT SERAH TERIMA MATERIAL (BPRM) KHUSUS SMALL PRESS
+     */
+    public function printSerahTerimaSmall($date, $shift, $line_code)
+    {
+        $planIds = DB::table('production_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', $line_code)
+            ->pluck('id');
+
+        $batchesRaw = DB::table('produksi_batches')
+            ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
+            ->whereIn('produksi_batches.plan_id', $planIds)
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
+            ->select('produksi_batches.*', 'parts.part_name', 'parts.customer_code as part_cust')
+            ->orderBy('produksi_batches.id', 'asc')
+            ->get();
+
+        if ($batchesRaw->isEmpty()) {
+            return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin Small Press ini.');
+        }
+
+        $allBatches = collect();
+
+        foreach ($batchesRaw as $batch) {
+            $isPair = strpos($batch->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($batch->no_produksi, '-M');
+            $subPartNo = null;
+            $subPartName = null;
+
+            if ($isPair) {
+                if (strpos($batch->keterangan, 'PAIR_MAIN:') === 0) {
+                    $subPartNo = str_replace('PAIR_MAIN:', '', $batch->keterangan);
+                } else {
+                    $timePrefix = substr($batch->no_produksi, 0, strrpos($batch->no_produksi, '-'));
+                    $subBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
+                    $subPartNo = $subBatch ? $subBatch->material_code : null;
+                }
+                if ($subPartNo) {
+                    $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
+                }
+            }
+
+            $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
+            $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
+
+            $coilsUsed = DB::table('rm_production_logs')
+                ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
+                ->where('rm_production_logs.no_produksi', $batch->no_produksi)
+                ->select(
+                    'rm_production_logs.pcs_used',
+                    'rm_production_logs.rm_stock_id',
+                    'rm_stocks.coil_id',
+                    'rm_stocks.spec',
+                    'rm_stocks.size',
+                    'rm_stocks.material_name',
+                    'rm_stocks.customer as stock_cust',
+                    'rm_stocks.no_surat_jalan as stock_sj'
+                )
+                ->orderBy('rm_production_logs.id', 'asc')
+                ->get();
+
+            if ($coilsUsed->isNotEmpty()) {
+                foreach ($coilsUsed as $c) {
+                    $item = clone $batch;
+                    $item->qty_ambil_pcs = $c->pcs_used;
+                    $item->coil_id = $c->coil_id;
+                    $item->spec = $c->spec;
+                    $item->size = $c->size;
+                    $item->material_name = $c->material_name;
+                    $item->customer_code = $batch->part_cust ?? $c->stock_cust ?? 'SAI';
+                    $item->display_part_no = $displayPartNo;
+                    $item->display_part_name = $displayPartName;
+
+                    if (!empty($c->stock_sj) && $c->stock_sj !== '-') {
+                        $item->no_surat_jalan = $c->stock_sj;
+                    } else {
+                        $incomingSj = DB::table('rm_incoming_logs')
+                            ->where('rm_stock_id', $c->rm_stock_id)
+                            ->where('source', 'supplier')
+                            ->orderBy('id', 'desc')
+                            ->value('no_produksi');
+                        $item->no_surat_jalan = $incomingSj ?? '-';
+                    }
+
+                    $allBatches->push($item);
+                }
+            } else {
+                $stockData = DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->first();
+                $item = clone $batch;
+                $item->coil_id = $stockData->coil_id ?? '-';
+                $item->spec = $stockData->spec ?? '-';
+                $item->size = $stockData->size ?? '-';
+                $item->customer_code = $batch->part_cust ?? $stockData->customer ?? 'SAI';
+                $item->display_part_no = $displayPartNo;
+                $item->display_part_name = $displayPartName;
+                $item->no_surat_jalan = $stockData->no_surat_jalan ?? '-';
+                $allBatches->push($item);
+            }
+        }
+
+        $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
+        $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
+        $batches = $allBatches;
+
+        return view('PPIC.print_serahterima_small', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
+    }
 }

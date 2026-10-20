@@ -173,6 +173,9 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
     Route::put('/delivery/update', [App\Http\Controllers\DeliveryController::class, 'update'])->name('delivery.update');
     Route::get('/planning/ppic/mps-small', [App\Http\Controllers\PPICController::class, 'mpsSmallIndex'])->name('ppic.mps.small');
     Route::match(['put', 'post'], '/planning/ppic/mps/wos/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWos'])->name('ppic.wos.update');
+    // Cetak Khusus Small Press (WOS & BPRM)
+Route::get('/planning/ppic/print-wos-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosSmall'])->name('ppic.print.wos.small');
+Route::get('/planning/ppic/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall'])->name('ppic.print.serahterima.small');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
