@@ -372,7 +372,7 @@
 </div>
 
 {{-- MODAL INPUT HASIL & REPORT PROBLEM --}}
-@foreach($activeProductions as$p)
+@foreach($activeProductions as $p)
 @php 
     $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; 
     $isMainPair = isset($p->is_separating) &&$p->is_separating;
@@ -582,7 +582,7 @@
                             <label>03. LINE MESIN</label>
                             <select name="mesin_id" class="input-tactical font-weight-bold" required>
                                 <option value="" disabled selected>-- SELECT --</option>
-                                @foreach($lines as$l) 
+                                @foreach($lines as $l) 
                                     <option value="{{ $l->id }}">{{ $l->kode_Line }} - {{$l->nama_Line }}</option> 
                                 @endforeach
                             </select>
@@ -593,7 +593,7 @@
                         <label>04. CUSTOMER ENTITY</label>
                         <select id="sel_customer" class="input-tactical font-weight-bold" required>
                             <option value="" disabled selected>-- SELECT CUSTOMER --</option>
-                            @foreach($customers as$c) 
+                            @foreach($customers as $c) 
                                 <option value="{{ trim($c->code) }}">{{ strtoupper($c->name) }} ({{ strtoupper($c->code) }})</option> 
                             @endforeach
                         </select>
