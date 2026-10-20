@@ -15,21 +15,14 @@ class ProduksiController extends Controller
      * - Memisahkan Area Big Press vs Small Press
      * - Membagi Operasional Shift 1 & Shift 2
      */
-    public function index(Request $request)
+   public function index()
     {
-        $area = $request->area ?? 'big'; // Default ke Big Press
-        $selectedShift = $request->shift ?? 'ALL';
-        $customerFilter = $request->customer;
-        $date = $request->date; // Tanggal operasional (opsional)
+        $customerFilter = request('customer');
 
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
-            ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
-            ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->select(
-                'produksi_batches.id as batch_id',
-                'produksi_batches.id',
                 'produksi_batches.no_produksi', 
                 'produksi_batches.shift',
                 'produksi_batches.material_code',
@@ -39,70 +32,34 @@ class ProduksiController extends Controller
                 'produksi_batches.created_at',
                 'produksi_batches.cavity',
                 'produksi_batches.qty_ambil_pcs', 
-                'produksi_batches.qty_hasil_ok',
-                'produksi_batches.qty_hasil_ng',
                 'rm_stocks.coil_id',
                 'rm_stocks.customer',
                 'rm_stocks.size',
                 'rm_stocks.spec',
                 'rm_stocks.material_name',
-                'parts.part_name',
-                'production_plans.customer_code as plan_customer',
                 DB::raw('COALESCE(line.kode_Line, "UNKNOWN") as kode_Line'),
-                DB::raw('GROUP_CONCAT(line.kode_Line SEPARATOR ", ") as line_names'),
-                DB::raw('SUM(produksi_batches.qty_ambil_pcs * produksi_batches.cavity) as total_qty_batch')
+                DB::raw('COALESCE(GROUP_CONCAT(line.kode_Line SEPARATOR ", "), line.kode_Line) as line_names'),
+                DB::raw('SUM(produksi_batches.qty_ambil_pcs * produksi_batches.cavity) as total_qty_batch'), 
+                DB::raw('MIN(produksi_batches.id) as batch_id')
             )
             ->where(function($q) {
                 $q->where('produksi_batches.status', 'PROSES')
                   ->orWhere('produksi_batches.status', 'PROBLEM')
                   ->orWhere('produksi_batches.qty_return', '>', 0);
             })
-            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S');
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
+            ->groupBy(
+                'no_produksi', 'shift', 'material_code', 'keterangan', 'status', 'qty_return',
+                'created_at', 'produksi_batches.cavity', 'produksi_batches.qty_ambil_pcs', 'coil_id', 'customer', 'size', 'spec', 'material_name', 'line.kode_Line'
+            );
 
-        // 🔘 1. Filter Area Workstation: Big Press vs Small Press
-        if ($area === 'small') {
-            $query->where(function($q) {
-                $q->where('line.kode_Line', 'LIKE', '%C%')
-                  ->orWhere('line.kode_Line', 'LIKE', '%SMALL%')
-                  ->orWhere('line.nama_Line', 'LIKE', '%SMALL%');
-            });
-        } else {
-            $query->where(function($q) {
-                $q->where(function($sub) {
-                    $sub->where('line.kode_Line', 'NOT LIKE', '%C%')
-                        ->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
-                })->orWhereNull('line.kode_Line');
-            });
-        }
-
-        // 🔘 2. Filter Shift (Shift 1 vs Shift 2)
-        if ($selectedShift === 'S1') {
-            $query->whereIn('produksi_batches.shift', ['Pagi', 'S1', 'Shift 1']);
-        } elseif ($selectedShift === 'S2') {
-            $query->whereIn('produksi_batches.shift', ['Malam', 'S2', 'Shift 2']);
-        }
-
-        // 🔘 3. Filter Customer Entity
         if ($customerFilter && $customerFilter !== 'ALL') {
-            $cleanCust = trim($customerFilter);
-            $query->where(function($q) use ($cleanCust) {
-                $q->where('rm_stocks.customer', $cleanCust)
-                  ->orWhere('production_plans.customer_code', $cleanCust);
-            });
+            $query->where('rm_stocks.customer', trim($customerFilter));
         }
 
-        // 🔘 4. Filter Tanggal (jika dipilih)
-        if ($date) {
-            $query->whereDate('produksi_batches.created_at', $date);
-        }
-
-        $activeProductionsRaw = $query->groupBy(
-            'produksi_batches.id', 'no_produksi', 'shift', 'material_code', 'keterangan', 'status', 'qty_return',
-            'created_at', 'produksi_batches.cavity', 'produksi_batches.qty_ambil_pcs', 'produksi_batches.qty_hasil_ok', 'produksi_batches.qty_hasil_ng',
-            'coil_id', 'customer', 'size', 'spec', 'material_name', 'parts.part_name', 'production_plans.customer_code', 'line.kode_Line'
-        )->orderBy('batch_id', 'desc')->get();
+        $activeProductionsRaw = $query->orderBy('batch_id', 'desc')->get();
         
-        // ✨ Deteksi Separating Part & Pengelompokan Shift Standar
+        // ✨ DETEKSI SEPARATING PART, KATEGORI WORKSTATION (BIG vs SMALL), & NORMALISASI SHIFT ✨
         $activeProductions = $activeProductionsRaw->map(function ($item) {
             $isMainPair = (strpos($item->keterangan, 'PAIR_MAIN:') === 0) || str_ends_with($item->no_produksi, '-M');
             $item->is_separating = $isMainPair;
@@ -125,20 +82,29 @@ class ProduksiController extends Controller
                 }
             }
 
-            $item->display_part = $item->paired_part ? ($item->material_code . ' & ' . $item->paired_part) : $item->material_code;
+            // 1. Identifikasi Workstation: Big Press vs Small Press
+            $lineCodeUpper = strtoupper($item->kode_Line ?? $item->line_names ?? '');
+            if (str_contains($lineCodeUpper, 'C') || str_contains($lineCodeUpper, 'SMALL')) {
+                $item->area_type = 'SMALL';
+                $item->area_label = 'SMALL PRESS';
+            } else {
+                $item->area_type = 'BIG';
+                $item->area_label = 'BIG PRESS';
+            }
 
-            // Normalisasi shift ke S1 & S2
-            $s = strtoupper(trim($item->shift));
-            $item->shift_group = (str_contains($s, '2') || str_contains($s, 'MALAM')) ? 'S2' : 'S1';
+            // 2. Identifikasi Shift Standar (Shift 1 vs Shift 2)
+            $shiftUpper = strtoupper(trim($item->shift ?? ''));
+            if (str_contains($shiftUpper, '2') || str_contains($shiftUpper, 'MALAM')) {
+                $item->shift_label = 'SHIFT 2 (MALAM)';
+                $item->shift_code = 'S2';
+            } else {
+                $item->shift_label = 'SHIFT 1 (PAGI)';
+                $item->shift_code = 'S1';
+            }
 
             return $item;
         });
         
-        // Grouping berdasarkan line mesin
-        $groupedLines = $activeProductions->groupBy(function($item) {
-            return $item->kode_Line ?? ($item->line_names ?? 'LINE-UNKNOWN');
-        });
-
         $materials = DB::table('rm_stocks')
             ->where('stock_pcs', '>', 0)
             ->select(
@@ -155,83 +121,7 @@ class ProduksiController extends Controller
         $customers = DB::table('customers')->get();
         $lines = DB::table('line')->get(); 
 
-        return view('Produksi.index', compact(
-            'activeProductions', 
-            'groupedLines',
-            'materials', 
-            'customers', 
-            'lines',
-            'area',
-            'selectedShift',
-            'customerFilter',
-            'date'
-        ));
-    }
-
-    public function productionStore(Request $request) { return $this->store($request); }
-
-    public function store(Request $request)
-    {
-        DB::beginTransaction();
-        try {
-            $no_produksi = 'PROD-' . date('Ymd-His');
-            $rmInfo = DB::table('rm_stocks')->where('id', $request->rm_stock_id)->first();
-            
-            if(!$rmInfo) throw new \Exception("Material Unit not found!");
-
-            $parts = $request->part_no;
-            if (!is_array($parts)) { $parts = [$parts]; }
-            
-            $primary_part = $parts[0] ?? $request->material_code;
-
-            $batchId = DB::table('produksi_batches')->insertGetId([
-                'no_produksi'   => $no_produksi,
-                'mesin_id'      => $request->mesin_id,
-                'rm_stock_id'   => $request->rm_stock_id,
-                'material_code' => $primary_part, 
-                'shift'         => $request->shift,
-                'qty_ambil_pcs' => $request->qty_ambil_pcs,
-                'cavity'        => $request->cavity ?? 1,
-                'status'        => 'PROSES',
-                'created_at'    => now(),
-                'updated_at'    => now()
-            ]);
-            
-            if (is_array($parts)) {
-                foreach ($parts as $index => $part_number) {
-                    if (!empty($part_number)) {
-                        DB::table('produksi_batch_parts')->insert([
-                            'batch_id'     => $batchId,
-                            'part_no'      => $part_number,
-                            'qty_hasil_ok' => 0,
-                            'qty_ng'       => 0,
-                            'created_at'   => now(),
-                            'updated_at'   => now()
-                        ]);
-                    }
-                }
-            }
-
-            // Pemotongan stok berbasis coil_id yang aman terhadap spasi
-            DB::table('rm_stocks')
-                ->whereRaw("REPLACE(coil_id, ' ', '') = ?", [str_replace(' ', '', $rmInfo->coil_id)])
-                ->decrement('stock_pcs', $request->qty_ambil_pcs);
-
-            DB::table('rm_production_logs')->insert([
-                'rm_stock_id'   => $request->rm_stock_id,
-                'material_code' => $primary_part,
-                'pcs_used'      => $request->qty_ambil_pcs, 
-                'no_produksi'   => $no_produksi,
-                'created_at'    => now(),
-                'updated_at'    => now()
-            ]);
-
-            DB::commit();
-            return redirect()->back()->with('success', 'Batch Produksi Multi-Part Dimulai!');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Gagal Start: ' . $e->getMessage());
-        }
+        return view('Produksi.index', compact('activeProductions', 'materials', 'customers', 'lines'));
     }
 
     public function storeResult(Request $request, $id) { return back(); }

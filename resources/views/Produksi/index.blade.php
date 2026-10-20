@@ -5,29 +5,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
-    /* 🍏 iOS INDUSTRIAL DESIGN SYSTEM */
     :root {
-        --ios-bg: #f2f4f8;
+        --ios-bg: #f4f6fa;
         --ios-card: #ffffff;
-        --ios-border: #e5e9f0;
+        --ios-border: #e2e8f0;
         --ios-blue: #007aff;
         --ios-blue-soft: rgba(0, 122, 255, 0.08);
         --ios-green: #34c759;
         --ios-green-soft: rgba(52, 199, 89, 0.12);
         --ios-red: #ff3b30;
         --ios-red-soft: rgba(255, 59, 48, 0.12);
-        --ios-orange: #ff9500;
-        --ios-orange-soft: rgba(255, 149, 0, 0.12);
-        --ios-dark: #1c1c1e;
-        --ios-muted: #8e8e93;
+        --ios-amber: #f59e0b;
+        --ios-amber-soft: rgba(245, 158, 11, 0.12);
+        --ios-purple: #6366f1;
+        --ios-purple-soft: rgba(99, 102, 241, 0.12);
+        --ios-dark: #0f172a;
+        --ios-muted: #64748b;
         --ios-spring: cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     body {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         background-color: var(--ios-bg);
-        color: #2c3e50;
-        -webkit-font-smoothing: antialiased;
+        color: #1e293b;
     }
 
     .main-terminal {
@@ -40,10 +40,9 @@
         border-radius: 9999px;
         font-weight: 700;
         font-size: 11.5px;
-        letter-spacing: 0.3px;
-        padding: 9px 20px;
+        padding: 8px 18px;
         border: none;
-        transition: transform 0.2s var(--ios-spring), box-shadow 0.2s ease, background-color 0.2s ease;
+        transition: transform 0.2s var(--ios-spring), box-shadow 0.2s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -61,7 +60,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
     }
     .hud-title {
         font-weight: 900;
@@ -84,7 +83,7 @@
     .tab-btn {
         background: var(--ios-bg);
         border: 1px solid transparent;
-        padding: 8px 18px;
+        padding: 7px 16px;
         border-radius: 9999px;
         color: var(--ios-muted);
         font-weight: 700;
@@ -93,14 +92,11 @@
         text-decoration: none !important;
         white-space: nowrap;
     }
-    .tab-btn:hover {
-        color: var(--ios-dark);
-        background: #e5e9f0;
-    }
+    .tab-btn:hover { color: var(--ios-dark); background: #e2e8f0; }
     .tab-btn.active {
         background: var(--ios-blue);
         color: #ffffff !important;
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.28);
+        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
     }
 
     /* 📋 MAIN TABLE SQUIRCLE CARD */
@@ -119,8 +115,8 @@
     }
     .table-industrial thead th {
         background: #f8fafc;
-        color: #64748b;
-        padding: 14px 22px;
+        color: var(--ios-muted);
+        padding: 14px 20px;
         font-size: 10px;
         text-transform: uppercase;
         font-weight: 800;
@@ -129,7 +125,7 @@
         border-bottom: 1px solid var(--ios-border);
     }
     .table-industrial tbody td {
-        padding: 16px 22px;
+        padding: 16px 20px;
         border-top: 1px solid #f1f5f9;
         font-size: 12.5px;
         vertical-align: middle;
@@ -138,7 +134,7 @@
         background-color: #fbfcfe;
     }
 
-    /* 🏷️ BADGES & TAGS */
+    /* 🏷️ BADGES & LABELS */
     .id-tag {
         font-family: 'JetBrains Mono', monospace;
         color: var(--ios-blue);
@@ -159,9 +155,19 @@
         align-items: center;
         gap: 4px;
     }
-    .badge-fg { background: var(--ios-green-soft); color: #059669; }
-    .badge-welding { background: var(--ios-orange-soft); color: #d97706; }
-    .badge-proses { background: var(--ios-blue-soft); color: var(--ios-blue); }
+    
+    /* Area Badges */
+    .badge-area-big { background: var(--ios-blue-soft); color: var(--ios-blue); border: 1px solid rgba(0, 122, 255, 0.2); }
+    .badge-area-small { background: var(--ios-amber-soft); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.25); }
+
+    /* Shift Badges */
+    .badge-shift-s1 { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .badge-shift-s2 { background: var(--ios-purple-soft); color: #4338ca; border: 1px solid #c7d2fe; }
+
+    /* Destination & Status */
+    .badge-fg { background: var(--ios-green-soft); color: #047857; }
+    .badge-welding { background: #fef3c7; color: #b45309; }
+    .badge-proses { background: #e0f2fe; color: #0369a1; }
     .badge-problem { background: var(--ios-red-soft); color: var(--ios-red); }
 
     /* 🛡️ MODAL STYLING */
@@ -202,7 +208,6 @@
         outline: none;
     }
 
-    /* 📊 PROGRESS BAR */
     .progress-lite {
         height: 10px;
         border-radius: 9999px;
@@ -251,7 +256,7 @@
     <div class="command-header">
         <div>
             <h1 class="hud-title">Terminal <span style="color: var(--ios-blue);">Line Control</span></h1>
-            <small class="text-muted font-weight-bold">Sistem Monitoring & Transmit Hasil Produksi Stamping</small>
+            <small class="text-muted font-weight-bold">Monitoring Terpadu Big Press & Small Press // Shift 1 & Shift 2</small>
         </div>
         <div class="d-flex align-items-center">
             <a href="{{ Route::has('produksi.history') ? route('produksi.history') : url('/produksi/history') }}" class="btn btn-light btn-spring border mr-2 shadow-sm">
@@ -263,7 +268,7 @@
         </div>
     </div>
 
-    {{-- SEGMENTED FILTER RAIL --}}
+    {{-- FILTER CUSTOMER NAV RAIL --}}
     <div class="nav-rail">
         <a href="{{ route('produksi.index') }}" class="tab-btn {{ !request('customer') ? 'active' : '' }}">ALL OPERATIONS</a>
         @foreach($customers as $cust)
@@ -273,18 +278,18 @@
         @endforeach
     </div>
 
-    {{-- MAIN TABLE --}}
+    {{-- MAIN TABLE TERPADU (BIG PRESS + SMALL PRESS) --}}
     <div class="table-container">
         <table class="table-industrial">
             <thead>
                 <tr>
-                    <th width="15%">Batch ID</th>
-                    <th width="28%">Identification</th>
-                    <th width="14%">Destination</th>
-                    <th width="12%">Production Line</th>
-                    <th width="11%" class="text-center">Total Jatah Pcs</th>
-                    <th width="8%" class="text-center">Status</th>
-                    <th width="12%" class="text-right">Action</th>
+                    <th width="14%">Batch ID</th>
+                    <th width="24%">Part Identification</th>
+                    <th width="15%">Workstation & Shift</th>
+                    <th width="13%">Destination</th>
+                    <th width="12%" class="text-right">Total Jatah</th>
+                    <th width="9%" class="text-center">Status</th>
+                    <th width="13%" class="text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -317,8 +322,26 @@
                         <small class="text-muted font-weight-bold">
                             {{ $p->coil_id ?? 'COIL' }} 
                             <span class="badge badge-light border ml-1 px-2 py-0" style="border-radius: 4px;">Cav: {{ $p->cavity ?? 1 }}</span>
+                            <span class="text-muted ml-1">• {{ $p->customer ?? 'CLIENT' }}</span>
                         </small>
                     </td>
+
+                    {{-- 🎯 INFORMASI WORKSTATION (BIG vs SMALL) & SHIFT (1 vs 2) --}}
+                    <td>
+                        <div class="d-flex flex-column gap-1">
+                            <div>
+                                <span class="badge-pill-ios {{ $p->area_type === 'SMALL' ? 'badge-area-small' : 'badge-area-big' }}">
+                                    {{ $p->area_type === 'SMALL' ? '⚙️' : '🏭' }} {{ $p->area_label }} ({{ $p->line_names ?? $p->kode_Line }})
+                                </span>
+                            </div>
+                            <div>
+                                <span class="badge-pill-ios {{ $p->shift_code === 'S1' ? 'badge-shift-s1' : 'badge-shift-s2' }}">
+                                    {{ $p->shift_code === 'S1' ? '☀️' : '🌙' }} {{ $p->shift_label }}
+                                </span>
+                            </div>
+                        </div>
+                    </td>
+
                     <td>
                         @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
                         @if(strtoupper($route) == 'WELDING') 
@@ -327,14 +350,14 @@
                             <span class="badge-pill-ios badge-fg">FINISHED GOOD</span> 
                         @endif
                     </td>
-                    <td><b class="text-primary font-family-jetbrains">{{ $p->line_names ?? $p->kode_Line }}</b></td>
                     
-                    <td class="text-center font-family-jetbrains font-weight-bold">
+                    <td class="text-right font-family-jetbrains font-weight-bold">
                         @if($p->qty_return > 0)
                             <span class="text-primary" style="font-size: 14px;">{{ number_format($p->qty_return) }}</span>
                             <div style="font-size: 8px; color: var(--ios-muted);">PCS REWORK</div>
                         @else
-                            {{ number_format($p->total_qty_batch) }}
+                            <span class="text-dark" style="font-size: 13px;">{{ number_format($p->total_qty_batch) }} <small class="text-muted">pcs</small></span><br>
+                            <small class="text-muted">({{ number_format($p->qty_ambil_pcs) }} lbr)</small>
                         @endif
                     </td>
 
@@ -362,7 +385,7 @@
                 <tr>
                     <td colspan="7" class="py-5 text-center text-muted">
                         <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
-                        <span class="font-weight-bold">-- SISTEM IDLE: TIDAK ADA BATCH BERJALAN --</span>
+                        <span class="font-weight-bold">-- SISTEM IDLE: TIDAK ADA BATCH AKTIF BERJALAN --</span>
                     </td>
                 </tr> 
                 @endforelse
@@ -377,6 +400,8 @@
     $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; 
     $isMainPair = isset($p->is_separating) &&$p->is_separating;
     $pairedPartCode = $isMainPair ? $p->paired_part : null;
+    
+    // Rute fleksibel (kebal error 500 RouteNotFoundException)
     $actionUrl = Route::has('produksi.update_result') 
         ? route('produksi.update_result', $p->batch_id) 
         : (Route::has('produksi.updateResult') ? route('produksi.updateResult', $p->batch_id) : url('/produksi/update-result/' . $p->batch_id));$problemUrl = Route::has('produksi.report_problem') 
@@ -394,7 +419,7 @@
                         <i class="fas fa-microchip text-success mr-2"></i> 
                         {{ $p->qty_return > 0 ? 'REWORK PROCESS' : 'FINISH BATCH' }}
                     </h6>
-                    <span class="small font-weight-bold text-muted font-family-jetbrains">Batch ID: [{{ $p->no_produksi }}]</span>
+                    <span class="small font-weight-bold text-muted font-family-jetbrains">Batch ID: [{{ $p->no_produksi }}] // {{$p->area_label }}</span>
                 </div>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
@@ -463,7 +488,7 @@
                                     @endforeach
                                 @else
                                     <div class="form-group">
-                                        <label class="text-success font-weight-bold">QTY HASIL OK</label>
+                                        <label class="text-success font-weight-bold">QTY HASIL OK (PCS)</label>
                                         <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical mb-3" required value="0">
                                     </div>
                                 @endif
@@ -677,7 +702,7 @@
     }
 
     $(document).ready(function() {
-        // ✨ PERHITUNGAN GAP & SINKRONISASI HASIL DENGAN BENAR ✨
+        // ✨ PERHITUNGAN GAP & SINKRONISASI HASIL BERSIH TANPA SYNTAX ERROR ✨
         $(document).on('input', '.calc-input, .calc-input-dual, .ng-qty-input', function() {
             let id = $(this).data('id');
             let target = parseInt($(`.target-val[data-id="${id}"]`).val()) || 0;
