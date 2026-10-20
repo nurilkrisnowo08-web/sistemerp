@@ -553,10 +553,10 @@ class RmController extends Controller
     }
 
     /**
-     * 9. PO SUPPLIER INDEX
+     * 9. PO SUPPLIER INDEX (OPERASIONAL AKTIF)
      */
     public function poSupplierIndex(Request $request) 
-    {
+    { 
         $selectedCustomer = $request->customer; 
         $posQuery = DB::table('supplier_pos')->whereIn('status', ['PENDING', 'PARTIAL']);
         if ($selectedCustomer && $selectedCustomer != 'ALL') { $posQuery->where('customer_code', trim($selectedCustomer)); }
@@ -569,10 +569,72 @@ class RmController extends Controller
     }
 
     /**
+     * 9B. PO SUPPLIER HISTORY (ARCHIVE VAULT - FIX ERROR 500 CALL TO UNDEFINED METHOD)
+     */
+    public function poSupplierHistory(Request $request)
+    {
+        $selectedCustomer = $request->customer ?? 'ALL';
+        $startDate = $request->start_date;
+        $endDate = $request->end_date;
+
+        $clients = DB::table('customers')->orderBy('name', 'asc')->get();
+
+        $posQuery = DB::table('supplier_pos');
+
+        if ($selectedCustomer && $selectedCustomer !== 'ALL') {
+            $posQuery->where('customer_code', trim($selectedCustomer));
+        }
+
+        if ($startDate && $endDate) {
+            $posQuery->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
+        } elseif ($startDate) {
+            $posQuery->whereDate('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $posQuery->whereDate('created_at', '<=', $endDate);
+        }
+
+        $pos = $posQuery->orderBy('updated_at', 'desc')->paginate(15);
+
+        foreach ($pos as $po) {
+            $po->items = DB::table('supplier_po_items')
+                ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
+                ->select(
+                    'supplier_po_items.*', 
+                    'mm.material_type', 
+                    'mm.material_type as spec_real', 
+                    'mm.customer_code as client_code', 
+                    'mm.thickness', 
+                    'mm.size'
+                )
+                ->where('supplier_po_id', $po->id)
+                ->get();
+        }
+
+        return view('Gudang.po_supplier_history', compact('pos', 'clients', 'selectedCustomer', 'startDate', 'endDate'));
+    }
+
+    /**
+     * 9C. PRINT PO SUPPLIER
+     */
+    public function printPo($id)
+    {
+        $po = DB::table('supplier_pos')->where('id', $id)->first();
+        if (!$po) return redirect()->back()->with('error', 'PO Supplier tidak ditemukan.');
+
+        $items = DB::table('supplier_po_items')
+            ->leftJoin('master_materials as mm', 'supplier_po_items.material_code', '=', 'mm.alias_code')
+            ->select('supplier_po_items.*', 'mm.material_type', 'mm.thickness', 'mm.size')
+            ->where('supplier_po_id', $id)
+            ->get();
+
+        return view('Gudang.print_po', compact('po', 'items'));
+    }
+
+    /**
      * 10. PO ARRIVAL STORE (AUTO-DETECT PART ASLI & CAVITY DARI RM_STOCKS + NO SURAT JALAN)
      */
     public function poArrivalStore(Request $request, $id) 
-    {
+    { 
         DB::beginTransaction();
         try {
             $po = DB::table('supplier_pos')->where('id', $id)->first();
