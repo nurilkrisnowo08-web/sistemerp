@@ -3,298 +3,392 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OFFICIAL_PURCHASE_ORDER_{{ $po->no_po_supplier }}</title>
+    <title>PO_{{ strtoupper(str_replace(['/', ' '], '_', $po->no_po_supplier)) }}_{{ date('Ymd', strtotime($po->created_at)) }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
-
         :root {
-            --corporate-blue: #001a41;
-            --border-color: #1e293b;
-            --soft-bg: #f8fafc;
+            --dark: #0f172a;
+            --slate: #475569;
+            --muted: #64748b;
+            --border-thick: #0f172a;
+            --border-thin: #cbd5e1;
+            --primary: #1d4ed8;
+            --stamp-blue: #1e40af;
         }
 
-        body { 
-            font-family: 'Inter', sans-serif; 
-            color: #000; 
-            margin: 0; 
-            padding: 0; 
-            background: #f1f5f9; 
+        * { box-sizing: border-box; }
+
+        @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', Arial, sans-serif;
+            font-size: 10px;
+            color: var(--dark);
+            margin: 0;
+            padding: 15px;
+            background: #ffffff;
             -webkit-print-color-adjust: exact;
-        }
-        
-        .document-page { 
-            width: 210mm; 
-            min-height: 297mm; 
-            margin: 20px auto; 
-            padding: 20mm; 
-            background: #fff;
-            position: relative; 
-            box-sizing: border-box; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            print-color-adjust: exact;
         }
 
-        /* Watermark Modern */
-        .document-page::before {
-            content: "ORIGINAL PROCUREMENT"; 
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            font-size: 60px;
-            font-weight: 800;
-            color: rgba(0,0,0,0.02);
-            transform: translate(-50%, -50%) rotate(-45deg);
-            z-index: 0;
-            pointer-events: none;
+        .po-print-wrapper {
+            max-width: 100%;
+            margin: 0 auto;
         }
 
-        /* Header Construction */
-        .header { 
-            display: flex; 
+        /* 🔘 SCREEN TOOLBAR (TIDAK DICETAK) */
+        .no-print-bar {
+            display: flex;
             justify-content: space-between;
-            align-items: center; 
-            border-bottom: 3.5px solid var(--corporate-blue); 
-            padding-bottom: 20px; 
-            margin-bottom: 25px; 
+            align-items: center;
+            background: #f8fafc;
+            padding: 10px 18px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #cbd5e1;
         }
-
-        .logo-section { display: flex; align-items: center; }
-        .logo-section img { 
-            height: 65px; 
-            width: auto;
-            margin-right: 20px;
-        }
-        
-        .company-identity h1 { margin: 0; font-size: 20px; font-weight: 800; color: var(--corporate-blue); letter-spacing: -0.5px; }
-        .company-identity p { margin: 2px 0; font-size: 10px; color: #475569; line-height: 1.4; font-weight: 600; }
-
-        .document-title-box { text-align: right; }
-        .document-title-box h2 { margin: 0; font-size: 24px; font-weight: 800; color: #cbd5e1; text-transform: uppercase; line-height: 1; }
-        .po-number-badge { 
-            font-family: 'JetBrains Mono', monospace; 
-            font-size: 12px; 
-            font-weight: 700; 
-            background: var(--corporate-blue); 
-            color: #fff; 
-            padding: 6px 14px; 
-            margin-top: 10px; 
-            display: inline-block;
-            border-radius: 4px;
-        }
-
-        /* Registry Info Section */
-        .registry-container { 
-            display: flex; 
-            margin-bottom: 30px; 
-            gap: 20px;
-        }
-        
-        .registry-card { 
-            flex: 1;
-            border: 1.5px solid var(--border-color); 
-            padding: 15px; 
+        .btn-screen {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            padding: 8px 18px;
             border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-decoration: none !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
+        .btn-close { background: #64748b; color: #fff; }
+        .btn-print { background: #0f172a; color: #fff; }
 
-        .data-label { font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 5px; display: block; }
-        .data-value { font-size: 13px; font-weight: 700; color: #000; }
-        .data-value.project { color: #e11d48; font-size: 14px; }
-
-        .opening-statement { 
-            font-size: 12px; 
-            line-height: 1.6; 
-            margin-bottom: 20px; 
-            color: #1e293b;
+        /* 🏛️ INDUSTRIAL COMPANY HEADER */
+        .doc-header {
+            display: table;
+            width: 100%;
+            border-bottom: 3.5px solid var(--border-thick);
+            padding-bottom: 10px;
+            margin-bottom: 14px;
         }
+        .header-col { display: table-cell; vertical-align: middle; }
+        
+        .company-identity { width: 45%; }
+        .company-identity h2 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: 0.5px; }
+        .company-identity p { margin: 3px 0 0; font-size: 9px; color: var(--muted); font-weight: 600; line-height: 1.3; }
 
-        /* Industrial Table */
-        .procurement-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; z-index: 1; position: relative; }
-        .procurement-table th { 
-            background: #f8fafc; 
-            border: 1.5px solid var(--border-color); 
-            padding: 12px 10px; 
-            font-size: 10px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
+        .report-title-box { width: 30%; text-align: center; }
+        .report-title-box h1 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase; }
+        .report-title-box span { font-size: 11px; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace; display: block; margin-top: 2px; }
+
+        .doc-meta { width: 25%; text-align: right; font-size: 9px; line-height: 1.45; }
+        .doc-meta b { color: var(--dark); font-weight: 800; }
+
+        /* 📦 PO INFO CARDS */
+        .info-grid {
+            display: table;
+            width: 100%;
+            margin-bottom: 14px;
+        }
+        .info-box-left, .info-box-right {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            border: 1px solid var(--border-thin);
+            padding: 10px 12px;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        .info-box-right {
+            border-left: none;
+        }
+        .info-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 4px;
+            font-size: 9.5px;
+        }
+        .info-row:last-child { margin-bottom: 0; }
+        .info-label { display: table-cell; width: 34%; font-weight: 800; text-transform: uppercase; color: var(--muted); font-size: 8.5px; }
+        .info-colon { display: table-cell; width: 4%; font-weight: 800; color: var(--muted); }
+        .info-value { display: table-cell; width: 62%; font-weight: 700; color: var(--dark); }
+
+        /* 📋 TABLE PO ITEMS */
+        table.po-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid var(--border-thick);
+            margin-bottom: 12px;
+        }
+        table.po-table th {
+            border: 1px solid var(--border-thick);
+            padding: 7px 6px;
+            font-size: 8.5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            background: #f1f5f9 !important;
             text-align: center;
         }
-        .procurement-table td { 
-            border: 1.5px solid var(--border-color); 
-            padding: 15px 12px; 
-            font-size: 12px; 
-            vertical-align: top; 
+        table.po-table td {
+            border: 1px solid var(--border-thin);
+            padding: 7px 8px;
+            vertical-align: middle;
+            font-size: 10px;
         }
 
-        .item-code { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; color: var(--corporate-blue); }
-        .item-spec { font-size: 10px; color: #64748b; margin-top: 5px; font-weight: 600; line-height: 1.4; }
-        
-        /* ✨ Component Details Section ✨ */
-        .parts-registry { 
-            margin-top: 12px; 
-            background: var(--soft-bg); 
-            border: 1px solid #e2e8f0; 
-            padding: 10px; 
-            border-radius: 6px; 
-        }
-        .parts-registry-title { 
-            font-size: 9px; 
-            font-weight: 800; 
-            color: #475569; 
-            text-transform: uppercase; 
-            display: block; 
-            margin-bottom: 6px; 
-            border-bottom: 1px solid #cbd5e1;
-            padding-bottom: 3px;
-        }
-        .part-entry { font-size: 10px; font-weight: 700; color: #1e293b; margin-bottom: 3px; display: block; }
-        .part-entry span { font-weight: 500; color: #64748b; font-family: 'Inter'; }
+        .text-center { text-align: center !important; }
+        .text-right { text-align: right !important; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        .qty-column { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 16px; text-align: center; vertical-align: middle !important; }
-
-        /* Legal Notice */
-        .legal-notice { 
-            border: 1px solid #e2e8f0; 
-            padding: 15px; 
-            background: #f8fafc; 
-            font-size: 10px; 
-            margin-bottom: 40px; 
-            border-radius: 8px; 
+        /* 📝 SYARAT & KETENTUAN */
+        .terms-box {
+            border: 1px solid var(--border-thin);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            background: #fcfcfc;
+            font-size: 8.5px;
+            line-height: 1.45;
         }
-        .legal-notice b { color: var(--corporate-blue); display: block; margin-bottom: 6px; text-transform: uppercase; }
-        .legal-notice ol { margin: 0; padding-left: 18px; color: #475569; }
+        .terms-box b { text-transform: uppercase; color: var(--dark); }
+        .terms-box ol { margin: 3px 0 0 16px; padding: 0; }
 
-        /* Authorization Section */
-        .auth-section { display: flex; justify-content: space-between; margin-top: 30px; }
-        .auth-box { width: 220px; text-align: center; }
-        .auth-signature-space { height: 75px; border-bottom: 1.5px solid var(--border-color); margin-bottom: 10px; }
-        .auth-name { font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 2px; }
-        .auth-role { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; }
-
-        .document-footer { 
-            position: absolute; 
-            bottom: 10mm; 
-            left: 0; 
-            width: 100%; 
-            text-align: center; 
-            font-size: 9px; 
-            color: #94a3b8; 
-            font-weight: 600;
+        /* ✍️ SIGNATURE BOXES & STEMPEL */
+        .doc-footer {
+            display: table;
+            width: 100%;
+            page-break-inside: avoid;
+            margin-top: 10px;
         }
+        .sig-col {
+            display: table-cell;
+            width: 25%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 4px;
+        }
+        .sig-box {
+            border: 1px solid var(--border-thin);
+            background: #ffffff;
+            border-radius: 6px;
+            padding: 6px;
+            position: relative;
+            height: 95px;
+        }
+        .sig-title { font-size: 8px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 50px; }
+        .sig-name { font-size: 8.5px; font-weight: 800; text-transform: uppercase; border-top: 1px solid var(--border-thick); padding-top: 3px; }
+
+        .stamp-wrapper {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-8deg);
+            width: 70px;
+            height: 70px;
+            border: 2px dashed var(--stamp-blue);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--stamp-blue);
+            opacity: 0.82;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.4);
+        }
+        .stamp-top { font-size: 4.5px; font-weight: 900; text-transform: uppercase; }
+        .stamp-mid { font-size: 7px; font-weight: 900; border-top: 1px solid var(--stamp-blue); border-bottom: 1px solid var(--stamp-blue); padding: 1px 0; margin: 1px 0; width: 85%; }
+        .stamp-bot { font-size: 5px; font-weight: 800; text-transform: uppercase; }
 
         @media print {
-            body { background: #fff; }
-            .document-page { margin: 0; border: none; box-shadow: none; width: 100%; padding: 10mm; }
-            .no-print { display: none; }
+            .no-print { display: none !important; }
+            body { padding: 0; margin: 0; }
         }
     </style>
 </head>
 <body>
 
-    <div class="document-page">
-        <div class="header">
-            <div class="logo-section">
-                <img src="{{ asset('admin/img/Logo-asalta.png') }}" alt="PT ASALTA LOGO">
-                <div class="company-identity">
-                    <h1>PT. ASALTA MANDIRI AGUNG</h1>
-                    <p>Industrial Excellence & Supply Chain Management</p>
-                    <p>Kawasan Industri KIIC, Lot C-7, Karawang, Jawa Barat 41361</p>
-                    <p>P: (0267) 889-1234 | E: procurement.registry@asalta.co.id</p>
-                </div>
-            </div>
-            <div class="document-title-box">
-                <h2>Purchase Order</h2>
-                <div class="po-number-badge">{{ $po->no_po_supplier }}</div>
-            </div>
+    {{-- TOOLBAR ATAS (HANYA MUNCUL DI LAYAR MONITOR) --}}
+    <div class="no-print no-print-bar">
+        <div>
+            <b>PURCHASE ORDER PREVIEW</b> — Dokumen Pemesanan Bahan Baku Supplier
         </div>
-
-        <div class="registry-container">
-            <div class="registry-card">
-                <span class="data-label">Vendor / Supply Partner:</span>
-                <div class="data-value">{{ strtoupper($po->supplier_name) }}</div>
-                <div style="font-size: 9px; color: #64748b; margin-top: 4px; font-weight: 600;">Industrial Supply Chain Verified Entity</div>
-            </div>
-            <div class="registry-card" style="max-width: 250px;">
-                <span class="data-label">Project Identification:</span>
-                <div class="data-value project">{{ $po->items->first()->project_name ?? 'GENERAL PROCUREMENT' }}</div>
-                
-                <span class="data-label" style="margin-top: 12px;">Emission Date:</span>
-                <div class="data-value">{{ date('d M Y', strtotime($po->created_at)) }}</div>
-            </div>
-        </div>
-
-        <div class="opening-statement">
-            Berdasarkan instruksi kebutuhan material produksi PT. ASALTA MANDIRI AGUNG, dokumen ini diterbitkan sebagai perintah kerja pengadaan material. Seluruh rincian teknis dan komponen assignment yang tercantum bersifat mengikat:
-        </div>
-
-        <table class="procurement-table">
-            <thead>
-                <tr>
-                    <th width="40">Pos</th>
-                    <th>Nomenclature & Technical Specification</th>
-                    <th width="120">Net Quantity</th>
-                    <th width="80">UoM</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($po->items as $index => $item)
-                <tr>
-                    <td align="center" style="font-weight: 700; color: #64748b;">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</td>
-                    <td>
-                        <div class="item-code">{{ $item->alias_real ?? $item->material_code }}</div>
-                        <div class="item-spec">
-                            Material Type: {{ $item->material_type ?? 'RAW MATERIAL' }} <br>
-                            Dimension Geometry: <span style="color: #e11d48; font-weight: 800;">{{ $item->thickness ?? '0.0' }} X {{ $item->size ?? '0.0' }}</span>
-                        </div>
-
-                        @if(isset($item->target_parts) && $item->target_parts->count() > 0)
-                        <div class="parts-registry">
-                            <span class="parts-registry-title">Technical Assignment / Component Details:</span>
-                            @foreach($item->target_parts as $tp)
-                                <div class="part-entry">• {{ $tp->material_code }} <span>({{ $tp->material_name }})</span></div>
-                            @endforeach
-                        </div>
-                        @endif
-                    </td>
-                    <td class="qty-column">{{ number_format($item->qty_order) }}</td>
-                    <td align="center" style="font-weight: 700; color: #475569; vertical-align: middle;">PCS</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        <div class="legal-notice">
-            <b>Standard Procurement Terms & Conditions:</b>
-            <ol>
-                <li>Dokumen pengiriman (Surat Jalan) asli wajib mencantumkan Nomor PO resmi untuk verifikasi sistem.</li>
-                <li>Setiap unit material wajib melalui tahap inspeksi Quality Control pada Gate Integrated KIIC.</li>
-                <li>Operasional penerimaan logistik terjadwal pada pukul 08:00 - 16:00 WIB (Senin - Jumat).</li>
-                <li>Ketidaksesuaian spesifikasi atau dimensi akan mengakibatkan penolakan otomatis oleh sistem.</li>
-            </ol>
-        </div>
-
-        <div class="auth-section">
-            <div class="auth-box">
-                <span class="data-label">Ordered & Verified By,</span>
-                <div class="auth-signature-space"></div>
-                <div class="auth-name">Procurement Division</div>
-                <div class="auth-role">Purchasing Officer</div>
-            </div>
-            <div class="auth-box">
-                <span class="data-label">Validated & Approved By,</span>
-                <div class="auth-signature-space"></div>
-                <div class="auth-name">Operations Management</div>
-                <div class="auth-role">Director of Supply Chain</div>
-            </div>
-        </div>
-
-        <div class="document-footer">
-            PT. ASALTA MANDIRI AGUNG - INTEGRATED MANUFACTURING SYSTEM V2.0
+        <div>
+            <button class="btn-screen btn-close" onclick="window.close()">TUTUP</button>
+            <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK PO (A4)</button>
         </div>
     </div>
 
-    <div class="no-print" style="text-align: center; margin: 30px 0;">
-        <button onclick="window.print()" style="padding: 16px 60px; background: var(--corporate-blue); color: #fff; border: none; border-radius: 50px; font-weight: 800; cursor: pointer; font-size: 14px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);">
-            <i class="fas fa-print"></i> AUTHORIZE & PRINT DOCUMENT
-        </button>
+    <div class="po-print-wrapper">
+        {{-- KOP SURAT PERUSAHAAN --}}
+        <div class="doc-header">
+            <div class="header-col company-identity">
+                <h2>PT ASALTA MANDIRI AGUNG</h2>
+                <p>
+                    Plant: Kawasan Industri Mitra Karawang, Jawa Barat<br>
+                    Automotive Metal Stamping, Tooling & Sub-Assembly<br>
+                    Telp: (0267) 863-XXXX | Email: purchasing@asalta.co.id
+                </p>
+            </div>
+            <div class="header-col report-title-box">
+                <h1>PURCHASE ORDER</h1>
+                <span class="font-mono">{{ $po->no_po_supplier }}</span>
+            </div>
+            <div class="header-col doc-meta">
+                FORM NO : <b>AMA-PUR-PO-01</b><br>
+                PO DATE : <b>{{ date('d F Y', strtotime($po->created_at)) }}</b><br>
+                PRINTED : {{ date('d/m/Y H:i') }}
+            </div>
+        </div>
+
+        {{-- GRID DETAIL ENTITAS SUPPLIER & PROYEK --}}
+        <div class="info-grid">
+            <div class="info-box-left">
+                <div class="info-row">
+                    <span class="info-label">Vendor / Supplier</span>
+                    <span class="info-colon">:</span>
+                    <span class="info-value">{{ strtoupper($po->supplier_name) }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Customer Ref</span>
+                    <span class="info-colon">:</span>
+                    <span class="info-value font-mono font-weight-bold">{{ strtoupper($po->customer_code) }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Destination</span>
+                    <span class="info-colon">:</span>
+                    <span class="info-value">Gudang Raw Material (Plant Karawang)</span>
+                </div>
+            </div>
+            <div class="info-box-right">
+                <div class="info-row">
+                    <span class="info-label">Status Dokumen</span>
+                    <span class="info-colon">:</span>
+                    <span class="info-value">
+                        <b>{{ strtoupper($po->status) }}</b>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Payment Terms</span>
+                    <span class="info-colon">:</span>
+                    <span class="info-value">As Per Purchasing Agreement (30 Days)</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Delivery Note</span>
+                    <span class="info-colon">:</span>
+                    <span class="info-value font-weight-bold">Wajib Cantumkan No PO pada Surat Jalan</span>
+                </div>
+            </div>
+        </div>
+
+        {{-- TABEL ITEM SPESIFIKASI BAHAN BAKU --}}
+        <table class="po-table">
+            <thead>
+                <tr>
+                    <th width="5%">No</th>
+                    <th width="20%">Material / Alias Code</th>
+                    <th width="25%">Spesifikasi Material</th>
+                    <th width="20%">Ukuran (Thick x Size)</th>
+                    <th width="15%">Qty Pesanan (Lbr)</th>
+                    <th width="15%">Qty Diterima (Lbr)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php 
+                    $totalQuota = 0;
+                    $totalRec = 0;
+                @endphp
+
+                @forelse($items as $idx => $item)
+                @php 
+                    $totalQuota += $item->qty_order;
+                    $totalRec += ($item->qty_received ?? 0);
+                @endphp
+                <tr>
+                    <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
+                    <td class="font-mono font-weight-bold" style="color: var(--primary);">
+                        {{ $item->material_code }}
+                    </td>
+                    <td>
+                        <b>{{ $item->material_type ?? ($item->spec_real ?? '-') }}</b>
+                    </td>
+                    <td class="font-mono small">
+                        {{ $item->thickness ?? '' }} {{ !empty($item->thickness) && !empty($item->size) ? 'X' : '' }} {{ $item->size ?? '-' }}
+                    </td>
+                    <td class="text-right font-mono font-weight-bold">
+                        {{ number_format($item->qty_order) }}
+                    </td>
+                    <td class="text-right font-mono font-weight-bold" style="color: #047857;">
+                        {{ number_format($item->qty_received ?? 0) }}
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        <i>Tidak ada rincian material yang terdaftar pada Purchase Order ini.</i>
+                    </td>
+                </tr>
+                @endforelse
+
+                @if(count($items) > 0)
+                <tr style="background: #f8fafc; font-weight: 800;">
+                    <td colspan="4" class="text-right" style="padding-right: 12px; font-size: 9.5px;">TOTAL ALOKASI KUOTA MATERIAL:</td>
+                    <td class="text-right font-mono font-weight-bold" style="font-size: 11px;">{{ number_format($totalQuota) }}</td>
+                    <td class="text-right font-mono font-weight-bold" style="font-size: 11px; color: #047857;">{{ number_format($totalRec) }}</td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
+
+        {{-- CATATAN & SYARAT PENGIRIMAN --}}
+        <div class="terms-box">
+            <b>Syarat & Ketentuan Penerimaan Material:</b>
+            <ol>
+                <li>Surat Jalan dari Supplier <b>wajib mencantumkan No. Purchase Order (PO)</b> yang tertera di atas.</li>
+                <li>Setiap bundle / coil fisik wajib ditempel label identitas (Coil Tag ID, Spesifikasi, Dimensi, dan Qty Lembar).</li>
+                <li>Material yang dikirimkan harus bebas dari cacat fisik seperti karat (rust), gelombang (waviness), dan goresan (scratch).</li>
+                <li>Penerimaan barang hanya sah setelah diverifikasi dan ditandatangani oleh staf Warehouse RM & QC Inspector PT Asalta Mandiri Agung.</li>
+            </ol>
+        </div>
+
+        {{-- LEMBAR TANDA TANGAN & STEMPEL 4 PIHAK --}}
+        <div class="doc-footer">
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Dibuat Oleh (Purchasing)</div>
+                    <div class="stamp-wrapper">
+                        <span class="stamp-top">PT ASALTA MANDIRI AGUNG</span>
+                        <span class="stamp-mid">PURCHASING</span>
+                        <span class="stamp-bot">ISSUED</span>
+                    </div>
+                    <div class="sig-name">Purchasing Staff</div>
+                </div>
+            </div>
+
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Diperiksa (Warehouse RM)</div>
+                    <div class="sig-name">Head of Warehouse</div>
+                </div>
+            </div>
+
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Disetujui (Management)</div>
+                    <div class="sig-name">Plant / General Manager</div>
+                </div>
+            </div>
+
+            <div class="sig-col">
+                <div class="sig-box">
+                    <div class="sig-title">Konfirmasi Vendor / Supplier</div>
+                    <div class="sig-name">Ttd & Stempel Supplier</div>
+                </div>
+            </div>
+        </div>
     </div>
 
 </body>
