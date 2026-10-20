@@ -353,12 +353,12 @@
                 <i class="fas fa-microchip text-primary"></i> LINE MESIN: <b>{{ $lineCode }}</b>
             </h6>
             <div>
-                <a href="{{ url('/planning/ppic/print-wos/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
-                    <i class="fas fa-file-alt"></i> WOS
-                </a>
-                <a href="{{ url('/planning/ppic/print-serah-terima/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4;">
-                    <i class="fas fa-pallet"></i> BPRM
-                </a>
+                <a href="{{ url('/planning/ppic/print-wos-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
+                <i class="fas fa-file-alt"></i> WOS
+        </a>
+<a href="{{ url('/planning/ppic/print-serahterima-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4;">
+    <i class="fas fa-pallet"></i> BPRM
+</a>
             </div>
         </div>
 
