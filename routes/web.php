@@ -178,6 +178,7 @@ Route::get('/planning/ppic/print-wos-small/{date}/{shift}/{line_code}', [App\Htt
 Route::get('/planning/ppic/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall'])->name('ppic.print.serahterima.small');
 Route::post('/produksi/update-result/{id}', [App\Http\Controllers\ProduksiController::class, 'updateResult'])->name('produksi.updateResult');
 Route::get('/planning/ppic/check-rm-stock/{part_no}', [App\Http\Controllers\PPICController::class, 'checkRmStockAjax'])->name('ppic.checkRmStock');
+Route::get('/planning/ppic/check-wip-stock/{part_no}', [App\Http\Controllers\PPICController::class, 'checkWipStockAjax'])->name('ppic.checkWipStock');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');

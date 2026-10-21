@@ -1709,4 +1709,18 @@ class PPICController extends Controller
             'cavity' => $cavity
         ]);
     }
+    /**
+     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN)
+     * Mengecek ketersediaan stok WIP hasil stamping di tabel finished_goods
+     */
+    public function checkWipStockAjax($part_no)
+    {
+        $fg = DB::table('finished_goods')->where('part_no', trim($part_no))->first();
+        $wipStock = $fg ? (int)$fg->welding_stock : 0;
+
+        return response()->json([
+            'status' => 'success',
+            'wip_stock' => $wipStock
+        ]);
+    }
 }
