@@ -65,7 +65,6 @@ class DeliveryController extends Controller
         if (!$po) return redirect()->route('delivery.index')->with('error', 'PO Gak Ada atau Sudah Close!');
 
         foreach ($items as $item) {
-            // ✨ FIX: Tambahkan filter part_no agar tidak menjumlahkan part lain dalam PO yang sama
             $terkirim = DB::table('deliveries')
                 ->where('po_id', $item->id)
                 ->where('part_no', $item->part_no)
@@ -265,7 +264,7 @@ class DeliveryController extends Controller
        DB::beginTransaction();
        try {
            $no_sj = urldecode($request->no_sj);
-           $ada_revisi = false; // ✨ Flag untuk ngecek apa beneran ada angka yang diubah
+           $ada_revisi = false; 
            
            // Loop semua item (bisa satu atau banyak part dalam 1 SJ)
            foreach ($request->items as $delivery_id => $new_qty) {
@@ -279,7 +278,7 @@ class DeliveryController extends Controller
                $selisih = $old_qty - $new_qty; // Kalau minus berarti dia mau kirim LEBIH BANYAK dari sebelumnya
                
                if ($selisih != 0) {
-                   $ada_revisi = true; // ✨ Tandai kalau beneran ada perubahan angka
+                   $ada_revisi = true; 
 
                    // A. KALO REVISINYA JADI LEBIH KECIL (MENGEMBALIKAN KE GUDANG FG)
                    if ($selisih > 0) {
@@ -320,7 +319,6 @@ class DeliveryController extends Controller
                }
            }
 
-           // ✨ JIKA BENERAN ADA PERUBAHAN, NAIKKAN ANGKA REVISI SURAT JALAN INI DI DATABASE
            if ($ada_revisi) {
                DB::table('deliveries')->where('no_sj', $no_sj)->increment('revision_count');
            }
@@ -332,4 +330,109 @@ class DeliveryController extends Controller
            return redirect()->back()->with('error', $e->getMessage());
        }
    }
+
+    // ==============================================================================
+    // ✨✨✨ FUNGSI BARU: WOS DELIVERY LOGISTICS ✨✨✨
+    // ==============================================================================
+
+    /**
+     * WOS DELIVERY: TAMPILKAN TABEL WOS
+     */
+    public function wosIndex(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+        
+        $deliveries = DB::table('delivery_plans')
+            ->leftJoin('parts', 'delivery_plans.part_no', '=', 'parts.part_no')
+            ->select('delivery_plans.*', 'parts.part_name', 'parts.customer_code as part_cust')
+            ->whereDate('plan_date', $date)
+            ->orderBy('pulling_time', 'asc')
+            ->get();
+            
+        // Tarik Stock FG secara Real-time untuk ditampilkan di tabel
+        foreach($deliveries as $d) {
+            $d->stock_ready = DB::table('finished_goods')->where('part_no', $d->part_no)->value('actual_stock') ?? 0;
+            
+            $aktual_total = $d->act_delv_s1 + $d->act_delv_s2;
+            if ($d->total_delv > 0) {
+                $d->judge = ($aktual_total >= $d->total_delv) ? 'OK' : 'SHORTAGE';
+            } else {
+                $d->judge = '-';
+            }
+        }
+
+        // Ambil daftar Part yang ada di Gudang FG untuk dropdown
+        $parts = DB::table('finished_goods')
+            ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
+            ->select('finished_goods.part_no', 'parts.part_name', 'finished_goods.actual_stock', 'finished_goods.customer_code')
+            ->orderBy('finished_goods.part_no', 'asc')
+            ->get();
+
+        return view('Delivery.wos_index', compact('deliveries', 'date', 'parts'));
+    }
+
+    /**
+     * WOS DELIVERY: AJAX CEK STOK FG REAL-TIME DI MODAL
+     */
+    public function wosCheckStock($part_no)
+    {
+        $stock = DB::table('finished_goods')->where('part_no', $part_no)->value('actual_stock') ?? 0;
+        return response()->json(['status' => 'success', 'stock' => $stock]);
+    }
+
+    /**
+     * WOS DELIVERY: SIMPAN JADWAL BARU
+     */
+    public function wosStore(Request $request)
+    {
+        $blnc = (int) $request->blnc_delv;
+        $plan = (int) $request->plan_delv;
+        
+        DB::table('delivery_plans')->insert([
+            'plan_date'     => $request->plan_date,
+            'part_no'       => $request->part_no,
+            'customer_code' => $request->customer_code,
+            'pulling_time'  => $request->pulling_time,
+            'delv_time'     => $request->delv_time,
+            'blnc_delv'     => $blnc,
+            'plan_delv'     => $plan,
+            'total_delv'    => $blnc + $plan,
+            'created_at'    => now(),
+            'updated_at'    => now()
+        ]);
+
+        return back()->with('success', 'Jadwal WOS Delivery berhasil ditambahkan!');
+    }
+
+    /**
+     * WOS DELIVERY: UPDATE ACTUAL & AUTO POTONG STOK FG
+     */
+    public function wosUpdateActual(Request $request, $id)
+    {
+        $d = DB::table('delivery_plans')->where('id', $id)->first();
+        if(!$d) return back()->with('error', 'Data tidak ditemukan.');
+
+        $act_s1 = (int) $request->act_delv_s1;
+        $act_s2 = (int) $request->act_delv_s2;
+        $total_kirim_baru = $act_s1 + $act_s2;
+        $total_kirim_lama = $d->act_delv_s1 + $d->act_delv_s2;
+
+        // Logika Potong Stok FG (Hanya potong selisihnya agar tidak dobel)
+        $selisih_kirim = $total_kirim_baru - $total_kirim_lama;
+        if ($selisih_kirim > 0) {
+            DB::table('finished_goods')->where('part_no', $d->part_no)->decrement('actual_stock', $selisih_kirim);
+        } elseif ($selisih_kirim < 0) {
+            DB::table('finished_goods')->where('part_no', $d->part_no)->increment('actual_stock', abs($selisih_kirim));
+        }
+
+        DB::table('delivery_plans')->where('id', $id)->update([
+            'act_delv_s1' => $act_s1,
+            'act_delv_s2' => $act_s2,
+            'keterangan'  => $request->keterangan,
+            'status'      => 'COMPLETED',
+            'updated_at'  => now()
+        ]);
+
+        return back()->with('success', 'Aktual pengiriman berhasil diupdate dan Stok FG terpotong otomatis!');
+    }
 }

@@ -6,23 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up()
-{
-    Schema::table('rm_incoming_logs', function (Blueprint $table) {
-        $table->integer('po_id')->nullable()->after('rm_stock_id');
-    });
-}
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
     {
         Schema::table('rm_incoming_logs', function (Blueprint $table) {
-            //
+            // SAYA MATIKAN SEMENTARA KARENA KOLOM PO_ID SUDAH ADA DI DATABASE
+            // $table->integer('po_id')->nullable()->after('rm_stock_id');
         });
     }
-};
+
+    public function down()
+    {
+        Schema::table('rm_incoming_logs', function (Blueprint $table) {
+            $table->dropColumn('po_id');
+        });
+    }
+};;
