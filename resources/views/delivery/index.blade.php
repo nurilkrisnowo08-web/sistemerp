@@ -1,5 +1,25 @@
 @extends('layout.admin')
 
+{{-- TOMBOL AKSES CEPAT KE WOS DELIVERY --}}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="p-3 bg-white shadow-sm d-flex justify-content-between align-items-center" style="border-radius: 18px; border: 1px solid #e2e8f0;">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary text-white p-3 rounded-circle mr-3" style="width: 45px; height: 45px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-truck-loading"></i>
+                    </div>
+                    <div>
+                        <h6 class="font-weight-bold m-0 text-dark">MODUL WOS DELIVERY LOGISTICS</h6>
+                        <small class="text-muted font-weight-bold">Kelola jadwal pengiriman harian dengan integrasi stok Finished Goods real-time.</small>
+                    </div>
+                </div>
+                <a href="{{ route('delivery.wos.index') }}" class="btn btn-primary font-weight-bold px-4 py-2 rounded-pill shadow-sm">
+                    <i class="fas fa-external-link-alt mr-2"></i> BUKA WOS DELIVERY
+                </a>
+            </div>
+        </div>
+    </div>
+    
 @section('content')
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
