@@ -80,7 +80,7 @@
             left: 20px;
             width: 0px;
             height: 0px;
-            background: rgba(96, 165, 250, 0.15); /* Gelembung biru muda transparan */
+            background: rgba(96, 165, 250, 0.15); 
             border-radius: 50%;
             transform: translate(-50%, -50%);
             transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
@@ -106,7 +106,7 @@
         }
 
         .nav-item.active .nav-link::before {
-            display: none; /* Matikan gelembung kalau menu sedang aktif */
+            display: none; 
         }
 
         .sidebar-heading { 
@@ -139,7 +139,6 @@
             overflow: hidden;
         }
         
-        /* Indikator Titik (Dot Bubbly) */
         .collapse-item::before {
             content: '';
             position: absolute;
@@ -156,7 +155,7 @@
         .collapse-item:hover {
             background: rgba(255, 255, 255, 0.05) !important;
             color: #ffffff !important;
-            padding-left: 20px !important; /* Efek geser ke kanan */
+            padding-left: 20px !important; 
         }
 
         .collapse-item:hover::before {
@@ -214,7 +213,7 @@
 
             <li class="nav-item {{ Request::is('dashboard*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('dashboard') }}">
-                    <i class="fas fa-fw fa-tachometer-alt"></i><span>Dashboard Hub</span>
+                    <i class="fas fa-fw fa-tachometer-alt"><span>Dashboard Hub</span></i>
                 </a>
             </li>
 
@@ -318,20 +317,20 @@
                 <a class="nav-link" href="{{ route('quality.index') }}"><i class="fas fa-fw fa-shield-alt"></i><span>Quality Gate</span></a>
             </li>
 
-           @if(in_array($role, ['kepala_ppic', 'staff_ppic', 'admin']))
+            @if(in_array($role, ['kepala_ppic', 'staff_ppic', 'admin']))
             <div class="sidebar-heading">LOGISTICS</div>
             
-            {{-- ✨ KAMAR KHUSUS DELIVERY BARU ✨ --}}
+            {{-- ✨ KAMAR TERPISAH: DISPATCH PORTAL & DELIVERY WOS ✨ --}}
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseDeliveryHub">
                     <i class="fas fa-fw fa-truck-loading"></i><span>Delivery Hub</span>
                 </a>
-                <div id="collapseDeliveryHub" class="collapse {{ Request::is('delivery*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div id="collapseDeliveryHub" class="collapse {{ Request::is('delivery*') || Request::is('wos-delivery*') ? 'show' : '' }}" data-parent="#accordionSidebar">
                     <div class="collapse-inner">
-                        <a class="collapse-item {{ Request::is('delivery') || Request::is('delivery/history') ? 'active' : '' }}" href="{{ route('delivery.index') }}">
+                        <a class="collapse-item {{ Request::is('delivery*') && !Request::is('wos-delivery*') ? 'active' : '' }}" href="{{ route('delivery.index') }}">
                             <span>Dispatch Portal (PO)</span>
                         </a>
-                        <a class="collapse-item {{ Request::routeIs('delivery.wos.index') ? 'active' : '' }}" href="{{ route('delivery.wos.index') }}">
+                        <a class="collapse-item {{ Request::is('wos-delivery*') ? 'active' : '' }}" href="{{ route('delivery.wos.index') }}">
                             <span>Delivery WOS</span>
                         </a>
                     </div>

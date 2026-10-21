@@ -179,11 +179,11 @@ Route::get('/planning/ppic/print-serahterima-small/{date}/{shift}/{line_code}', 
 Route::post('/produksi/update-result/{id}', [App\Http\Controllers\ProduksiController::class, 'updateResult'])->name('produksi.updateResult');
 Route::get('/planning/ppic/check-rm-stock/{part_no}', [App\Http\Controllers\PPICController::class, 'checkRmStockAjax'])->name('ppic.checkRmStock');
 Route::get('/planning/ppic/check-wip-stock/{part_no}', [App\Http\Controllers\PPICController::class, 'checkWipStockAjax'])->name('ppic.checkWipStock');
-// WOS DELIVERY LOGISTICS
-Route::get('/delivery/wos', [App\Http\Controllers\DeliveryController::class, 'wosIndex'])->name('delivery.wos.index');
-Route::post('/delivery/wos', [App\Http\Controllers\DeliveryController::class, 'wosStore'])->name('delivery.wos.store');
-Route::put('/delivery/wos/{id}', [App\Http\Controllers\DeliveryController::class, 'wosUpdateActual'])->name('delivery.wos.updateActual');
-Route::get('/delivery/wos/check-stock/{part_no}', [App\Http\Controllers\DeliveryController::class, 'wosCheckStock'])->name('delivery.wos.checkStock');
+// ==================== WOS DELIVERY (KAMAR TERPISAH) ====================
+Route::get('/wos-delivery', [App\Http\Controllers\DeliveryController::class, 'wosIndex'])->name('delivery.wos.index');
+Route::post('/wos-delivery', [App\Http\Controllers\DeliveryController::class, 'wosStore'])->name('delivery.wos.store');
+Route::put('/wos-delivery/{id}', [App\Http\Controllers\DeliveryController::class, 'wosUpdateActual'])->name('delivery.wos.updateActual');
+Route::get('/wos-delivery/check-stock/{part_no}', [App\Http\Controllers\DeliveryController::class, 'wosCheckStock'])->name('delivery.wos.checkStock');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
