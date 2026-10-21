@@ -641,7 +641,6 @@
         $('input[name="s1_plan_reg"], input[name="s1_plan_ot"], input[name="s2_plan_reg"], input[name="s2_plan_ot"]').on('input', function() {
             let modal = $(this).closest('.modal'); // Fokus ke modal saat ini
             validateRmStock(modal);
-        });
-    });
+        });;
 </script>
 @endsection
