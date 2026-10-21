@@ -1662,4 +1662,51 @@ class PPICController extends Controller
 
         return view('PPIC.print_serahterima_small', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
     }
+    /**
+     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER PLAN)
+     */
+    public function checkRmStockAjax($part_no)
+    {
+        $cleanPart = trim($part_no);
+
+        // Ambil semua coil fisik yang terikat ke part ini
+        $mappedCoilIds = DB::table('rm_stocks')
+            ->where(function($q) use ($cleanPart) {
+                $q->where('material_code', $cleanPart)
+                  ->orWhere('material_name', $cleanPart)
+                  ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanPart)]);
+            })
+            ->pluck('coil_id')
+            ->unique();
+
+        $availableCoils = DB::table('rm_stocks')
+            ->whereIn('coil_id', $mappedCoilIds)
+            ->where('stock_pcs', '>', 0)
+            ->get()
+            ->unique('coil_id');
+
+        // Fallback spesifikasi material jika mapping spesifik kosong
+        if ($availableCoils->isEmpty()) {
+            $refStock = DB::table('rm_stocks')->where('material_code', $cleanPart)->first();
+            if ($refStock) {
+                $availableCoils = DB::table('rm_stocks')
+                    ->where('customer', trim($refStock->customer))
+                    ->where(DB::raw('TRIM(spec)'), trim($refStock->spec))
+                    ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $refStock->size))
+                    ->where('stock_pcs', '>', 0)
+                    ->get()
+                    ->unique('coil_id');
+            }
+        }
+
+        $totalStock = (int) $availableCoils->sum('stock_pcs');
+        $firstCoil = $availableCoils->first();
+        $cavity = $firstCoil && $firstCoil->cavity > 0 ? (int)$firstCoil->cavity : 1;
+
+        return response()->json([
+            'status' => 'success',
+            'total_stock' => $totalStock,
+            'cavity' => $cavity
+        ]);
+    }
 }

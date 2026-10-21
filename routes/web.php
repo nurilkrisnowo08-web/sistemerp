@@ -177,6 +177,7 @@ Route::middleware(['auth', 'role:kepala_ppic'])->group(function () {
 Route::get('/planning/ppic/print-wos-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosSmall'])->name('ppic.print.wos.small');
 Route::get('/planning/ppic/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall'])->name('ppic.print.serahterima.small');
 Route::post('/produksi/update-result/{id}', [App\Http\Controllers\ProduksiController::class, 'updateResult'])->name('produksi.updateResult');
+Route::get('/planning/ppic/check-rm-stock/{part_no}', [App\Http\Controllers\PPICController::class, 'checkRmStockAjax'])->name('ppic.checkRmStock');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');

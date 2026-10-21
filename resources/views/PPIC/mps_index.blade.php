@@ -558,4 +558,81 @@
         calculateLiveHours();
     });
 </script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        let currentRmStock = 0;
+        let currentCavity = 1;
+        
+        // 1. Buat kotak notifikasi secara dinamis tepat di atas tombol "AUTHORIZE & DEPLOY"
+        let submitBtn = $('button:contains("AUTHORIZE & DEPLOY")');
+        if(submitBtn.length === 0) {
+             submitBtn = $('button[type="submit"]'); // Fallback cari tombol submit
+        }
+        submitBtn.parent().prepend('<div id="rmValidationMsg" class="w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>');
+        
+        // 2. Fungsi inti kalkulasi Real-Time
+        function validateRmStock() {
+            let s1_reg = parseInt($('input[name="s1_plan_reg"]').val()) || 0;
+            let s1_ot = parseInt($('input[name="s1_plan_ot"]').val()) || 0;
+            let s2_reg = parseInt($('input[name="s2_plan_reg"]').val()) || 0;
+            let s2_ot = parseInt($('input[name="s2_plan_ot"]').val()) || 0;
+            
+            let totalPcs = s1_reg + s1_ot + s2_reg + s2_ot;
+            let requiredSheet = Math.ceil(totalPcs / currentCavity);
+            
+            let msgBox = $('#rmValidationMsg');
+            
+            if (totalPcs === 0) {
+                msgBox.html('<span class="text-muted font-weight-bold"><i class="fas fa-info-circle"></i> Input target qty untuk cek ketersediaan material.</span>');
+                submitBtn.prop('disabled', true);
+                return;
+            }
+            
+            if (requiredSheet > currentRmStock) {
+                // NOTIFIKASI JIKA STOK KURANG (TOMBOL MATI)
+                msgBox.html(`
+                    <div class="alert alert-danger p-2 m-0 border-0 shadow-sm animate__animated animate__headShake" style="border-radius:10px;">
+                        <b>❌ STOK RM TIDAK CUKUP!</b><br>
+                        Butuh: <b style="font-size:14px;">${requiredSheet}</b> Lembar | Tersedia: <b>${currentRmStock}</b> Lembar (Cav: ${currentCavity})
+                    </div>
+                `);
+                submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
+            } else {
+                // NOTIFIKASI JIKA STOK AMAN (TOMBOL AKTIF)
+                msgBox.html(`
+                    <div class="alert alert-success p-2 m-0 border-0 shadow-sm" style="border-radius:10px;">
+                        <b>✅ STOK RM AMAN!</b><br>
+                        Butuh: <b>${requiredSheet}</b> Lembar | Tersedia: <b>${currentRmStock}</b> Lembar (Cav: ${currentCavity})
+                    </div>
+                `);
+                submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
+            }
+        }
+        
+        // 3. Auto-Trigger saat nama Part dipilih di Dropdown
+        $('select[name="part_no"]').on('change', function() {
+            let partNo = $(this).val();
+            if (!partNo) return;
+            
+            $('#rmValidationMsg').html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Sedang mengecek stok di Gudang RM...</span>');
+            submitBtn.prop('disabled', true);
+            
+            $.get('/planning/ppic/check-rm-stock/' + encodeURIComponent(partNo), function(res) {
+                if (res.status === 'success') {
+                    currentRmStock = res.total_stock;
+                    currentCavity = res.cavity;
+                    validateRmStock(); // Panggil ulang untuk kalkulasi
+                }
+            }).fail(function() {
+                $('#rmValidationMsg').html('<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Gagal terhubung ke database gudang.</span>');
+            });
+        });
+        
+        // 4. Auto-Trigger saat angka mulai diketik
+        $('input[name="s1_plan_reg"], input[name="s1_plan_ot"], input[name="s2_plan_reg"], input[name="s2_plan_ot"]').on('input', function() {
+            validateRmStock();
+        });
+    });
+</script>
 @endsection
