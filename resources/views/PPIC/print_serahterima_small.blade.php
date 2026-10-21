@@ -2,29 +2,25 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>BPRM_SMALL_{{ strtoupper(str_replace(' ', '_', $line_code)) }}_{{ date('Ymd', strtotime($date)) }}</title>
+    <title>BPRM_{{ $line_code }}_{{ date('Ymd', strtotime($date)) }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --dark: #0f172a;
-            --slate: #475569;
-            --muted: #64748b;
-            --border-thick: #0f172a;
-            --border-thin: #94a3b8;
-            --stamp-blue: #1d4ed8;
-            --success-green: #047857;
+            --border-thick: #000000;
+            --border-thin: #334155;
+            --dark: #000000;
         }
 
         * { box-sizing: border-box; }
 
         @page {
-            size: A4 landscape;
-            margin: 7mm 9mm;
+            size: A4 portrait;
+            margin: 6mm 8mm;
         }
 
         body {
             font-family: 'Plus Jakarta Sans', Arial, sans-serif;
-            font-size: 9.5px;
+            font-size: 8.5px;
             color: var(--dark);
             margin: 0;
             padding: 10px;
@@ -33,134 +29,142 @@
             print-color-adjust: exact;
         }
 
-        .bprm-print-wrapper {
+        .bprm-wrapper {
             max-width: 100%;
             margin: 0 auto;
         }
 
+        /* 🔘 SCREEN TOOLBAR */
         .no-print-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #f8fafc;
-            padding: 10px 16px;
-            border-radius: 8px;
-            margin-bottom: 14px;
+            background: #f1f5f9;
+            padding: 8px 15px;
+            border-radius: 6px;
+            margin-bottom: 12px;
             border: 1px solid #cbd5e1;
         }
         .btn-screen {
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-weight: 700;
-            font-size: 11px;
-            padding: 7px 16px;
-            border-radius: 6px;
+            font-size: 10px;
+            padding: 6px 14px;
+            border-radius: 4px;
             border: none;
             cursor: pointer;
-            text-decoration: none !important;
         }
-        .btn-close { background: #64748b; color: #fff; }
-        .btn-print { background: #047857; color: #fff; }
+        .btn-back { background: #64748b; color: #fff; text-decoration: none; display: inline-block; }
+        .btn-print { background: #2563eb; color: #fff; }
 
-        .doc-header {
-            display: table;
+        /* 🏢 HEADER FORM BPRM */
+        .header-table {
             width: 100%;
-            border-bottom: 3.5px solid var(--border-thick);
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+            border-collapse: collapse;
+            margin-bottom: 5px;
         }
-        .header-col { display: table-cell; vertical-align: middle; }
-        
-        .company-identity { width: 35%; }
-        .company-identity h2 { margin: 0; font-size: 17px; font-weight: 900; letter-spacing: 0.5px; }
-        .company-identity p { margin: 2px 0 0; font-size: 8.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+        .header-table td {
+            vertical-align: middle;
+            padding: 2px 4px;
+        }
+        .logo-area { width: 25%; font-size: 9px; line-height: 1.2; font-weight: 800; }
+        .logo-area h3 { margin: 0; font-size: 13px; font-weight: 900; }
+        .title-area { width: 50%; text-align: center; }
+        .title-area h1 { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 0.5px; text-decoration: underline; }
+        .title-area h2 { margin: 2px 0 0; font-size: 12px; font-weight: 800; }
+        .meta-box-area { width: 25%; text-align: right; }
+        .meta-box-area table { border-collapse: collapse; float: right; font-size: 8px; font-weight: 800; }
+        .meta-box-area td { border: 1px solid var(--border-thick); padding: 3px 6px; }
 
-        .report-title-box { width: 40%; text-align: center; }
-        .report-title-box h1 { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: 1.2px; text-transform: uppercase; }
-        .report-title-box span { font-size: 10.5px; font-weight: 800; color: #047857; font-family: 'JetBrains Mono', monospace; display: block; margin-top: 2px; }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 9px;
+            margin: 6px 0 4px 0;
+            text-transform: uppercase;
+        }
 
-        .doc-meta { width: 25%; text-align: right; font-size: 8.5px; line-height: 1.4; font-weight: 600; }
-        .doc-meta b { color: var(--dark); font-weight: 800; }
-
+        /* 📋 TABEL UTAMA BPRM */
         table.bprm-table {
             width: 100%;
             border-collapse: collapse;
             border: 1.5px solid var(--border-thick);
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         table.bprm-table th {
             border: 1px solid var(--border-thick);
-            padding: 6px 4px;
-            font-size: 8.5px;
-            font-weight: 800;
+            padding: 5px 3px;
+            font-size: 7.5px;
+            font-weight: 900;
             text-transform: uppercase;
-            background: #f1f5f9 !important;
             text-align: center;
+            background: #f8fafc !important;
         }
         table.bprm-table td {
-            border: 1px solid var(--border-thin);
-            padding: 5px 6px;
+            border: 1px solid var(--border-thick);
+            padding: 4px 4px;
             vertical-align: middle;
-            font-size: 9.5px;
+            font-size: 8px;
+            font-weight: 700;
         }
 
+        .mono { font-family: 'JetBrains Mono', monospace; }
         .text-center { text-align: center !important; }
+        .text-left { text-align: left !important; }
         .text-right { text-align: right !important; }
-        .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        .shift-header-divider td {
-            background: #047857 !important;
-            color: #ffffff !important;
-            font-weight: 800;
-            font-size: 9.5px;
-            padding: 5px 10px;
-            letter-spacing: 0.5px;
+        .shift-badge {
+            background: #e2e8f0;
+            font-weight: 900;
+            font-size: 8.5px;
+            padding: 3px 6px;
+            text-transform: uppercase;
+            border-bottom: 1.5px solid var(--border-thick);
         }
 
-        .doc-footer {
-            display: table;
-            width: 100%;
-            margin-top: 10px;
+        /* ✍️ FOOTER: CATATAN & 4 KOTAK PENGESAHAN */
+        .footer-grid {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-top: 6px;
             page-break-inside: avoid;
         }
-        .sig-col {
-            display: table-cell;
-            width: 33.33%;
-            text-align: center;
-            vertical-align: top;
-            padding: 0 20px;
-        }
-        .sig-box {
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            border-radius: 6px;
+        .note-box {
+            width: 48%;
+            border: 1px solid var(--border-thick);
             padding: 6px;
-            position: relative;
-            height: 85px;
+            min-height: 70px;
+            font-weight: 700;
+            font-size: 8.5px;
         }
-        .sig-title { font-size: 8px; font-weight: 800; text-transform: uppercase; color: var(--muted); margin-bottom: 40px; }
-        .sig-name { font-size: 9px; font-weight: 800; text-transform: uppercase; border-top: 1px solid var(--border-thick); padding-top: 3px; }
-
-        .stamp-wrapper {
-            position: absolute;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%) rotate(-10deg);
-            width: 75px;
-            height: 75px;
-            border: 2px dashed var(--stamp-blue);
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--stamp-blue);
-            opacity: 0.85;
-            pointer-events: none;
-            background: rgba(255, 255, 255, 0.45);
+        .sign-table-wrapper {
+            width: 48%;
         }
-        .stamp-top { font-size: 5px; font-weight: 900; text-transform: uppercase; }
-        .stamp-mid { font-size: 7.5px; font-weight: 900; border-top: 1px solid var(--stamp-blue); border-bottom: 1px solid var(--stamp-blue); padding: 1px 0; margin: 1px 0; width: 85%; }
-        .stamp-bot { font-size: 5px; font-weight: 800; text-transform: uppercase; }
+        table.sign-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--border-thick);
+            text-align: center;
+        }
+        table.sign-table th {
+            border: 1px solid var(--border-thick);
+            padding: 4px;
+            font-size: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            background: #f8fafc;
+            width: 25%;
+        }
+        table.sign-table td {
+            border: 1px solid var(--border-thick);
+            height: 52px;
+            vertical-align: bottom;
+            padding-bottom: 2px;
+            font-size: 7.5px;
+            font-weight: 700;
+        }
 
         @media print {
             .no-print { display: none !important; }
@@ -170,166 +174,192 @@
 </head>
 <body>
 
+    {{-- Screen Toolbar --}}
     <div class="no-print no-print-bar">
+        <div><b>FORM CETAK BPRM (BUKTI PENYERAHAN RAW MATERIAL)</b> — Line: <b>{{ $line_code }}</b></div>
         <div>
-            <b>BPRM SMALL PRESS PREVIEW</b> — Bukti Penyerahan Raw Material Mesin Small Press
-        </div>
-        <div>
-            <button class="btn-screen btn-close" onclick="window.close()">TUTUP</button>
-            <button class="btn-screen btn-print ml-2" onclick="window.print()">🖨️ CETAK DOKUMEN (A4)</button>
+            <a href="javascript:history.back()" class="btn-screen btn-back">KEMBALI</a>
+            <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK FORMULIR</button>
         </div>
     </div>
 
-    <div class="bprm-print-wrapper">
-        <div class="doc-header">
-            <div class="header-col company-identity">
-                <h2>PT ASALTA MANDIRI AGUNG</h2>
-                <p>Warehouse & Raw Material Logistics Department</p>
-            </div>
-            <div class="header-col report-title-box">
-                <h1>BUKTI PENYERAHAN RAW MATERIAL (BPRM)</h1>
-                <span>LINE: {{ strtoupper($line_code) }} (SMALL PRESS) // DATE: {{ date('d F Y', strtotime($date)) }}</span>
-            </div>
-            <div class="header-col doc-meta">
-                FORM NO : <b>AMA-LOG-BPRM-SP01</b><br>
-                DESTINATION : <b>M/C {{ strtoupper($line_code) }}</b><br>
-                PRINTED AT : {{ date('d/m/Y H:i') }}
-            </div>
+    <div class="bprm-wrapper">
+        
+        {{-- Header Form --}}
+        <table class="header-table">
+            <tr>
+                <td class="logo-area">
+                    <h3>PT. Asalta Mandiri Agung</h3>
+                    <span>PLANT : Karawang</span><br>
+                    <span style="font-size: 7.5px; color: #475569;">Logistic & Delivery</span>
+                </td>
+                <td class="title-area">
+                    <h1>BUKTI PENYERAHAN RAW MATERIAL</h1>
+                    <h2>(BPRM)</h2>
+                </td>
+                <td class="meta-box-area">
+                    <table>
+                        <tr>
+                            <td>WOS NO :</td>
+                            <td class="mono" style="min-width: 60px;">{{ $batches->first()->no_produksi ?? '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td>BPRM NO :</td>
+                            <td class="mono" style="font-weight: 900; font-size: 10px;">{{ date('d/H', strtotime($date)) }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        {{-- Baris Info Hari/Tanggal & Mesin --}}
+        <div class="info-bar">
+            <div>MESIN / LINE : <b>{{ $line_code }}</b></div>
+            <div>HARI / TANGGAL : <b>{{ date('d-m-Y', strtotime($date)) }}</b></div>
         </div>
 
+        {{-- TABEL BPRM GABUNGAN SHIFT I & SHIFT II --}}
         <table class="bprm-table">
             <thead>
                 <tr>
-                    <th width="4%">No</th>
-                    <th width="14%">WOS Reference</th>
-                    <th width="16%">Part Destination</th>
-                    <th width="8%">Client</th>
-                    <th width="13%">Tag / Coil Number</th>
-                    <th width="15%">Material Spec & Size</th>
-                    <th width="12%">Surat Jalan Asal</th>
-                    <th width="8%">Take (Lbr)</th>
-                    <th width="10%">Paraf Terima</th>
+                    <th rowspan="2" width="20">No</th>
+                    <th rowspan="2" width="55">Customer</th>
+                    <th rowspan="2" width="90">Part Number</th>
+                    <th rowspan="2" width="130">Part Name</th>
+                    <th rowspan="2" width="85">No. SJ</th>
+                    <th rowspan="2" width="75">No. Coil</th>
+                    <th rowspan="2" width="80">Spec</th>
+                    <th rowspan="2" width="75">Size</th>
+                    <th colspan="2" width="75">Quantity</th>
+                    <th colspan="5" width="160">ACTUAL PRODUCTION</th>
+                    <th rowspan="2" width="60">REMARK</th>
+                </tr>
+                <tr>
+                    <th width="37">Sheet</th>
+                    <th width="38">Pcs</th>
+                    <th width="32">OK</th>
+                    <th width="32">WIP</th>
+                    <th width="32">NG</th>
+                    <th width="32">REPAIR</th>
+                    <th width="32">RETURN</th>
                 </tr>
             </thead>
             <tbody>
-                @php 
-                    $totalLbrS1 = 0;
-                    $totalLbrS2 = 0;
+                {{-- ==================== BAGIAN SHIFT I ==================== --}}
+                <tr>
+                    <td colspan="16" class="shift-badge">SHIFT I</td>
+                </tr>
+                @php $no1 = 1; @endphp
+                @forelse($batchesS1 as $b)
+                @php
+                    $cavity = $b->cavity > 0 ? $b->cavity : 1;
+                    $pcsTarget = $b->qty_ambil_pcs * $cavity;
                 @endphp
+                <tr>
+                    <td class="text-center">{{ $no1++ }}</td>
+                    <td class="text-center">{{ $b->customer_code ?? 'SAI' }}</td>
+                    <td class="mono text-left" style="font-size: 8px;">{{ $b->material_code }}</td>
+                    <td class="text-left" style="font-size: 7.5px;">{{ $b->part_name ?? $b->material_name ?? '-' }}</td>
+                    <td class="mono text-center" style="font-size: 8px;">{{ $b->no_surat_jalan ?? '-' }}</td>
+                    <td class="mono text-center">{{ $b->coil_id ?? '-' }}</td>
+                    <td class="text-center" style="font-size: 7.5px;">{{ $b->spec ?? '-' }}</td>
+                    <td class="mono text-center" style="font-size: 7.5px;">{{ $b->size ?? '-' }}</td>
+                    <td class="mono text-center">{{ number_format($b->qty_ambil_pcs) }}</td>
+                    <td class="mono text-center">{{ number_format($pcsTarget) }}</td>
+                    <td class="mono text-center font-weight-bold">{{ $b->qty_hasil_ok > 0 ? number_format($b->qty_hasil_ok) : '' }}</td>
+                    <td class="mono text-center"></td>
+                    <td class="mono text-center font-weight-bold" style="color: #b91c1c;">{{ $b->qty_hasil_ng > 0 ? number_format($b->qty_hasil_ng) : '' }}</td>
+                    <td class="mono text-center"></td>
+                    <td class="mono text-center">{{ $b->qty_return_warehouse > 0 ? number_format($b->qty_return_warehouse) : '' }}</td>
+                    <td class="text-center" style="font-size: 7px;">{{ $b->keterangan ?? '' }}</td>
+                </tr>
+                @empty
+                @for($i = 0; $i < 2; $i++)
+                <tr>
+                    <td class="text-center">{{ $no1++ }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+                @endfor
+                @endforelse
 
-                {{-- SHIFT 1 --}}
-                @if(isset($batchesS1) && count($batchesS1) > 0)
-                    <tr class="shift-header-divider">
-                        <td colspan="9">PENYERAHAN MATERIAL SHIFT 1 (PAGI)</td>
-                    </tr>
-                    @foreach($batchesS1 as $idx => $b)
-                    @php $totalLbrS1 += $b->qty_ambil_pcs; @endphp
-                    <tr>
-                        <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
-                        <td class="font-mono font-weight-bold text-center" style="color:#047857;">
-                            {{ $b->no_produksi }}
-                        </td>
-                        <td>
-                            <b class="font-mono">{{ $b->display_part_no ?? $b->material_code }}</b><br>
-                            <span style="font-size:8px; color:#475569;">{{ $b->display_part_name ?? $b->material_name }}</span>
-                        </td>
-                        <td class="text-center font-weight-bold">{{ $b->customer_code ?? 'SAI' }}</td>
-                        <td class="font-mono font-weight-bold text-center">
-                            🏷️ {{ $b->coil_id ?? '-' }}
-                        </td>
-                        <td class="font-mono small">
-                            <b>{{ $b->spec ?? '-' }}</b><br>
-                            <span>{{ $b->size ?? '-' }}</span>
-                        </td>
-                        <td class="font-mono text-center small text-muted">
-                            {{ $b->no_surat_jalan ?? '-' }}
-                        </td>
-                        <td class="text-right font-mono font-weight-bold" style="font-size:11px;">
-                            {{ number_format($b->qty_ambil_pcs) }}
-                        </td>
-                        <td class="text-center" style="border: 1px dashed #94a3b8;"></td>
-                    </tr>
-                    @endforeach
-                @endif
+                {{-- Menjaga Baris Tetap Rapi Minimal 4 Baris --}}
+                @for($i = $no1; $i <= 4; $i++)
+                <tr>
+                    <td class="text-center">{{ $i }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+                @endfor
 
-                {{-- SHIFT 2 --}}
-                @if(isset($batchesS2) && count($batchesS2) > 0)
-                    <tr class="shift-header-divider">
-                        <td colspan="9">PENYERAHAN MATERIAL SHIFT 2 (MALAM)</td>
-                    </tr>
-                    @foreach($batchesS2 as $idx => $b)
-                    @php $totalLbrS2 += $b->qty_ambil_pcs; @endphp
-                    <tr>
-                        <td class="text-center font-weight-bold">{{ $idx + 1 }}</td>
-                        <td class="font-mono font-weight-bold text-center" style="color:#047857;">
-                            {{ $b->no_produksi }}
-                        </td>
-                        <td>
-                            <b class="font-mono">{{ $b->display_part_no ?? $b->material_code }}</b><br>
-                            <span style="font-size:8px; color:#475569;">{{ $b->display_part_name ?? $b->material_name }}</span>
-                        </td>
-                        <td class="text-center font-weight-bold">{{ $b->customer_code ?? 'SAI' }}</td>
-                        <td class="font-mono font-weight-bold text-center">
-                            🏷️ {{ $b->coil_id ?? '-' }}
-                        </td>
-                        <td class="font-mono small">
-                            <b>{{ $b->spec ?? '-' }}</b><br>
-                            <span>{{ $b->size ?? '-' }}</span>
-                        </td>
-                        <td class="font-mono text-center small text-muted">
-                            {{ $b->no_surat_jalan ?? '-' }}
-                        </td>
-                        <td class="text-right font-mono font-weight-bold" style="font-size:11px;">
-                            {{ number_format($b->qty_ambil_pcs) }}
-                        </td>
-                        <td class="text-center" style="border: 1px dashed #94a3b8;"></td>
-                    </tr>
-                    @endforeach
-                @endif
+                {{-- ==================== BAGIAN SHIFT II ==================== --}}
+                <tr>
+                    <td colspan="16" class="shift-badge">SHIFT II</td>
+                </tr>
+                @php $no2 = 1; @endphp
+                @forelse($batchesS2 as $b)
+                @php
+                    $cavity = $b->cavity > 0 ? $b->cavity : 1;
+                    $pcsTarget = $b->qty_ambil_pcs * $cavity;
+                @endphp
+                <tr>
+                    <td class="text-center">{{ $no2++ }}</td>
+                    <td class="text-center">{{ $b->customer_code ?? 'SAI' }}</td>
+                    <td class="mono text-left" style="font-size: 8px;">{{ $b->material_code }}</td>
+                    <td class="text-left" style="font-size: 7.5px;">{{ $b->part_name ?? $b->material_name ?? '-' }}</td>
+                    <td class="mono text-center" style="font-size: 8px;">{{ $b->no_surat_jalan ?? '-' }}</td>
+                    <td class="mono text-center">{{ $b->coil_id ?? '-' }}</td>
+                    <td class="text-center" style="font-size: 7.5px;">{{ $b->spec ?? '-' }}</td>
+                    <td class="mono text-center" style="font-size: 7.5px;">{{ $b->size ?? '-' }}</td>
+                    <td class="mono text-center">{{ number_format($b->qty_ambil_pcs) }}</td>
+                    <td class="mono text-center">{{ number_format($pcsTarget) }}</td>
+                    <td class="mono text-center font-weight-bold">{{ $b->qty_hasil_ok > 0 ? number_format($b->qty_hasil_ok) : '' }}</td>
+                    <td class="mono text-center"></td>
+                    <td class="mono text-center font-weight-bold" style="color: #b91c1c;">{{ $b->qty_hasil_ng > 0 ? number_format($b->qty_hasil_ng) : '' }}</td>
+                    <td class="mono text-center"></td>
+                    <td class="mono text-center">{{ $b->qty_return_warehouse > 0 ? number_format($b->qty_return_warehouse) : '' }}</td>
+                    <td class="text-center" style="font-size: 7px;">{{ $b->keterangan ?? '' }}</td>
+                </tr>
+                @empty
+                @for($i = 0; $i < 2; $i++)
+                <tr>
+                    <td class="text-center">{{ $no2++ }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+                @endfor
+                @endforelse
 
-                @if((!isset($batchesS1) || count($batchesS1) == 0) && (!isset($batchesS2) || count($batchesS2) == 0))
-                    <tr>
-                        <td colspan="9" class="text-center py-4" style="color:#64748b; font-style:italic;">
-                            -- Tidak ada alokasi material untuk mesin Small Press ini pada tanggal {{ date('d F Y', strtotime($date)) }} --
-                        </td>
-                    </tr>
-                @else
-                    <tr style="background:#e2e8f0; font-weight:900;">
-                        <td colspan="7" class="text-right" style="padding-right:12px;">TOTAL LEMBAR MATERIAL DITRANSFER :</td>
-                        <td class="text-right font-mono" style="font-size:11.5px; color:#047857;">{{ number_format($totalLbrS1 + $totalLbrS2) }}</td>
-                        <td></td>
-                    </tr>
-                @endif
+                @for($i = $no2; $i <= 4; $i++)
+                <tr>
+                    <td class="text-center">{{ $i }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
+                @endfor
             </tbody>
         </table>
 
-        <div class="doc-footer">
-            <div class="sig-col">
-                <div class="sig-box">
-                    <div class="sig-title">Diserahkan Oleh (Warehouse RM)</div>
-                    <div class="stamp-wrapper">
-                        <span class="stamp-top">PT ASALTA MANDIRI AGUNG</span>
-                        <span class="stamp-mid">WAREHOUSE RM</span>
-                        <span class="stamp-bot">TRANSFERRED</span>
-                    </div>
-                    <div class="sig-name">Admin Gudang RM</div>
-                </div>
+        {{-- Footer: Catatan & 4 Kotak Tanda Tangan --}}
+        <div class="footer-grid">
+            <div class="note-box">
+                <b>Note :</b>
             </div>
 
-            <div class="sig-col">
-                <div class="sig-box">
-                    <div class="sig-title">Diterima Oleh (Small Press)</div>
-                    <div class="sig-name">Operator / Leader Press</div>
-                </div>
-            </div>
-
-            <div class="sig-col">
-                <div class="sig-box">
-                    <div class="sig-title">Divalidasi Oleh (PPIC)</div>
-                    <div class="sig-name">PPIC Supervisor</div>
-                </div>
+            <div class="sign-table-wrapper">
+                <table class="sign-table">
+                    <thead>
+                        <tr>
+                            <th>Disetujui</th>
+                            <th>Diperiksa</th>
+                            <th>Dibuat</th>
+                            <th>Diterima</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
+                            <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
+                            <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
+                            <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
+
     </div>
 
 </body>
