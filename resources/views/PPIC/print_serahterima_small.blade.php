@@ -178,7 +178,7 @@
     <div class="no-print no-print-bar">
         <div><b>FORM CETAK BPRM (BUKTI PENYERAHAN RAW MATERIAL)</b> — Line: <b>{{ $line_code }}</b></div>
         <div>
-            <a href="javascript:history.back()" class="btn-screen btn-back">KEMBALI</a>
+           <button class="btn-screen btn-close" onclick="window.length ? window.history.back() : window.close()">TUTUP / KEMBALI</button>
             <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK FORMULIR</button>
         </div>
     </div>
