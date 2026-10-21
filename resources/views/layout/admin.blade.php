@@ -318,7 +318,7 @@
                 <a class="nav-link" href="{{ route('quality.index') }}"><i class="fas fa-fw fa-shield-alt"></i><span>Quality Gate</span></a>
             </li>
 
-            @if(in_array($role, ['kepala_ppic', 'staff_ppic', 'admin']))
+           @if(in_array($role, ['kepala_ppic', 'staff_ppic', 'admin']))
             <div class="sidebar-heading">LOGISTICS</div>
             
             {{-- ✨ KAMAR KHUSUS DELIVERY BARU ✨ --}}
