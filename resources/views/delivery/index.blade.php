@@ -1,5 +1,6 @@
 @extends('layout.admin')
 
+@section('content')
 {{-- TOMBOL AKSES CEPAT KE WOS DELIVERY --}}
     <div class="row mb-4">
         <div class="col-12">
@@ -19,8 +20,6 @@
             </div>
         </div>
     </div>
-    
-@section('content')
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
