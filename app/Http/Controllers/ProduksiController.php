@@ -28,8 +28,7 @@ class ProduksiController extends Controller
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->select(
-                'produksi_batches.id as batch_id',
-                'produksi_batches.id',
+                DB::raw('MIN(produksi_batches.id) as batch_id'), // Menghindari error strict mode
                 'produksi_batches.no_produksi', 
                 'produksi_batches.shift',
                 'produksi_batches.material_code',
@@ -59,8 +58,25 @@ class ProduksiController extends Controller
             })
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
             ->groupBy(
-                'no_produksi', 'shift', 'material_code', 'keterangan', 'status', 'qty_return',
-                'created_at', 'produksi_batches.cavity', 'produksi_batches.qty_ambil_pcs', 'coil_id', 'customer', 'size', 'spec', 'material_name', 'line.kode_Line'
+                'produksi_batches.no_produksi', 
+                'produksi_batches.shift', 
+                'produksi_batches.material_code', 
+                'produksi_batches.keterangan', 
+                'produksi_batches.status', 
+                'produksi_batches.qty_return',
+                'produksi_batches.created_at', 
+                'produksi_batches.cavity', 
+                'produksi_batches.qty_ambil_pcs', 
+                'produksi_batches.qty_hasil_ok',
+                'produksi_batches.qty_hasil_ng',
+                'rm_stocks.coil_id', 
+                'rm_stocks.customer', 
+                'rm_stocks.size', 
+                'rm_stocks.spec', 
+                'rm_stocks.material_name', 
+                'parts.part_name',
+                'production_plans.customer_code',
+                'line.kode_Line'
             );
 
         if ($area === 'small') {
@@ -90,7 +106,7 @@ class ProduksiController extends Controller
             $query->whereDate('produksi_batches.created_at', $date);
         }
 
-        // ✨ PERBAIKAN: Diurutkan secara ASCENDING agar WOS pertama ada di urutan pertama ✨
+        // ✨ Diurutkan secara ASCENDING agar WOS pertama ada di urutan pertama ✨
         $activeProductionsRaw = $query->orderBy('batch_id', 'asc')->get();
         
         $activeProductions = $activeProductionsRaw->map(function ($item) {
@@ -241,7 +257,6 @@ class ProduksiController extends Controller
             $qty_ok_new = (int)$request->qty_hasil_ok; 
             $ng_parent_update = (int)$request->qty_hasil_ng; 
 
-            // ✨ PERBAIKAN: Tangkap input qty_hasil_ok dari anak part (Multi-part)
             if ($request->has('qty_hasil_ok_parts') && is_array($request->qty_hasil_ok_parts)) {
                 $max_ok = 0;
                 $max_ng = 0;
@@ -258,12 +273,10 @@ class ProduksiController extends Controller
                     if ($ok_val > $max_ok) $max_ok = $ok_val;
                     if ($ng_val > $max_ng) $max_ng = $ng_val;
                 }
-                // Ambil nilai terbesar jika parent kosong
                 if ($qty_ok_new == 0) $qty_ok_new = $max_ok;
                 if ($ng_parent_update == 0) $ng_parent_update = $max_ng;
             }
 
-            // ✨ PERBAIKAN: NG Tambahan (Spesifik) ditambahkan ke NG Induk, BUKAN ditimpa!
             $ng_details = [];
             if ($request->has('ng_detail_type') && is_array($request->ng_detail_type)) {
                 $total_ng_spesifik = 0;
