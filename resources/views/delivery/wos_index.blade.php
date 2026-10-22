@@ -176,7 +176,7 @@
                             <label class="font-weight-bold small text-muted">Pilih Customer</label>
                             <select id="filterCustomer" name="customer_code" class="form-control" required>
                                 <option value="" disabled selected>-- Pilih Customer --</option>
-                                @foreach($customers as $cust)
+                                @foreach($customers as$cust)
                                     <option value="{{ $cust }}">{{ $cust }}</option>
                                 @endforeach
                             </select>
@@ -187,12 +187,17 @@
                             <label class="font-weight-bold small text-muted">Pilih Part Number</label>
                             <select name="part_no" id="partSelect" class="form-control" disabled required>
                                 <option value="" disabled selected>-- Pilih Customer Terlebih Dahulu --</option>
-                                @foreach($parts as $p)
-                                    <option value="{{ $p->part_no }}" class="part-option" data-cust="{{ $p->customer_code }}">
-                                        {{ $p->part_no }} - {{$p->part_name }}
-                                    </option>
-                                @endforeach
+                                <!-- Data part akan ditarik ke sini oleh JavaScript -->
                             </select>
+                        </div>
+                        
+                        <!-- SIMPAN SEMUA OPTION PART SEBAGAI DATA TERSEMBUNYI -->
+                        <div id="hiddenPartOptions" style="display: none;">
+                            @foreach($parts as$p)
+                                <option value="{{ $p->part_no }}" class="part-option" data-cust="{{ $p->customer_code }}">
+                                    {{ $p->part_no }} - {{$p->part_name }}
+                                </option>
+                            @endforeach
                         </div>
                         
                         <!-- INFO STOK -->
@@ -215,11 +220,21 @@
                         <!-- QTY -->
                         <div class="col-md-6 form-group">
                             <label class="font-weight-bold small text-muted text-danger">Balance Delv (Hutang)</label>
-                            <input type="number" name="blnc_delv" id="blncInput" class="form-control calc-fg" placeholder="0" value="0">
+                            <input type="number" name="blnc_delv" id="blncInput" class="form-control" placeholder="0" value="0">
                         </div>
                         <div class="col-md-6 form-group">
                             <label class="font-weight-bold small text-muted text-success">Plan Delv</label>
-                            <input type="number" name="plan_delv" id="planInput" class="form-control calc-fg" placeholder="0" value="0">
+                            <input type="number" name="plan_delv" id="planInput" class="form-control" placeholder="0" value="0">
+                        </div>
+
+                        <!-- STATUS / KETERANGAN SAAT BUAT JADWAL -->
+                        <div class="col-md-12 form-group">
+                            <label class="font-weight-bold small text-muted">Status / Keterangan (Opsional)</label>
+                            <select name="keterangan" class="form-control">
+                                <option value="">- Kosong / Normal -</option>
+                                <option value="CLOSE">CLOSE (Jadwal Dibatalkan/Tutup)</option>
+                                <option value="Terkirim Sebagian">Terkirim Sebagian</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -233,23 +248,26 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-$(document).ready(function() {  // 1. Logika Dropdown Bertingkat (Customer -> Part)$('#filterCustomer').change(function() {
+$(document).ready(function() {
+    
+    // 1. Logika Dropdown Anti-Gagal (Menggunakan Metode Clone Array)
+    let allParts = $('#hiddenPartOptions option.part-option').clone();
+
+    $('#filterCustomer').change(function() {
         let selectedCust = $(this).val();
         let partDropdown = $('#partSelect');
         
-        // Buka kunci dropdown part
+        // Buka kunci dan kosongkan dropdown part
         partDropdown.prop('disabled', false);
-        partDropdown.val('');
+        partDropdown.empty().append('<option value="" disabled selected>-- Pilih Part Number --</option>');
         
-        // Sembunyikan semua part, lalu tampilkan yang sesuai customer
-        partDropdown.find('.part-option').hide();
-        partDropdown.find(`.part-option[data-cust="${selectedCust}"]`).show();
+        // Kembalikan hanya part yang sesuai customer (Ini dijamin jalan di semua browser)
+        allParts.filter(`[data-cust="${selectedCust}"]`).appendTo(partDropdown);
         
-        partDropdown.find('option:first').text('-- Pilih Part Number --').prop('selected', true);
         $('#fgStockMsg').html('<i class="fas fa-info-circle text-primary"></i> Pilih part untuk melihat info stok FG saat ini.');
     });
 
-    // 2. Cek Stok FG secara Realtime (Hanya info, tidak memblokir simpan)
+    // 2. Cek Stok FG secara Realtime
     $('#partSelect').change(function() {
         let partNo = $(this).val();$('#fgStockMsg').html('<span class="font-weight-bold text-primary"><i class="fas fa-spinner fa-spin"></i> Sedang mengecek gudang...</span>');
 
@@ -261,6 +279,14 @@ $(document).ready(function() {  // 1. Logika Dropdown Bertingkat (Customer -> Pa
         }).fail(function() {
             $('#fgStockMsg').html('<i class="fas fa-exclamation-triangle text-warning"></i> Gagal mengecek stok.');
         });
+    });
+
+    // 3. Pastikan hanya mengirim kode part (membuang nama part) ke backend
+    $('form').submit(function() {
+        let partVal = $('#partSelect').val();
+        if(partVal) {
+            $('#partSelect').val(partVal.split(' - ')[0].trim());
+        }
     });
 });
 </script>

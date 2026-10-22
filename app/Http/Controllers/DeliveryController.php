@@ -373,6 +373,9 @@ class DeliveryController extends Controller
     /**
      * WOS DELIVERY: SIMPAN JADWAL BARU
      */
+    /**
+     * WOS DELIVERY: SIMPAN JADWAL BARU
+     */
     public function wosStore(Request $request)
     {
         $blnc = (int) $request->blnc_delv;
@@ -387,6 +390,7 @@ class DeliveryController extends Controller
             'blnc_delv'     => $blnc,
             'plan_delv'     => $plan,
             'total_delv'    => $blnc + $plan,
+            'keterangan'    => $request->keterangan, // <-- INI TAMBAHANNYA
             'created_at'    => now(),
             'updated_at'    => now()
         ]);
