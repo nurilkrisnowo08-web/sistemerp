@@ -8,8 +8,8 @@
     .table-wos td { vertical-align: middle; color: #334155; font-weight: 600; font-size: 0.8rem; border-bottom: 1px solid #f1f5f9; padding: 0.85rem 0.75rem; }
     .btn-wos { background: #3b82f6; border: none; border-radius: 6px; font-weight: 600; padding: 0.5rem 1rem; color: white; transition: all 0.2s; }
     .btn-wos:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-    .btn-outline-aktual { border: 1px solid #3b82f6; color: #3b82f6; border-radius: 6px; font-weight: 700; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: transparent; transition: all 0.2s; }
-    .btn-outline-aktual:hover { background: #3b82f6; color: white; }
+    .btn-outline-aktual { border: 1px solid #f59e0b; color: #f59e0b; border-radius: 6px; font-weight: 700; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: transparent; transition: all 0.2s; }
+    .btn-outline-aktual:hover { background: #f59e0b; color: white; }
     .badge-short { background-color: #ef4444; color: white; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
     .badge-ok { background-color: #10b981; color: white; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
     .badge-close { background-color: #64748b; color: white; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
@@ -85,8 +85,8 @@
                                     {{ number_format($d->stock_ready) }}
                                 </td>
                                 
-                                <td class="font-weight-bold">{{ number_format($d->act_delv_s1) }}</td>
-                                <td class="font-weight-bold">{{ number_format($d->act_delv_s2) }}</td>
+                                <td class="font-weight-bold text-primary">{{ number_format($d->act_delv_s1) }}</td>
+                                <td class="font-weight-bold text-primary">{{ number_format($d->act_delv_s2) }}</td>
                                 
                                 <td>
                                     @if($d->judge == 'OK') <span class="badge-ok"><i class="fas fa-check"></i> OK</span>
@@ -97,23 +97,26 @@
                                 <td>{{ $d->keterangan ?: '-' }}</td>
                                 <td>
                                     <button class="btn-outline-aktual" data-toggle="modal" data-target="#modalUpdate{{ $d->id }}">
-                                        <i class="fas fa-edit"></i> AKTUAL
+                                        <i class="fas fa-tools"></i> REVISI
                                     </button>
                                 </td>
                             </tr>
 
-                            <!-- MODAL UPDATE ACTUAL -->
+                            <!-- MODAL REVISI ACTUAL -->
                             <div class="modal fade" id="modalUpdate{{ $d->id }}" tabindex="-1">
                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content" style="border-radius:12px; border:none;">
                                         <div class="modal-header border-bottom-0 pb-0">
-                                            <h6 class="modal-title font-weight-bold text-dark">Update Aktual: {{ $d->part_no }}</h6>
+                                            <h6 class="modal-title font-weight-bold text-dark"><i class="fas fa-tools text-warning mr-2"></i> Revisi WOS: {{ $d->part_no }}</h6>
                                             <button type="button" class="close" data-dismiss="modal">&times;</button>
                                         </div>
                                         <form action="{{ route('delivery.wos.updateActual', $d->id) }}" method="POST">
                                             @csrf
                                             @method('PUT')
                                             <div class="modal-body">
+                                                <div class="alert alert-info small p-2 mb-3" style="border-radius: 6px;">
+                                                    <i class="fas fa-info-circle mr-1"></i> Angka aktual terisi otomatis saat mencetak <b>Surat Jalan</b>. Gunakan form ini hanya jika butuh direvisi manual atau ubah status.
+                                                </div>
                                                 <div class="row">
                                                     <div class="col-md-6 form-group">
                                                         <label class="font-weight-bold small text-muted">Aktual Shift 1</label>
@@ -127,14 +130,14 @@
                                                 <div class="form-group mt-2">
                                                     <label class="font-weight-bold small text-muted">Status / Keterangan</label>
                                                     <select name="keterangan" class="form-control">
-                                                        <option value="" {{ $d->keterangan == '' ? 'selected' : '' }}>- Kosong -</option>
+                                                        <option value="" {{ $d->keterangan == '' ? 'selected' : '' }}>- Kosong / Normal -</option>
                                                         <option value="CLOSE" {{ strtoupper($d->keterangan) == 'CLOSE' ? 'selected' : '' }}>CLOSE (Tutup Jadwal)</option>
                                                         <option value="Terkirim Sebagian" {{ $d->keterangan == 'Terkirim Sebagian' ? 'selected' : '' }}>Terkirim Sebagian</option>
                                                     </select>
                                                 </div>
                                             </div>
                                             <div class="modal-footer border-top-0 pt-0">
-                                                <button type="submit" class="btn-wos w-100">SIMPAN AKTUAL</button>
+                                                <button type="submit" class="btn btn-warning w-100 font-weight-bold text-white" style="border-radius: 6px;">SIMPAN REVISI</button>
                                             </div>
                                         </form>
                                     </div>
