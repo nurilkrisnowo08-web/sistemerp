@@ -349,26 +349,35 @@ class DeliveryController extends Controller
             ->orderBy('pulling_time', 'asc')
             ->get();
             
-        // Tarik Stock FG secara Real-time untuk ditampilkan di tabel
         foreach($deliveries as $d) {
             $d->stock_ready = DB::table('finished_goods')->where('part_no', $d->part_no)->value('actual_stock') ?? 0;
             
             $aktual_total = $d->act_delv_s1 + $d->act_delv_s2;
-            if ($d->total_delv > 0) {
-                $d->judge = ($aktual_total >= $d->total_delv) ? 'OK' : 'SHORTAGE';
+            
+            // Logika Status CLOSE
+            if (strtoupper($d->keterangan) === 'CLOSE') {
+                $d->judge = 'CLOSE';
+                $d->total_delv_display = '-';
             } else {
-                $d->judge = '-';
+                $d->total_delv_display = number_format($d->total_delv);
+                if ($d->total_delv > 0) {
+                    $d->judge = ($aktual_total >= $d->total_delv) ? 'OK' : 'SHORT';
+                } else {
+                    $d->judge = '-';
+                }
             }
         }
 
-        // Ambil daftar Part yang ada di Gudang FG untuk dropdown
+        // Ambil daftar Part dan Customer unik untuk Dropdown Bertingkat
         $parts = DB::table('finished_goods')
             ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
             ->select('finished_goods.part_no', 'parts.part_name', 'finished_goods.actual_stock', 'finished_goods.customer_code')
             ->orderBy('finished_goods.part_no', 'asc')
             ->get();
 
-        return view('delivery.wos_index', compact('deliveries', 'date', 'parts'));
+        $customers = $parts->pluck('customer_code')->unique()->filter()->values();
+
+        return view('delivery.wos_index', compact('deliveries', 'date', 'parts', 'customers'));
     }
 
     /**
