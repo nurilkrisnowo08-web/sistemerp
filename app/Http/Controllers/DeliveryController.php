@@ -401,6 +401,9 @@ class DeliveryController extends Controller
     /**
      * WOS DELIVERY: UPDATE ACTUAL MANUAL
      */
+    /**
+     * WOS DELIVERY: UPDATE ACTUAL MANUAL & GANTI PART
+     */
     public function wosUpdateActual(Request $request, $id)
     {
         $d = DB::table('delivery_plans')->where('id', $id)->first();
@@ -411,14 +414,32 @@ class DeliveryController extends Controller
         $total_kirim_baru = $act_s1 + $act_s2;
         $total_kirim_lama = $d->act_delv_s1 + $d->act_delv_s2;
 
-        $selisih_kirim = $total_kirim_baru - $total_kirim_lama;
-        if ($selisih_kirim > 0) {
-            DB::table('finished_goods')->where('part_no', $d->part_no)->decrement('actual_stock', $selisih_kirim);
-        } elseif ($selisih_kirim < 0) {
-            DB::table('finished_goods')->where('part_no', $d->part_no)->increment('actual_stock', abs($selisih_kirim));
+        // Bersihkan input part baru jika ada nama part yang ikut
+        $new_part = $request->part_no ? trim(explode(' - ', urldecode($request->part_no))[0]) : $d->part_no;
+        $new_customer = $request->customer_code ?: $d->customer_code;
+
+        // JIKA PART DIGANTI: Kembalikan stok lama, potong stok baru
+        if ($new_part !== $d->part_no) {
+            if ($total_kirim_lama > 0) {
+                DB::table('finished_goods')->where('part_no', $d->part_no)->increment('actual_stock', $total_kirim_lama);
+            }
+            if ($total_kirim_baru > 0) {
+                DB::table('finished_goods')->where('part_no', $new_part)->decrement('actual_stock', $total_kirim_baru);
+            }
+        } 
+        // JIKA PART SAMA: Hanya sesuaikan selisih angkanya
+        else {
+            $selisih_kirim = $total_kirim_baru - $total_kirim_lama;
+            if ($selisih_kirim > 0) {
+                DB::table('finished_goods')->where('part_no', $d->part_no)->decrement('actual_stock', $selisih_kirim);
+            } elseif ($selisih_kirim < 0) {
+                DB::table('finished_goods')->where('part_no', $d->part_no)->increment('actual_stock', abs($selisih_kirim));
+            }
         }
 
         DB::table('delivery_plans')->where('id', $id)->update([
+            'customer_code' => $new_customer,
+            'part_no'     => $new_part,
             'act_delv_s1' => $act_s1,
             'act_delv_s2' => $act_s2,
             'keterangan'  => $request->keterangan,
@@ -426,6 +447,6 @@ class DeliveryController extends Controller
             'updated_at'  => now()
         ]);
 
-        return back()->with('success', 'Aktual pengiriman berhasil diupdate manual!');
+        return back()->with('success', 'Revisi berhasil! Aktual, Customer, dan Part Number telah diperbarui.');
     }
 }
