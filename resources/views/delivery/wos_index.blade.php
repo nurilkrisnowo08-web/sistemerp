@@ -180,7 +180,7 @@
                             <label class="font-weight-bold small text-muted">Pilih / Ketik Part Number</label>
                             <select name="part_no" id="partSelect" class="form-control" required>
                                 <option value="" disabled selected>-- Cari Part --</option>
-                                @foreach($parts as$p)
+                                @foreach($parts as $p)
                                     <option value="{{ $p->part_no }}" data-cust="{{ $p->customer_code }}">
                                         {{ $p->part_no }} - {{$p->part_name }}
                                     </option>
