@@ -63,7 +63,7 @@
             <tr>
                 <th>PULLING</th>
                 <th>DELV</th>
-                <th>BLNC</th>
+                <th>OUTSTANDING</th>
                 <th>PLAN</th>
                 <th>TOTAL</th>
                 <th>SHIFT 1</th>
