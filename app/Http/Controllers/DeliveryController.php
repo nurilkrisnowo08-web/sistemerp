@@ -24,7 +24,6 @@ class DeliveryController extends Controller
         $activePOs = [];
 
         foreach ($pos as $po) {
-            // Ambil semua ID yang berhubungan dengan nomor PO ini
             $poIds = DB::table('purchase_orders')
                 ->where('po_number', $po->po_number)
                 ->where('customer_code', $po->customer_code)
@@ -34,7 +33,6 @@ class DeliveryController extends Controller
                 ->whereIn('id', $poIds)
                 ->sum('quantity');
 
-            // Hitung total terkirim berdasarkan kumpulan ID PO tersebut
             $po->total_terkirim = DB::table('deliveries')
                 ->whereIn('po_id', $poIds) 
                 ->sum('qty_delivery');
@@ -78,7 +76,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * 3. PROSES SIMPAN & AUTO-PRINT
+     * 3. PROSES SIMPAN & AUTO-PRINT (DENGAN AUTO-SYNC AKTUAL WOS)
      */
     public function store(Request $request)
     {
@@ -89,10 +87,9 @@ class DeliveryController extends Controller
         DB::beginTransaction();
         try {
             foreach ($items as $part_no => $data) {
-                $qty_kirim = $data['qty_kirim'];
+                $qty_kirim = (int) $data['qty_kirim'];
 
                 if ($qty_kirim > 0) {
-                    // Cari ID spesifik untuk part ini di tabel PO
                     $po_item = DB::table('purchase_orders')
                         ->where('po_number', $po_number)
                         ->where('part_no', $part_no)
@@ -110,7 +107,7 @@ class DeliveryController extends Controller
                     // 1. Potong Stok FG
                     DB::table('finished_goods')->where('part_no', $part_no)->decrement('actual_stock', $qty_kirim);
 
-                    // 2. Simpan ke Deliveries menggunakan ID PO yang spesifik per Part
+                    // 2. Simpan ke Deliveries
                     DB::table('deliveries')->insert([
                         'po_id' => $po_item->id,
                         'no_sj' => $no_sj,
@@ -121,10 +118,9 @@ class DeliveryController extends Controller
                         'updated_at' => now()
                     ]);
 
-                    // 3. Update total_sent di tabel purchase_orders untuk baris part tersebut
+                    // 3. Update total_sent PO
                     DB::table('purchase_orders')->where('id', $po_item->id)->increment('total_sent', $qty_kirim);
 
-                    // 4. Cek status lunas per Part
                     $updated_po = DB::table('purchase_orders')->where('id', $po_item->id)->first();
                     if ($updated_po && $updated_po->total_sent >= $updated_po->quantity) {
                         DB::table('purchase_orders')->where('id', $po_item->id)->update([
@@ -132,12 +128,24 @@ class DeliveryController extends Controller
                             'updated_at' => now()
                         ]);
                     }
+
+                    // ✨ 4. LOGIKA AUTO-SYNC AKTUAL PENGIRIMAN KE WOS DELIVERY ✨
+                    $today = now()->format('Y-m-d');
+                    $current_time = now()->format('H:i');
+                    
+                    // Jika terbit SJ jam 19:00 ke bawah -> Masuk Shift 1. Di atas 19:00 -> Shift 2.
+                    $shift_field = ($current_time <= '19:00') ? 'act_delv_s1' : 'act_delv_s2';
+
+                    DB::table('delivery_plans')
+                        ->where('part_no', $part_no)
+                        ->whereDate('plan_date', $today)
+                        ->increment($shift_field, $qty_kirim);
                 }
             }
 
             DB::commit();
             return redirect()->route('delivery.print', $no_sj)
-                ->with('success', 'Surat Jalan ' . $no_sj . ' Berhasil Terbit!');
+                ->with('success', 'Surat Jalan ' . $no_sj . ' Berhasil Terbit & Aktual WOS otomatis terupdate!');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -181,10 +189,7 @@ class DeliveryController extends Controller
         }
 
         $sj = $items->first();
-
-        // Cari data PO berdasarkan po_id yang tersimpan di baris delivery
         $po = DB::table('purchase_orders')->where('id', $sj->po_id)->first();
-
         $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
 
         return view('delivery.print', compact('items', 'sj', 'po', 'no_sj', 'customer'));
@@ -196,7 +201,6 @@ class DeliveryController extends Controller
     public function printRekapPO($po_number)
     {
         $clean_po = urldecode($po_number);
-
         $poHeader = DB::table('purchase_orders')->where('po_number', $clean_po)->first();
         
         if (!$poHeader) return back()->with('error', 'Data PO tidak ditemukan!');
@@ -216,44 +220,32 @@ class DeliveryController extends Controller
      */
    public function printLabel($no_sj)
    {
-    // Gunakan urldecode karena No SJ sering mengandung karakter miring '/'
-    $clean_sj = urldecode($no_sj);
-    $items = DB::table('deliveries')->where('no_sj', $clean_sj)->get();
+       $clean_sj = urldecode($no_sj);
+       $items = DB::table('deliveries')->where('no_sj', $clean_sj)->get();
 
-    if ($items->isEmpty()) {
-        return redirect()->route('delivery.history')->with('error', 'Data SJ tidak ditemukan!');
-    }
+       if ($items->isEmpty()) {
+           return redirect()->route('delivery.history')->with('error', 'Data SJ tidak ditemukan!');
+       }
 
-    $sj = $items->first();
-    $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
+       $sj = $items->first();
+       $customer = DB::table('customers')->where('code', $sj->customer_code)->first();
 
-    foreach ($items as $item) {
-        // 1. Ambil Nama Part dari tabel parts
-        $p = DB::table('parts')->where('part_no', $item->part_no)->first();
-        $item->part_name = $p->part_name ?? 'N/A';
+       foreach ($items as $item) {
+           $p = DB::table('parts')->where('part_no', $item->part_no)->first();
+           $item->part_name = $p->part_name ?? 'N/A';
 
-        // 2. AMBIL BLANK SIZE DARI KAMUS RM (rm_stocks)
-        $m = DB::table('rm_stocks')->where('material_code', $item->part_no)->first();
-        
-        if ($m) {
-            $item->blank_size = $m->spec . ' [' . $m->size . ']';
-        } else {
-            $item->blank_size = '-';
-        }
+           $m = DB::table('rm_stocks')->where('material_code', $item->part_no)->first();
+           if ($m) {
+               $item->blank_size = $m->spec . ' [' . $m->size . ']';
+           } else {
+               $item->blank_size = '-';
+           }
 
-        // Di dalam foreach printLabel:
-    $qrText = "ITEM DETAIL\n" .
-            "Part: " . $item->part_no . "\n" .
-            "Name: " . $item->part_name . "\n" .
-            "Qty : " . number_format($item->qty_delivery) . " PCS\n" .
-            "Lot : " . date('ymd', strtotime($item->created_at)) . "\n" .
-            "SJ  : " . $clean_sj;
+           $qrText = "ITEM DETAIL\nPart: " . $item->part_no . "\nName: " . $item->part_name . "\nQty : " . number_format($item->qty_delivery) . " PCS\nLot : " . date('ymd', strtotime($item->created_at)) . "\nSJ  : " . $clean_sj;
+           $item->qr_content = rawurlencode($qrText);
+       }
 
-    // Gunakan rawurlencode rill!
-    $item->qr_content = rawurlencode($qrText);
-    }
-
-    return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));
+       return view('delivery.label', compact('items', 'sj', 'no_sj', 'customer'));
    }
 
    /**
@@ -266,48 +258,37 @@ class DeliveryController extends Controller
            $no_sj = urldecode($request->no_sj);
            $ada_revisi = false; 
            
-           // Loop semua item (bisa satu atau banyak part dalam 1 SJ)
            foreach ($request->items as $delivery_id => $new_qty) {
                $new_qty = (int)$new_qty;
                
-               // Ambil data historis pengiriman ini
                $delivery = DB::table('deliveries')->where('id', $delivery_id)->where('no_sj', $no_sj)->first();
                if (!$delivery) continue;
 
                $old_qty = (int)$delivery->qty_delivery;
-               $selisih = $old_qty - $new_qty; // Kalau minus berarti dia mau kirim LEBIH BANYAK dari sebelumnya
+               $selisih = $old_qty - $new_qty; 
                
                if ($selisih != 0) {
                    $ada_revisi = true; 
 
-                   // A. KALO REVISINYA JADI LEBIH KECIL (MENGEMBALIKAN KE GUDANG FG)
                    if ($selisih > 0) {
-                       // 1. Balikin barang ke FG Rak
                        DB::table('finished_goods')->where('part_no', $delivery->part_no)->increment('actual_stock', $selisih);
-                       // 2. Kurangi catatan 'total_sent' di tabel PO
                        DB::table('purchase_orders')->where('id', $delivery->po_id)->decrement('total_sent', $selisih);
-                   } 
-                   // B. KALO REVISINYA JADI LEBIH GEDE (AMBIL LAGI DARI GUDANG FG)
-                   else {
+                   } else {
                        $selisih_kurang = abs($selisih);
                        $fg = DB::table('finished_goods')->where('part_no', $delivery->part_no)->first();
                        
                        if (!$fg || $fg->actual_stock < $selisih_kurang) {
                            throw new \Exception("Gagal Revisi! Sisa Stok FG untuk " . $delivery->part_no . " di rak tidak cukup.");
                        }
-                       // 1. Potong stok FG lagi
                        DB::table('finished_goods')->where('part_no', $delivery->part_no)->decrement('actual_stock', $selisih_kurang);
-                       // 2. Tambah catatan 'total_sent' di tabel PO
                        DB::table('purchase_orders')->where('id', $delivery->po_id)->increment('total_sent', $selisih_kurang);
                    }
 
-                   // Update tabel deliveries dengan angka yang baru
                    DB::table('deliveries')->where('id', $delivery_id)->update([
                        'qty_delivery' => $new_qty,
                        'updated_at' => now()
                    ]);
 
-                   // Cek PO-nya, kalau gara2 revisi ini jadi "Belum Lunas", buka lagi statusnya ke READY
                    $po_item = DB::table('purchase_orders')->where('id', $delivery->po_id)->first();
                    if ($po_item) {
                        if ($po_item->total_sent < $po_item->quantity) {
@@ -354,7 +335,7 @@ class DeliveryController extends Controller
             
             $aktual_total = $d->act_delv_s1 + $d->act_delv_s2;
             
-            // Logika Status CLOSE
+            // Logika Keterangan CLOSE merubah Total menjadi tanda strip "-"
             if (strtoupper($d->keterangan) === 'CLOSE') {
                 $d->judge = 'CLOSE';
                 $d->total_delv_display = '-';
@@ -368,14 +349,9 @@ class DeliveryController extends Controller
             }
         }
 
-        // Ambil daftar Part dan Customer unik untuk Dropdown Bertingkat
-        $parts = DB::table('finished_goods')
-            ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
-            ->select('finished_goods.part_no', 'parts.part_name', 'finished_goods.actual_stock', 'finished_goods.customer_code')
-            ->orderBy('finished_goods.part_no', 'asc')
-            ->get();
-
-        $customers = $parts->pluck('customer_code')->unique()->filter()->values();
+        // Ambil SEMUA data part langsung dari Master Parts (bukan dari FG), agar part 0 stok tetap muncul di modal
+        $parts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
+        $customers = DB::table('customers')->orderBy('code', 'asc')->pluck('code');
 
         return view('delivery.wos_index', compact('deliveries', 'date', 'parts', 'customers'));
     }
@@ -383,18 +359,11 @@ class DeliveryController extends Controller
     /**
      * WOS DELIVERY: AJAX CEK STOK FG REAL-TIME DI MODAL
      */
-   /**
-     * WOS DELIVERY: AJAX CEK STOK FG REAL-TIME DI MODAL
-     */
     public function wosCheckStock($part_no)
     {
-        // 1. Bersihkan teks: Ambil kode part depannya saja (sebelum tanda spasi/strip) & buang spasi tersembunyi
         $clean_part = trim(explode(' - ', urldecode($part_no))[0]);
-
-        // 2. Tarik data dari database berdasarkan kode part yang sudah bersih
         $stock = DB::table('finished_goods')->where('part_no', $clean_part)->value('actual_stock');
 
-        // 3. Kembalikan dalam bentuk angka bulat (integer)
         return response()->json([
             'status' => 'success', 
             'stock' => (int) $stock
@@ -426,7 +395,7 @@ class DeliveryController extends Controller
     }
 
     /**
-     * WOS DELIVERY: UPDATE ACTUAL & AUTO POTONG STOK FG
+     * WOS DELIVERY: UPDATE ACTUAL MANUAL
      */
     public function wosUpdateActual(Request $request, $id)
     {
@@ -438,7 +407,6 @@ class DeliveryController extends Controller
         $total_kirim_baru = $act_s1 + $act_s2;
         $total_kirim_lama = $d->act_delv_s1 + $d->act_delv_s2;
 
-        // Logika Potong Stok FG (Hanya potong selisihnya agar tidak dobel)
         $selisih_kirim = $total_kirim_baru - $total_kirim_lama;
         if ($selisih_kirim > 0) {
             DB::table('finished_goods')->where('part_no', $d->part_no)->decrement('actual_stock', $selisih_kirim);
@@ -454,6 +422,6 @@ class DeliveryController extends Controller
             'updated_at'  => now()
         ]);
 
-        return back()->with('success', 'Aktual pengiriman berhasil diupdate dan Stok FG terpotong otomatis!');
+        return back()->with('success', 'Aktual pengiriman berhasil diupdate manual!');
     }
 }

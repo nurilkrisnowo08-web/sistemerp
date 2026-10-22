@@ -5,14 +5,16 @@
     .wos-card { border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; }
     .wos-header { background: #1e293b; color: white; padding: 1.25rem 1.5rem; }
     .table-wos th { background-color: #f8fafc; color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0 !important; vertical-align: middle; }
-    .table-wos td { vertical-align: middle; color: #334155; font-weight: 600; font-size: 0.8rem; border-bottom: 1px solid #f1f5f9; padding: 1rem 0.75rem; }
-    .btn-wos { background: #3b82f6; border: none; border-radius: 6px; font-weight: 600; padding: 0.5rem 1rem; color: white; }
-    .btn-outline-aktual { border: 1px solid #3b82f6; color: #3b82f6; border-radius: 6px; font-weight: 700; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: transparent; }
+    .table-wos td { vertical-align: middle; color: #334155; font-weight: 600; font-size: 0.8rem; border-bottom: 1px solid #f1f5f9; padding: 0.85rem 0.75rem; }
+    .btn-wos { background: #3b82f6; border: none; border-radius: 6px; font-weight: 600; padding: 0.5rem 1rem; color: white; transition: all 0.2s; }
+    .btn-wos:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+    .btn-outline-aktual { border: 1px solid #3b82f6; color: #3b82f6; border-radius: 6px; font-weight: 700; padding: 0.35rem 0.75rem; font-size: 0.75rem; background: transparent; transition: all 0.2s; }
     .btn-outline-aktual:hover { background: #3b82f6; color: white; }
     .badge-short { background-color: #ef4444; color: white; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
     .badge-ok { background-color: #10b981; color: white; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
     .badge-close { background-color: #64748b; color: white; border-radius: 4px; padding: 0.35rem 0.6rem; font-size: 0.65rem; }
     .badge-cust { background-color: #94a3b8; color: white; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.7rem; }
+    .form-control { border-radius: 6px; }
 </style>
 
 <div class="container-fluid mb-5">
@@ -20,15 +22,15 @@
         <!-- HEADER -->
         <div class="wos-header d-flex justify-content-between align-items-center flex-wrap">
             <div class="d-flex align-items-center">
-                <i class="fas fa-boxes fa-2x mr-3 text-blue-400" style="color: #60a5fa;"></i>
+                <i class="fas fa-boxes fa-2x mr-3" style="color: #60a5fa;"></i>
                 <div>
                     <h5 class="m-0 font-weight-bold" style="letter-spacing: 1px;">WOS DELIVERY LOGISTICS</h5>
-                    <p class="m-0 text-gray-400" style="font-size: 0.75rem; color: #cbd5e1;">Manajemen Jadwal Pengiriman & Aktualisasi Bebas Hambatan</p>
+                    <p class="m-0" style="font-size: 0.75rem; color: #cbd5e1;">Manajemen Jadwal Pengiriman & Aktualisasi Bebas Hambatan</p>
                 </div>
             </div>
             <div class="d-flex align-items-center mt-3 mt-md-0">
                 <form action="{{ url('/wos-delivery') }}" method="GET" class="d-flex mr-3">
-                    <input type="date" name="date" class="form-control font-weight-bold text-primary" value="{{ $date }}" onchange="this.form.submit()" style="border-radius: 6px; border: none; padding: 0.4rem 1rem;">
+                    <input type="date" name="date" class="form-control font-weight-bold text-primary" value="{{ $date }}" onchange="this.form.submit()" style="border: none; padding: 0.4rem 1rem;">
                 </form>
                 <button type="button" class="btn-wos shadow-sm" data-toggle="modal" data-target="#modalTambahJadwal">
                     <i class="fas fa-plus mr-1"></i> BUAT JADWAL KIRIM
@@ -64,7 +66,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($deliveries as $index => $d)
+                        @forelse($deliveries as $index =>$d)
                             <tr style="{{ $d->judge === 'CLOSE' ? 'background-color: #f8fafc; opacity: 0.6;' : '' }}">
                                 <td>{{ $index + 1 }}</td>
                                 <td class="text-left">
@@ -74,16 +76,17 @@
                                 <td><span class="badge-cust">{{ $d->part_cust }}</span></td>
                                 <td class="font-weight-bold text-dark">{{ $d->pulling_time ? date('H:i', strtotime($d->pulling_time)) : '-' }}</td>
                                 <td class="font-weight-bold text-primary">{{ $d->delv_time ? date('H:i', strtotime($d->delv_time)) : '-' }}</td>
+                                
                                 <td>{{ $d->judge === 'CLOSE' ? '-' : number_format($d->blnc_delv) }}</td>
                                 <td>{{ $d->judge === 'CLOSE' ? '-' : number_format($d->plan_delv) }}</td>
                                 <td class="font-weight-bold text-dark" style="font-size: 0.9rem;">{{ $d->total_delv_display }}</td>
                                 
-                                <td style="background:#f8fafc;" class="font-weight-bold {{ $d->stock_ready < $d->total_delv ? 'text-danger' : 'text-success' }}">
+                                <td style="background:#f8fafc;" class="font-weight-bold {{ $d->stock_ready < $d->total_delv &&$d->judge !== 'CLOSE' ? 'text-danger' : 'text-success' }}">
                                     {{ number_format($d->stock_ready) }}
                                 </td>
                                 
-                                <td>{{ number_format($d->act_delv_s1) }}</td>
-                                <td>{{ number_format($d->act_delv_s2) }}</td>
+                                <td class="font-weight-bold">{{ number_format($d->act_delv_s1) }}</td>
+                                <td class="font-weight-bold">{{ number_format($d->act_delv_s2) }}</td>
                                 
                                 <td>
                                     @if($d->judge == 'OK') <span class="badge-ok"><i class="fas fa-check"></i> OK</span>
@@ -139,7 +142,10 @@
                             </div>
                         @empty
                             <tr>
-                                <td colspan="14" class="py-5 text-muted">Belum ada Jadwal Pengiriman.</td>
+                                <td colspan="14" class="py-5 text-muted">
+                                    <i class="fas fa-folder-open fa-2x mb-3 opacity-50"></i><br>
+                                    Belum ada Jadwal Pengiriman.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -170,7 +176,7 @@
                             <label class="font-weight-bold small text-muted">Pilih Customer</label>
                             <select id="filterCustomer" name="customer_code" class="form-control" required>
                                 <option value="" disabled selected>-- Pilih Customer --</option>
-                                @foreach($customers as $cust)
+                                @foreach($customers as$cust)
                                     <option value="{{ $cust }}">{{ $cust }}</option>
                                 @endforeach
                             </select>
@@ -181,12 +187,19 @@
                             <label class="font-weight-bold small text-muted">Pilih Part Number</label>
                             <select name="part_no" id="partSelect" class="form-control" disabled required>
                                 <option value="" disabled selected>-- Pilih Customer Terlebih Dahulu --</option>
-                                @foreach($parts as $p)
+                                @foreach($parts as$p)
                                     <option value="{{ $p->part_no }}" class="part-option" data-cust="{{ $p->customer_code }}">
-                                        {{ $p->part_no }} - {{ $p->part_name }}
+                                        {{ $p->part_no }} - {{$p->part_name }}
                                     </option>
                                 @endforeach
                             </select>
+                        </div>
+                        
+                        <!-- INFO STOK -->
+                        <div class="col-md-12 mb-3">
+                            <div id="fgStockMsg" class="small text-muted p-2" style="background: #f8fafc; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                                <i class="fas fa-info-circle text-primary"></i> Pilih part untuk melihat info stok FG saat ini.
+                            </div>
                         </div>
 
                         <!-- WAKTU -->
@@ -220,33 +233,34 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-$(document).ready(function() {
-    
-    // Logika Filter Part berdasarkan Customer
-    $('#filterCustomer').change(function() {
+$(document).ready(function() {  // 1. Logika Dropdown Bertingkat (Customer -> Part)$('#filterCustomer').change(function() {
         let selectedCust = $(this).val();
         let partDropdown = $('#partSelect');
         
+        // Buka kunci dropdown part
         partDropdown.prop('disabled', false);
         partDropdown.val('');
         
-        partDropdown.find('.part-option').each(function() {
-            if ($(this).data('cust') == selectedCust) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        });
+        // Sembunyikan semua part, lalu tampilkan yang sesuai customer
+        partDropdown.find('.part-option').hide();
+        partDropdown.find(`.part-option[data-cust="${selectedCust}"]`).show();
         
         partDropdown.find('option:first').text('-- Pilih Part Number --').prop('selected', true);
+        $('#fgStockMsg').html('<i class="fas fa-info-circle text-primary"></i> Pilih part untuk melihat info stok FG saat ini.');
     });
 
-    // Strip part name before submit (Hanya kirim kode part ke controller)
-    $('form').submit(function() {
-        let partVal = $('#partSelect').val();
-        if(partVal) {
-            $('#partSelect').val(partVal.split(' - ')[0].trim());
-        }
+    // 2. Cek Stok FG secara Realtime (Hanya info, tidak memblokir simpan)
+    $('#partSelect').change(function() {
+        let partNo = $(this).val();$('#fgStockMsg').html('<span class="font-weight-bold text-primary"><i class="fas fa-spinner fa-spin"></i> Sedang mengecek gudang...</span>');
+
+        $.get('/wos-delivery/check-stock/' + encodeURIComponent(partNo), function(res) {
+            if(res.status === 'success') {
+                let stock = parseInt(res.stock) || 0;
+                $('#fgStockMsg').html(`<i class="fas fa-box text-primary mr-1"></i> Stok Gudang FG saat ini: <b class="text-dark">${stock.toLocaleString('id-ID')} Pcs</b>.`);
+            }
+        }).fail(function() {
+            $('#fgStockMsg').html('<i class="fas fa-exclamation-triangle text-warning"></i> Gagal mengecek stok.');
+        });
     });
 });
 </script>
