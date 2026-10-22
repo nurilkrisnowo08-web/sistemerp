@@ -9,7 +9,7 @@
     <style>
         /* Setup Kertas A4 Memanjang (Landscape) */
         @page { size: A4 landscape; margin: 8mm 10mm; }
-        body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 9.5px; margin: 0; padding: 0; color: #000; background-color: #fff; }
+        body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 9px; margin: 0; padding: 0; color: #000; background-color: #fff; }
         
         /* Navigasi Print (Sembunyi saat dicetak) */
         .no-print-area { text-align: right; margin-bottom: 15px; padding: 12px 20px; background: #f8fafc; border-bottom: 2px solid #cbd5e1; display: flex; justify-content: space-between; align-items: center;}
@@ -33,18 +33,18 @@
         .meta-wrap { width: 33%; text-align: right; font-size: 9.5px; font-weight: 800; line-height: 1.5;}
         .meta-highlight { color: #2563eb; font-size: 10px;}
 
-        /* TABEL WOS */
-        table.wos-table { width: 100%; border-collapse: collapse; text-align: center; }
-        table.wos-table th, table.wos-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+        /* TABEL WOS (DIFIXKAN 100% LEBARNYA) */
+        table.wos-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; }
+        table.wos-table th, table.wos-table td { border: 1px solid #000; padding: 4px 2px; vertical-align: middle; word-wrap: break-word; }
         table.wos-table th { background-color: #f8fafc; font-weight: 800; font-size: 8px; text-transform: uppercase; }
         
         .part-info { text-align: left; padding-left: 6px !important; }
-        .part-no { font-weight: 900; font-size: 10px; display: block; }
-        .part-name { font-size: 8px; color: #475569; font-weight: 700; }
+        .part-no { font-weight: 900; font-size: 9.5px; display: block; }
+        .part-name { font-size: 7.5px; color: #475569; font-weight: 700; }
         
-        .row-summary { background-color: #e2e8f0; font-weight: 800; font-size: 10px; border-top: 2px solid #000; border-bottom: 2px solid #000;}
+        .row-summary td { background-color: #e2e8f0; font-weight: 800; font-size: 10px; border-top: 2px solid #000; border-bottom: 2px solid #000;}
         .target-box { font-weight: 900; font-size: 11px; }
-        .time-box { font-family: monospace; font-weight: 800; font-size: 10px;}
+        .time-box { font-family: monospace; font-weight: 800; font-size: 9.5px;}
         
         .empty-row td { height: 20px; }
 
@@ -72,7 +72,7 @@
 
     <div class="header-wrap">
         <div class="logo-wrap">
-            <img src="{{ asset('admin/img/Logo-asalta.png') }}" class="logo-img" alt="Logo">
+            <img src="{{ asset('admin/img/Logo-asalta.png') }}" class="logo-img" alt="Logo" onerror="this.style.display='none'">
             <div class="comp-info">
                 PT. Asalta Mandiri Agung<br>
                 <span class="comp-dept">Logistic & Production Dept.</span>
@@ -91,22 +91,22 @@
     <table class="wos-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 20px;">NO</th>
-                <th rowspan="2" style="width: 140px;">IDENTIFIKASI PART</th>
-                <th rowspan="2" style="width: 45px;">CUST</th>
-                <th rowspan="2" style="width: 25px;">MP</th>
-                <th rowspan="2" style="width: 35px;">CAP /<br>HOUR</th>
-                <th rowspan="2" style="width: 45px;">TARGET<br>SHIFT</th>
-                <th colspan="2">PLAN WAKTU</th>
-                <th rowspan="2" style="width: 55px;">M/C LINE</th>
-                <th colspan="2">ACTUAL WAKTU</th>
-                <th colspan="3">HASIL PRODUKSI</th>
-                <th rowspan="2" style="width: 110px;">KETERANGAN / DOWNTIME</th>
+                <th rowspan="2" style="width: 3%;">NO</th>
+                <th rowspan="2" style="width: 17%;">IDENTIFIKASI PART</th>
+                <th rowspan="2" style="width: 4%;">CUST</th>
+                <th rowspan="2" style="width: 3%;">MP</th>
+                <th rowspan="2" style="width: 4%;">CAP/<br>HR</th>
+                <th rowspan="2" style="width: 5%;">TARGET<br>SHIFT</th>
+                <th colspan="2" style="width: 8%;">PLAN WAKTU</th>
+                <th rowspan="2" style="width: 5%;">M/C LINE</th>
+                <th colspan="2" style="width: 8%;">ACTUAL WAKTU</th>
+                <th colspan="3" style="width: 12%;">HASIL PRODUKSI</th>
+                <th rowspan="2" style="width: 31%;">KETERANGAN / DOWNTIME</th>
             </tr>
             <tr>
-                <th style="width: 35px;">START</th><th style="width: 35px;">AKHIR</th>
-                <th style="width: 35px;">MULAI</th><th style="width: 35px;">SELESAI</th>
-                <th style="width: 30px;">OK</th><th style="width: 30px;">NG</th><th style="width: 30px;">RET</th>
+                <th>START</th><th>AKHIR</th>
+                <th>MULAI</th><th>SELESAI</th>
+                <th>OK</th><th>NG</th><th>RET</th>
             </tr>
         </thead>
         <tbody>
@@ -121,7 +121,8 @@
                     }
                 @endphp
                 <tr class="row-summary">
-                    <td colspan="16" style="text-align: left; padding-left: 10px; background-color: #f1f5f9;">
+                    <!-- Colspan harus 15 sesuai jumlah kolom <th> -->
+                    <td colspan="15" style="text-align: left; padding-left: 10px; background-color: #f1f5f9;">
                         SHIFT I (DAY OPS) &nbsp;&nbsp;|&nbsp;&nbsp; TOTAL ESTIMASI RUN-TIME : <span style="color:#dc2626;">{{ number_format($totalHoursS1, 1) }} JAM</span>
                     </td>
                 </tr>
@@ -169,7 +170,7 @@
                     }
                 @endphp
                 <tr class="row-summary">
-                    <td colspan="16" style="text-align: left; padding-left: 10px; background-color: #e2e8f0;">
+                    <td colspan="15" style="text-align: left; padding-left: 10px; background-color: #e2e8f0;">
                         SHIFT II (NIGHT OPS) &nbsp;&nbsp;|&nbsp;&nbsp; TOTAL ESTIMASI RUN-TIME : <span style="color:#dc2626;">{{ number_format($totalHoursS2, 1) }} JAM</span>
                     </td>
                 </tr>
@@ -211,8 +212,9 @@
             @php $totalRows = (isset($plansS1) ? count($plansS1) : 0) + (isset($plansS2) ? count($plansS2) : 0); @endphp
             @for($i = $totalRows; $i < 12; $i++)
             <tr class="empty-row">
-                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                <td></td><td></td><td></td><td></td><td></td>
+                <td></td><td></td><td></td><td></td><td></td>
+                <td></td><td></td><td></td><td></td><td></td>
             </tr>
             @endfor
 
@@ -220,7 +222,8 @@
             <tr style="background-color: #cbd5e1; font-weight: 900; font-size: 11px;">
                 <td colspan="5" style="text-align: right; padding: 6px 12px; border-right: none;">TOTAL KESELURUHAN TARGET HARIAN : </td>
                 <td style="color: #dc2626; border-left: none;">{{ number_format($grandTarget) }}</td>
-                <td colspan="10"></td>
+                <!-- Sisa colspan harus 9 agar genap 15 -->
+                <td colspan="9"></td>
             </tr>
         </tbody>
     </table>
