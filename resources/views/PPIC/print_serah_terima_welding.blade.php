@@ -18,22 +18,23 @@
         .btn-back { background: #e2e8f0; color: #475569; margin-right: 10px; }
         .btn-print { background: #2563eb; color: white; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); }
 
-        /* HEADER BPRM */
-        .header-wrap { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px; }
-        .logo-wrap { display: flex; align-items: center; width: 33%; }
-        .logo-img { height: 35px; margin-right: 10px; }
-        .comp-info { font-size: 10px; font-weight: 800; line-height: 1.2; }
-        .comp-dept { font-size: 8px; font-weight: 600; }
+        /* 🔥 HEADER BPRM (SAMA DENGAN WOS) 🔥 */
+        .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px double #0f172a; padding-bottom: 10px; margin-bottom: 8px; }
+        
+        .logo-section { display: flex; align-items: center; width: 33%; }
+        .company-info { display: block; line-height: 1.3; text-transform: uppercase; }
+        .company-info h2 { margin: 0; font-size: 14px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; }
+        .company-info h3 { margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #475569; }
+        
+        .title-section { width: 34%; text-align: center; }
+        .title-section h1 { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: 0.5px; color: #0f172a; text-decoration: underline;}
+        .title-section h3 { margin: 4px 0 0 0; font-size: 11px; font-weight: 700; color: #475569; }
 
-        .title-wrap { width: 34%; text-align: center; margin-top: 5px;}
-        .title-main { font-size: 14px; font-weight: 900; text-decoration: underline; margin: 0; letter-spacing: 0.5px;}
-        .title-sub { font-size: 11px; font-weight: 800; margin-top: 2px; }
-
-        .meta-wrap { width: 33%; display: flex; justify-content: flex-end; }
-        .meta-table { border-collapse: collapse; font-size: 8px; font-weight: 800; text-align: left; }
+        .meta-section { width: 33%; text-align: right; font-size: 10px; font-weight: 800; line-height: 1.6; }
+        .meta-table { border-collapse: collapse; font-size: 9px; font-weight: 800; text-align: left; float: right;}
         .meta-table td { border: 1px solid #000; padding: 2px 5px; }
 
-        .sub-header { display: flex; justify-content: space-between; font-weight: 800; font-size: 9.5px; margin-bottom: 3px; text-transform: uppercase;}
+        .sub-header { display: flex; justify-content: space-between; font-weight: 800; font-size: 10px; margin-bottom: 4px; text-transform: uppercase; clear: both;}
 
         /* TABEL UTAMA */
         table.bprm-table { width: 100%; border-collapse: collapse; text-align: center; }
@@ -64,30 +65,52 @@
 </head>
 <body>
 
-    <!-- 🔥 HEADER DIPERBAIKI 🔥 -->
+    <div class="no-print no-print-area">
+        <div class="form-title-web">FORM CETAK BPRM WELDING - LINE: {{ strtoupper($line_code) }}</div>
+        <div>
+            <button class="btn btn-back" onclick="window.close();">TUTUP KEMBALI</button>
+            <button class="btn btn-print" onclick="window.print()">🖨️ CETAK FORMULIR</button>
+        </div>
+    </div>
+
+    <!-- 🔥 HEADER DIPERBAIKI (TIDAK ADA LAGI DIV NYASAR) 🔥 -->
     <div class="header-container">
         <!-- Logo & Nama PT -->
         <div class="logo-section">
-            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;" onerror="this.style.display='none'">
             <div class="company-info">
                 <h2>PT. Asalta Mandiri Agung</h2>
-                <h3>Dept. PPC<br>LOGISTICS & PRODUCTION</h3>
+                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
             </div>
         </div>
         
         <!-- Judul Tengah -->
         <div class="title-section">
-            <h1>WORK ORDER SHEET</h1>
-            <h3>[ WELDING STATION : {{ strtoupper($line_code) }} ]</h3>
+            <h1>BUKTI PENYERAHAN MATERIAL (WIP)</h1>
+            <h3>( BPRM - WELDING )</h3>
         </div>
         
-        <!-- Tanggal Kanan -->
+        <!-- Tabel Meta Kanan -->
         <div class="meta-section">
-            TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
-            NO DOKUMEN : WOS-{{ date('ymd', strtotime($date)) }}-{{ strtoupper(str_replace(' ', '', $line_code)) }}
+            <table class="meta-table">
+                <tr>
+                    <td style="width: 50px;">WOS NO.</td>
+                    <td style="width: 95px;">WOS-WLD-{{ date('ymd', strtotime($date)) }}</td>
+                </tr>
+                <tr>
+                    <td>BPRM NO.</td>
+                    <td></td>
+                </tr>
+            </table>
         </div>
     </div>
 
+    <div class="sub-header">
+        <div>MESIN / LINE : <span style="color:#2563eb;">{{ strtoupper($line_code) }}</span></div>
+        <div>HARI / TGL : <span style="color:#2563eb;">{{ \Carbon\Carbon::parse($date)->translatedFormat('d-m-Y') }}</span></div>
+    </div>
+
+    <!-- BAGIAN TABEL 100% TIDAK DIUBAH -->
     <table class="bprm-table">
         <thead>
             <tr>
