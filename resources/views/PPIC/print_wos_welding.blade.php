@@ -56,11 +56,11 @@
 
     @php $grandTarget = 0; $totalHoursS1 = 0; $totalHoursS2 = 0; @endphp
 
-    <!-- 🔥 HEADER DIPERBAIKI (TIDAK ADA LAGI DIV BERANTAKAN) 🔥 -->
+    <!-- 🔥 HEADER DIPERBAIKI 🔥 -->
     <div class="header-container">
         <!-- Logo & Nama PT -->
         <div class="logo-section">
-            <img src="{{ asset('admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;" onerror="this.style.display='none'">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
             <div class="company-info">
                 <h2>PT. Asalta Mandiri Agung</h2>
                 <h3>Dept. PPC<br>LOGISTICS & PRODUCTION</h3>
@@ -78,6 +78,7 @@
             TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
             NO DOKUMEN : WOS-{{ date('ymd', strtotime($date)) }}-{{ strtoupper(str_replace(' ', '', $line_code)) }}
         </div>
+    </div>
     </div>
 
     <!-- TABEL DI BAWAH INI SAMA PERSIS 100% TIDAK DIUBAH -->
