@@ -13,28 +13,53 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
+        /* 🎨 THEME VARIABLES */
         :root { 
-            --corp-navy: #0f172a; 
             --corp-blue: #1d4ed8; 
-            --corp-bg: #f1f5f9; 
-            --corp-border: #cbd5e1;
-            --corp-hover: #1e293b;
-        }
-        
-        body { 
-            font-family: 'Plus Jakarta Sans', Arial, sans-serif; 
-            background-color: var(--corp-bg); 
-            color: #0f172a; 
-            font-size: 13px;
+            
+            /* Light Theme */
+            --bg-body: #f1f5f9;
+            --bg-surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --sidebar-start: #0f172a;
+            --sidebar-end: #172554;
         }
 
+        /* 🌙 DARK MODE OVERRIDES */
+        body.dark-mode {
+            --bg-body: #0f172a;
+            --bg-surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --sidebar-start: #020617;
+            --sidebar-end: #0f172a;
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', Arial, sans-serif; 
+            background-color: var(--bg-body); 
+            color: var(--text-main); 
+            font-size: 13px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* 🔄 BOOTSTRAP OVERRIDES UNTUK DARK MODE */
+        body.dark-mode .bg-white { background-color: var(--bg-surface) !important; }
+        body.dark-mode .text-dark { color: var(--text-main) !important; }
+        body.dark-mode .border-bottom, body.dark-mode .border-top { border-color: var(--border-color) !important; }
+        body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--bg-surface); border-color: var(--border-color); }
+        
         /* 🏛️ CLEAN INDUSTRIAL SIDEBAR */
         #accordionSidebar { 
-            background: linear-gradient(180deg, var(--corp-navy) 0%, #172554 100%) !important; 
+            background: linear-gradient(180deg, var(--sidebar-start) 0%, var(--sidebar-end) 100%) !important; 
             z-index: 1050;
             width: 250px !important;
             position: relative;
             overflow-x: hidden;
+            transition: background 0.3s ease;
         }
 
         .sidebar-brand-text { 
@@ -44,7 +69,7 @@
             color: #ffffff; 
         }
         
-        /* ✨ ANIMASI GELEMBUNG (BUBBLE RIPPLE) DI MENU UTAMA */
+        /* ✨ ANIMASI GELEMBUNG (BUBBLE RIPPLE) */
         .nav-item .nav-link { 
             position: relative;
             padding: 0.75rem 1.25rem !important; 
@@ -60,123 +85,70 @@
             transition: color 0.3s ease, transform 0.2s ease;
         }
 
-        .nav-item .nav-link i { 
-            font-size: 1rem; 
-            margin-right: 14px; 
-            width: 20px;
-            text-align: center;
-            z-index: 2;
-        }
+        .nav-item .nav-link i { font-size: 1rem; margin-right: 14px; width: 20px; text-align: center; z-index: 2; }
+        .nav-item .nav-link span { z-index: 2; }
 
-        .nav-item .nav-link span {
-            z-index: 2;
-        }
-
-        /* Bubble Element */
         .nav-item .nav-link::before {
             content: '';
-            position: absolute;
-            top: 50%;
-            left: 20px;
-            width: 0px;
-            height: 0px;
+            position: absolute; top: 50%; left: 20px; width: 0px; height: 0px;
             background: rgba(96, 165, 250, 0.15); 
             border-radius: 50%;
             transform: translate(-50%, -50%);
             transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
-            opacity: 0;
-            z-index: 0;
+            opacity: 0; z-index: 0;
         }
 
-        .nav-item .nav-link:hover { 
-            color: #ffffff !important; 
-            transform: translateX(4px);
-        }
-
-        .nav-item .nav-link:hover::before {
-            width: 350px;
-            height: 350px;
-            opacity: 1;
-        }
-
+        .nav-item .nav-link:hover { color: #ffffff !important; transform: translateX(4px); }
+        .nav-item .nav-link:hover::before { width: 350px; height: 350px; opacity: 1; }
+        
         .nav-item.active .nav-link { 
             background: var(--corp-blue) !important; 
             color: #ffffff !important; 
             box-shadow: 0 4px 15px rgba(29, 78, 216, 0.4);
         }
-
-        .nav-item.active .nav-link::before {
-            display: none; 
-        }
+        .nav-item.active .nav-link::before { display: none; }
 
         .sidebar-heading { 
-            color: #64748b !important; 
-            font-size: 0.65rem !important; 
-            font-weight: 800; 
-            letter-spacing: 1.8px; 
-            margin: 1.5rem 0 0.4rem 20px;
+            color: #64748b !important; font-size: 0.65rem !important; font-weight: 800; 
+            letter-spacing: 1.8px; margin: 1.5rem 0 0.4rem 20px;
         }
 
         /* ✨ ANIMASI MICRO-BUBBLE DI SUBMENU */
         .collapse-inner {
-            background: rgba(15, 23, 42, 0.4) !important;
-            border-radius: 12px !important;
-            margin: 0px 12px 10px 12px;
-            padding: 8px !important;
+            background: rgba(0, 0, 0, 0.2) !important;
+            border-radius: 12px !important; margin: 0px 12px 10px 12px; padding: 8px !important;
             border: 1px solid rgba(255,255,255,0.05);
         }
+        
         .collapse-item {
-            position: relative;
-            border-radius: 8px !important;
-            padding: 8px 14px !important;
-            font-size: 0.75rem !important;
-            font-weight: 700 !important;
-            color: #94a3b8 !important;
-            display: flex !important;
-            align-items: center;
-            justify-content: space-between;
-            transition: all 0.3s ease;
-            overflow: hidden;
+            position: relative; border-radius: 8px !important; padding: 8px 14px !important;
+            font-size: 0.75rem !important; font-weight: 700 !important; color: #94a3b8 !important;
+            display: flex !important; align-items: center; justify-content: space-between;
+            transition: all 0.3s ease; overflow: hidden;
         }
         
         .collapse-item::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            width: 6px;
-            height: 6px;
-            background: #60a5fa;
-            border-radius: 50%;
-            transform: translateY(-50%) scale(0);
+            content: ''; position: absolute; left: 0; top: 50%; width: 6px; height: 6px;
+            background: #60a5fa; border-radius: 50%; transform: translateY(-50%) scale(0);
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .collapse-item:hover {
-            background: rgba(255, 255, 255, 0.05) !important;
-            color: #ffffff !important;
-            padding-left: 20px !important; 
+            background: rgba(255, 255, 255, 0.05) !important; color: #ffffff !important; padding-left: 20px !important; 
         }
+        .collapse-item:hover::before { transform: translateY(-50%) scale(1); left: 8px; }
+        .collapse-item.active { background: rgba(29, 78, 216, 0.2) !important; color: #60a5fa !important; }
 
-        .collapse-item:hover::before {
-            transform: translateY(-50%) scale(1);
-            left: 8px;
-        }
-
-        .collapse-item.active {
-            background: rgba(29, 78, 216, 0.2) !important;
-            color: #60a5fa !important;
-        }
-
-        /* TOPBAR */
+        /* 🔝 TOPBAR */
         .topbar { 
-            background: #ffffff !important; 
-            border-bottom: 1px solid var(--corp-border); 
+            background: var(--bg-surface) !important; 
+            border-bottom: 1px solid var(--border-color); 
             height: 4.5rem; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            transition: background 0.3s ease, border-color 0.3s ease;
         }
         .clock-badge {
-            background: var(--corp-navy);
+            background: var(--corp-blue);
             color: #ffffff;
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
@@ -184,16 +156,21 @@
             border-radius: 8px;
             font-size: 0.85rem;
             letter-spacing: 0.5px;
-            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+            box-shadow: 0 4px 10px rgba(29, 78, 216, 0.3);
         }
+        
+        /* 🌓 THEME TOGGLE BUTTON */
+        .theme-btn {
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; border: 1px solid var(--border-color);
+            background: var(--bg-body); color: var(--text-muted);
+            transition: all 0.2s ease; cursor: pointer;
+        }
+        .theme-btn:hover { background: var(--border-color); color: var(--text-main); }
 
         @media (max-width: 768px) {
-            #accordionSidebar { 
-                position: fixed; 
-                height: 100vh;
-                left: -250px;
-                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
+            #accordionSidebar { position: fixed; height: 100vh; left: -250px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
             #accordionSidebar.mobile-active { left: 0; }
         }
     </style>
@@ -213,7 +190,7 @@
 
             <li class="nav-item {{ Request::is('dashboard*') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('dashboard') }}">
-                    <i class="fas fa-fw fa-tachometer-alt"><span>Dashboard Hub</span></i>
+                    <i class="fas fa-fw fa-tachometer-alt"></i><span>Dashboard Hub</span>
                 </a>
             </li>
 
@@ -320,17 +297,17 @@
             @if(in_array($role, ['kepala_ppic', 'staff_ppic', 'admin']))
             <div class="sidebar-heading">LOGISTICS</div>
             
-            {{-- ✨ KAMAR TERPISAH: DISPATCH PORTAL & DELIVERY WOS ✨ --}}
+            {{-- ✨ KAMAR DELIVERY WOS & DISPATCH --}}
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseDeliveryHub">
+                <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseDelivery">
                     <i class="fas fa-fw fa-truck-loading"></i><span>Delivery Hub</span>
                 </a>
-                <div id="collapseDeliveryHub" class="collapse {{ Request::is('delivery*') || Request::is('wos-delivery*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div id="collapseDelivery" class="collapse {{ Request::is('delivery*') || Request::is('wos-delivery*') ? 'show' : '' }}" data-parent="#accordionSidebar">
                     <div class="collapse-inner">
                         <a class="collapse-item {{ Request::is('delivery*') && !Request::is('wos-delivery*') ? 'active' : '' }}" href="{{ route('delivery.index') }}">
                             <span>Dispatch Portal (PO)</span>
                         </a>
-                        <a class="collapse-item {{ Request::is('wos-delivery*') ? 'active' : '' }}" href="{{ route('delivery.wos.index') }}">
+                        <a class="collapse-item {{ Request::is('wos-delivery*') ? 'active' : '' }}" href="{{ url('/wos-delivery') }}">
                             <span>Delivery WOS</span>
                         </a>
                     </div>
@@ -347,16 +324,24 @@
         {{-- CONTENT WRAPPER --}}
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
-                <nav class="navbar navbar-expand navbar-light topbar mb-4 static-top px-4">
+                <nav class="navbar navbar-expand topbar mb-4 static-top px-4">
                     <button id="sidebarToggleTop" class="btn btn-light rounded border d-md-none mr-3">
                         <i class="fa fa-bars"></i>
                     </button>
                     
                     <div class="d-none d-sm-block">
-                        <span class="font-weight-bold text-dark" style="letter-spacing: 0.5px;">PT ASALTA MANDIRI AGUNG // INDUSTRIAL CORE</span>
+                        <span class="font-weight-bold text-muted" style="letter-spacing: 0.5px;">PT ASALTA MANDIRI AGUNG // INDUSTRIAL CORE</span>
                     </div>
 
                     <ul class="navbar-nav ml-auto align-items-center">
+                        
+                        {{-- 🌓 TOMBOL TOGGLE DARK/LIGHT MODE --}}
+                        <li class="nav-item mr-3">
+                            <button id="themeToggleBtn" class="theme-btn" title="Toggle Dark/Light Mode">
+                                <i class="fas fa-moon" id="themeIcon"></i>
+                            </button>
+                        </li>
+
                         <li class="nav-item mr-3">
                             <div class="clock-badge" id="clock">00:00:00</div>
                         </li>
@@ -376,7 +361,7 @@
                 </div>
             </div>
 
-            <footer class="bg-white py-3 border-top mt-auto">
+            <footer class="bg-white py-3 border-top mt-auto" style="transition: background 0.3s ease;">
                 <div class="container my-auto text-center font-weight-bold text-muted small">
                     &copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem Engine.
                 </div>
@@ -389,6 +374,7 @@
     <script src="https://cdn.jsdelivr.net/npm/startbootstrap-sb-admin-2@4.1.4/js/sb-admin-2.min.js"></script>
 
     <script>
+        // 🕰️ Live Clock
         function updateClock() { 
             const now = new Date();
             document.getElementById('clock').innerText = now.toLocaleTimeString('id-ID', { hour12: false }); 
@@ -396,28 +382,49 @@
         setInterval(updateClock, 1000); 
         updateClock();
 
+        // 📱 Mobile Toggle
         $("#sidebarToggleTop").click(function() { 
             $("#accordionSidebar").toggleClass("mobile-active");
         });
 
+        // 🌓 LOGIKA DARK MODE
+        const themeBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const body = document.body;
+
+        // Cek memory lokal untuk preferensi tema
+        if (localStorage.getItem('mrp_theme') === 'dark') {
+            body.classList.add('dark-mode');
+            themeIcon.classList.replace('fa-moon', 'fa-sun');
+            themeIcon.classList.add('text-warning');
+        }
+
+        themeBtn.addEventListener('click', () => {
+            body.classList.toggle('dark-mode');
+            
+            if (body.classList.contains('dark-mode')) {
+                localStorage.setItem('mrp_theme', 'dark');
+                themeIcon.classList.replace('fa-moon', 'fa-sun');
+                themeIcon.classList.add('text-warning');
+            } else {
+                localStorage.setItem('mrp_theme', 'light');
+                themeIcon.classList.replace('fa-sun', 'fa-moon');
+                themeIcon.classList.remove('text-warning');
+            }
+        });
+
+        // 🔔 SweetAlert Notif
         @if(session('success'))
             Swal.fire({
-                icon: 'success',
-                title: 'SUKSES',
-                text: "{{ session('success') }}",
-                timer: 2000,
-                showConfirmButton: false,
-                backdrop: `rgba(0,0,123,0.1)`
+                icon: 'success', title: 'SUKSES', text: "{{ session('success') }}",
+                timer: 2000, showConfirmButton: false, backdrop: `rgba(0,0,123,0.1)`
             });
         @endif
 
         @if(session('error'))
             Swal.fire({
-                icon: 'error',
-                title: 'PERHATIAN!',
-                text: "{{ session('error') }}",
-                confirmButtonColor: '#1d4ed8',
-                backdrop: `rgba(255,0,0,0.1)`
+                icon: 'error', title: 'PERHATIAN!', text: "{{ session('error') }}",
+                confirmButtonColor: '#1d4ed8', backdrop: `rgba(255,0,0,0.1)`
             });
         @endif
     </script>
