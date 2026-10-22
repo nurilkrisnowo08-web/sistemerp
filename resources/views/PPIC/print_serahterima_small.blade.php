@@ -14,7 +14,8 @@
         * { box-sizing: border-box; }
 
         @page {
-            size: A4 portrait;
+            /* WAJIB LANDSCAPE KARENA KOLOMNYA BANYAK (16 Kolom) */
+            size: A4 landscape; 
             margin: 6mm 8mm;
         }
 
@@ -176,39 +177,42 @@
 
     {{-- Screen Toolbar --}}
     <div class="no-print no-print-bar">
-        <div><b>FORM CETAK BPRM (BUKTI PENYERAHAN RAW MATERIAL)</b> — Line: <b>{{ $line_code }}</b></div>
+        <div><b>FORM CETAK BPRM WELDING (WIP)</b> — Line: <b>{{ strtoupper($line_code) }}</b></div>
         <div>
-           <button class="btn-screen btn-close" onclick="window.length ? window.history.back() : window.close()">TUTUP / KEMBALI</button>
+            <button class="btn-screen btn-close" onclick="window.length ? window.history.back() : window.close()">TUTUP / KEMBALI</button>
             <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK FORMULIR</button>
         </div>
     </div>
 
     <div class="bprm-wrapper">
         
-        {{-- Header Form --}}
+        {{-- 🔥 HEADER FORM DIPERBAIKI (TIDAK ADA DIV NYASAR) 🔥 --}}
         <table class="header-table">
-            <div class="header">
-        <!-- Tambahan Logo & Info Perusahaan -->
-        <div style="display: flex; align-items: center;">
-            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
-            <div class="company-info">
-                <h2>PT. Asalta Mandiri Agung</h2>
-                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
-            </div>
-        </div>
-                <td class="title-area">
-                    <h1>BUKTI PENYERAHAN RAW MATERIAL</h1>
-                    <h2>(BPRM)</h2>
+            <tr>
+                <td class="logo-area" style="width: 30%;">
+                    <div style="display: flex; align-items: center;">
+                        <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 40px; margin-right: 10px;" onerror="this.style.display='none'">
+                        <div>
+                            <h3 style="font-size: 12px; margin: 0; padding: 0;">PT. Asalta Mandiri Agung</h3>
+                            <div style="font-size: 8px; font-weight: 700; margin-top: 2px;">Dept. PPC<br>LOGISTICS & MATERIAL</div>
+                        </div>
+                    </div>
                 </td>
-                <td class="meta-box-area">
-                    <table>
+                
+                <td class="title-area" style="width: 40%;">
+                    <h1>BUKTI PENYERAHAN MATERIAL (WIP)</h1>
+                    <h2>(BPRM - WELDING)</h2>
+                </td>
+                
+                <td class="meta-box-area" style="width: 30%;">
+                    <table style="float: right;">
                         <tr>
                             <td>WOS NO :</td>
-                            <td class="mono" style="min-width: 60px;">{{ $batches->first()->no_produksi ?? '-' }}</td>
+                            <td class="mono" style="min-width: 60px; text-align: left;">{{ $batches->first()->no_produksi ?? '-' }}</td>
                         </tr>
                         <tr>
                             <td>BPRM NO :</td>
-                            <td class="mono" style="font-weight: 900; font-size: 10px;">{{ date('d/H', strtotime($date)) }}</td>
+                            <td class="mono" style="font-weight: 900; font-size: 10px; text-align: left;">{{ date('d/H', strtotime($date)) }}</td>
                         </tr>
                     </table>
                 </td>
@@ -217,8 +221,8 @@
 
         {{-- Baris Info Hari/Tanggal & Mesin --}}
         <div class="info-bar">
-            <div>MESIN / LINE : <b>{{ $line_code }}</b></div>
-            <div>HARI / TANGGAL : <b>{{ date('d-m-Y', strtotime($date)) }}</b></div>
+            <div>MESIN / LINE : <b>{{ strtoupper($line_code) }}</b></div>
+            <div>HARI / TANGGAL : <b>{{ \Carbon\Carbon::parse($date)->translatedFormat('d-m-Y') }}</b></div>
         </div>
 
         {{-- TABEL BPRM GABUNGAN SHIFT I & SHIFT II --}}
@@ -261,7 +265,7 @@
                 <tr>
                     <td class="text-center">{{ $no1++ }}</td>
                     <td class="text-center">{{ $b->customer_code ?? 'SAI' }}</td>
-                    <td class="mono text-left" style="font-size: 8px;">{{ $b->material_code }}</td>
+                    <td class="mono text-left" style="font-size: 8px;">{{ $b->material_code ?? $b->part_no ?? '-' }}</td>
                     <td class="text-left" style="font-size: 7.5px;">{{ $b->part_name ?? $b->material_name ?? '-' }}</td>
                     <td class="mono text-center" style="font-size: 8px;">{{ $b->no_surat_jalan ?? '-' }}</td>
                     <td class="mono text-center">{{ $b->coil_id ?? '-' }}</td>
@@ -304,7 +308,7 @@
                 <tr>
                     <td class="text-center">{{ $no2++ }}</td>
                     <td class="text-center">{{ $b->customer_code ?? 'SAI' }}</td>
-                    <td class="mono text-left" style="font-size: 8px;">{{ $b->material_code }}</td>
+                    <td class="mono text-left" style="font-size: 8px;">{{ $b->material_code ?? $b->part_no ?? '-' }}</td>
                     <td class="text-left" style="font-size: 7.5px;">{{ $b->part_name ?? $b->material_name ?? '-' }}</td>
                     <td class="mono text-center" style="font-size: 8px;">{{ $b->no_surat_jalan ?? '-' }}</td>
                     <td class="mono text-center">{{ $b->coil_id ?? '-' }}</td>
