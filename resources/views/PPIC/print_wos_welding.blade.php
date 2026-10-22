@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>WOS WELDING - {{ $line_code }}</title>
     <!-- Font Profesional Industri -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         /* Setup Kertas A4 Memanjang (Landscape) */
         @page { size: A4 landscape; margin: 10mm; }
@@ -15,18 +15,19 @@
         .btn-back { background: #64748b; color: white; margin-right: 10px; }
         .btn-print { background: #2563eb; color: white; }
 
-        .header-container { display: table; width: 100%; border-bottom: 4px double #0f172a; padding-bottom: 15px; margin-bottom: 15px; }
-        .header-container > div { display: table-cell; vertical-align: middle; }
+        /* 🔥 PERBAIKAN HEADER CSS 🔥 */
+        .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px double #0f172a; padding-bottom: 15px; margin-bottom: 15px; }
         
-        .logo-section { width: 35%; }
-        .logo-wrapper { display: inline-block; vertical-align: middle; width: 50px; height: 50px; border: 2px solid #0f172a; border-radius: 50%; text-align: center; line-height: 50px; font-size: 16px; font-weight: 900; margin-right: 12px; }
-        .company-info { display: inline-block; vertical-align: middle; line-height: 1.4; font-size: 11px; font-weight: 800; text-transform: uppercase; }
-
-        .title-section { width: 30%; text-align: center; }
+        .logo-section { display: flex; align-items: center; width: 33%; }
+        .company-info { display: block; line-height: 1.3; text-transform: uppercase; }
+        .company-info h2 { margin: 0; font-size: 14px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; }
+        .company-info h3 { margin: 2px 0 0 0; font-size: 10px; font-weight: 700; color: #475569; }
+        
+        .title-section { width: 34%; text-align: center; }
         .title-section h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #0f172a;}
         .title-section h3 { margin: 5px 0 0 0; font-size: 14px; font-weight: 700; color: #475569; }
 
-        .meta-section { width: 35%; text-align: right; font-size: 11px; font-weight: 700; line-height: 1.6; }
+        .meta-section { width: 33%; text-align: right; font-size: 11px; font-weight: 700; line-height: 1.6; }
 
         /* 📋 Tabel WOS */
         table.wos-table { width: 100%; border-collapse: collapse; text-align: center; }
@@ -55,24 +56,31 @@
 
     @php $grandTarget = 0; $totalHoursS1 = 0; $totalHoursS2 = 0; @endphp
 
-    <div style="display: flex; align-items: center;">
-            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+    <!-- 🔥 HEADER DIPERBAIKI (TIDAK ADA LAGI DIV BERANTAKAN) 🔥 -->
+    <div class="header-container">
+        <!-- Logo & Nama PT -->
+        <div class="logo-section">
+            <img src="{{ asset('admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;" onerror="this.style.display='none'">
             <div class="company-info">
                 <h2>PT. Asalta Mandiri Agung</h2>
-                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
+                <h3>Dept. PPC<br>LOGISTICS & PRODUCTION</h3>
             </div>
         </div>
-        </div>
+        
+        <!-- Judul Tengah -->
         <div class="title-section">
             <h1>WORK ORDER SHEET</h1>
             <h3>[ WELDING STATION : {{ strtoupper($line_code) }} ]</h3>
         </div>
+        
+        <!-- Tanggal Kanan -->
         <div class="meta-section">
             TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
-            NO DOKUMEN : WOS-{{ date('ymd', strtotime($date)) }}-{{ strtoupper($line_code) }}
+            NO DOKUMEN : WOS-{{ date('ymd', strtotime($date)) }}-{{ strtoupper(str_replace(' ', '', $line_code)) }}
         </div>
     </div>
 
+    <!-- TABEL DI BAWAH INI SAMA PERSIS 100% TIDAK DIUBAH -->
     <table class="wos-table">
         <thead>
             <tr>
@@ -85,7 +93,6 @@
                 <th colspan="2">PLAN WAKTU</th>
                 <th rowspan="2" width="55">M/C LINE</th>
                 <th colspan="2">ACTUAL WAKTU</th>
-                {{-- ✨ KOLOM RET DITAMBAHKAN DI SINI ✨ --}}
                 <th colspan="3">HASIL PRODUKSI</th>
                 <th rowspan="2" width="100">KETERANGAN / DOWNTIME</th>
             </tr>
