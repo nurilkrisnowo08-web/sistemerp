@@ -187,12 +187,15 @@
         
         {{-- Header Form --}}
         <table class="header-table">
-            <tr>
-                <td class="logo-area">
-                    <h3>PT. Asalta Mandiri Agung</h3>
-                    <span>PLANT : Karawang</span><br>
-                    <span style="font-size: 7.5px; color: #475569;">Logistic & Delivery</span>
-                </td>
+            <div class="header">
+        <!-- Tambahan Logo & Info Perusahaan -->
+        <div style="display: flex; align-items: center;">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+            <div class="company-info">
+                <h2>PT. Asalta Mandiri Agung</h2>
+                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
+            </div>
+        </div>
                 <td class="title-area">
                     <h1>BUKTI PENYERAHAN RAW MATERIAL</h1>
                     <h2>(BPRM)</h2>

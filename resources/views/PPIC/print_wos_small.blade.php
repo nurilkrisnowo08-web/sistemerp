@@ -58,17 +58,15 @@
         $totalHoursS1 = 0; $totalHoursS2 = 0;
     @endphp
 
-    <div class="header-container">
-        <div class="logo-section">
-            <div class="logo-wrapper">AMA</div>
-            <div class="company-info">PT. Asalta Mandiri Agung<br><span>Logistic & Delivery Dept.</span></div>
+    <div class="header">
+        <!-- Tambahan Logo & Info Perusahaan -->
+        <div style="display: flex; align-items: center;">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+            <div class="company-info">
+                <h2>PT. Asalta Mandiri Agung</h2>
+                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
+            </div>
         </div>
-        <div class="title-section">
-            <h1>WORK ORDER SHEET (WOS)</h1>
-            <h3>STAMPING {{ $pressType }}</h3>
-        </div>
-        <div class="meta-section">TGL: {{ date('d F Y', strtotime($date)) }}<br>REVISI: 0</div>
-    </div>
 
     <table>
         <thead>
