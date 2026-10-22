@@ -32,6 +32,22 @@
         }
     </style>
 </head>
+<!-- Header -->
+    <div class="header">
+        <!-- Tambahan Logo & Info Perusahaan -->
+        <div style="display: flex; align-items: center;">
+            <img src="{{ asset('admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+            <div class="company-info">
+                <h2>PT. Asalta Mandiri Agung</h2>
+                <h3>Dept. PPC<br>Logistic & Delivery</h3>
+            </div>
+        </div>
+        
+        <div class="title-doc">
+            <h1>WORK ORDER SHEET<br>DELIVERY</h1>
+            <p>TGL: {{ \Carbon\Carbon::parse($date)->translatedFormat('d F Y') }}</p>
+        </div>
+    </div>
 <body onload="window.print()">
     <!-- Header -->
     <div class="header">
