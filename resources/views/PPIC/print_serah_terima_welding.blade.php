@@ -64,44 +64,28 @@
 </head>
 <body>
 
-    <div class="no-print no-print-area">
-        <div class="form-title-web">FORM CETAK BPRM WELDING - LINE: {{ strtoupper($line_code) }}</div>
-        <div>
-            <button class="btn btn-back" onclick="window.close();">TUTUP KEMBALI</button>
-            <button class="btn btn-print" onclick="window.print()">🖨️ CETAK FORMULIR</button>
-        </div>
-    </div>
-
-     <div style="display: flex; align-items: center;">
+    <!-- 🔥 HEADER DIPERBAIKI 🔥 -->
+    <div class="header-container">
+        <!-- Logo & Nama PT -->
+        <div class="logo-section">
             <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
             <div class="company-info">
                 <h2>PT. Asalta Mandiri Agung</h2>
-                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
+                <h3>Dept. PPC<br>LOGISTICS & PRODUCTION</h3>
             </div>
         </div>
         
-        <div class="title-wrap">
-            <h1 class="title-main">BUKTI PENYERAHAN MATERIAL (WIP)</h1>
-            <h3 class="title-sub">(BPRM - WELDING)</h3>
+        <!-- Judul Tengah -->
+        <div class="title-section">
+            <h1>WORK ORDER SHEET</h1>
+            <h3>[ WELDING STATION : {{ strtoupper($line_code) }} ]</h3>
         </div>
         
-        <div class="meta-wrap">
-            <table class="meta-table">
-                <tr>
-                    <td style="width: 45px;">WOS NO.</td>
-                    <td style="width: 80px;">WOS-WLD-{{ date('ymd', strtotime($date)) }}</td>
-                </tr>
-                <tr>
-                    <td>BPRM NO.</td>
-                    <td></td>
-                </tr>
-            </table>
+        <!-- Tanggal Kanan -->
+        <div class="meta-section">
+            TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
+            NO DOKUMEN : WOS-{{ date('ymd', strtotime($date)) }}-{{ strtoupper(str_replace(' ', '', $line_code)) }}
         </div>
-    </div>
-
-    <div class="sub-header">
-        <div>MESIN / LINE : {{ strtoupper($line_code) }}</div>
-        <div>HARI / TANGGAL : {{ \Carbon\Carbon::parse($date)->translatedFormat('d-m-Y') }}</div>
     </div>
 
     <table class="bprm-table">
