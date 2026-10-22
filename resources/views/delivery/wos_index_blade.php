@@ -272,4 +272,24 @@ $(document).ready(function() {
     });
 });
 </script>
+$('#partSelect').change(function() {
+        // Ambil value, dan paksa potong namanya kalau ikut terbawa, ambil part_no saja
+        let rawVal = $(this).val();
+        let partNo = rawVal.split(' - ')[0].trim();
+        
+        let cust = $(this).find(':selected').data('cust');
+        $('#custCode').val(cust);
+
+        $('#fgStockMsg').html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek stok FG...</span>');
+        $('#btnSubmitDelv').prop('disabled', true);
+
+        // Lempar ke route check-stock
+        $.get('/wos-delivery/check-stock/' + encodeURIComponent(partNo), function(res) {
+            if(res.status === 'success') {
+                // Konversi paksa string ke angka integer
+                currentFgStock = parseInt(res.stock) || 0;
+                calcTotal();
+            }
+        });
+    });
 @endsection

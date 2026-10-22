@@ -374,10 +374,22 @@ class DeliveryController extends Controller
     /**
      * WOS DELIVERY: AJAX CEK STOK FG REAL-TIME DI MODAL
      */
+   /**
+     * WOS DELIVERY: AJAX CEK STOK FG REAL-TIME DI MODAL
+     */
     public function wosCheckStock($part_no)
     {
-        $stock = DB::table('finished_goods')->where('part_no', $part_no)->value('actual_stock') ?? 0;
-        return response()->json(['status' => 'success', 'stock' => $stock]);
+        // 1. Bersihkan teks: Ambil kode part depannya saja (sebelum tanda spasi/strip) & buang spasi tersembunyi
+        $clean_part = trim(explode(' - ', urldecode($part_no))[0]);
+
+        // 2. Tarik data dari database berdasarkan kode part yang sudah bersih
+        $stock = DB::table('finished_goods')->where('part_no', $clean_part)->value('actual_stock');
+
+        // 3. Kembalikan dalam bentuk angka bulat (integer)
+        return response()->json([
+            'status' => 'success', 
+            'stock' => (int) $stock
+        ]);
     }
 
     /**
