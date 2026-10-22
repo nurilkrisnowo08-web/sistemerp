@@ -368,7 +368,7 @@ class DeliveryController extends Controller
             ->orderBy('finished_goods.part_no', 'asc')
             ->get();
 
-        return view('Delivery.wos_index', compact('deliveries', 'date', 'parts'));
+        return view('delivery.wos_index', compact('deliveries', 'date', 'parts'));
     }
 
     /**
