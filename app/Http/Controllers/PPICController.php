@@ -1350,7 +1350,7 @@ class PPICController extends Controller
             return redirect()->back()->with('success', $msg);
 
         } catch (\Exception $e) {
-            DB::rollBack();
+            DB::RollBack();
             return redirect()->back()->with('error', 'Gagal memproses penutupan: ' . $e->getMessage());
         }
     }
@@ -1469,7 +1469,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2)
+     * 11. PRINT WOS WELDING (GABUNG SHIFT 1 & 2 DENGAN ACTUAL REAL-TIME)
      */
     public function printWosWelding($date, $line_code)
     {
@@ -1482,6 +1482,18 @@ class PPICController extends Controller
             ->orderBy('welding_plans.id', 'asc')
             ->get();
 
+        // LOGIKA BARU: BACA ACTUAL SHIFT 1 DARI WELDING TERMINAL
+        foreach ($plansS1 as $p) {
+            $actual = (int) DB::table('welding_actuals')
+                ->where('part_no', $p->part_no)
+                ->where('shift', 'Pagi') // Shift 1
+                ->whereDate('created_at', $date)
+                ->sum('qty_ok');
+            
+            $p->actual_qty = $actual;
+            $p->total_actual = $actual; // Disediakan keduanya agar view dapat mengaksesnya dengan bebas
+        }
+
         $plansS2 = DB::table('welding_plans')
             ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
             ->where('welding_plans.plan_date', $date)
@@ -1490,6 +1502,18 @@ class PPICController extends Controller
             ->select('welding_plans.*', 'parts.part_name')
             ->orderBy('welding_plans.id', 'asc')
             ->get();
+
+        // LOGIKA BARU: BACA ACTUAL SHIFT 2 DARI WELDING TERMINAL
+        foreach ($plansS2 as $p) {
+            $actual = (int) DB::table('welding_actuals')
+                ->where('part_no', $p->part_no)
+                ->where('shift', 'Malam') // Shift 2
+                ->whereDate('created_at', $date)
+                ->sum('qty_ok');
+            
+            $p->actual_qty = $actual;
+            $p->total_actual = $actual;
+        }
 
         if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
             return redirect()->back()->with('error', 'Tidak ada jadwal Welding di mesin ini untuk dicetak.');
@@ -1662,6 +1686,7 @@ class PPICController extends Controller
 
         return view('PPIC.print_serahterima_small', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
     }
+    
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER PLAN)
      */
@@ -1709,6 +1734,7 @@ class PPICController extends Controller
             'cavity' => $cavity
         ]);
     }
+    
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN)
      * Mengecek ketersediaan stok WIP hasil stamping di tabel finished_goods
