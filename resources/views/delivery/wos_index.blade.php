@@ -145,7 +145,7 @@
                                                     <div class="col-md-12 form-group">
                                                         <label class="font-weight-bold small text-muted">Customer</label>
                                                         <select name="customer_code" class="form-control edit-cust-select" data-target="#editPart{{ $d->id }}">
-                                                            @foreach($customers as$cust)
+                                                            @foreach($customers as $cust)
                                                                 <option value="{{ $cust }}" {{ $d->part_cust == $cust ? 'selected' : '' }}>{{ $cust }}</option>
                                                             @endforeach
                                                         </select>
@@ -153,7 +153,7 @@
                                                     <div class="col-md-12 form-group">
                                                         <label class="font-weight-bold small text-muted">Part Number</label>
                                                         <select name="part_no" id="editPart{{ $d->id }}" class="form-control">
-                                                            @foreach($parts as$p)
+                                                            @foreach($parts as $p)
                                                                 @if($p->customer_code ==$d->part_cust)
                                                                     <option value="{{ $p->part_no }}" {{ $d->part_no ==$p->part_no ? 'selected' : '' }}>
                                                                         {{ $p->part_no }} - {{$p->part_name }}
@@ -227,7 +227,7 @@
                             <label class="font-weight-bold small text-muted">Pilih Customer</label>
                             <select id="filterCustomer" name="customer_code" class="form-control" required>
                                 <option value="" disabled selected>-- Pilih Customer --</option>
-                                @foreach($customers as$cust)
+                                @foreach($customers as $cust)
                                     <option value="{{ $cust }}">{{ $cust }}</option>
                                 @endforeach
                             </select>
@@ -244,7 +244,7 @@
                         
                         <!-- SIMPAN SEMUA OPTION PART SEBAGAI DATA TERSEMBUNYI -->
                         <div id="hiddenPartOptions" style="display: none;">
-                            @foreach($parts as$p)
+                            @foreach($parts as $p)
                                 <option value="{{ $p->part_no }}" class="part-option" data-cust="{{ $p->customer_code }}">
                                     {{ $p->part_no }} - {{$p->part_name }}
                                 </option>
