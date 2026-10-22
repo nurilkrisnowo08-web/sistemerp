@@ -72,12 +72,11 @@
         </div>
     </div>
 
-    <div class="header-wrap">
-        <div class="logo-wrap">
-            <img src="{{ asset('admin/img/Logo-asalta.png') }}" class="logo-img" alt="Logo" onerror="this.style.display='none'">
-            <div class="comp-info">
-                PT. Asalta Mandiri Agung<br>
-                <span class="comp-dept">Dept. PPC<br>LOGISTICS & MATERIAL</span>
+     <div style="display: flex; align-items: center;">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+            <div class="company-info">
+                <h2>PT. Asalta Mandiri Agung</h2>
+                <h3>Dept. PPC<br>LOGISTICS & MATERIAL</h3>
             </div>
         </div>
         
