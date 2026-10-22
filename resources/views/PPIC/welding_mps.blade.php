@@ -68,7 +68,7 @@
             <h6 class="mb-0 font-weight-black" style="letter-spacing: 1px;"><i class="fas fa-robot mr-2 text-primary"></i> STATION: {{ $lineCode }}</h6>
             <div>
                 <a href="{{ url('/ppic/welding/print-wos/'.$date.'/'.$lineCode) }}" target="_blank" class="btn btn-sm btn-outline-light rounded-pill px-3 mr-2 font-weight-bold"><i class="fas fa-print mr-1"></i> PRINT WOS</a>
-                <a href="{{ url('/ppic/welding/print-serah-terima/'.$date.'/'.$lineCode) }}" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3 font-weight-bold"><i class="fas fa-file-alt mr-1"></i> PRINT BAST</a>
+                <a href="{{ url('/ppic/welding/print-serah-terima/'.$date.'/'.$lineCode) }}" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3 font-weight-bold"><i class="fas fa-file-alt mr-1"></i> PRINT BPRM</a>
             </div>
         </div>
         <div class="table-responsive">

@@ -449,4 +449,37 @@ class DeliveryController extends Controller
 
         return back()->with('success', 'Revisi berhasil! Aktual, Customer, dan Part Number telah diperbarui.');
     }
+    /**
+     * WOS DELIVERY: CETAK / PRINT KERTAS WOS
+     */
+    public function wosPrint(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+        
+        $deliveries = DB::table('delivery_plans')
+            ->leftJoin('parts', 'delivery_plans.part_no', '=', 'parts.part_no')
+            ->select('delivery_plans.*', 'parts.part_name', 'parts.customer_code as part_cust')
+            ->whereDate('plan_date', $date)
+            ->orderBy('pulling_time', 'asc')
+            ->get();
+            
+        foreach($deliveries as $d) {
+            $d->stock_ready = DB::table('finished_goods')->where('part_no', $d->part_no)->value('actual_stock') ?? 0;
+            $aktual_total = $d->act_delv_s1 + $d->act_delv_s2;
+            
+            if (strtoupper($d->keterangan) === 'CLOSE') {
+                $d->judge = 'CLOSE';
+                $d->total_delv_display = '-';
+            } else {
+                $d->total_delv_display = number_format($d->total_delv);
+                if ($d->total_delv > 0) {
+                    $d->judge = ($aktual_total >= $d->total_delv) ? 'OK' : 'SHORT';
+                } else {
+                    $d->judge = '-';
+                }
+            }
+        }
+
+        return view('delivery.wos_print', compact('deliveries', 'date'));
+    }
 }

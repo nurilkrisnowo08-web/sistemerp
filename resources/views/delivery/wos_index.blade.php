@@ -39,7 +39,7 @@
                 </div>
                 <div>
                     <h4 class="m-0 font-weight-bold" style="letter-spacing: 1px;">WOS DELIVERY LOGISTICS</h4>
-                    <p class="m-0" style="font-size: 0.85rem; color: #94a3b8;">Manajemen Jadwal Pengiriman & Aktualisasi Bebas Hambatan</p>
+                    <p class="m-0" style="font-size: 0.85rem; color: #94a3b8;">Manajemen Jadwal Pengiriman & Aktualisasi</p>
                 </div>
             </div>
             <div class="d-flex align-items-center mt-3 mt-md-0">
@@ -72,7 +72,7 @@
                         <tr>
                             <th>PULLING</th>
                             <th>DELIVERY</th>
-                            <th style="background: #f8fafc;">BALANCE</th>
+                            <th style="background: #f8fafc;">OUTSTANDING</th>
                             <th style="background: #f8fafc;">PLAN</th>
                             <th style="background: #f8fafc;">TOTAL</th>
                             <th>SHIFT 1</th>
@@ -189,6 +189,9 @@
                                     <p class="small">Klik 'Buat Jadwal Kirim' untuk mulai merencanakan pengiriman hari ini.</p>
                                 </td>
                             </tr>
+                            <a href="{{ route('delivery.wos.print', ['date' => $date]) }}" target="_blank" class="btn btn-dark shadow-sm mr-2" style="border-radius: 8px; font-weight: 600; padding: 0.6rem 1rem;">
+                            <i class="fas fa-print mr-1"></i> CETAK WOS
+                            </a>
                         @endforelse
                     </tbody>
                 </table>

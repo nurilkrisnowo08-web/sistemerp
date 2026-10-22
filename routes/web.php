@@ -184,6 +184,7 @@ Route::get('/wos-delivery', [App\Http\Controllers\DeliveryController::class, 'wo
 Route::post('/wos-delivery', [App\Http\Controllers\DeliveryController::class, 'wosStore'])->name('delivery.wos.store');
 Route::put('/wos-delivery/{id}', [App\Http\Controllers\DeliveryController::class, 'wosUpdateActual'])->name('delivery.wos.updateActual');
 Route::get('/wos-delivery/check-stock/{part_no}', [App\Http\Controllers\DeliveryController::class, 'wosCheckStock'])->name('delivery.wos.checkStock');
+Route::get('/wos-delivery/print', [App\Http\Controllers\DeliveryController::class, 'wosPrint'])->name('delivery.wos.print');
 
     // RM Adjustments
     Route::post('/rm/store-master', [RmController::class, 'storeMasterSpec'])->name('rm.store_master');
