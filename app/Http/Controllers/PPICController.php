@@ -1531,21 +1531,62 @@ class PPICController extends Controller
     /**
      * 12. PRINT SERAH TERIMA WELDING (WIP)
      */
+    /**
+     * 12. PRINT SERAH TERIMA WELDING (WIP)
+     */
     public function printSerahTerimaWelding($date, $line_code)
     {
-        $plans = DB::table('welding_plans')->where('plan_date', $date)->where('line_code', $line_code)->get();
+        // 1. Bersihkan spasi tersembunyi pada nama mesin
+        $clean_line = trim(urldecode($line_code));
+
+        $plans = DB::table('welding_plans')
+            ->where('plan_date', $date)
+            ->where('line_code', 'LIKE', "%{$clean_line}%")
+            ->get();
+            
         if ($plans->isEmpty()) return redirect()->back()->with('error', 'Belum ada Material Request (WIP) untuk mesin ini.');
 
         $parts = $plans->pluck('part_no')->toArray();
 
-        $batches = DB::table('welding_batches')
+        $batchesRaw = DB::table('welding_batches')
             ->leftJoin('parts', 'welding_batches.part_no', '=', 'parts.part_no')
             ->whereIn('welding_batches.part_no', $parts)
             ->whereDate('welding_batches.created_at', $date)
-            ->select('welding_batches.*', 'parts.part_name')
-            ->orderBy('welding_batches.shift', 'desc')->get();
+            ->select('welding_batches.*', 'parts.part_name', 'parts.customer_code')
+            ->orderBy('welding_batches.id', 'asc')
+            ->get();
 
-        return view('PPIC.print_serah_terima_welding', compact('batches', 'date', 'line_code'));
+        $allBatches = collect();
+
+        foreach ($batchesRaw as $batch) {
+            $item = clone $batch;
+            
+            // 2. Mapping variabel agar terbaca oleh template BPRM yang sama dengan Stamping
+            $item->display_part_no = $batch->part_no;
+            $item->display_part_name = $batch->part_name;
+            $item->customer_code = $batch->customer_code ?? 'SAI';
+            
+            // Karena Welding menggunakan barang setengah jadi (WIP), kolom RM dikosongkan/ditandai WIP
+            $item->no_surat_jalan = 'WIP-STAMPING';
+            $item->coil_id = '-';
+            $item->spec = '-';
+            $item->size = '-';
+            
+            // Konversi kolom Welding Terminal ke format BPRM
+            $item->qty_ambil_pcs = $batch->qty_masuk;
+            $item->qty_hasil_ok = $batch->qty_ok;
+            $item->qty_hasil_ng = $batch->qty_ng;
+            $item->qty_return_warehouse = $batch->qty_return;
+
+            $allBatches->push($item);
+        }
+
+        // 3. Pecah data berdasarkan Shift
+        $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
+        $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
+        $batches = $allBatches;
+
+        return view('PPIC.print_serah_terima_welding', compact('batches', 'batchesS1', 'batchesS2', 'date', 'line_code'));
     }
 
     /**
