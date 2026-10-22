@@ -12,6 +12,9 @@
     .btn-wos { background: #3b82f6; border: none; border-radius: 8px; font-weight: 600; padding: 0.6rem 1.25rem; color: white; transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(59, 130, 246, 0.2); }
     .btn-wos:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3); }
     
+    .btn-print { background: #475569; border: none; border-radius: 8px; font-weight: 600; padding: 0.6rem 1.25rem; color: white; transition: all 0.2s ease; box-shadow: 0 4px 6px rgba(71, 85, 105, 0.2); }
+    .btn-print:hover { background: #334155; color: white; transform: translateY(-2px); box-shadow: 0 6px 15px rgba(71, 85, 105, 0.3); text-decoration: none; }
+    
     .btn-outline-revisi { border: 1px solid #f59e0b; color: #f59e0b; border-radius: 6px; font-weight: 700; padding: 0.4rem 0.8rem; font-size: 0.75rem; background: transparent; transition: all 0.2s ease; }
     .btn-outline-revisi:hover { background: #f59e0b; color: white; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); }
     
@@ -39,15 +42,21 @@
                 </div>
                 <div>
                     <h4 class="m-0 font-weight-bold" style="letter-spacing: 1px;">WOS DELIVERY LOGISTICS</h4>
-                    <p class="m-0" style="font-size: 0.85rem; color: #94a3b8;">Manajemen Jadwal Pengiriman & Aktualisasi</p>
+                    <p class="m-0" style="font-size: 0.85rem; color: #94a3b8;">Manajemen Jadwal Pengiriman & Aktualisasi Bebas Hambatan</p>
                 </div>
             </div>
             <div class="d-flex align-items-center mt-3 mt-md-0">
                 <form action="{{ url('/wos-delivery') }}" method="GET" class="d-flex mr-3 shadow-sm rounded">
                     <input type="date" name="date" class="form-control font-weight-bold text-primary" value="{{ $date }}" onchange="this.form.submit()" style="border: none; background: #f8fafc; cursor: pointer;">
                 </form>
+                
+                <!-- TOMBOL PRINT BARU -->
+                <a href="{{ route('delivery.wos.print', ['date' => $date]) }}" target="_blank" class="btn btn-print mr-2">
+                    <i class="fas fa-print mr-1"></i> CETAK WOS
+                </a>
+                
                 <button type="button" class="btn-wos" data-toggle="modal" data-target="#modalTambahJadwal">
-                    <i class="fas fa-plus-circle mr-1"></i> BUAT JADWAL KIRIM
+                    <i class="fas fa-plus-circle mr-1"></i> BUAT JADWAL
                 </button>
             </div>
         </div>
@@ -136,7 +145,7 @@
                                                     <div class="col-md-12 form-group">
                                                         <label class="font-weight-bold small text-muted">Customer</label>
                                                         <select name="customer_code" class="form-control edit-cust-select" data-target="#editPart{{ $d->id }}">
-                                                            @foreach($customers as $cust)
+                                                            @foreach($customers as$cust)
                                                                 <option value="{{ $cust }}" {{ $d->part_cust == $cust ? 'selected' : '' }}>{{ $cust }}</option>
                                                             @endforeach
                                                         </select>
@@ -144,7 +153,7 @@
                                                     <div class="col-md-12 form-group">
                                                         <label class="font-weight-bold small text-muted">Part Number</label>
                                                         <select name="part_no" id="editPart{{ $d->id }}" class="form-control">
-                                                            @foreach($parts as $p)
+                                                            @foreach($parts as$p)
                                                                 @if($p->customer_code ==$d->part_cust)
                                                                     <option value="{{ $p->part_no }}" {{ $d->part_no ==$p->part_no ? 'selected' : '' }}>
                                                                         {{ $p->part_no }} - {{$p->part_name }}
@@ -189,9 +198,6 @@
                                     <p class="small">Klik 'Buat Jadwal Kirim' untuk mulai merencanakan pengiriman hari ini.</p>
                                 </td>
                             </tr>
-                            <a href="{{ route('delivery.wos.print', ['date' => $date]) }}" target="_blank" class="btn btn-dark shadow-sm mr-2" style="border-radius: 8px; font-weight: 600; padding: 0.6rem 1rem;">
-                            <i class="fas fa-print mr-1"></i> CETAK WOS
-                            </a>
                         @endforelse
                     </tbody>
                 </table>
@@ -221,7 +227,7 @@
                             <label class="font-weight-bold small text-muted">Pilih Customer</label>
                             <select id="filterCustomer" name="customer_code" class="form-control" required>
                                 <option value="" disabled selected>-- Pilih Customer --</option>
-                                @foreach($customers as $cust)
+                                @foreach($customers as$cust)
                                     <option value="{{ $cust }}">{{ $cust }}</option>
                                 @endforeach
                             </select>
@@ -238,7 +244,7 @@
                         
                         <!-- SIMPAN SEMUA OPTION PART SEBAGAI DATA TERSEMBUNYI -->
                         <div id="hiddenPartOptions" style="display: none;">
-                            @foreach($parts as $p)
+                            @foreach($parts as$p)
                                 <option value="{{ $p->part_no }}" class="part-option" data-cust="{{ $p->customer_code }}">
                                     {{ $p->part_no }} - {{$p->part_name }}
                                 </option>
@@ -336,7 +342,6 @@ $(document).ready(function() {
     $('#modalTambahJadwal form').submit(function() {
         let partVal = $('#partSelect').val();
         if(partVal) {
-            // Potong value (dari "61636-BZ050 - NAMA PART" jadi "61636-BZ050")
             $('#partSelect').val(partVal.split(' - ')[0].trim());
         }
     });
@@ -346,7 +351,6 @@ $(document).ready(function() {
         let selectedCust = $(this).val();
         let targetPartSelect = $($(this).data('target'));
         
-        // Kosongkan dan masukkan part yang sesuai customer
         targetPartSelect.empty();
         allParts.filter(`[data-cust="${selectedCust}"]`).appendTo(targetPartSelect);
     });
@@ -356,7 +360,6 @@ $(document).ready(function() {
         let selectElement = $(this).find('select[name="part_no"]');
         let partVal = selectElement.val();
         if(partVal) {
-            // Karena value sudah diset kode part saja saat foreach, baris ini sebagai pengaman ganda
             selectElement.val(partVal.split(' - ')[0].trim());
         }
     });
