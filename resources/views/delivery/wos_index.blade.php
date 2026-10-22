@@ -176,7 +176,7 @@
                             <label class="font-weight-bold small text-muted">Pilih Customer</label>
                             <select id="filterCustomer" name="customer_code" class="form-control" required>
                                 <option value="" disabled selected>-- Pilih Customer --</option>
-                                @foreach($customers as$cust)
+                                @foreach($customers as $cust)
                                     <option value="{{ $cust }}">{{ $cust }}</option>
                                 @endforeach
                             </select>
@@ -193,7 +193,7 @@
                         
                         <!-- SIMPAN SEMUA OPTION PART SEBAGAI DATA TERSEMBUNYI -->
                         <div id="hiddenPartOptions" style="display: none;">
-                            @foreach($parts as$p)
+                            @foreach($parts as $p)
                                 <option value="{{ $p->part_no }}" class="part-option" data-cust="{{ $p->customer_code }}">
                                     {{ $p->part_no }} - {{$p->part_name }}
                                 </option>
