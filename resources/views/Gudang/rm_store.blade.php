@@ -1,256 +1,415 @@
 @extends('layout.admin')
 
 @section('content')
-<!-- Font Profesional & Monospace untuk Angka -->
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 
 <style>
-    /* 🔥 KUSTOMISASI UI ERP MODERN 🔥 */
-    .rm-wrapper { font-family: 'Plus Jakarta Sans', sans-serif; color: #0f172a; }
-    
-    /* Toolbar Filter */
-    .filter-card { border-radius: 12px; border: none; box-shadow: 0 4px 20px rgba(0,0,0,0.04); margin-bottom: 20px; background: #fff; }
-    .filter-header { background: #1e293b; color: #fff; padding: 15px 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center; }
-    .filter-body { padding: 20px; background: #f8fafc; border-radius: 0 0 12px 12px; border: 1px solid #e2e8f0; border-top: none; }
-    
-    .form-control, .form-select { border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.85rem; font-weight: 600; padding: 0.6rem 1rem; color: #334155; }
-    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-    .btn-filter { background: #3b82f6; color: white; border-radius: 8px; font-weight: 700; padding: 0.6rem 1.5rem; transition: all 0.2s; border: none; }
-    .btn-filter:hover { background: #2563eb; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+    :root { 
+        --primary: #4361ee; --primary-soft: rgba(67, 97, 238, 0.08); 
+        --brand-success: #10b981; --brand-danger: #ef4444; 
+        --brand-return: #6366f1; --dark-surface: #0f172a; --bg-main: #f1f5f9; 
+    }
 
-    /* Group Card (Material) */
-    .material-card { border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 15px; background: #fff; overflow: hidden; transition: all 0.2s; }
-    .material-card:hover { border-color: #94a3b8; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
-    
-    .material-header { padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #fff; border-bottom: 1px solid transparent; }
-    .material-header[aria-expanded="true"] { background: #f8fafc; border-bottom-color: #e2e8f0; }
-    
-    .spec-title { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: 0.5px; }
-    .spec-subtitle { font-size: 0.8rem; font-weight: 600; color: #64748b; margin: 0; }
-    
-    .stock-badge { background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 6px 15px; border-radius: 20px; font-weight: 800; font-size: 0.95rem; font-family: 'JetBrains Mono', monospace; }
-    .stock-badge.empty { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+    body { background-color: var(--bg-main); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dark-surface); }
 
-    /* Tabel Detail Internal */
-    .inner-body { padding: 20px; background: #fff; }
-    .section-title { font-size: 0.85rem; font-weight: 800; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; }
-    
-    .table-custom { width: 100%; font-size: 0.8rem; }
-    .table-custom th { background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; padding: 10px; border-bottom: 2px solid #cbd5e1; }
-    .table-custom td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600; vertical-align: middle; }
-    
-    .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; font-weight: 700; }
-    .badge-coil { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; padding: 3px 8px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-weight: 800; }
-    
-    .log-in { color: #10b981; font-weight: 800; }
-    .log-out { color: #ef4444; font-weight: 800; }
-    .badge-tipe { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
-    .bg-in { background: #dcfce7; color: #15803d; }
-    .bg-out { background: #fee2e2; color: #b91c1c; }
+    /* 🛸 DASHBOARD ELEMENTS */
+    .heading-cyber { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(90deg, var(--dark-surface), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .card-industrial { border: none; border-radius: 30px; background: #ffffff; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.03); border: 1px solid rgba(255,255,255,0.8); overflow: hidden; }
 
-    /* Scrollable Container untuk Log */
-    .scrollable-logs { max-height: 300px; overflow-y: auto; padding-right: 5px; }
-    .scrollable-logs::-webkit-scrollbar { width: 6px; }
-    .scrollable-logs::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-    .scrollable-logs::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    .scrollable-logs::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    /* 📈 LEDGER TABLE DESIGN */
+    .table-ledger thead th { 
+        background: #f8fafc; color: #64748b; font-size: 10px; 
+        text-transform: uppercase; letter-spacing: 1.5px; padding: 22px 15px; border: none; font-weight: 800;
+    }
+    .rm-row-header { cursor: pointer; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-left: 6px solid transparent; }
+    .rm-row-header:hover { background-color: var(--primary-soft) !important; border-left-color: var(--primary); }
+    .col-live { font-family: 'Orbitron'; font-weight: 900; font-size: 18px; color: var(--primary); background: rgba(67, 97, 238, 0.05); }
+
+    /* 🏷️ UNIT CARDS */
+    .unit-tag-card { background: #fff; border-radius: 25px; border: 1px solid #eef2f6; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; }
+    .unit-tag-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.06); border-color: var(--primary); }
+    .badge-coil { background: var(--dark-surface); color: #fff; padding: 8px 18px; border-radius: 12px; font-family: 'JetBrains Mono'; font-weight: 700; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    .badge-sj-tag { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 8px; font-family: 'JetBrains Mono'; display: inline-flex; align-items: center; }
+
+    /* 📋 MUTATION FEED STYLE (GROUPED BY SJ) */
+    .log-container { background: #f8fafc; border-radius: 24px; padding: 18px; border: 1px solid #e2e8f0; }
+    .log-entry-card { background: white; border-radius: 20px; padding: 16px; margin-bottom: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: 0.3s; }
+    .log-entry-card.in { border-left: 5px solid var(--brand-success); background: #f0fdf4; }
+    .log-entry-card.out { border-left: 5px solid var(--brand-danger); background: #fef2f2; }
+    .log-entry-card.ret { border-left: 5px solid var(--brand-return); background: #eef2ff; }
+
+    .tech-input { border-radius: 16px; border: 2.5px solid #f1f5f9; padding: 12px 18px; font-weight: 700; background: #f8fafc; transition: 0.3s; }
+    .tech-input:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 5px rgba(67, 97, 238, 0.1); }
+    .btn-cyber { border-radius: 50px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; }
+    .transition-icon { transition: 0.3s; }
 </style>
 
-<div class="container-fluid rm-wrapper mb-5">
+<div class="container-fluid mt-4 animate__animated animate__fadeIn">
     
-    <!-- 1. TOOLBAR FILTER -->
-    <div class="card filter-card">
-        <div class="filter-header">
-            <div>
-                <h5 class="m-0 font-weight-bold" style="letter-spacing: 1px;"><i class="fas fa-boxes mr-2"></i> RAW MATERIAL STORE</h5>
-                <p class="m-0" style="font-size: 0.8rem; color: #94a3b8;">Dashboard Stok Fisik & Sinkronisasi Mutasi Logistik</p>
-            </div>
-            <div>
-                <!-- Tombol Pintasan ke Halaman Print Rekap -->
-                <a href="{{ url('/rm-log-print') }}" class="btn btn-light btn-sm font-weight-bold shadow-sm" style="border-radius: 8px;">
-                    <i class="fas fa-print mr-1"></i> CETAK REKAPITULASI BPRM
-                </a>
-            </div>
+    {{-- 🛰️ TOP COMMAND BAR --}}
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-5">
+        <div>
+            <h1 class="heading-cyber m-0">RM_HUB <span class="text-primary">ASALTA MANDIRI AGUNG</span></h1>
+            <p class="text-muted small font-weight-bold mb-0 text-uppercase"><i class="fas fa-satellite-dish text-primary mr-2"></i> PT ASALTA MANDIRI AGUNG - GLOBAL INVENTORY</p>
         </div>
-        <div class="filter-body">
-            <form action="{{ url()->current() }}" method="GET">
-                <div class="row align-items-end">
-                    <div class="col-md-3 mb-3">
-                        <label class="font-weight-bold small text-muted">Tanggal Awal</label>
-                        <input type="date" name="start_date" class="form-control" value="{{ $startDate }}">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="font-weight-bold small text-muted">Tanggal Akhir</label>
-                        <input type="date" name="end_date" class="form-control" value="{{ $endDate }}">
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="font-weight-bold small text-muted">Filter Customer</label>
-                        <select name="customer" class="form-control">
-                            <option value="">-- Semua Customer --</option>
-                            @foreach($availableCustomers as $cust)
-                                <option value="{{ $cust->code }}" {{ $customer == $cust->code ? 'selected' : '' }}>{{ $cust->code }} - {{ $cust->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <label class="font-weight-bold small text-muted">Pencarian Part / Alias</label>
-                        <div class="input-group">
-                            <input type="text" name="alias" class="form-control" placeholder="Ketik nama part..." value="{{ request('alias') }}">
-                            <div class="input-group-append">
-                                <button class="btn btn-filter" type="submit"><i class="fas fa-search"></i> FILTER</button>
+        <div class="d-flex align-items-center mt-3 mt-md-0">
+            <a href="{{ route('rm.log_print') }}" class="btn btn-white btn-cyber px-4 border mr-2 shadow-sm"><i class="fas fa-history mr-2 text-dark"></i>RECAP</a>
+            <button class="btn btn-primary btn-cyber shadow-lg px-4 py-2" data-toggle="modal" data-target="#modalTambahRM">
+                <i class="fas fa-plus-circle mr-2"></i>REGISTER_UNIT
+            </button>
+        </div>
+    </div>
+
+    {{-- 🔍 FILTER PANEL --}}
+    <div class="card-industrial p-4 mb-4 animate__animated animate__fadeInDown">
+        <form action="{{ route('rm.store') }}" method="GET" id="autoFilterForm" class="row align-items-end">
+            <div class="col-md-4">
+                <label class="small font-weight-black text-primary mb-2 uppercase">Client Entity</label>
+                <select name="customer" class="form-control tech-input w-100" onchange="this.form.submit()">
+                    <option value="">-- ALL CLIENTS --</option>
+                    @foreach($availableCustomers as $c) 
+                        <option value="{{ trim($c->code) }}" {{ $customer == trim($c->code) ? 'selected' : '' }}>{{$c->name }}</option> 
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="small font-weight-black text-primary mb-2 uppercase">Material Search</label>
+                <input type="text" name="alias" class="form-control tech-input" placeholder="Type spec or alias code..." value="{{ request('alias') }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-dark btn-block btn-cyber" style="height: 52px;">
+                    <i class="fas fa-sync-alt mr-2"></i>SYNC_DASHBOARD
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- 📊 LEDGER TABLE --}}
+    <div class="card-industrial animate__animated animate__fadeInUp">
+        <div class="table-responsive">
+            <table class="table table-ledger mb-0 text-center">
+                <thead>
+                    <tr>
+                        <th class="text-left pl-5">Material Identification</th>
+                        <th>STOCK AWAL</th>
+                        <th class="text-success">In (Supplier)</th>
+                        <th style="color: var(--brand-return);">In (Return)</th>
+                        <th class="text-danger">Out (Prod)</th>
+                        <th class="col-live">STOCK SEKARANG</th>
+                        <th style="width: 80px;">DETAIL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($groupedMaterials as $group)
+                    @php $slug = Str::slug($group->group_key .$loop->iteration); @endphp
+                    <tr class="rm-row-header" data-toggle="collapse" data-target="#det-{{ $slug }}">
+                        <td class="pl-5 py-4 text-left">
+                            <div class="font-weight-black text-primary" style="font-size: 16px; font-family: 'JetBrains Mono';">{{ $group->alias_code ?? $group->group_key }}</div>
+                            <small class="text-muted font-weight-bold uppercase">{{ $group->spec }} \vert{} {{$group->size }}</small>
+                        </td>
+                        <td class="text-muted font-weight-bold">{{ number_format($group->total_init) }}</td>
+                        <td class="text-success font-weight-black">+{{ number_format($group->total_in_s) }}</td>
+                        <td style="color: var(--brand-return);" class="font-weight-black">+{{ number_format($group->total_in_r) }}</td>
+                        <td class="text-danger font-weight-black">-{{ number_format($group->total_out) }}</td>
+                        <td class="col-live">{{ number_format($group->total_live) }}</td>
+                        <td><i class="fas fa-chevron-right text-muted transition-icon"></i></td>
+                    </tr>
+                    
+                    <tr id="det-{{ $slug }}" class="collapse bg-light">
+                        <td colspan="7" class="p-4">
+                            <div class="row">
+                                {{-- 📦 KIRI: PHYSICAL UNIT CARDS --}}
+                                <div class="col-md-7">
+                                    @foreach($group->details as $p)
+                                    @php 
+                                        $subParts = DB::table('rm_stocks')
+                                            ->where('coil_id', trim($p->coil_id))
+                                            ->where('customer', trim($p->customer))
+                                            ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $p->size))
+                                            ->get(); 
+                                    @endphp
+                                    <div class="unit-tag-card p-4 bg-white mb-3 shadow-sm">
+                                        <div class="d-flex justify-content-between align-items-start mb-4">
+                                            <div>
+                                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                                    <span class="badge-coil mr-2">{{ $p->coil_id }}</span>
+                                                    @if(!empty($p->no_surat_jalan))
+                                                        <span class="badge-sj-tag">
+                                                            <i class="fas fa-file-invoice mr-1 text-primary"></i> SJ: {{ $p->no_surat_jalan }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <div class="mt-3">
+                                                    <small class="text-muted font-weight-black uppercase d-block">Unit Saldo</small>
+                                                    <span class="h4 font-weight-black text-primary" style="font-family: 'Orbitron';">{{ number_format($p->stock_pcs) }} <small class="h6">PCS</small></span>
+                                                </div>
+                                            </div>
+                                            <div class="btn-group shadow-sm rounded-pill overflow-hidden">
+                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openAssignPart('{{ $p->id }}', '{{$p->customer }}')"><i class="fas fa-plus mr-1 text-primary"></i> PART</button>
+                                                <button class="btn btn-white btn-sm px-3 font-weight-bold border-right" onclick="openEditUnit('{{ $p->id }}', '{{ $p->coil_id }}', '{{$p->stock_pcs }}')"><i class="fas fa-edit mr-1 text-warning"></i> ADJUST</button>
+                                                <form action="{{ route('rm.destroy', $p->id) }}" method="POST" onsubmit="return confirm('Erase this physical unit?')">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="btn btn-white btn-sm px-3"><i class="fas fa-trash text-danger"></i></button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                        <div class="bg-light p-3 rounded-2xl border" style="border-style: dashed !important;">
+                                            <small class="font-weight-black text-muted d-block mb-3 uppercase tracking-tighter">Mapped Components</small>
+                                            <div class="row">
+                                                @foreach($subParts as $sp)
+                                                <div class="col-md-6 mb-2">
+                                                    <div class="d-flex justify-content-between align-items-center bg-white p-3 rounded-xl border shadow-sm">
+                                                        <div>
+                                                            <span class="font-weight-bold text-dark small d-block">{{ $sp->material_code }}</span>
+                                                            @if(!empty($sp->cavity) &&$sp->cavity > 0)
+                                                                <small class="badge badge-light border text-muted px-2 py-0">Cavity: {{ $sp->cavity }}</small>
+                                                            @endif
+                                                        </div>
+                                                        <form action="{{ route('rm.remove_part_from_unit', $sp->id) }}" method="POST">
+                                                            @csrf @method('DELETE')
+                                                            <button type="submit" class="border-0 bg-transparent p-0"><i class="fas fa-unlink text-danger opacity-50"></i></button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @endforeach
+                                </div>
+
+                                {{-- 📋 KANAN: RECENT MUTATIONS (GROUPED BY SURAT JALAN) --}}
+                                <div class="col-md-5">
+                                    <div class="card border-0 shadow-sm rounded-3xl p-4 bg-white h-100">
+                                        <div class="d-flex justify-content-between align-items-center mb-4">
+                                            <h6 class="font-weight-black text-dark m-0 uppercase tracking-widest"><i class="fas fa-stream mr-2 text-primary"></i>Recent_Mutations</h6>
+                                            <span class="badge badge-light border rounded-pill px-3 py-1 font-weight-bold text-muted" style="font-size: 9.5px;">MANIFEST GROUPED</span>
+                                        </div>
+                                        
+                                        <div class="log-container" style="max-height: 550px; overflow-y:auto;">
+                                            @forelse($group->combined_logs as $log)
+                                                {{-- Format Grouped Inbound (Per Surat Jalan) --}}
+                                                @if(isset($log->type) &&$log->type === 'INBOUND_GROUP')
+                                                    <div class="log-entry-card in">
+                                                        <div class="d-flex justify-content-between align-items-start">
+                                                            <div>
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <span class="badge badge-success px-2 py-1 rounded-pill font-weight-black uppercase mr-2" style="font-size: 8.5px;">
+                                                                        {{ $log->source == 'return' ? 'RETURN' : 'INBOUND' }}
+                                                                    </span>
+                                                                    <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                                                </div>
+                                                                <div class="font-weight-black text-dark" style="font-size: 13px; font-family: 'JetBrains Mono';">
+                                                                    📄 {{ $log->no_sj }}
+                                                                </div>
+                                                                <div class="badge badge-light border text-dark font-weight-bold mt-1 px-2 py-1 rounded-pill" style="font-size: 9.5px;">
+                                                                    📦 {{ $log->bundle_count }} BUNDLE / COIL
+                                                                </div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="h5 font-weight-black text-success mb-0" style="font-family: 'Orbitron';">
+                                                                    +{{ number_format($log->total_qty) }}
+                                                                </div>
+                                                                <small class="text-muted font-weight-bold">PCS</small>
+                                                            </div>
+                                                        </div>
+
+                                                        {{-- Rincian Coil di dalam Surat Jalan --}}
+                                                        @if(isset($log->bundles) && count($log->bundles) > 0)
+                                                            <div class="mt-2 pt-2 border-top" style="border-color: #dcfce7 !important;">
+                                                                <small class="text-muted font-weight-bold d-block mb-1" style="font-size: 8.5px;">BUNDLE BREAKDOWN:</small>
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                    @foreach($log->bundles as $b)
+                                                                        <span class="badge badge-white border px-2 py-1 rounded-pill text-dark font-weight-bold mr-1 mb-1" style="font-size: 9px; background:#fff;">
+                                                                            🏷️ {{ $b->coil_id ?? 'TAG' }}: <b>+{{ number_format($b->pcs_in) }}</b>
+                                                                        </span>
+                                                                    @endforeach
+                                                                </div>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+
+                                                {{-- Format Produksi Keluar (WOS Out) --}}
+                                                @elseif(isset($log->type) &&$log->type === 'PROD_EXIT')
+                                                    <div class="log-entry-card out">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <span class="badge badge-danger px-2 py-1 rounded-pill font-weight-black uppercase mr-2" style="font-size: 8.5px;">PROD_EXIT</span>
+                                                                    <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                                                </div>
+                                                                <div class="font-weight-black text-dark small" style="font-family: 'JetBrains Mono';">⚙️ {{ $log->no_sj }}</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="h5 font-weight-black text-danger mb-0" style="font-family: 'Orbitron';">-{{ number_format($log->total_qty) }}</div>
+                                                                <small class="text-muted font-weight-bold">PCS</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                {{-- Fallback Log Legacy Biasa --}}
+                                                @else
+                                                    @php $isOut = isset($log->pcs_used); $isRet = !$isOut && (isset($log->source) &&$log->source == 'return'); @endphp
+                                                    <div class="log-entry-card {{ $isOut ? 'out' : ($isRet ? 'ret' : 'in') }}">
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <span class="badge {{ $isOut ? 'badge-danger' : ($isRet ? 'badge-primary' : 'badge-success') }} px-2 py-1 rounded-pill font-weight-black uppercase mr-2" style="font-size: 8.5px;">
+                                                                        {{ $isOut ? 'PROD_EXIT' : ($isRet ? 'RETURN' : 'INBOUND') }}
+                                                                    </span>
+                                                                    <small class="text-muted font-weight-bold">{{ date('d M, H:i', strtotime($log->created_at)) }}</small>
+                                                                </div>
+                                                                <div class="text-dark font-weight-bold small" style="font-family: 'JetBrains Mono';">{{ $log->no_produksi ?? 'TRANSACTION' }}</div>
+                                                            </div>
+                                                            <div class="text-right">
+                                                                <div class="h5 font-weight-black {{ $isOut ? 'text-danger' : 'text-success' }} mb-0" style="font-family: 'Orbitron';">
+                                                                    {{ $isOut ? '-' : '+' }}{{ number_format($log->pcs_used ?? $log->pcs_in ?? 0) }}
+                                                                </div>
+                                                                <small class="text-muted font-weight-bold">PCS</small>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                @endif
+                                            @empty
+                                                <div class="text-center py-5 text-muted small font-weight-bold">Zero Mutations Recorded</div>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{-- MODALS --}}
+@include('Gudang.rm_modals') 
+
+{{-- MODAL: ADJUST UNIT SALDO --}}
+<div class="modal fade animate__animated animate__zoomIn" id="modalEditUnit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 40px; overflow: hidden;">
+            <div class="modal-header bg-warning p-4 border-0">
+                <h5 class="modal-title font-weight-black uppercase text-dark"><i class="fas fa-tools mr-2"></i>Inventory_Correction</h5>
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form action="{{ route('rm.update_unit_pcs') }}" method="POST">
+                @csrf
+                <div class="modal-body p-5">
+                    <input type="hidden" name="id" id="edit_id">
+                    <div class="form-group mb-4 text-center">
+                        <small class="font-weight-black text-muted uppercase d-block mb-2">Targeting Unit ID</small>
+                        <input type="text" id="edit_coil" class="form-control tech-input text-center font-weight-black" style="font-size: 20px; color: var(--primary);" readonly>
                     </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-black text-muted uppercase mb-2 d-block">Input Corrected Balance (PCS)</label>
+                        <input type="number" name="new_qty" id="edit_qty" class="form-control tech-input font-weight-black text-primary text-center" style="font-size: 42px; height: 100px;" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-5 pt-0">
+                    <button type="submit" class="btn btn-warning btn-block py-4 font-weight-black rounded-pill shadow-lg uppercase">Confirm_Correction</button>
                 </div>
             </form>
         </div>
     </div>
+</div>
 
-    <!-- 2. DAFTAR MATERIAL (ACCORDION) -->
-    <div class="accordion" id="rmAccordion">
-        @forelse($groupedMaterials as $index => $group)
-            <div class="material-card">
-                <!-- Card Header (Bisa di-klik) -->
-                <div class="material-header" id="heading{{ $index }}" data-toggle="collapse" data-target="#collapse{{ $index }}" aria-expanded="false" aria-controls="collapse{{ $index }}">
-                    <div class="d-flex align-items-center">
-                        <div class="mr-3 text-primary">
-                            <i class="fas fa-chevron-circle-down fa-lg"></i>
-                        </div>
-                        <div>
-                            <h4 class="spec-title">[{{ $group->alias_code ?? $group->customer }}] {{ $group->spec }}</h4>
-                            <p class="spec-subtitle">Dimensi: {{ $group->size }} &nbsp;|&nbsp; Master Customer: <span class="text-dark">{{ $group->customer }}</span></p>
-                        </div>
+{{-- MODAL: ASSIGN COMPONENT --}}
+<div class="modal fade animate__animated animate__zoomIn" id="modalAssignPart" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 40px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white p-4 border-0">
+                <h5 class="modal-title font-weight-black uppercase"><i class="fas fa-link mr-2"></i>Map_New_Component</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form action="{{ route('rm.assign_part_to_unit') }}" method="POST">
+                @csrf
+                <div class="modal-body p-5">
+                    <input type="hidden" name="rm_stock_id" id="assign_ref_id">
+                    <div class="alert alert-primary rounded-2xl mb-4 border-0 text-center py-3">
+                        <i class="fas fa-info-circle mb-2 d-block fa-2x"></i>
+                        <p class="small font-weight-bold mb-0">Binding a component allows this unit to be used for production mapping.</p>
                     </div>
-                    <div>
-                        <div class="text-right mb-1" style="font-size: 0.7rem; font-weight: 700; color: #64748b;">TOTAL FISIK GUDANG:</div>
-                        <div class="stock-badge {{ $group->total_live <= 0 ? 'empty' : '' }}">
-                            {{ number_format($group->total_live) }} PCS
-                        </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-black text-primary uppercase mb-2 d-block">Choose Target Component</label>
+                        <select name="part_no" id="assign_select_part" class="form-control tech-input font-weight-bold" style="height: 60px;" required></select>
                     </div>
                 </div>
-
-                <!-- Card Body (Rincian) -->
-                <div id="collapse{{ $index }}" class="collapse" aria-labelledby="heading{{ $index }}" data-parent="#rmAccordion">
-                    <div class="inner-body border-top">
-                        <div class="row">
-                            
-                            <!-- KOLOM KIRI: FISIK COIL SAAT INI -->
-                            <div class="col-md-5 mb-4">
-                                <div class="section-title"><i class="fas fa-pallet mr-2 text-primary"></i>Rincian Coil Tersedia (Live)</div>
-                                @if($group->details->count() > 0)
-                                    <div class="table-responsive">
-                                        <table class="table-custom">
-                                            <thead>
-                                                <tr>
-                                                    <th>No</th>
-                                                    <th>Identitas Coil</th>
-                                                    <th class="text-right">Stok Aktual</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @php $noCoil = 1; @endphp
-                                                @foreach($group->details as $coil)
-                                                    <tr>
-                                                        <td class="text-center" width="10%">{{ $noCoil++ }}</td>
-                                                        <td><span class="badge-coil"><i class="fas fa-tag mr-1"></i>{{ $coil->coil_id }}</span></td>
-                                                        <td class="text-right mono text-success" style="font-size: 0.95rem;">{{ number_format($coil->stock_pcs) }}</td>
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @else
-                                    <div class="alert alert-light text-center border mt-2 py-4">
-                                        <i class="fas fa-box-open fa-2x text-muted mb-2"></i><br>
-                                        <b class="text-muted">Stok fisik kosong (0 Pcs)</b>
-                                    </div>
-                                @endif
-                            </div>
-
-                            <!-- KOLOM KANAN: LOG MUTASI -->
-                            <div class="col-md-7 mb-4">
-                                <div class="section-title d-flex justify-content-between">
-                                    <span><i class="fas fa-history mr-2 text-info"></i>Riwayat Transaksi</span>
-                                    <span class="text-muted text-lowercase" style="font-size: 0.7rem; font-weight:600;">(Periode: {{ date('d/m/Y', strtotime($startDate)) }} - {{ date('d/m/Y', strtotime($endDate)) }})</span>
-                                </div>
-                                
-                                @if($group->combined_logs->count() > 0)
-                                    <div class="scrollable-logs">
-                                        <table class="table-custom">
-                                            <thead style="position: sticky; top: 0; z-index: 1;">
-                                                <tr>
-                                                    <th>Waktu</th>
-                                                    <th>Tipe / No. Dokumen</th>
-                                                    <th>Rincian Item</th>
-                                                    <th class="text-right">Qty</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach($group->combined_logs as $log)
-                                                    <tr>
-                                                        <td class="text-muted" style="font-size: 0.75rem;">
-                                                            {{ date('d/m/Y', strtotime($log->created_at)) }}<br>
-                                                            <b class="text-dark">{{ date('H:i', strtotime($log->created_at)) }}</b>
-                                                        </td>
-                                                        
-                                                        @if($log->type == 'INBOUND_GROUP')
-                                                            <td>
-                                                                <span class="badge-tipe bg-in"><i class="fas fa-arrow-down mr-1"></i>MASUK</span><br>
-                                                                <span class="text-dark" style="font-size:0.75rem; font-weight:800;">SJ: {{ $log->no_sj }}</span>
-                                                            </td>
-                                                            <td>
-                                                                <span class="text-muted" style="font-size:0.75rem;">Total Menerima:</span><br>
-                                                                <b>{{ $log->bundle_count }} Bundle/Coil</b>
-                                                            </td>
-                                                            <td class="text-right mono log-in">+{{ number_format($log->total_qty) }}</td>
-                                                        @else
-                                                            <td>
-                                                                <span class="badge-tipe bg-out"><i class="fas fa-arrow-up mr-1"></i>KELUAR</span><br>
-                                                                <span class="text-dark" style="font-size:0.75rem; font-weight:800;">WOS: {{ $log->no_sj }}</span>
-                                                            </td>
-                                                            <td>
-                                                                <span class="text-muted" style="font-size:0.75rem;">Coil Terpakai:</span><br>
-                                                                <span class="badge-coil" style="font-size:0.7rem;">{{ $log->coil_id ?? 'N/A' }}</span>
-                                                            </td>
-                                                            <td class="text-right mono log-out">-{{ number_format($log->total_qty) }}</td>
-                                                        @endif
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                @else
-                                    <div class="alert alert-light text-center border mt-2 py-4">
-                                        <i class="fas fa-file-invoice fa-2x text-muted mb-2"></i><br>
-                                        <b class="text-muted">Tidak ada transaksi pada periode ini.</b>
-                                    </div>
-                                @endif
-                            </div>
-
-                        </div>
-                    </div>
+                <div class="modal-footer border-0 p-5 pt-0">
+                    <button type="submit" class="btn btn-primary btn-block py-4 font-weight-black rounded-pill shadow-lg uppercase">Register_Mapping</button>
                 </div>
-            </div>
-        @empty
-            <div class="text-center py-5">
-                <i class="fas fa-search-minus fa-4x text-muted mb-3"></i>
-                <h5 class="font-weight-bold text-dark">Data Material Tidak Ditemukan</h5>
-                <p class="text-muted">Silakan ubah filter pencarian atau tanggal di atas.</p>
-            </div>
-        @endforelse
+            </form>
+        </div>
     </div>
 </div>
 
-<!-- Menggunakan jQuery untuk fungsi Collapse/Accordion bawaan Bootstrap -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    $(document).ready(function() {
-        // Animasi icon saat Accordion dibuka/ditutup
-        $('.collapse').on('show.bs.collapse', function () {
-            $(this).parent().find(".fa-chevron-circle-down").removeClass("fa-chevron-circle-down").addClass("fa-chevron-circle-up").css("color", "#2563eb");
-        }).on('hide.bs.collapse', function () {
-            $(this).parent().find(".fa-chevron-circle-up").removeClass("fa-chevron-circle-up").addClass("fa-chevron-circle-down").css("color", "#94a3b8");
-        });
+    // ⚡ Sinkronisasi Dropdown saat Pilih Client
+    $(document).on('change', '#modalFilterCustomer', function() {
+        let customerCode = $(this).val();
+        if (customerCode) {
+            $('#selectMasterSpec').html('<option>🔄 Syncing Specs...</option>').prop('disabled', true);
+            $('#selectPart').html('<option>🔄 Syncing Parts...</option>').prop('disabled', true);
+            $.ajax({
+                url: "/get-parts-and-specs/" + encodeURIComponent(customerCode),
+                type: "GET",
+                success: function(res) {
+                    let specHtml = '<option value="" disabled selected>-- SELECT SPEC --</option>';
+                    $.each(res.specs, function(k, v) {
+                        specHtml += `<option value="${v.material_type}" 
+                                        data-spec="${v.material_type}" 
+                                        data-size="${v.thickness} X ${v.size}">
+                                        [${v.alias_code}] ${v.material_type} (${v.thickness}x${v.size})
+                                     </option>`;
+                    });
+                    $('#selectMasterSpec').html(specHtml).prop('disabled', false);
+
+                    let partHtml = '';
+                    $.each(res.parts, function(k, v) {
+                        partHtml += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`;
+                    });
+                    $('#selectPart').html(partHtml).prop('disabled', false);
+                }
+            });
+        }
     });
+
+    $(document).on('change', '#selectMasterSpec', function() {
+        let selected = $(this).find(':selected');$('#autoSpec').val(selected.data('spec'));
+        $('#autoSize').val(selected.data('size'));
+    });
+
+    $(document).on('click', '.rm-row-header', function() {$(this).find('.transition-icon').toggleClass('fa-rotate-90');
+    });
+
+    function openEditUnit(id, coil, qty) { 
+        $('#edit_id').val(id); 
+        $('#edit_coil').val(coil); 
+        $('#edit_qty').val(qty); 
+        $('#modalEditUnit').modal('show'); 
+    }
+
+    function openAssignPart(id, customer) {
+        $('#assign_ref_id').val(id);
+        $('#assign_select_part').html('<option>Querying components...</option>');
+        $.ajax({
+            url: "/get-parts-and-specs/" + encodeURIComponent(customer),
+            type: "GET",
+            success: function(res) {
+                let options = '<option value="">-- SELECT PART --</option>';
+                $.each(res.parts, function(k, v) { 
+                    options += `<option value="${v.part_no}">${v.part_no} - ${v.part_name}</option>`; 
+                });
+                $('#assign_select_part').html(options);
+                $('#modalAssignPart').modal('show');
+            }
+        });
+    }
 </script>
 @endsection
