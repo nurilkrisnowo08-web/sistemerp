@@ -20,7 +20,7 @@
     /* 📊 Ledger Card (Buku Mutasi) */
     .ledger-card { border-radius: 10px; border: 1px solid #cbd5e1; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 25px; background: #fff; overflow: hidden; }
     
-    /* 🏢 Ledger Header (Sangat Rapi & Sejajar) */
+    /* 🏢 Ledger Header */
     .ledger-header { border-bottom: 3px solid #1e293b; background: #fff; }
     
     /* 📋 Tabel Histori */
@@ -37,6 +37,18 @@
     .coil-list { list-style: none; padding: 0; margin: 0; }
     .coil-list li { background: #fef9c3; border: 1px solid #fde047; padding: 4px 10px; border-radius: 6px; display: inline-block; margin: 2px 4px 2px 0; font-size: 0.75rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; color: #854d0e; }
     .coil-qty { color: #2563eb; margin-left: 5px; }
+
+    /* 🔥 CSS KHUSUS SAAT PRINT (MENYEMBUNYIKAN HEADER & FILTER) 🔥 */
+    @media print {
+        @page { size: A4 landscape; margin: 10mm; }
+        body { padding: 0 !important; margin: 0 !important; background: #fff !important; }
+        .filter-card { display: none !important; } /* Sembunyikan form filter */
+        .sidebar, .navbar, footer { display: none !important; } /* Sembunyikan elemen admin bawaan */
+        .mutation-wrapper { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+        .ledger-card { box-shadow: none !important; border: 1px solid #000 !important; margin-bottom: 20px !important; page-break-inside: avoid; }
+        .table-ledger th { background: #e2e8f0 !important; color: #000 !important; border-bottom: 2px solid #000 !important; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    }
 </style>
 
 <div class="container-fluid mutation-wrapper mb-5">
@@ -48,10 +60,14 @@
                 <h5 class="m-0 font-weight-bold" style="letter-spacing: 1px; font-size: 1rem;"><i class="fas fa-route mr-2"></i> AUDIT TRAIL & MUTATION LOG</h5>
                 <p class="m-0" style="font-size: 0.75rem; color: #cbd5e1;">Lacak Riwayat Masuk Keluar Material per Surat Jalan & WOS</p>
             </div>
+            <!-- 🔥 TOMBOL KEMBALI DAN CETAK DIPERBAIKI 🔥 -->
             <div>
-                <a href="{{ url('/rm-store') }}" class="btn btn-light btn-sm font-weight-bold shadow-sm" style="border-radius: 6px; color:#0f172a;">
-                    <i class="fas fa-arrow-left mr-1"></i> KEMBALI KE GUDANG
-                </a>
+                <button type="button" onclick="window.history.back()" class="btn btn-light btn-sm font-weight-bold shadow-sm mr-2" style="border-radius: 6px; color:#0f172a; border:1px solid #cbd5e1;">
+                    <i class="fas fa-arrow-left mr-1"></i> KEMBALI
+                </button>
+                <button type="button" onclick="window.print()" class="btn btn-primary btn-sm font-weight-bold shadow-sm" style="border-radius: 6px; background-color: #2563eb; border:none;">
+                    <i class="fas fa-print mr-1"></i> CETAK LOG
+                </button>
             </div>
         </div>
         <div class="filter-body">
@@ -76,7 +92,7 @@
                         </select>
                     </div>
 
-                    <!-- 🛠️ PHP KUSTOM: Menyaring Spec Berdasarkan Customer & Mengambil Alias -->
+                    <!-- Menyaring Spec Berdasarkan Customer & Mengambil Alias -->
                     @php
                         $smartSpecs = DB::table('rm_stocks')
                             ->leftJoin('master_materials as mm', DB::raw('TRIM(rm_stocks.spec)'), '=', DB::raw('TRIM(mm.material_type)'))
@@ -112,7 +128,7 @@
     @forelse($historyData as $data)
         <div class="ledger-card">
             
-            <!-- HEADER SALDO (Diperbaiki Menggunakan Flexbox Bootstrap agar responsif dan presisi) -->
+            <!-- HEADER SALDO -->
             <div class="ledger-header d-flex flex-wrap align-items-center justify-content-between p-3">
                 <div class="part-info mr-auto" style="min-width: 250px;">
                     <h5 class="font-weight-bold mb-1" style="color: #0f172a; font-size:1.15rem; letter-spacing: 0.5px;">[{{ $data->alias ?? 'NA' }}] {{ $data->spec }}</h5>
@@ -139,7 +155,7 @@
                 </div>
             </div>
 
-            <!-- TABEL HISTORI (AUDIT TRAIL) -->
+            <!-- TABEL HISTORI -->
             <div class="table-responsive">
                 <table class="table-ledger">
                     <thead>
@@ -212,7 +228,7 @@
     $(document).ready(function() {
         // Saat Customer diubah, halaman otomatis refresh untuk memfilter spesifikasi
         $('#customerSelect').on('change', function() {
-            $('#specSelect').val(''); // Kosongkan spec lama
+            $('#specSelect').val(''); 
             $('#filterForm').submit();
         });
     });
