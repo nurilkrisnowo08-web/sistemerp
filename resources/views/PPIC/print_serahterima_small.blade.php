@@ -177,7 +177,7 @@
 
     {{-- Screen Toolbar --}}
     <div class="no-print no-print-bar">
-        <div><b>FORM CETAK BPRM WELDING (WIP)</b> — Line: <b>{{ strtoupper($line_code) }}</b></div>
+        <div><b>FORM CETAK BPRM </b> — Line: <b>{{ strtoupper($line_code) }}</b></div>
         <div>
             <button class="btn-screen btn-close" onclick="window.length ? window.history.back() : window.close()">TUTUP / KEMBALI</button>
             <button class="btn-screen btn-print" onclick="window.print()">🖨️ CETAK FORMULIR</button>
@@ -201,7 +201,7 @@
                 
                 <td class="title-area" style="width: 40%;">
                     <h1>BUKTI PENYERAHAN MATERIAL </h1>
-                    <h2>(BPRM - STAMPING BIG PRESS)</h2>
+                    <h2>(BPRM - STAMPING SMALL PRESS )</h2>
                 </td>
                 
                 <td class="meta-box-area" style="width: 30%;">
