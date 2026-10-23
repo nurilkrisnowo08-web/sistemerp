@@ -218,10 +218,9 @@ class FgController extends Controller
                 $fg->stock_awal = $fg->stock_akhir - $fg->total_in + $fg->total_out;
             }
 
-            // 🔥 FIX: JOIN KE TABEL produksi_batches UNTUK MENGAMBIL no_produksi 🔥
+            // 🔥 FIX: HAPUS LEFT JOIN YANG ERROR, PENGGUNAAN PHP FALLBACK 🔥
             $in_logsQuery = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
-                ->leftJoin('produksi_batches', 'production_logs.batch_id', '=', 'produksi_batches.id')
                 ->where('production_logs.process_type', 'FG')
                 ->where('production_logs.qty', '>', 0)
                 ->whereMonth('production_logs.created_at', $month)
@@ -234,19 +233,17 @@ class FgController extends Controller
                 $in_logsQuery->where('production_logs.part_no', $partFilter);
             }
             
-            $in_logs = $in_logsQuery->select(
-                'production_logs.created_at as jam',
-                'production_logs.part_no',
-                'production_logs.qty as in_qty',
-                'produksi_batches.no_produksi'
-            )->get()->map(function($item) {
+            // Mengambil semua kolom (production_logs.*)
+            $in_logs = $in_logsQuery->select('production_logs.*')->get()->map(function($item) {
+                // Mencari secara dinamis nama kolom WOS yang tersedia
+                $doc = $item->no_produksi ?? $item->no_wos ?? $item->wos_no ?? $item->batch_id ?? $item->wos ?? 'WOS-SYSTEM';
                 return (object)[
-                    'tgl' => date('Y-m-d', strtotime($item->jam)),
-                    'jam' => $item->jam,
+                    'tgl' => date('Y-m-d', strtotime($item->created_at)),
+                    'jam' => $item->created_at,
                     'part_no' => $item->part_no,
-                    'in_qty' => $item->in_qty,
+                    'in_qty' => $item->qty,
                     'out_qty' => 0,
-                    'no_dokumen' => $item->no_produksi ?? 'WOS-SYSTEM',
+                    'no_dokumen' => $doc,
                     'type' => 'IN'
                 ];
             });
