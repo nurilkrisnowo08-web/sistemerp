@@ -80,22 +80,33 @@
 
     {{-- 🎛️ 1. CONTROL PANEL (FILTER) --}}
     <div class="control-panel mb-4 no-print">
-        <form action="{{ route('fg.index') }}" method="GET" class="row align-items-end">
+        <form action="{{ route('fg.index') }}" method="GET" class="row align-items-end" id="filterForm">
             <div class="col-md-3 mb-2 mb-md-0">
                 <label class="small font-weight-bold mb-2 text-muted text-uppercase"><i class="fas fa-industry mr-1 text-primary"></i> Customer Terminal</label>
-                <select name="customer" class="form-control form-control-sm" onchange="this.form.submit()">
-                    <!-- Opsi ALL Customer ditambahkan -->
+                <select name="customer" id="customerSelect" class="form-control form-control-sm" onchange="document.getElementById('partSelect').value=''; this.form.submit()">
+                    <option value="">-- PILIH CUSTOMER --</option>
                     <option value="ALL" {{ request('customer') == 'ALL' ? 'selected' : '' }}>-- SEMUA CUSTOMER (ALL) --</option>
                     @foreach($availableCustomers as $c)
                         <option value="{{ $c->code }}" {{ request('customer') == $c->code ? 'selected' : '' }}>{{ $c->code }} - {{ $c->name }}</option>
                     @endforeach
                 </select>
             </div>
+            <div class="col-md-3 mb-2 mb-md-0">
+                <label class="small font-weight-bold mb-2 text-muted text-uppercase"><i class="fas fa-cogs mr-1 text-primary"></i> Filter Part</label>
+                <select name="part_no" id="partSelect" class="form-control form-control-sm" onchange="this.form.submit()">
+                    <option value="">-- SEMUA PART --</option>
+                    @if(isset($availableParts))
+                        @foreach($availableParts as $p)
+                            <option value="{{ $p->part_no }}" {{ request('part_no') == $p->part_no ? 'selected' : '' }}>{{ $p->part_no }} - {{ $p->part_name }}</option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
             <div class="col-md-2 mb-2 mb-md-0">
                 <label class="small font-weight-bold mb-2 text-muted text-uppercase"><i class="fas fa-calendar-alt mr-1 text-primary"></i> Data Period</label>
                 <input type="date" name="date" class="form-control form-control-sm" value="{{ $date }}" onchange="this.form.submit()">
             </div>
-            <div class="col-md-7 text-md-right mt-3 mt-md-0">
+            <div class="col-md-4 text-md-right mt-3 mt-md-0">
                 <a href="{{ route('fg.recap') }}" class="btn btn-custom btn-recap mr-2"><i class="fas fa-file-excel mr-1"></i> Rekap Bulanan</a>
                 <a href="{{ route('fg.create') }}" class="btn btn-custom btn-action"><i class="fas fa-plus-circle mr-1"></i> Tambah Part</a>
             </div>
@@ -114,14 +125,11 @@
                         </h6>
                     </div>
                     
-                    <!-- Wrapper Scroll Horizontal -->
                     <div class="chart-scroller">
-                        <!-- Hitung dinamis lebar chart berdasarkan jumlah part (Makin banyak part makin panjang) -->
                         <div style="position: relative; height: 300px; min-width: {{ count($labels ?? []) * 80 }}px;">
                             <canvas id="stockChart"></canvas>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -187,8 +195,6 @@
 
         {{-- 📝 4. LOG ACTIVITY SIDE-BY-SIDE --}}
         <div class="row no-print">
-            
-            <!-- LOG MASUK -->
             <div class="col-md-6 mb-4">
                 <div class="log-card" style="border-top: 4px solid var(--success);">
                     <div class="log-header text-success bg-white">
@@ -212,8 +218,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- LOG KELUAR -->
             <div class="col-md-6 mb-4">
                 <div class="log-card" style="border-top: 4px solid var(--danger);">
                     <div class="log-header text-danger bg-white">
@@ -237,7 +241,6 @@
                     </div>
                 </div>
             </div>
-            
         </div>
     @else
         <!-- EMPTY STATE -->
@@ -253,7 +256,6 @@
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         
-        // ✨ ANIMASI SEMUA ANGKA BERGULIR
         const rollNumbers = document.querySelectorAll('.roll-number');
         rollNumbers.forEach(el => {
             let target = parseFloat(el.getAttribute('data-target'));
@@ -274,7 +276,6 @@
             } else { el.innerText = "0"; }
         });
 
-        // ✨ MIXED CHART SCROLLABLE
         @if(isset($labels) && count($labels) > 0)
         const ctx = document.getElementById('stockChart').getContext('2d');
         new Chart(ctx, {
@@ -289,7 +290,7 @@
                         borderColor: '#1d4ed8',
                         borderWidth: 1,
                         borderRadius: 4,
-                        barThickness: 35, // Lebar batang ditetapkan agar tidak gepeng
+                        barThickness: 35, 
                         order: 2
                     },
                     { 
@@ -299,7 +300,7 @@
                         borderColor: '#ef4444', 
                         backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         borderWidth: 2,
-                        borderDash: [5, 5], // Garis putus-putus
+                        borderDash: [5, 5],
                         fill: true,
                         tension: 0.1,
                         pointRadius: 4,

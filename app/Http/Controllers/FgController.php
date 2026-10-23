@@ -12,28 +12,41 @@ class FgController extends Controller
     {
         $availableCustomers = DB::table('customers')->get();
         $customer = $request->customer ? trim($request->customer) : null;
+        $partFilter = $request->part_no ? trim($request->part_no) : null;
         $date = $request->date ?? date('Y-m-d');
 
         $parts = DB::table('parts')->get(); 
         $masterMaterials = DB::table('master_materials')->get(); 
 
-        // Deteksi dinamis nama kolom tabel deliveries agar tidak salah baca
         $delivDateCol = Schema::hasColumn('deliveries', 'delivery_date') ? 'delivery_date' : 'created_at';
         $delivQtyCol  = Schema::hasColumn('deliveries', 'qty_delivery') ? 'qty_delivery' : (Schema::hasColumn('deliveries', 'qty') ? 'qty' : 'qty_delivery');
         $delivCustCol = Schema::hasColumn('deliveries', 'customer_code') ? 'customer_code' : 'customer';
 
+        $availableParts = collect();
+
         if ($customer) {
-            $allFG = DB::table('finished_goods')
-                ->where(function($q) use ($customer) {
-                    $q->where('customer', $customer)
-                      ->orWhere('customer', 'LIKE', "%$customer%");
-                })
-                ->get();
+            // Ambil part dinamis sesuai customer
+            $partsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
+            if ($customer !== 'ALL') {
+                $partsQuery->where('customer', $customer);
+            }
+            $availableParts = $partsQuery->get();
+
+            // Query Data Utama
+            $queryFG = DB::table('finished_goods');
+            if ($customer !== 'ALL') {
+                $queryFG->where(function($q) use ($customer) {
+                    $q->where('customer', $customer)->orWhere('customer', 'LIKE', "%$customer%");
+                });
+            }
+            if ($partFilter) {
+                $queryFG->where('part_no', $partFilter);
+            }
+            $allFG = $queryFG->get();
             
             foreach ($allFG as $fg) {
                 $cleanPart = trim($fg->part_no);
 
-                // IN: Barang masuk gudang FG pada tanggal tersebut
                 $fg->in_stp = DB::table('production_logs')
                     ->where(DB::raw('TRIM(part_no)'), $cleanPart)
                     ->where('process_type', 'FG') 
@@ -41,13 +54,11 @@ class FgController extends Controller
                     ->where('qty', '>', 0) 
                     ->sum('qty');
 
-                // OUT: Pengiriman ke customer pada tanggal tersebut
                 $fg->out_delv = DB::table('deliveries')
                     ->where(DB::raw('TRIM(part_no)'), $cleanPart)
                     ->whereDate($delivDateCol, $date)
                     ->sum($delivQtyCol);
 
-                // Backtracking Logic: Hitung mundur dari stok aktual sekarang
                 $total_in_setelah = DB::table('production_logs')
                     ->where(DB::raw('TRIM(part_no)'), $cleanPart)
                     ->where('process_type', 'FG')
@@ -60,35 +71,40 @@ class FgController extends Controller
                     ->whereDate($delivDateCol, '>', $date)
                     ->sum($delivQtyCol);
 
-                // Rumus Matatematika Diperbaiki
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $total_in_setelah + $total_out_setelah;
                 $fg->stock_awal = $fg->stock_akhir - $fg->in_stp + $fg->out_delv;
                 
-                // Days of Inventory
                 $fg->stock_day = ($fg->needs_per_day > 0) ? round($fg->stock_akhir / $fg->needs_per_day, 1) : 0;
             }
 
-            // Ambil daftar pengiriman keluar dengan fallback kolom customer
-            $stockOut = DB::table('deliveries')
-                ->where(function($q) use ($customer, $delivCustCol) {
+            // Query Log Keluar
+            $stockOutQuery = DB::table('deliveries')->whereDate($delivDateCol, $date);
+            if ($customer !== 'ALL') {
+                $stockOutQuery->where(function($q) use ($customer, $delivCustCol) {
                     $q->where($delivCustCol, $customer);
                     if (Schema::hasColumn('deliveries', 'customer')) {
                         $q->orWhere('customer', $customer);
                     }
-                })
-                ->whereDate($delivDateCol, $date)
-                ->orderBy($delivDateCol, 'desc')
-                ->get();
+                });
+            }
+            if ($partFilter) {
+                $stockOutQuery->where('part_no', $partFilter);
+            }
+            $stockOut = $stockOutQuery->orderBy($delivDateCol, 'desc')->get();
             
-            $stockIn = DB::table('production_logs')
+            // Query Log Masuk
+            $stockInQuery = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
-                ->where('finished_goods.customer', $customer)
                 ->where('production_logs.process_type', 'FG')
                 ->where('production_logs.qty', '>', 0)
-                ->whereDate('production_logs.created_at', $date)
-                ->select('production_logs.*')
-                ->orderBy('production_logs.created_at', 'desc')
-                ->get();
+                ->whereDate('production_logs.created_at', $date);
+            if ($customer !== 'ALL') {
+                $stockInQuery->where('finished_goods.customer', $customer);
+            }
+            if ($partFilter) {
+                $stockInQuery->where('production_logs.part_no', $partFilter);
+            }
+            $stockIn = $stockInQuery->select('production_logs.*')->orderBy('production_logs.created_at', 'desc')->get();
         } else {
             $allFG = collect(); 
             $stockOut = collect(); 
@@ -101,7 +117,8 @@ class FgController extends Controller
 
         return view('finished_goods.index', compact(
             'allFG', 'labels', 'actStockData', 'minStockData', 'stockOut', 
-            'stockIn', 'date', 'availableCustomers', 'parts', 'masterMaterials'
+            'stockIn', 'date', 'availableCustomers', 'parts', 'masterMaterials', 
+            'customer', 'availableParts', 'partFilter'
         ));
     }
 
@@ -138,7 +155,7 @@ class FgController extends Controller
     public function monthlyRecap(Request $request)
     {
         $customer = $request->customer ? trim($request->customer) : null;
-        $partFilter = $request->part_no ? trim($request->part_no) : null; // Menangkap filter part
+        $partFilter = $request->part_no ? trim($request->part_no) : null;
         
         $month = $request->month ?? date('m');
         $year = $request->year ?? date('Y');
@@ -152,14 +169,16 @@ class FgController extends Controller
         $delivCustCol = Schema::hasColumn('deliveries', 'customer_code') ? 'customer_code' : 'customer';
 
         if ($customer) {
-            // Mengambil list part untuk dropdown filter Part
-            $availableParts = DB::table('finished_goods')
-                ->where('customer', $customer)
-                ->select('part_no', 'part_name')
-                ->orderBy('part_no', 'asc')
-                ->get();
+            $partsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
+            if ($customer !== 'ALL') {
+                $partsQuery->where('customer', $customer);
+            }
+            $availableParts = $partsQuery->get();
 
-            $queryFG = DB::table('finished_goods')->where('customer', $customer);
+            $queryFG = DB::table('finished_goods');
+            if ($customer !== 'ALL') {
+                $queryFG->where('customer', $customer);
+            }
             if ($partFilter) {
                 $queryFG->where('part_no', $partFilter);
             }
@@ -196,36 +215,36 @@ class FgController extends Controller
                     ->whereDate($delivDateCol, '>', $endOfMonth)
                     ->sum($delivQtyCol);
 
-                // Rumus matematika stok diperbaiki
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $future_in + $future_out;
                 $fg->stock_awal = $fg->stock_akhir - $fg->total_in + $fg->total_out;
             }
 
-            // Query log masuk
-            $in_logs = DB::table('production_logs')
+            $in_logsQuery = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
-                ->where('finished_goods.customer', $customer)
                 ->where('production_logs.process_type', 'FG')
                 ->where('production_logs.qty', '>', 0)
-                ->whereDate('production_logs.created_at', $daily_date)
-                ->when($partFilter, function($q) use ($partFilter) {
-                    return $q->where('production_logs.part_no', $partFilter);
-                })
-                ->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
+                ->whereDate('production_logs.created_at', $daily_date);
+            if ($customer !== 'ALL') {
+                $in_logsQuery->where('finished_goods.customer', $customer);
+            }
+            if ($partFilter) {
+                $in_logsQuery->where('production_logs.part_no', $partFilter);
+            }
+            $in_logs = $in_logsQuery->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
             
-            // Query log keluar
-            $dailyDetails = DB::table('deliveries')
-                ->where(function($q) use ($customer, $delivCustCol) {
+            $dailyDetailsQuery = DB::table('deliveries')->whereDate($delivDateCol, $daily_date);
+            if ($customer !== 'ALL') {
+                $dailyDetailsQuery->where(function($q) use ($customer, $delivCustCol) {
                     $q->where($delivCustCol, $customer);
                     if (Schema::hasColumn('deliveries', 'customer')) {
                         $q->orWhere('customer', $customer);
                     }
-                })
-                ->whereDate($delivDateCol, $daily_date)
-                ->when($partFilter, function($q) use ($partFilter) {
-                    return $q->where('part_no', $partFilter);
-                })
-                ->select(
+                });
+            }
+            if ($partFilter) {
+                $dailyDetailsQuery->where('part_no', $partFilter);
+            }
+            $dailyDetails = $dailyDetailsQuery->select(
                     DB::raw("DATE($delivDateCol) as tgl"), 
                     'part_no', 
                     DB::raw('0 as in_qty'), 
@@ -291,7 +310,10 @@ class FgController extends Controller
         $delivCustCol = Schema::hasColumn('deliveries', 'customer_code') ? 'customer_code' : 'customer';
 
         if ($customer) {
-            $queryFG = DB::table('finished_goods')->where('customer', $customer);
+            $queryFG = DB::table('finished_goods');
+            if ($customer !== 'ALL') {
+                $queryFG->where('customer', $customer);
+            }
             if ($partFilter) {
                 $queryFG->where('part_no', $partFilter);
             }
@@ -328,36 +350,38 @@ class FgController extends Controller
                     ->whereDate($delivDateCol, '>', $endOfMonth)
                     ->sum($delivQtyCol);
 
-                // Rumus matematika stok diperbaiki
                 $fg->stock_akhir = ($fg->actual_stock ?? 0) - $future_in + $future_out;
                 $fg->stock_awal = $fg->stock_akhir - $fg->total_in + $fg->total_out;
             }
 
             $dailyDetails = collect();
             if ($daily_date) {
-                $in_logs = DB::table('production_logs')
+                $in_logsQuery = DB::table('production_logs')
                     ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
-                    ->where('finished_goods.customer', $customer)
                     ->where('production_logs.process_type', 'FG') 
                     ->where('production_logs.qty', '>', 0)
-                    ->whereDate('production_logs.created_at', $daily_date)
-                    ->when($partFilter, function($q) use ($partFilter) {
-                        return $q->where('production_logs.part_no', $partFilter);
-                    })
-                    ->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
+                    ->whereDate('production_logs.created_at', $daily_date);
+                if ($customer !== 'ALL') {
+                    $in_logsQuery->where('finished_goods.customer', $customer);
+                }
+                if ($partFilter) {
+                    $in_logsQuery->where('production_logs.part_no', $partFilter);
+                }
+                $in_logs = $in_logsQuery->select(DB::raw('DATE(production_logs.created_at) as tgl'), 'production_logs.part_no', 'production_logs.qty as in_qty', DB::raw('0 as out_qty'), 'production_logs.created_at as jam');
                 
-                $dailyDetails = DB::table('deliveries')
-                    ->where(function($q) use ($customer, $delivCustCol) {
+                $dailyDetailsQuery = DB::table('deliveries')->whereDate($delivDateCol, $daily_date);
+                if ($customer !== 'ALL') {
+                    $dailyDetailsQuery->where(function($q) use ($customer, $delivCustCol) {
                         $q->where($delivCustCol, $customer);
                         if (Schema::hasColumn('deliveries', 'customer')) {
                             $q->orWhere('customer', $customer);
                         }
-                    })
-                    ->whereDate($delivDateCol, $daily_date)
-                    ->when($partFilter, function($q) use ($partFilter) {
-                        return $q->where('part_no', $partFilter);
-                    })
-                    ->select(
+                    });
+                }
+                if ($partFilter) {
+                    $dailyDetailsQuery->where('part_no', $partFilter);
+                }
+                $dailyDetails = $dailyDetailsQuery->select(
                         DB::raw("DATE($delivDateCol) as tgl"), 
                         'part_no', 
                         DB::raw('0 as in_qty'), 
