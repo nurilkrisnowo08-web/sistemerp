@@ -171,8 +171,7 @@
                     <tbody>
                         @forelse($dailyDetails as $detail)
                             @php
-                                // Perlindungan agar dokumen kosong menjadi System default
-                                $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' ? $detail->no_dokumen : ($detail->in_qty > 0 ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
+                                $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' && $detail->no_dokumen !== 'NULL' ? $detail->no_dokumen : ($detail->in_qty > 0 ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
                                 $doc_class = $detail->in_qty > 0 ? 'doc-wos' : 'doc-sj';
                             @endphp
                             <tr>
