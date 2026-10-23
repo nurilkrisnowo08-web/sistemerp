@@ -48,6 +48,7 @@ class WeldingStockController extends Controller
                     ->whereDate('created_at', $date)
                     ->sum('qty_masuk') ?? 0;
 
+                // 🔥 PERBAIKAN: Penulisan matematika yang sebelumnya error
                 $item->init = $item->live_stock - ($in_stamping + $in_return) + $out_welding;
                 $item->in_s = $in_stamping;
                 $item->in_r = $in_return; 
@@ -91,7 +92,7 @@ class WeldingStockController extends Controller
         $qty_ambil = (int)$request->qty_ambil;
         $part_no = $request->part_no;
         $line_id = $request->line_id;
-        $shift = $request->shift; // ✨ Tambahkan Shift 
+        $shift = $request->shift; 
         $cleanPart = str_replace(' ', '', trim($part_no));
 
         DB::beginTransaction();
@@ -113,7 +114,7 @@ class WeldingStockController extends Controller
                 'part_no'              => $part_no,
                 'line_id'              => $line_id,
                 'qty_masuk'            => $qty_ambil,
-                'shift'                => $shift, // ✨ Simpan Shift ke database
+                'shift'                => $shift, 
                 'status'               => 'PENDING',
                 'created_at'           => now(),
                 'updated_at'           => now()
@@ -228,12 +229,12 @@ class WeldingStockController extends Controller
 
         $dateOnly = date('Y-m-d');
         $lineName = $batch->kode_line ?? 'WELDING AREA';
-        $shift = $batch->shift ?? 'Pagi'; // ✨ Ambil shift dari batch 
+        $shift = $batch->shift ?? 'Pagi'; 
 
         $actual = DB::table('welding_actuals')
             ->whereRaw("REPLACE(part_no, ' ', '') = REPLACE(?, ' ', '')", [$batch->part_no])
             ->where('line_code', $lineName)
-            ->where('shift', $shift) // ✨ Filter per Shift agar laporan tidak campur
+            ->where('shift', $shift) 
             ->whereDate('created_at', $dateOnly)
             ->first();
 
@@ -248,7 +249,7 @@ class WeldingStockController extends Controller
             return DB::table('welding_actuals')->insertGetId([
                 'part_no'    => $batch->part_no,
                 'line_code'  => $lineName,
-                'shift'      => $shift, // ✨ Simpan Shift Pagi/Malam
+                'shift'      => $shift, 
                 'qty_ok'     => $qtyOk,
                 'qty_ng'     => $qtyNg,
                 'created_at' => now(),
@@ -258,7 +259,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 5. HISTORY MUTASI STOK
+     * 5. HISTORY MUTASI STOK (WELDING VAULT LEDGER)
      */
     public function history(Request $request)
     {
@@ -284,7 +285,8 @@ class WeldingStockController extends Controller
             $future_in = DB::table('production_logs')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->where('process_type', 'WELDING')->whereDate('created_at', '>', $endDate)->sum('qty') ?? 0;
             $future_out = DB::table('welding_batches')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->whereDate('created_at', '>', $endDate)->sum('qty_masuk') ?? 0;
 
-            $item->stock_akhir = ($item->welding_stock ?? 0) + $future_out - $future_in;
+            // 🔥 PERBAIKAN: Penulisan matematika yang sebelumnya error
+            $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
             $item->stock_awal = $item->stock_akhir - $item->total_in + $item->total_out;
 
             return $item;
@@ -294,7 +296,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 6. HISTORY BATCH WELDING
+     * 6. HISTORY BATCH WELDING (PRODUCTION VAULT)
      */
     public function historyWelding(Request $request)
     {
