@@ -150,18 +150,11 @@
             </div>
         </div>
 
-        <!-- 📅 2. RINCIAN HARIAN (DENGAN WOS & SJ) -->
+        <!-- 📅 2. RINCIAN MUTASI (FULL BULAN) -->
         <div class="card-erp">
             <div class="card-header-erp" style="background: #f8fafc;">
-                <h3 class="card-title-erp text-dark"><i class="fas fa-history mr-2"></i> 2. RINCIAN MUTASI HARIAN</h3>
-                <form action="{{ route('fg.recap') }}" method="GET" class="d-flex align-items-center no-print">
-                    <input type="hidden" name="customer" value="{{ $customer }}">
-                    <input type="hidden" name="month" value="{{ $month }}">
-                    <input type="hidden" name="year" value="{{ $year }}">
-                    <input type="hidden" name="part_no" value="{{ $partFilter }}">
-                    <label class="small font-weight-bold mr-2 mb-0 text-uppercase">Pilih Tanggal:</label>
-                    <input type="date" name="daily_date" class="form-control form-control-sm" value="{{ $daily_date }}" onchange="this.form.submit()" style="width: auto;">
-                </form>
+                <h3 class="card-title-erp text-dark"><i class="fas fa-list-alt mr-2"></i> 2. RINCIAN MUTASI (FULL BULAN)</h3>
+                <span class="badge bg-white border px-3 py-1 font-weight-bold text-muted shadow-sm" style="font-size: 0.7rem;"><i class="fas fa-calendar mr-1"></i> 01 - {{ date('t', strtotime("$year-$month-01")) }} {{ date('M Y', strtotime("$year-$month-01")) }}</span>
             </div>
             <div class="table-responsive">
                 <table class="table-erp">
@@ -178,7 +171,8 @@
                     <tbody>
                         @forelse($dailyDetails as $detail)
                             @php
-                                $ref_doc = $detail->no_dokumen ?? '-';
+                                // Perlindungan agar dokumen kosong menjadi System default
+                                $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' ? $detail->no_dokumen : ($detail->in_qty > 0 ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
                                 $doc_class = $detail->in_qty > 0 ? 'doc-wos' : 'doc-sj';
                             @endphp
                             <tr>
@@ -199,14 +193,14 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-center py-4 font-weight-bold text-muted">Tidak ada mutasi pada tanggal ini.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 font-weight-bold text-muted">Tidak ada mutasi pada bulan ini.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
     @else
-        <!-- EMPTY STATE (JIKA BELUM PILIH CUSTOMER) -->
+        <!-- EMPTY STATE -->
         <div class="text-center py-5 card-erp border-0 mt-3" style="background: #fff; box-shadow:none;">
             <i class="fas fa-network-wired fa-4x mb-4" style="color: #cbd5e1;"></i>
             <h4 class="font-weight-bold text-uppercase" style="color: var(--slate);">System Ready: Please Select Customer</h4>
