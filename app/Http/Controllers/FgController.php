@@ -163,16 +163,6 @@ class FgController extends Controller
         $delivQtyCol  = Schema::hasColumn('deliveries', 'qty_delivery') ? 'qty_delivery' : (Schema::hasColumn('deliveries', 'qty') ? 'qty' : 'qty_delivery');
         $delivCustCol = Schema::hasColumn('deliveries', 'customer_code') ? 'customer_code' : 'customer';
 
-        // 🔥 FIX: Deteksi kolom batch_id ditambahkan pada urutan pertama untuk WOS 🔥
-        $wosCol = Schema::hasColumn('production_logs', 'batch_id') ? 'batch_id' : 
-                 (Schema::hasColumn('production_logs', 'no_produksi') ? 'no_produksi' : 
-                 (Schema::hasColumn('production_logs', 'no_wos') ? 'no_wos' : 
-                 (Schema::hasColumn('production_logs', 'wos_no') ? 'wos_no' : null)));
-                 
-        $sjCol = Schema::hasColumn('deliveries', 'no_surat_jalan') ? 'no_surat_jalan' : 
-                (Schema::hasColumn('deliveries', 'no_sj') ? 'no_sj' : 
-                (Schema::hasColumn('deliveries', 'sj_no') ? 'sj_no' : null));
-
         if ($customer) {
             $partsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
             if ($customer !== 'ALL') {
@@ -224,8 +214,9 @@ class FgController extends Controller
                 $fg->stock_awal = $fg->stock_akhir - $fg->total_in + $fg->total_out;
             }
 
-            // SELECT IN LOGS + COL NO DOKUMEN (Dengan pengecekan batch_id)
-            $selectWos = $wosCol ? "production_logs.{$wosCol}" : "NULL";
+            // 🔥 CARA BARU (100% TEMBUS): Menggunakan Laravel Collection
+            
+            // 1. Ambil seluruh data IN
             $in_logsQuery = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                 ->where('production_logs.process_type', 'FG')
@@ -240,16 +231,21 @@ class FgController extends Controller
                 $in_logsQuery->where('production_logs.part_no', $partFilter);
             }
             
-            $in_logs = $in_logsQuery->select(
-                DB::raw('DATE(production_logs.created_at) as tgl'), 
-                'production_logs.part_no', 
-                'production_logs.qty as in_qty', 
-                DB::raw('0 as out_qty'), 
-                'production_logs.created_at as jam', 
-                DB::raw("COALESCE($selectWos, 'WOS-SYSTEM') as no_dokumen")
-            );
+            $in_logs = $in_logsQuery->select('production_logs.*')->get()->map(function($item) {
+                // PHP akan mengecek apapun nama kolom batch/wos yang ada
+                $doc = $item->batch_id ?? $item->no_wos ?? $item->wos_no ?? $item->no_produksi ?? $item->wos ?? $item->batch_no ?? $item->lot_no ?? null;
+                return (object)[
+                    'tgl' => date('Y-m-d', strtotime($item->created_at)),
+                    'jam' => $item->created_at,
+                    'part_no' => $item->part_no,
+                    'in_qty' => $item->qty,
+                    'out_qty' => 0,
+                    'no_dokumen' => $doc,
+                    'type' => 'IN'
+                ];
+            });
             
-            $selectSj = $sjCol ? $sjCol : "NULL";
+            // 2. Ambil seluruh data OUT
             $dailyDetailsQuery = DB::table('deliveries')
                 ->whereMonth($delivDateCol, $month)
                 ->whereYear($delivDateCol, $year);
@@ -266,17 +262,23 @@ class FgController extends Controller
                 $dailyDetailsQuery->where('part_no', $partFilter);
             }
             
-            $dailyDetails = $dailyDetailsQuery->select(
-                    DB::raw("DATE($delivDateCol) as tgl"), 
-                    'part_no', 
-                    DB::raw('0 as in_qty'), 
-                    "$delivQtyCol as out_qty", 
-                    "$delivDateCol as jam",
-                    DB::raw("COALESCE($selectSj, 'SJ-SYSTEM') as no_dokumen")
-                )
-                ->unionAll($in_logs)
-                ->orderBy('jam', 'desc')
-                ->get();
+            $out_logs = $dailyDetailsQuery->select('*')->get()->map(function($item) use ($delivDateCol, $delivQtyCol) {
+                // Mengecek ragam nama kolom Surat Jalan
+                $doc = $item->no_surat_jalan ?? $item->no_sj ?? $item->sj_no ?? $item->delivery_no ?? $item->do_no ?? null;
+                return (object)[
+                    'tgl' => date('Y-m-d', strtotime($item->{$delivDateCol})),
+                    'jam' => $item->{$delivDateCol},
+                    'part_no' => $item->part_no,
+                    'in_qty' => 0,
+                    'out_qty' => $item->{$delivQtyCol},
+                    'no_dokumen' => $doc,
+                    'type' => 'OUT'
+                ];
+            });
+
+            // 3. Gabungkan dan urutkan menggunakan Collection (Bebas Error UNION SQL)
+            $dailyDetails = $in_logs->concat($out_logs)->sortByDesc('jam')->values();
+            
         } else { 
             $recap = collect(); 
             $dailyDetails = collect(); 

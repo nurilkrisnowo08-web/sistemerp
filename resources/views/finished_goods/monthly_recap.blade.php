@@ -171,8 +171,8 @@
                     <tbody>
                         @forelse($dailyDetails as $detail)
                             @php
-                                $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' && $detail->no_dokumen !== 'NULL' ? $detail->no_dokumen : ($detail->in_qty > 0 ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
-                                $doc_class = $detail->in_qty > 0 ? 'doc-wos' : 'doc-sj';
+                                $ref_doc = $detail->no_dokumen ?? ($detail->type == 'IN' ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
+                                $doc_class = $detail->type == 'IN' ? 'doc-wos' : 'doc-sj';
                             @endphp
                             <tr>
                                 <td class="font-weight-bold text-dark">{{ date('d/m/Y', strtotime($detail->tgl)) }}</td>
@@ -180,15 +180,15 @@
                                 <td class="text-primary font-weight-bold mono">{{ $detail->part_no }}</td>
                                 <td>
                                     <span class="doc-badge {{ $doc_class }}">
-                                        {!! $detail->in_qty > 0 ? '<i class="fas fa-cog mr-1"></i>' : '<i class="fas fa-truck mr-1"></i>' !!} 
+                                        {!! $detail->type == 'IN' ? '<i class="fas fa-cog mr-1"></i>' : '<i class="fas fa-truck mr-1"></i>' !!} 
                                         {{ strtoupper($ref_doc) }}
                                     </span>
                                 </td>
-                                <td class="mono {{ $detail->in_qty > 0 ? 'text-in bg-in' : 'text-muted' }}">
-                                    {{ $detail->in_qty > 0 ? '+'.number_format($detail->in_qty) : '-' }}
+                                <td class="mono {{ $detail->type == 'IN' ? 'text-in bg-in' : 'text-muted' }}">
+                                    {{ $detail->type == 'IN' ? '+'.number_format($detail->in_qty) : '-' }}
                                 </td>
-                                <td class="mono {{ $detail->out_qty > 0 ? 'text-out bg-out' : 'text-muted' }}">
-                                    {{ $detail->out_qty > 0 ? '-'.number_format($detail->out_qty) : '-' }}
+                                <td class="mono {{ $detail->type == 'OUT' ? 'text-out bg-out' : 'text-muted' }}">
+                                    {{ $detail->type == 'OUT' ? '-'.number_format($detail->out_qty) : '-' }}
                                 </td>
                             </tr>
                         @empty
