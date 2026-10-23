@@ -1,130 +1,243 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Cetak Laporan Mutasi - {{ $customer }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cetak Rekap Mutasi FG - {{ $customer ?? 'ALL' }}</title>
+    
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
+    
     <style>
-        /* 1. SETTING KERTAS A4 LANDSCAPE & BERSIHIN SAMPAH BROWSER */
-        @page { 
-            size: A4 landscape; 
-            margin: 0; /* Menghilangkan URL, Tanggal, dan Judul Browser di pojok kertas */
-        }
-        body { 
-            margin: 1.5cm; 
-            font-family: Arial, sans-serif; 
-            background: #fff; 
+        /* RESET & DASAR */
+        body {
+            font-family: 'Plus Jakarta Sans', Arial, sans-serif;
             color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+            font-size: 11px;
         }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-        /* 2. KOP SURAT RESMI PT. AMA */
-        .kop-surat { 
-            position: relative; 
-            width: 100%; 
-            border-bottom: 4px solid #000; 
-            padding-bottom: 10px; 
-            margin-bottom: 2px;
-            display: flex;
-            align-items: center;
+        /* PENGATURAN KERTAS PRINT (A4 LANDSCAPE) */
+        @page { size: A4 landscape; margin: 12mm; }
+        
+        /* WADAH UTAMA */
+        .print-container { width: 100%; max-width: 100%; }
+
+        /* KOP SURAT (HEADER) */
+        .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+        .header-table td { vertical-align: middle; }
+        .logo-area img { height: 50px; margin-right: 15px; }
+        .company-name { font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin: 0; }
+        .dept-name { font-size: 11px; font-weight: 700; color: #333; margin-top: 2px; }
+        
+        .doc-title { text-align: center; }
+        .doc-title h1 { font-size: 18px; font-weight: 800; text-decoration: underline; margin: 0; letter-spacing: 1px; }
+        .doc-title h2 { font-size: 12px; font-weight: 600; margin: 4px 0 0 0; }
+        
+        .meta-area { text-align: right; font-size: 10px; font-weight: 700; }
+        .meta-table { float: right; border-collapse: collapse; }
+        .meta-table td { padding: 2px 5px; }
+        .meta-label { text-align: right; }
+        .meta-value { text-align: left; font-family: 'JetBrains Mono', monospace; }
+
+        /* GARIS PEMBATAS */
+        .divider { border-bottom: 3px double #000; margin: 10px 0 15px 0; }
+
+        /* INFO FILTER */
+        .filter-info { margin-bottom: 15px; font-size: 11px; font-weight: 700; display: flex; justify-content: space-between; }
+        .filter-badge { padding: 4px 8px; border: 1px solid #000; background: #f8fafc; border-radius: 4px; display: inline-block; margin-right: 10px; }
+
+        /* TABEL DATA */
+        .section-title { font-size: 13px; font-weight: 800; text-transform: uppercase; margin: 0 0 8px 0; background: #e2e8f0; padding: 6px 10px; border: 1px solid #000; border-bottom: none; display: inline-block;}
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #000; }
+        .data-table th { background: #cbd5e1; color: #000; padding: 8px 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; border: 1px solid #000; }
+        .data-table td { padding: 6px; font-size: 10px; border: 1px solid #000; text-align: center; vertical-align: middle; }
+        .data-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+        
+        /* SPESIFIK TABEL */
+        .text-left { text-align: left !important; }
+        .mono { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+        .text-in { color: #15803d; font-weight: 800; }
+        .text-out { color: #b91c1c; font-weight: 800; }
+        .text-akhir { color: #1d4ed8; font-weight: 800; font-size: 11px; }
+
+        /* BLOK TANDA TANGAN */
+        .signature-area { width: 100%; margin-top: 30px; border-collapse: collapse; page-break-inside: avoid; }
+        .signature-area th { border: 1px solid #000; padding: 6px; font-size: 10px; background: #e2e8f0; width: 33.33%; text-align: center; }
+        .signature-area td { border: 1px solid #000; height: 70px; vertical-align: bottom; text-align: center; padding: 5px; font-size: 10px; font-weight: 700; }
+
+        /* TOMBOL PRINT (Sembunyi saat dicetak) */
+        .print-btn-wrapper { text-align: center; margin: 20px 0; }
+        .btn-print { background: #2563eb; color: #fff; border: none; padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-family: inherit; }
+        .btn-print:hover { background: #1d4ed8; }
+        .btn-back { background: #475569; color: #fff; border: none; padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 6px; cursor: pointer; text-decoration: none; margin-right: 10px; font-family: inherit; }
+        
+        @media print {
+            .print-btn-wrapper { display: none !important; }
         }
-        .logo-area { width: 95px; }
-        .logo-img { width: 100%; height: auto; }
-        .kop-text { 
-            flex-grow: 1; 
-            text-align: center; 
-            padding-right: 95px; /* Offset logo biar teks bener-bener di tengah */
-        }
-        .kop-text h1 { font-size: 26px; font-weight: 900; margin: 0; text-transform: uppercase; font-family: "Arial Black", sans-serif; }
-        .kop-text p { font-size: 11px; margin: 0; font-weight: bold; line-height: 1.3; }
-        .garis-bawah { border-bottom: 1.5px solid #000; margin-top: 3px; margin-bottom: 20px; }
-
-        /* 3. JUDUL LAPORAN */
-        .title-report { text-align: center; margin-bottom: 25px; }
-        .title-report h2 { font-size: 18px; text-decoration: underline; margin-bottom: 5px; text-transform: uppercase; }
-        .title-report p { font-size: 13px; font-weight: bold; margin: 0; }
-
-        /* 4. TABEL MUTASI (TEBAL & BERSIH) */
-        .table-print { width: 100%; border-collapse: collapse; margin-top: 10px; border: 2px solid #000; }
-        .table-print th { 
-            background-color: #f2f2f2 !important; 
-            border: 1.5px solid #000; 
-            padding: 10px; 
-            font-size: 12px; 
-            text-transform: uppercase;
-        }
-        .table-print td { 
-            border: 1px solid #000; 
-            padding: 8px; 
-            font-size: 12px; 
-            font-weight: bold; 
-            text-align: center;
-        }
-        .text-left { text-align: left !important; padding-left: 10px !important; }
-
-        /* 5. TANDA TANGAN */
-        .signature-area { margin-top: 40px; width: 100%; }
-        .signature-box { float: right; width: 250px; text-align: center; font-weight: bold; font-size: 14px; }
-
-        /* SEMBUNYIKAN TOMBOL SAAT DIPRINT */
-        @media print { .no-print { display: none !important; } }
     </style>
 </head>
-<body onload="window.print()"> {{-- Otomatis munculin dialog print pas dibuka --}}
-
-    <div class="no-print" style="margin-bottom: 20px; text-align: right;">
-        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">KLIK UNTUK PRINT</button>
-        <a href="{{ url()->previous() }}" style="margin-left: 10px; text-decoration: none; color: #666;">KEMBALI</a>
+<body>
+    <!-- TOMBOL AKSI (Disembunyikan saat masuk kertas) -->
+    <div class="print-btn-wrapper">
+        <a href="javascript:history.back()" class="btn-back">⬅ Kembali</a>
+        <button onclick="window.print()" class="btn-print">🖨️ Cetak Dokumen Ini</button>
     </div>
 
-    <div class="kop-surat">
-        <div class="logo-area">    
-        </div>
-        <div class="kop-text">
-            <h1>PT. Asalta Mandiri Agung</h1>
-            <p>JL. RAYA JAKARTA-BOGOR KM. 49 (JLN. RODA PEMBANGUNAN) BOGOR</p>
-            <p>TELP : (0251) 8652769, 8662656 | (021) 8753727, 8751390, 8751382</p>
-        </div>
-    </div>
-    <div class="garis-bawah"></div>
-
-    <div class="title-report">
-        <h2>LAPORAN MUTASI BULANAN FINISH GOOD</h2>
-        <p>CUSTOMER: {{ $customer }} | PERIODE: {{ $month_name }} {{ $year }}</p>
-    </div>
-    <table class="table-print">
-        <thead>
+    <div class="print-container">
+        
+        <!-- KOP SURAT RESMI -->
+        <table class="header-table">
             <tr>
-                <th rowspan="2">PART NO</th>
-                <th rowspan="2">PART NAME</th>
-                <th colspan="4">ALUR MUTASI STOK (PCS)</th>
+                <td style="width: 30%;">
+                    <div style="display: flex; align-items: center;">
+                        <div class="logo-area">
+                            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
+                        </div>
+                        <div>
+                            <h2 class="company-name">PT. Asalta Mandiri Agung</h2>
+                            <div class="dept-name">DEPARTEMEN PPIC - FINISHED GOODS</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="width: 40%;" class="doc-title">
+                    <h1>FINISHED GOODS MONTHLY RECAP</h1>
+                    <h2>OFFICIAL MUTATION LEDGER</h2>
+                </td>
+                <td style="width: 30%;" class="meta-area">
+                    <table class="meta-table">
+                        <tr>
+                            <td class="meta-label">PRINT DATE :</td>
+                            <td class="meta-value">{{ date('d M Y') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">TIME :</td>
+                            <td class="meta-value">{{ date('H:i:s') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="meta-label">PAGE :</td>
+                            <td class="meta-value">1 of 1</td>
+                        </tr>
+                    </table>
+                </td>
             </tr>
-            <tr>
-                <th>AWAL</th>
-                <th>IN</th>
-                <th>OUT</th>
-                <th>AKHIR</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($recap as $r)
-            <tr>
-                <td>{{ $r->part_no }}</td>
-                <td class="text-left uppercase">{{ $r->part_name }}</td>
-                <td>{{ number_format($r->stock_awal) }}</td>
-                <td>+{{ number_format($r->total_in) }}</td>
-                <td>-{{ number_format($r->total_out) }}</td>
-                <td style="background-color: #f9f9f9;">{{ number_format($r->stock_akhir) }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-    <div class="signature-area">
-        <div class="signature-box">
-            Bogor, {{ date('d F Y') }}<br>
-            Dibuat Oleh,<br><br><br><br><br>
-            ( ............................. )<br>
-            Admin Gudang
+        </table>
+        
+        <div class="divider"></div>
+
+        <!-- INFO FILTER PARAMETER -->
+        @php $monthName = date('F', mktime(0, 0, 0, $month, 10)); @endphp
+        <div class="filter-info">
+            <div>
+                <span class="filter-badge">CUSTOMER: <strong>{{ $customer === 'ALL' ? 'SEMUA CUSTOMER (ALL)' : $customer }}</strong></span>
+                <span class="filter-badge">PART NO: <strong>{{ $partFilter ?? 'SEMUA PART' }}</strong></span>
+            </div>
+            <div>
+                <span class="filter-badge">PERIOD: <strong>{{ strtoupper($monthName) }} {{ $year }}</strong></span>
+            </div>
         </div>
+
+        <!-- 1. TABEL REKAP BULANAN -->
+        <div class="section-title">1. REKAPITULASI STOK BULANAN</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 15%;">PART NO</th>
+                    <th rowspan="2" style="width: 37%;">PART NAME</th>
+                    <th colspan="4">ALUR MUTASI STOK (PCS)</th>
+                </tr>
+                <tr>
+                    <th style="width: 12%;">SALDO AWAL</th>
+                    <th style="width: 12%;">TOTAL IN</th>
+                    <th style="width: 12%;">TOTAL OUT</th>
+                    <th style="width: 12%;">SALDO AKHIR</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($recap as $fg)
+                    <tr>
+                        <td class="mono">{{ $fg->part_no }}</td>
+                        <td class="text-left"><strong>{{ $fg->part_name }}</strong></td>
+                        <td class="mono">{{ number_format($fg->stock_awal) }}</td>
+                        <td class="mono text-in">+{{ number_format($fg->total_in) }}</td>
+                        <td class="mono text-out">-{{ number_format($fg->total_out) }}</td>
+                        <td class="mono text-akhir">{{ number_format($fg->stock_akhir) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6">Tidak ada data rekap pada periode ini.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <!-- 2. TABEL RINCIAN MUTASI HARIAN -->
+        <div class="section-title">2. AUDIT TRAIL / RINCIAN MUTASI (01 - {{ date('t', strtotime("$year-$month-01")) }} {{ strtoupper($monthName) }})</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%;">TANGGAL</th>
+                    <th style="width: 8%;">JAM</th>
+                    <th style="width: 18%;">PART NUMBER</th>
+                    <th style="width: 28%;">NO. REFERENSI (WOS / SURAT JALAN)</th>
+                    <th style="width: 18%;">IN (PRODUKSI)</th>
+                    <th style="width: 18%;">OUT (DELIVERY)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($dailyDetails as $detail)
+                    <tr>
+                        <td class="mono">{{ date('d/m/Y', strtotime($detail->tgl)) }}</td>
+                        <td class="mono">{{ date('H:i', strtotime($detail->jam)) }}</td>
+                        <td class="mono text-left"><strong>{{ $detail->part_no }}</strong></td>
+                        <td class="mono text-left">
+                            @if($detail->type == 'IN')
+                                ⚙️ {{ strtoupper($detail->no_dokumen ?? 'WOS-SYSTEM') }}
+                            @else
+                                🚚 {{ strtoupper($detail->no_dokumen ?? 'SJ-SYSTEM') }}
+                            @endif
+                        </td>
+                        <td class="mono {{ $detail->type == 'IN' ? 'text-in' : '' }}">
+                            {{ $detail->type == 'IN' ? '+'.number_format($detail->in_qty) : '-' }}
+                        </td>
+                        <td class="mono {{ $detail->type == 'OUT' ? 'text-out' : '' }}">
+                            {{ $detail->type == 'OUT' ? '-'.number_format($detail->out_qty) : '-' }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="6">Tidak ada mutasi harian pada periode ini.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <!-- BLOK TANDA TANGAN -->
+        <table class="signature-area">
+            <thead>
+                <tr>
+                    <th>DIBUAT OLEH (PREPARED)</th>
+                    <th>DIPERIKSA OLEH (CHECKED)</th>
+                    <th>DISETUJUI OLEH (APPROVED)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>( ADMIN FG )</td>
+                    <td>( SUPERVISOR PPIC )</td>
+                    <td>( MANAGER PPIC )</td>
+                </tr>
+            </tbody>
+        </table>
+
     </div>
 
+    <!-- Script otomatis buka dialog print saat halaman dimuat -->
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        }
+    </script>
 </body>
 </html>
