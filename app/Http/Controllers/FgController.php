@@ -163,8 +163,15 @@ class FgController extends Controller
         $delivQtyCol  = Schema::hasColumn('deliveries', 'qty_delivery') ? 'qty_delivery' : (Schema::hasColumn('deliveries', 'qty') ? 'qty' : 'qty_delivery');
         $delivCustCol = Schema::hasColumn('deliveries', 'customer_code') ? 'customer_code' : 'customer';
 
-        $wosCol = Schema::hasColumn('production_logs', 'no_produksi') ? 'no_produksi' : (Schema::hasColumn('production_logs', 'no_wos') ? 'no_wos' : (Schema::hasColumn('production_logs', 'wos_no') ? 'wos_no' : null));
-        $sjCol = Schema::hasColumn('deliveries', 'no_surat_jalan') ? 'no_surat_jalan' : (Schema::hasColumn('deliveries', 'no_sj') ? 'no_sj' : (Schema::hasColumn('deliveries', 'sj_no') ? 'sj_no' : null));
+        // 🔥 FIX: Deteksi kolom batch_id ditambahkan pada urutan pertama untuk WOS 🔥
+        $wosCol = Schema::hasColumn('production_logs', 'batch_id') ? 'batch_id' : 
+                 (Schema::hasColumn('production_logs', 'no_produksi') ? 'no_produksi' : 
+                 (Schema::hasColumn('production_logs', 'no_wos') ? 'no_wos' : 
+                 (Schema::hasColumn('production_logs', 'wos_no') ? 'wos_no' : null)));
+                 
+        $sjCol = Schema::hasColumn('deliveries', 'no_surat_jalan') ? 'no_surat_jalan' : 
+                (Schema::hasColumn('deliveries', 'no_sj') ? 'no_sj' : 
+                (Schema::hasColumn('deliveries', 'sj_no') ? 'sj_no' : null));
 
         if ($customer) {
             $partsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
@@ -217,7 +224,7 @@ class FgController extends Controller
                 $fg->stock_awal = $fg->stock_akhir - $fg->total_in + $fg->total_out;
             }
 
-            // MENGAMBIL DATA FULL 1 BULAN (Mengganti whereDate menjadi whereMonth & whereYear)
+            // SELECT IN LOGS + COL NO DOKUMEN (Dengan pengecekan batch_id)
             $selectWos = $wosCol ? "production_logs.{$wosCol}" : "NULL";
             $in_logsQuery = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
@@ -232,13 +239,14 @@ class FgController extends Controller
             if ($partFilter) {
                 $in_logsQuery->where('production_logs.part_no', $partFilter);
             }
+            
             $in_logs = $in_logsQuery->select(
                 DB::raw('DATE(production_logs.created_at) as tgl'), 
                 'production_logs.part_no', 
                 'production_logs.qty as in_qty', 
                 DB::raw('0 as out_qty'), 
                 'production_logs.created_at as jam', 
-                DB::raw("COALESCE($selectWos, '') as no_dokumen")
+                DB::raw("COALESCE($selectWos, 'WOS-SYSTEM') as no_dokumen")
             );
             
             $selectSj = $sjCol ? $sjCol : "NULL";
@@ -264,7 +272,7 @@ class FgController extends Controller
                     DB::raw('0 as in_qty'), 
                     "$delivQtyCol as out_qty", 
                     "$delivDateCol as jam",
-                    DB::raw("COALESCE($selectSj, '') as no_dokumen")
+                    DB::raw("COALESCE($selectSj, 'SJ-SYSTEM') as no_dokumen")
                 )
                 ->unionAll($in_logs)
                 ->orderBy('jam', 'desc')
