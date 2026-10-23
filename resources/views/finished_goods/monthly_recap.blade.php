@@ -178,16 +178,26 @@
                     <tbody>
                         @forelse($dailyDetails as $detail)
                             @php
-                                // Pencarian Dinamis No Referensi Dokumen
+                                // 🔥 FIX: Pencocokan waktu parsial hingga menit untuk menghindari kegagalan baca WOS 🔥
                                 $ref_doc = '-';
                                 $doc_class = '';
+                                $jamFilter = date('Y-m-d H:i', strtotime($detail->jam));
+
                                 if ($detail->in_qty > 0) {
-                                    $log = \DB::table('production_logs')->where('part_no', $detail->part_no)->where('created_at', $detail->jam)->first();
-                                    $ref_doc = $log->no_produksi ?? $log->no_wos ?? $log->wos_no ?? 'WOS-SYSTEM';
+                                    $log = \DB::table('production_logs')
+                                        ->where('part_no', $detail->part_no)
+                                        ->where('created_at', 'LIKE', $jamFilter . '%')
+                                        ->first();
+                                    
+                                    $ref_doc = $log->no_produksi ?? $log->no_wos ?? $log->wos_no ?? $log->wos ?? 'WOS-SYSTEM';
                                     $doc_class = 'doc-wos';
                                 } else {
                                     $delivDateCol = \Illuminate\Support\Facades\Schema::hasColumn('deliveries', 'delivery_date') ? 'delivery_date' : 'created_at';
-                                    $delv = \DB::table('deliveries')->where('part_no', $detail->part_no)->where($delivDateCol, $detail->jam)->first();
+                                    $delv = \DB::table('deliveries')
+                                        ->where('part_no', $detail->part_no)
+                                        ->where($delivDateCol, 'LIKE', $jamFilter . '%')
+                                        ->first();
+                                    
                                     $ref_doc = $delv->no_surat_jalan ?? $delv->no_sj ?? $delv->sj_no ?? 'SJ-SYSTEM';
                                     $doc_class = 'doc-sj';
                                 }
@@ -217,7 +227,7 @@
             </div>
         </div>
     @else
-        <!-- EMPTY STATE (JIKA BELUM PILIH CUSTOMER) -->
+        <!-- EMPTY STATE -->
         <div class="text-center py-5 card-erp border-0 mt-3" style="background: #fff; box-shadow:none;">
             <i class="fas fa-network-wired fa-4x mb-4" style="color: #cbd5e1;"></i>
             <h4 class="font-weight-bold text-uppercase" style="color: var(--slate);">System Ready: Please Select Customer</h4>
