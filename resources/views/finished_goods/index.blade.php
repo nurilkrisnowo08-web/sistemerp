@@ -16,11 +16,11 @@
     .main-terminal { background-color: var(--bg); min-height: 100vh; padding: 1.5rem; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dark); }
     
     /* ✨ CONTROL PANEL */
-    .control-panel { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); padding: 15px 20px; }
-    .form-control, .form-select { border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 600; color: var(--dark); }
+    .control-panel { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); padding: 15px 20px; border-left: 5px solid var(--primary); }
+    .form-control, .form-select { border-radius: 8px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 700; color: var(--dark); }
     .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
     
-    .btn-custom { border-radius: 8px; font-weight: 700; font-size: 0.8rem; padding: 0.5rem 1.2rem; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.2s; }
+    .btn-custom { border-radius: 8px; font-weight: 800; font-size: 0.75rem; padding: 0.6rem 1.2rem; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.2s; }
     .btn-action { background: var(--primary); color: #fff; border: none; }
     .btn-action:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
     .btn-recap { background: var(--success); color: #fff; border: none; }
@@ -29,21 +29,21 @@
     /* ✨ MODERN ERP TABLE */
     .card-table { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); overflow: hidden; }
     .table-erp { width: 100%; border-collapse: collapse; margin: 0; font-size: 0.8rem; }
-    .table-erp thead th { background: var(--dark); color: #fff; text-align: center; padding: 12px 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); }
+    .table-erp thead th { background: var(--dark); color: #fff; text-align: center; padding: 12px 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: none; border-right: 1px solid rgba(255,255,255,0.1); }
     .table-erp thead tr:nth-child(2) th { font-size: 0.75rem; letter-spacing: 0px; }
     .table-erp tbody td { padding: 12px 10px; vertical-align: middle; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
     .table-erp tbody tr:hover { background: #f1f5f9; }
     
     /* ✨ MUTATION HIGHLIGHTS */
-    .col-awal { background: #f8fafc; font-weight: 700; color: var(--slate); }
+    .col-awal { background: #f8fafc; font-weight: 800; color: var(--slate); }
     .col-in { background: var(--success-light); color: #15803d; font-weight: 800; }
     .col-out { background: var(--danger-light); color: #b91c1c; font-weight: 800; }
-    .col-akhir { background: var(--primary-light); color: #1d4ed8; font-weight: 800; font-size: 0.9rem; }
+    .col-akhir { background: var(--primary-light); color: #1d4ed8; font-weight: 900; font-size: 0.95rem; }
     
-    .mono { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+    .mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
 
     /* ✨ BADGES */
-    .badge-status { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.5px; }
+    .badge-status { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.5px; }
     .badge-crit { background: var(--danger); color: white; animation: pulse-red 2s infinite; }
     .badge-over { background: var(--warning); color: white; }
     .badge-ok { background: var(--success); color: white; }
@@ -52,9 +52,16 @@
 
     /* ✨ SIDE-BY-SIDE LOGS */
     .log-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.03); overflow: hidden; height: 100%; }
-    .log-header { padding: 12px 20px; font-weight: 800; text-transform: uppercase; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
-    .log-table th { background: #f8fafc; color: var(--slate); font-size: 0.7rem; padding: 10px; border-bottom: 2px solid var(--border); }
-    .log-table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 0.8rem; }
+    .log-header { padding: 12px 20px; font-weight: 900; text-transform: uppercase; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
+    .log-table th { background: #f8fafc; color: var(--slate); font-size: 0.75rem; padding: 10px; border-bottom: 2px solid var(--border); font-weight: 800; text-transform: uppercase;}
+    .log-table td { padding: 10px; border-bottom: 1px solid var(--border); font-size: 0.8rem; font-weight: 700;}
+
+    /* Scrollable Chart Wrapper */
+    .chart-scroller { overflow-x: auto; overflow-y: hidden; padding-bottom: 10px; }
+    .chart-scroller::-webkit-scrollbar { height: 8px; }
+    .chart-scroller::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    .chart-scroller::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .chart-scroller::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
     .animasi-konten { animation: fadeInUp 0.6s ease-out forwards; }
@@ -72,12 +79,13 @@
     @endif
 
     {{-- 🎛️ 1. CONTROL PANEL (FILTER) --}}
-    <div class="control-panel mb-4 no-print border-left-primary" style="border-left: 5px solid var(--primary);">
+    <div class="control-panel mb-4 no-print">
         <form action="{{ route('fg.index') }}" method="GET" class="row align-items-end">
             <div class="col-md-3 mb-2 mb-md-0">
                 <label class="small font-weight-bold mb-2 text-muted text-uppercase"><i class="fas fa-industry mr-1 text-primary"></i> Customer Terminal</label>
                 <select name="customer" class="form-control form-control-sm" onchange="this.form.submit()">
-                    <option value="">-- PILIH CUSTOMER --</option>
+                    <!-- Opsi ALL Customer ditambahkan -->
+                    <option value="ALL" {{ request('customer') == 'ALL' ? 'selected' : '' }}>-- SEMUA CUSTOMER (ALL) --</option>
                     @foreach($availableCustomers as $c)
                         <option value="{{ $c->code }}" {{ request('customer') == $c->code ? 'selected' : '' }}>{{ $c->code }} - {{ $c->name }}</option>
                     @endforeach
@@ -96,7 +104,7 @@
 
     @if(request('customer') && $allFG->count() > 0)
         
-        {{-- 📈 2. VISUAL ANALYTICS (MIXED CHART) --}}
+        {{-- 📈 2. VISUAL ANALYTICS (MIXED CHART SCROLLABLE) --}}
         <div class="row no-print mb-4">
             <div class="col-12">
                 <div class="card-table p-4">
@@ -105,7 +113,15 @@
                             <i class="fas fa-chart-line mr-2 text-primary"></i> Stock Analytics: Actual vs Min Limit
                         </h6>
                     </div>
-                    <div style="height: 250px;"><canvas id="stockChart"></canvas></div>
+                    
+                    <!-- Wrapper Scroll Horizontal -->
+                    <div class="chart-scroller">
+                        <!-- Hitung dinamis lebar chart berdasarkan jumlah part (Makin banyak part makin panjang) -->
+                        <div style="position: relative; height: 300px; min-width: {{ count($labels ?? []) * 80 }}px;">
+                            <canvas id="stockChart"></canvas>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -189,7 +205,7 @@
                                         <td class="col-in text-center" style="border-right: none;">+{{ number_format($in->qty) }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="3" class="py-4 text-muted italic border-0">Awaiting production data...</td></tr>
+                                    <tr><td colspan="3" class="py-4 text-muted border-0" style="font-style: italic;">Awaiting production data...</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -214,7 +230,7 @@
                                         <td class="col-out text-center" style="border-right: none;">-{{ number_format($out->qty_delivery) }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="3" class="py-4 text-muted italic border-0">Awaiting delivery data...</td></tr>
+                                    <tr><td colspan="3" class="py-4 text-muted border-0" style="font-style: italic;">Awaiting delivery data...</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -245,7 +261,7 @@
             
             if (target > 0) {
                 let count = 0;
-                let speed = target / 40; // Kecepatan disesuaikan
+                let speed = target / 40; 
                 let timer = setInterval(() => {
                     count += speed;
                     if (count >= target) {
@@ -258,7 +274,7 @@
             } else { el.innerText = "0"; }
         });
 
-        // ✨ MIXED CHART: BAR (Actual) & LINE (Min Limit)
+        // ✨ MIXED CHART SCROLLABLE
         @if(isset($labels) && count($labels) > 0)
         const ctx = document.getElementById('stockChart').getContext('2d');
         new Chart(ctx, {
@@ -269,8 +285,11 @@
                         type: 'bar',
                         label: 'Actual Stock', 
                         data: {!! json_encode($actStockData) !!}, 
-                        backgroundColor: '#3b82f6', 
+                        backgroundColor: 'rgba(37, 99, 235, 0.85)', 
+                        borderColor: '#1d4ed8',
+                        borderWidth: 1,
                         borderRadius: 4,
+                        barThickness: 35, // Lebar batang ditetapkan agar tidak gepeng
                         order: 2
                     },
                     { 
@@ -278,12 +297,13 @@
                         label: 'Min Limit Threshold', 
                         data: {!! json_encode($minStockData) !!}, 
                         borderColor: '#ef4444', 
-                        backgroundColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         borderWidth: 2,
-                        fill: false,
-                        tension: 0.3,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
+                        borderDash: [5, 5], // Garis putus-putus
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ef4444',
                         order: 1
                     }
                 ]
@@ -291,17 +311,14 @@
             options: { 
                 responsive: true, 
                 maintainAspectRatio: false,
-                animation: {
-                    duration: 3000, 
-                    easing: 'easeOutQuart'
-                },
+                animation: { duration: 2500, easing: 'easeOutQuart' },
                 plugins: {
                     legend: { display: true, position: 'top', labels: { font: { family: "'Plus Jakarta Sans', sans-serif", weight: 'bold' } } },
                     tooltip: { mode: 'index', intersect: false, titleFont: { family: "'JetBrains Mono', monospace" } }
                 },
                 scales: { 
-                    y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { family: "'JetBrains Mono', monospace" } } },
-                    x: { grid: { display: false }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 10 } } }
+                    y: { beginAtZero: true, grid: { color: '#e2e8f0' }, ticks: { font: { family: "'JetBrains Mono', monospace", weight: 'bold' } } },
+                    x: { grid: { display: false }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 10, weight: 'bold' } } }
                 } 
             }
         });
