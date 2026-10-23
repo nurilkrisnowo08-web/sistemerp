@@ -402,9 +402,13 @@ class RmController extends Controller
     /**
      * ✨ 8. RECAP PRINT (MENAMPILKAN RINCIAN COIL MASUK & KELUAR) ✨
      */
+    /**
+     * ✨ 8. RECAP PRINT (MENAMPILKAN RINCIAN COIL MASUK & KELUAR DENGAN FILTER PART) ✨
+     */
     public function recapPrint(Request $request) 
     {
         $customer = $request->customer;
+        $partSize = $request->part_size; // Menangkap request filter part/size
         $filterType = $request->filter_type ?? ($request->has('month') && !$request->has('date') ? 'monthly' : 'daily');
 
         if ($filterType === 'monthly') {
@@ -434,8 +438,19 @@ class RmController extends Controller
             })
             ->select('rm_stocks.*', 'mm.alias_code');
 
+        // Filter 1: Customer
         if ($customer && $customer !== 'ALL') {
             $rmStocksQuery->where('rm_stocks.customer', $customer);
+        }
+        
+        // Filter 2: Part / Size
+        if ($partSize && $partSize !== 'ALL') {
+            $rmStocksQuery->where(function($q) use ($partSize) {
+                $q->where('rm_stocks.spec', $partSize)
+                  ->orWhere('rm_stocks.material_code', $partSize)
+                  ->orWhere('mm.alias_code', $partSize)
+                  ->orWhere(DB::raw("CONCAT(rm_stocks.spec, ' ', rm_stocks.size)"), 'LIKE', "%{$partSize}%");
+            });
         }
 
         $allStocks = $rmStocksQuery->get();
@@ -467,7 +482,7 @@ class RmController extends Controller
                 ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
                 ->whereIn('rm_production_logs.rm_stock_id', $historicalIds)
                 ->whereBetween('rm_production_logs.created_at', [$startTimestamp, $endTimestamp])
-                ->select('rm_production_logs.*', 'rm_stocks.coil_id')
+                ->select('rm_production_logs.*', 'rm_stocks.coil_id', 'rm_production_logs.no_produksi')
                 ->get();
 
             $inS = $logsIn->whereIn('source', ['supplier', null])->sum('pcs_in');
@@ -480,7 +495,8 @@ class RmController extends Controller
             })->map(function($items, $cId) {
                 return (object)[
                     'coil_id' => $cId,
-                    'qty'     => $items->sum('pcs_used')
+                    'qty'     => $items->sum('pcs_used'),
+                    'no_dokumen' => $items->pluck('no_produksi')->unique()->implode(', ')
                 ];
             })->values();
 
@@ -490,11 +506,12 @@ class RmController extends Controller
             })->map(function($items, $cId) {
                 return (object)[
                     'coil_id' => $cId,
-                    'qty'     => $items->sum('pcs_in')
+                    'qty'     => $items->sum('pcs_in'),
+                    'no_dokumen' => $items->pluck('no_produksi')->unique()->implode(', ')
                 ];
             })->values();
 
-            // Transaksi setelah periode terpilih
+            // Transaksi SETELAH periode terpilih (Masa Depan)
             $futureIn = DB::table('rm_incoming_logs')
                 ->whereIn('rm_stock_id', $historicalIds)
                 ->where('created_at', '>', $endTimestamp)
@@ -505,7 +522,11 @@ class RmController extends Controller
                 ->where('created_at', '>', $endTimestamp)
                 ->sum('pcs_used') ?? 0;
 
+            // 🔥 LOGIKA MATEMATIKA YANG DIBENARKAN 🔥
+            // Stok Akhir = Live Sekarang - Masuk (Masa Depan) + Keluar (Masa Depan)
             $stokAkhir = $totalLiveNow - $futureIn + $futureOut;
+            
+            // Stok Awal = Stok Akhir - Masuk (Saat Ini) + Keluar (Saat Ini)
             $stokAwal = $stokAkhir - ($inS + $inR) + $outProd;
 
             // Akumulasi bulanan
@@ -545,10 +566,19 @@ class RmController extends Controller
         })->filter(fn($item) => $item->stok_akhir_hari_ini > 0 || $item->stok_awal > 0 || $item->daily_in_s > 0 || $item->daily_out > 0)->values();
 
         $availableCustomers = DB::table('customers')->get();
+        
+        // Mengirimkan list part untuk mengisi dropdown filter di Blade
+        $availableParts = DB::table('rm_stocks')
+            ->select(DB::raw("CONCAT(spec, ' ', size) as part_name"), 'spec', 'size')
+            ->when($customer && $customer !== 'ALL', function($q) use ($customer) {
+                return $q->where('customer', $customer);
+            })
+            ->distinct()
+            ->get();
 
         return view('Gudang.rm_recap_print', compact(
-            'data', 'customer', 'targetDate', 'startDate', 'endDate', 
-            'filterType', 'selectedMonth', 'periodTitle', 'availableCustomers'
+            'data', 'customer', 'partSize', 'targetDate', 'startDate', 'endDate', 
+            'filterType', 'selectedMonth', 'periodTitle', 'availableCustomers', 'availableParts'
         ));
     }
 
