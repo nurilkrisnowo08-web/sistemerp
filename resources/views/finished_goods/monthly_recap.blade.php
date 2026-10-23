@@ -90,8 +90,6 @@
                 </div>
                 <div class="col-md-3 mb-3 text-right">
                     <a href="{{ route('fg.index') }}" class="btn btn-action btn-back mr-1"><i class="fas fa-arrow-left mr-1"></i> Kembali</a>
-                    
-                    <!-- 🔥 FIX: BUKA TAB BARU KE HALAMAN PRINT KHUSUS 🔥 -->
                     @if($customer)
                         <a href="{{ request()->fullUrlWithQuery(['action' => 'print']) }}" target="_blank" class="btn btn-action btn-print">
                             <i class="fas fa-print mr-1"></i> Cetak Dokumen
@@ -99,7 +97,6 @@
                     @else
                         <button type="button" class="btn btn-action btn-print" disabled><i class="fas fa-print mr-1"></i> Cetak Dokumen</button>
                     @endif
-                    
                 </div>
             </div>
         </form>
@@ -145,53 +142,62 @@
             </div>
         </div>
 
-        <!-- 📅 2. RINCIAN MUTASI (FULL BULAN) -->
+        <!-- 📅 2. RINCIAN MUTASI (DIKELOMPOKKAN PER PART) -->
         <div class="card-erp">
             <div class="card-header-erp" style="background: #f8fafc;">
                 <h3 class="card-title-erp text-dark"><i class="fas fa-list-alt mr-2"></i> 2. RINCIAN MUTASI (FULL BULAN)</h3>
                 <span class="badge bg-white border px-3 py-1 font-weight-bold text-muted shadow-sm" style="font-size: 0.7rem;"><i class="fas fa-calendar mr-1"></i> 01 - {{ date('t', strtotime("$year-$month-01")) }} {{ date('M Y', strtotime("$year-$month-01")) }}</span>
             </div>
-            <div class="table-responsive">
-                <table class="table-erp">
-                    <thead>
-                        <tr>
-                            <th style="width: 10%;">Tanggal</th>
-                            <th style="width: 10%;">Jam</th>
-                            <th style="width: 15%;">Part Number</th>
-                            <th style="width: 25%;">No. Dokumen (WOS / Surat Jalan)</th>
-                            <th style="width: 20%; color: #4ade80;">IN (Produksi)</th>
-                            <th style="width: 20%; color: #f87171;">OUT (Delivery)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($dailyDetails as $detail)
-                            @php
-                                $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' && $detail->no_dokumen !== 'NULL' ? $detail->no_dokumen : ($detail->type == 'IN' ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
-                                $doc_class = $detail->type == 'IN' ? 'doc-wos' : 'doc-sj';
-                            @endphp
+            
+            @php 
+                // ✨ Mengelompokkan data berdasarkan part_no
+                $groupedDetails = $dailyDetails->groupBy('part_no'); 
+            @endphp
+
+            @forelse($groupedDetails as $partNo => $details)
+                <div class="bg-light px-4 py-3 border-bottom border-top" style="background-color: #f1f5f9 !important;">
+                    <h6 class="m-0 font-weight-bold text-primary mono"><i class="fas fa-cube mr-2"></i> PART NO: {{ $partNo }}</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table-erp" style="border-top: none;">
+                        <thead>
                             <tr>
-                                <td class="font-weight-bold text-dark">{{ date('d/m/Y', strtotime($detail->tgl)) }}</td>
-                                <td class="text-muted mono">{{ date('H:i', strtotime($detail->jam)) }}</td>
-                                <td class="text-primary font-weight-bold mono">{{ $detail->part_no }}</td>
-                                <td>
-                                    <span class="doc-badge {{ $doc_class }}">
-                                        {!! $detail->type == 'IN' ? '<i class="fas fa-cog mr-1"></i>' : '<i class="fas fa-truck mr-1"></i>' !!} 
-                                        {{ strtoupper($ref_doc) }}
-                                    </span>
-                                </td>
-                                <td class="mono {{ $detail->type == 'IN' ? 'text-in bg-in' : 'text-muted' }}">
-                                    {{ $detail->type == 'IN' ? '+'.number_format($detail->in_qty) : '-' }}
-                                </td>
-                                <td class="mono {{ $detail->type == 'OUT' ? 'text-out bg-out' : 'text-muted' }}">
-                                    {{ $detail->type == 'OUT' ? '-'.number_format($detail->out_qty) : '-' }}
-                                </td>
+                                <th style="width: 12%;">Tanggal</th>
+                                <th style="width: 10%;">Jam</th>
+                                <th style="width: 38%;">No. Dokumen (WOS / Surat Jalan)</th>
+                                <th style="width: 20%; color: #4ade80;">IN (Produksi)</th>
+                                <th style="width: 20%; color: #f87171;">OUT (Delivery)</th>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="text-center py-4 font-weight-bold text-muted">Tidak ada mutasi pada bulan ini.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach($details as $detail)
+                                @php
+                                    $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' && $detail->no_dokumen !== 'NULL' ? $detail->no_dokumen : ($detail->type == 'IN' ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
+                                    $doc_class = $detail->type == 'IN' ? 'doc-wos' : 'doc-sj';
+                                @endphp
+                                <tr>
+                                    <td class="font-weight-bold text-dark">{{ date('d/m/Y', strtotime($detail->tgl)) }}</td>
+                                    <td class="text-muted mono">{{ date('H:i', strtotime($detail->jam)) }}</td>
+                                    <td>
+                                        <span class="doc-badge {{ $doc_class }}">
+                                            {!! $detail->type == 'IN' ? '<i class="fas fa-cog mr-1"></i>' : '<i class="fas fa-truck mr-1"></i>' !!} 
+                                            {{ strtoupper($ref_doc) }}
+                                        </span>
+                                    </td>
+                                    <td class="mono {{ $detail->type == 'IN' ? 'text-in bg-in' : 'text-muted' }}">
+                                        {{ $detail->type == 'IN' ? '+'.number_format($detail->in_qty) : '-' }}
+                                    </td>
+                                    <td class="mono {{ $detail->type == 'OUT' ? 'text-out bg-out' : 'text-muted' }}">
+                                        {{ $detail->type == 'OUT' ? '-'.number_format($detail->out_qty) : '-' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @empty
+                <div class="text-center py-5 font-weight-bold text-muted">Tidak ada mutasi pada bulan ini.</div>
+            @endforelse
         </div>
     @else
         <!-- EMPTY STATE -->
