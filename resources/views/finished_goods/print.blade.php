@@ -82,11 +82,11 @@
 </head>
 <body>
     <!-- TOMBOL AKSI (Disembunyikan saat masuk kertas) -->
+    <!-- TOMBOL AKSI (Disembunyikan saat masuk kertas) -->
     <div class="print-btn-wrapper">
-        <a href="javascript:history.back()" class="btn-back">⬅ Kembali</a>
-        <button onclick="window.print()" class="btn-print">🖨️ Cetak Dokumen Ini</button>
+        <button type="button" onclick="window.close()" class="btn-back">⬅ Tutup Halaman</button>
+        <button type="button" onclick="window.print()" class="btn-print">🖨️ Cetak Dokumen Ini</button>
     </div>
-
     <div class="print-container">
         
         <!-- KOP SURAT RESMI -->
