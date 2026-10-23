@@ -163,6 +163,10 @@ class FgController extends Controller
         $delivQtyCol  = Schema::hasColumn('deliveries', 'qty_delivery') ? 'qty_delivery' : (Schema::hasColumn('deliveries', 'qty') ? 'qty' : 'qty_delivery');
         $delivCustCol = Schema::hasColumn('deliveries', 'customer_code') ? 'customer_code' : 'customer';
 
+        $sjCol = Schema::hasColumn('deliveries', 'no_surat_jalan') ? 'no_surat_jalan' : 
+                (Schema::hasColumn('deliveries', 'no_sj') ? 'no_sj' : 
+                (Schema::hasColumn('deliveries', 'sj_no') ? 'sj_no' : null));
+
         if ($customer) {
             $partsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
             if ($customer !== 'ALL') {
@@ -214,7 +218,6 @@ class FgController extends Controller
                 $fg->stock_awal = $fg->stock_akhir - $fg->total_in + $fg->total_out;
             }
 
-            // 1. Ambil seluruh data IN
             $in_logsQuery = DB::table('production_logs')
                 ->join('finished_goods', 'production_logs.part_no', '=', 'finished_goods.part_no')
                 ->where('production_logs.process_type', 'FG')
@@ -229,33 +232,25 @@ class FgController extends Controller
                 $in_logsQuery->where('production_logs.part_no', $partFilter);
             }
             
-            // Logika Cerdas: Tarik production_logs lalu intip tabel produksi_batches
             $in_logs = $in_logsQuery->select('production_logs.*')->get()->map(function($item) {
                 $doc = 'WOS-SYSTEM';
-
-                // Jika tabel memiliki nomor WOS secara langsung
                 if (!empty($item->no_wos)) $doc = $item->no_wos;
                 elseif (!empty($item->wos_no)) $doc = $item->wos_no;
                 elseif (!empty($item->no_produksi)) $doc = $item->no_produksi;
                 else {
-                    // Cari manual dari tabel produksi_batches berdasarkan material_code
                     if (Schema::hasTable('produksi_batches')) {
                         $fk_id = $item->produksi_id ?? $item->produksi_batch_id ?? $item->batch_id ?? $item->job_id ?? null;
-                        
                         if ($fk_id) {
                             $batch = DB::table('produksi_batches')->where('id', $fk_id)->first();
                             if ($batch && !empty($batch->no_produksi)) {
                                 $doc = $batch->no_produksi;
                             }
                         } else {
-                            // Cocokkan berdasarkan part_no dan tanggal yang sama
                             $query = DB::table('produksi_batches')->where('material_code', $item->part_no);
                             if (Schema::hasColumn('produksi_batches', 'created_at')) {
                                 $query->whereDate('created_at', date('Y-m-d', strtotime($item->created_at)));
                             }
                             $batch = $query->first();
-                            
-                            // Jika gagal menemukan di tanggal yang sama, ambil data batch yang terakhir diproduksi
                             if (!$batch) {
                                 $batch = DB::table('produksi_batches')->where('material_code', $item->part_no)->orderBy('id', 'desc')->first();
                             }
@@ -265,7 +260,6 @@ class FgController extends Controller
                         }
                     }
                 }
-
                 return (object)[
                     'tgl' => date('Y-m-d', strtotime($item->created_at)),
                     'jam' => $item->created_at,
@@ -277,7 +271,6 @@ class FgController extends Controller
                 ];
             });
             
-            // 2. Ambil seluruh data OUT
             $dailyDetailsQuery = DB::table('deliveries')
                 ->whereMonth($delivDateCol, $month)
                 ->whereYear($delivDateCol, $year);
@@ -294,25 +287,29 @@ class FgController extends Controller
                 $dailyDetailsQuery->where('part_no', $partFilter);
             }
             
-            $out_logs = $dailyDetailsQuery->select('*')->get()->map(function($item) use ($delivDateCol, $delivQtyCol) {
-                $doc = $item->no_surat_jalan ?? $item->no_sj ?? $item->sj_no ?? $item->delivery_no ?? $item->do_no ?? 'SJ-SYSTEM';
+            $out_logs = $dailyDetailsQuery->select('*')->get()->map(function($item) use ($delivDateCol, $delivQtyCol, $sjCol) {
+                $doc = $sjCol ? ($item->{$sjCol} ?? null) : ($item->delivery_no ?? $item->do_no ?? null);
                 return (object)[
                     'tgl' => date('Y-m-d', strtotime($item->{$delivDateCol})),
                     'jam' => $item->{$delivDateCol},
                     'part_no' => $item->part_no,
                     'in_qty' => 0,
                     'out_qty' => $item->{$delivQtyCol},
-                    'no_dokumen' => $doc,
+                    'no_dokumen' => $doc ?? 'SJ-SYSTEM',
                     'type' => 'OUT'
                 ];
             });
 
-            // 3. Gabungkan dan Urutkan
             $dailyDetails = $in_logs->concat($out_logs)->sortByDesc('jam')->values();
             
         } else { 
             $recap = collect(); 
             $dailyDetails = collect(); 
+        }
+
+        // 🔥 LOGIKA ROUTING PRINT BERADA DI SINI 🔥
+        if ($request->has('action') && $request->action == 'print') {
+            return view('finished_goods.print', compact('recap', 'dailyDetails', 'customers', 'availableParts', 'partFilter', 'customer', 'month', 'year'));
         }
 
         return view('finished_goods.monthly_recap', compact('recap', 'dailyDetails', 'customers', 'availableParts', 'partFilter', 'customer', 'month', 'year'));
