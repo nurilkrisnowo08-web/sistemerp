@@ -150,13 +150,16 @@
             </div>
             
             @php 
-                // ✨ Mengelompokkan data berdasarkan part_no
                 $groupedDetails = $dailyDetails->groupBy('part_no'); 
             @endphp
 
             @forelse($groupedDetails as $partNo => $details)
+                @php
+                    // Ambil nama part dari koleksi rekap
+                    $partName = $recap->where('part_no', $partNo)->first()->part_name ?? 'Unknown Part';
+                @endphp
                 <div class="bg-light px-4 py-3 border-bottom border-top" style="background-color: #f1f5f9 !important;">
-                    <h6 class="m-0 font-weight-bold text-primary mono"><i class="fas fa-cube mr-2"></i> PART NO: {{ $partNo }}</h6>
+                    <h6 class="m-0 font-weight-bold text-primary mono"><i class="fas fa-cube mr-2"></i> PART: {{ $partNo }} - {{ $partName }}</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table-erp" style="border-top: none;">

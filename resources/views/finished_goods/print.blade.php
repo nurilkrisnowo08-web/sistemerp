@@ -76,7 +76,6 @@
                 <td style="width: 30%;">
                     <div style="display: flex; align-items: center;">
                         <div class="logo-area">
-                            <!-- Ganti URL Logo Sesuai Asset Kamu -->
                             <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
                         </div>
                         <div>
@@ -152,7 +151,11 @@
         @endphp
 
         @forelse($groupedDetails as $partNo => $details)
-            <div class="part-header">PART NO: {{ $partNo }}</div>
+            @php
+                // Ambil nama part dari koleksi rekap
+                $partName = $recap->where('part_no', $partNo)->first()->part_name ?? 'Unknown Part';
+            @endphp
+            <div class="part-header">PART: {{ $partNo }} - {{ $partName }}</div>
             <table class="data-table">
                 <thead>
                     <tr>
