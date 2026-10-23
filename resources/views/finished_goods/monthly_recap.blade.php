@@ -19,13 +19,11 @@
     .form-control, .form-select { border-radius: 6px; border: 1px solid var(--border); font-size: 0.85rem; font-weight: 700; color: var(--dark); }
     .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
     
-    .btn-action { border-radius: 6px; font-weight: 800; font-size: 0.75rem; padding: 0.6rem 1.2rem; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.2s; border: none; color: #fff; }
+    .btn-action { border-radius: 6px; font-weight: 800; font-size: 0.75rem; padding: 0.6rem 1.2rem; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.2s; border: none; color: #fff; text-decoration: none; display: inline-block; }
     .btn-back { background: var(--slate); }
-    .btn-back:hover { background: #334155; transform: translateY(-1px); }
-    .btn-primary-custom { background: var(--primary); }
-    .btn-primary-custom:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.2); }
+    .btn-back:hover { background: #334155; transform: translateY(-1px); color: #fff; text-decoration: none; }
     .btn-print { background: var(--dark); }
-    .btn-print:hover { background: #000; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .btn-print:hover { background: #000; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: #fff; text-decoration: none; }
 
     /* 📊 CARD TABLE ERP */
     .card-erp { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); overflow: hidden; margin-bottom: 25px; }
@@ -47,24 +45,12 @@
     .doc-badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 900; letter-spacing: 0.5px; font-family: 'JetBrains Mono', monospace; border: 1px solid; display: inline-block;}
     .doc-wos { background: #eff6ff; color: #1d4ed8; border-color: #93c5fd; }
     .doc-sj { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
-
-    /* PRINT STYLES */
-    @media print { 
-        .no-print { display: none !important; } 
-        body { padding: 0 !important; margin: 0 !important; background: #fff !important; }
-        .recap-wrapper { padding: 0 !important; }
-        .card-erp { box-shadow: none !important; border: 2px solid #000 !important; border-radius: 0 !important; }
-        .table-erp th { background: #e2e8f0 !important; color: #000 !important; border: 2px solid #000 !important; }
-        .table-erp td { border: 2px solid #000 !important; color: #000 !important; }
-        .doc-badge { border: 1.5px solid #000 !important; color: #000 !important; background: transparent !important; }
-        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    }
 </style>
 
 <div class="recap-wrapper">
     
     <!-- 🎛️ FILTER PANEL -->
-    <div class="filter-panel no-print">
+    <div class="filter-panel">
         <form action="{{ route('fg.recap') }}" method="GET" id="filterForm">
             <div class="row align-items-end">
                 <div class="col-md-3 mb-3">
@@ -104,7 +90,16 @@
                 </div>
                 <div class="col-md-3 mb-3 text-right">
                     <a href="{{ route('fg.index') }}" class="btn btn-action btn-back mr-1"><i class="fas fa-arrow-left mr-1"></i> Kembali</a>
-                    <button type="button" onclick="window.print()" class="btn btn-action btn-print" {{ !$customer ? 'disabled' : '' }}><i class="fas fa-print mr-1"></i> Cetak Dokumen</button>
+                    
+                    <!-- 🔥 FIX: BUKA TAB BARU KE HALAMAN PRINT KHUSUS 🔥 -->
+                    @if($customer)
+                        <a href="{{ request()->fullUrlWithQuery(['action' => 'print']) }}" target="_blank" class="btn btn-action btn-print">
+                            <i class="fas fa-print mr-1"></i> Cetak Dokumen
+                        </a>
+                    @else
+                        <button type="button" class="btn btn-action btn-print" disabled><i class="fas fa-print mr-1"></i> Cetak Dokumen</button>
+                    @endif
+                    
                 </div>
             </div>
         </form>
@@ -171,7 +166,7 @@
                     <tbody>
                         @forelse($dailyDetails as $detail)
                             @php
-                                $ref_doc = $detail->no_dokumen ?? ($detail->type == 'IN' ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
+                                $ref_doc = !empty($detail->no_dokumen) && $detail->no_dokumen !== '-' && $detail->no_dokumen !== 'NULL' ? $detail->no_dokumen : ($detail->type == 'IN' ? 'WOS-SYSTEM' : 'SJ-SYSTEM');
                                 $doc_class = $detail->type == 'IN' ? 'doc-wos' : 'doc-sj';
                             @endphp
                             <tr>
