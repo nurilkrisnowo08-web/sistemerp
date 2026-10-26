@@ -5,27 +5,25 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
 @php
-    // 🔥 FILTER LOGIC & QUERY WOS OTOMATIS (TANPA UBAH CONTROLLER) 🔥
+    // 🔥 FILTER LOGIC & QUERY WOS OTOMATIS 🔥
     $start = $startDate ?? date('Y-m-d');
     $end = $endDate ?? date('Y-m-d');
     $custFilter = request('customer') ?? null;
     $partFilter = request('part_no') ?? null;
 
-    // List Part Number untuk Dropdown (Berdasarkan Customer jika dipilih)
     $availablePartsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
     if ($custFilter && $custFilter != 'ALL') {
         $availablePartsQuery->where('customer', trim($custFilter));
     }
     $availableParts = $availablePartsQuery->get();
 
-    // Saring data utama berdasarkan Part Number
     if ($partFilter) {
         $historyData = $historyData->filter(function($item) use ($partFilter) {
             return $item->part_no == $partFilter;
         });
     }
 
-    // 1. Ambil WOS dari Stamping (IN)
+    // 1. WOS Stamping (IN)
     $inStamping = DB::table('production_logs')
         ->where('process_type', 'WELDING')
         ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
@@ -43,7 +41,7 @@
             ];
         });
 
-    // 2. Ambil WOS dari Return QC (IN) -> Pastikan Qty > 0
+    // 2. WOS Return QC (IN)
     $inReturn = DB::table('quality_inspections')
         ->where('origin', 'WELDING')
         ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
@@ -62,7 +60,7 @@
             ];
         });
 
-    // 3. Ambil WOS dari Welding (OUT)
+    // 3. WOS Welding (OUT)
     $outWelding = DB::table('welding_batches')
         ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
         ->get()->map(function($item) {
@@ -79,7 +77,6 @@
             ];
         });
 
-    // Gabungkan semua mutasi & Kelompokkan
     $allMutations = $inStamping->concat($inReturn)->concat($outWelding)->sortByDesc('jam')->groupBy('part_no');
 @endphp
 
@@ -89,37 +86,30 @@
         --brand-return: #6366f1; --dark-surface: #0f172a; --bg-main: #f8fafc;
         --glass-border: rgba(226, 232, 240, 0.8);
     }
-
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
     
     .heading-vault { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; background: linear-gradient(90deg, var(--dark-surface) 0%, var(--brand-primary) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    /* Filter Bar */
     .filter-bar { background: #fff; border-radius: 16px; border: 1px solid var(--glass-border); padding: 15px 20px; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
     .filter-inputs { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
     .f-select { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 15px; font-weight: 700; font-size: 12px; color: #475569; outline: none; }
-    .f-select:focus { border-color: var(--brand-primary); }
-
-    /* Part Card Grouping */
+    
     .part-group-card { background: #fff; border-radius: 20px; border: 1px solid var(--glass-border); margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); overflow: hidden; }
     .part-header { background: #f8fafc; padding: 20px 25px; border-bottom: 2px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     .part-title { font-size: 18px; font-weight: 900; color: var(--dark-surface); font-family: 'JetBrains Mono', monospace; }
     .part-desc { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
     
-    /* Summary inside Part Card */
     .summary-pills { display: flex; gap: 15px; }
     .s-pill { padding: 8px 15px; border-radius: 12px; font-size: 11px; font-weight: 800; border: 1px solid #e2e8f0; display: flex; align-items: center; background: #fff; }
     .s-pill.open { border-left: 4px solid #94a3b8; }
     .s-pill.close { border-left: 4px solid var(--brand-primary); }
     .s-val { font-family: 'Orbitron', sans-serif; font-size: 16px; font-weight: 900; margin-left: 10px; }
 
-    /* Detail Table */
     .detail-table { width: 100%; font-size: 12px; }
     .detail-table th { background: #fff; color: #64748b; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 15px 20px; border-bottom: 1px solid #e2e8f0; text-align: center; }
     .detail-table td { padding: 15px 20px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; text-align: center; font-weight: 600; }
     
     .wos-badge { padding: 6px 12px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 800; background: #f1f5f9; border: 1px solid #cbd5e1; display: inline-block; }
-    
     .type-badge { font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     .type-success { background: #dcfce7; color: #16a34a; }
     .type-indigo { background: #e0e7ff; color: #4f46e5; }
@@ -129,34 +119,131 @@
     .qty-ret { color: var(--brand-return); font-weight: 900; font-family: 'JetBrains Mono'; font-size: 14px; }
     .qty-out { color: var(--brand-danger); font-weight: 900; font-family: 'JetBrains Mono'; font-size: 14px; }
 
-    /* Print Styling */
+    /* 🔥 CSS KHUSUS PRINT - SUPER RAPI 🔥 */
+    #printArea { display: none; }
     @media print {
         body { background: #fff; }
         .no-print { display: none !important; }
-        .part-group-card { border: 1px solid #000; margin-bottom: 20px; page-break-inside: avoid; }
-        .part-header { background: #f2f2f2 !important; -webkit-print-color-adjust: exact; border-bottom: 1px solid #000; }
-        .detail-table th, .detail-table td { border: 1px solid #000; padding: 8px !important; }
-        .s-pill { border: 1px solid #000; }
-        .wos-badge, .type-badge { border: 1px solid #000; background: transparent !important; color: #000 !important; }
-        #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; font-family: Arial, sans-serif; }
+        #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; font-family: Arial, sans-serif; }
+        
+        .print-header-table { width: 100%; border-bottom: 3px double #000; margin-bottom: 20px; padding-bottom: 10px; }
+        .print-header-table td { vertical-align: middle; }
+        
+        .print-part-title { font-size: 14px; font-weight: bold; background: #e2e8f0 !important; -webkit-print-color-adjust: exact; padding: 8px; border: 1px solid #000; border-bottom: none; margin-top: 15px; }
+        .print-data-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 10px; }
+        .print-data-table th, .print-data-table td { border: 1px solid #000; padding: 6px 8px; text-align: center; }
+        .print-data-table th { background: #f8fafc !important; -webkit-print-color-adjust: exact; font-weight: bold; text-transform: uppercase; }
+        .print-data-table .text-left { text-align: left; }
+        
+        .print-totals { font-weight: bold; background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+        
+        .sig-table { width: 100%; margin-top: 40px; text-align: center; font-size: 12px; }
+        .sig-table td { width: 33.33%; padding-top: 60px; }
     }
 </style>
 
-{{-- AREA CETAK (Hanya Muncul Saat Print) --}}
-<div id="printArea" style="display: none;">
-    <div style="border-bottom: 3px double #000; margin-bottom: 20px; padding-bottom: 15px; text-align: center;">
-        <h1 style="margin:0; font-size: 20px; font-weight: bold;">PT. ASALTA MANDIRI AGUNG</h1>
-        <h3 style="margin:5px 0; font-size: 14px; letter-spacing: 1px;">DEPARTEMEN PPIC - WELDING VAULT LEDGER (TRACEABILITY)</h3>
-        <p style="margin:0; font-size: 11px;">
-            Customer: <strong>{{ request('customer') ?: 'ALL' }}</strong> | Part: <strong>{{ request('part_no') ?: 'ALL' }}</strong><br>
-            Periode Laporan: <strong>{{ date('d/m/Y', strtotime($start)) }}</strong> s/d <strong>{{ date('d/m/Y', strtotime($end)) }}</strong>
-        </p>
-    </div>
-</div>
+{{-- 🖨️ AREA KHUSUS PRINT (MUNCUL SAAT DI-PRINT SAJA) 🖨️ --}}
+<div id="printArea">
+    <!-- Kop Surat Resmi -->
+    <table class="print-header-table">
+        <tr>
+            <td style="width: 25%;">
+                <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" style="max-height: 55px;" alt="Logo ASALTA">
+            </td>
+            <td style="width: 50%; text-align: center;">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase;">PT. ASALTA MANDIRI AGUNG</h2>
+                <h4 style="margin: 5px 0; font-size: 13px; font-weight: normal; letter-spacing: 1px;">DEPARTEMEN PPIC - WELDING VAULT LEDGER (TRACEABILITY)</h4>
+            </td>
+            <td style="width: 25%; text-align: right; font-size: 10px; line-height: 1.5;">
+                <strong>Periode:</strong> {{ date('d/m/Y', strtotime($start)) }} - {{ date('d/m/Y', strtotime($end)) }}<br>
+                <strong>Print Date:</strong> {{ date('d/m/Y H:i') }}<br>
+                <strong>Customer:</strong> {{ request('customer') ?: 'ALL' }}
+            </td>
+        </tr>
+    </table>
 
+    <!-- Data Tabel Print -->
+    @forelse($historyData as $h)
+        @php
+            $cleanPart = str_replace([' ', '-'], '', trim($h->part_no));
+            $mutations = $allMutations->get($cleanPart) ?? collect();
+        @endphp
+
+        <!-- Header Part untuk Print -->
+        <div class="print-part-title">
+            <span style="font-family: monospace;">{{ $h->part_no }}</span> - {{ $h->part_name }}
+            <div style="float: right; font-size: 11px; font-weight: normal;">
+                Saldo Awal: <strong>{{ number_format($h->stock_awal) }}</strong> | Live Balance: <strong>{{ number_format($h->stock_akhir) }}</strong>
+            </div>
+        </div>
+        
+        <table class="print-data-table">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">TGL & JAM</th>
+                    <th style="width: 15%;">TIPE</th>
+                    <th style="width: 40%;">WOS / DOKUMEN</th>
+                    <th style="width: 15%;">IN (PCS)</th>
+                    <th style="width: 15%;">OUT (PCS)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if($mutations->count() > 0)
+                    @foreach($mutations as $mut)
+                        <tr>
+                            <td>{{ date('d/m/Y H:i', strtotime($mut->jam)) }}</td>
+                            <td>{{ $mut->label }}</td>
+                            <td class="text-left" style="font-family: monospace; font-size: 10px;">{{ strtoupper($mut->no_dokumen) }}</td>
+                            <td>{{ $mut->in_qty > 0 ? '+'.number_format($mut->in_qty) : '-' }}</td>
+                            <td>{{ $mut->out_qty > 0 ? '-'.number_format($mut->out_qty) : '-' }}</td>
+                        </tr>
+                    @endforeach
+                    <tr class="print-totals">
+                        <td colspan="3" style="text-align: right;">TOTAL PERIODE:</td>
+                        <td>+{{ number_format($h->in_s + $h->in_r) }}</td>
+                        <td>-{{ number_format($h->total_out) }}</td>
+                    </tr>
+                @else
+                    <tr>
+                        <td colspan="5" style="font-style: italic;">Tidak ada rincian mutasi.</td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
+    @empty
+        <p style="text-align: center; margin-top: 50px; font-style: italic;">Tidak ada data pergerakan material pada periode yang dipilih.</p>
+    @endforelse
+
+    <!-- Tanda Tangan Print -->
+    @if($historyData->count() > 0)
+    <table class="sig-table">
+        <tr>
+            <td>
+                <strong>Disiapkan Oleh,</strong><br><br><br><br>
+                ( _____________________ )<br>
+                Admin Gudang
+            </td>
+            <td>
+                <strong>Diperiksa Oleh,</strong><br><br><br><br>
+                ( _____________________ )<br>
+                Leader QA
+            </td>
+            <td>
+                <strong>Disetujui Oleh,</strong><br><br><br><br>
+                ( _____________________ )<br>
+                Manager PPIC
+            </td>
+        </tr>
+    </table>
+    @endif
+</div>
+{{-- AKHIR AREA PRINT --}}
+
+
+{{-- 💻 TAMPILAN WEB UI NORMAL 💻 --}}
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn no-print">
     
-    {{-- HEADER JUDUL --}}
+    {{-- HEADER --}}
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div>
             <h1 class="heading-vault mb-1">WELDING_VAULT <span style="-webkit-text-fill-color: var(--dark-surface);">LEDGER</span></h1>
@@ -205,7 +292,7 @@
         </form>
     </div>
 
-    {{-- DAFTAR MUTASI DIKELOMPOKKAN PER PART NUMBER --}}
+    {{-- KONTEN WEB DAFTAR MUTASI --}}
     @forelse($historyData as $h)
         @php
             $cleanPart = str_replace([' ', '-'], '', trim($h->part_no));
@@ -213,7 +300,6 @@
         @endphp
 
         <div class="part-group-card animate__animated animate__fadeInUp">
-            {{-- Header Part & Rekap Saldo --}}
             <div class="part-header flex-column flex-md-row">
                 <div class="mb-3 mb-md-0">
                     <div class="part-title"><i class="fas fa-cube mr-2 text-primary"></i> {{ $h->part_no }}</div>
@@ -231,7 +317,6 @@
                 </div>
             </div>
 
-            {{-- Tabel Rincian WOS --}}
             <div class="table-responsive">
                 <table class="detail-table">
                     <thead>
@@ -275,8 +360,6 @@
                                     </td>
                                 </tr>
                             @endforeach
-                            
-                            {{-- Baris Total Bawah --}}
                             <tr style="background: #f8fafc; border-top: 2px solid #e2e8f0;">
                                 <td colspan="3" class="text-right font-weight-bold text-muted uppercase" style="font-size: 10px;">TOTAL PERGERAKAN PERIODE INI:</td>
                                 <td class="qty-in" style="font-size: 12px;">+{{ number_format($h->in_s + $h->in_r) }}</td>
@@ -300,6 +383,5 @@
             <p class="small">Silakan sesuaikan filter part number atau tanggal di atas.</p>
         </div>
     @endforelse
-
 </div>
 @endsection
