@@ -19,10 +19,18 @@
         @media print { .print-controls { display: none !important; } }
 
         /* HEADER WOS */
-        .header-wos { display: flex; align-items: center; margin-bottom: 10px; }
+        .header-wos { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .header-left { display: flex; align-items: center; }
         .logo { width: 45px; margin-right: 15px; }
         .title-area h2 { margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase; }
         .title-area p { margin: 2px 0; font-size: 10px; font-weight: bold; }
+
+        /* TABEL POJOK KANAN ATAS (DOCUMENT CONTROL) */
+        .doc-control { border-collapse: collapse; font-size: 9px; font-weight: bold; text-align: left; }
+        .doc-control th, .doc-control td { border: 1px solid #000; padding: 4px 8px; }
+        .doc-control th { background: #f1f5f9; width: 120px; text-transform: uppercase; }
+        .doc-control td { font-family: monospace; font-size: 10px; }
+        .wos-val { color: #dc2626; font-size: 11px !important; }
 
         /* MAIN TABLE */
         .wos-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
@@ -55,18 +63,47 @@
 </head>
 <body>
 
+    @php
+        // Mengumpulkan semua No WOS untuk ditaruh di pojok kanan atas
+        $allWos = collect();
+        foreach($plansS1 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
+        foreach($plansS2 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
+        $uniqueWos = $allWos->unique()->values();
+        
+        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : '-';
+        if($uniqueWos->count() > 1) {
+            $displayWos .= ' (+'.($uniqueWos->count() - 1).' WOS)';
+        }
+    @endphp
+
     <!-- KONTROL TOMBOL -->
     <div class="print-controls">
         <button onclick="window.close()" class="btn btn-back">⬅ KEMBALI / TUTUP</button>
         <button onclick="window.print()" class="btn btn-print">🖨️ PRINT WOS (FULL DAY)</button>
     </div>
 
-    <!-- HEADER KOP SURAT -->
+    <!-- HEADER KOP SURAT & TABEL DOKUMEN -->
     <div class="header-wos">
-        <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" class="logo" alt="Logo" onerror="this.style.display='none'">
-        <div class="title-area">
-            <h2>PT. Asalta Mandiri Agung</h2>
-            <p>Dept. PPC<br>LOGISTICS & MATERIAL</p>
+        <div class="header-left">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" class="logo" alt="Logo" onerror="this.style.display='none'">
+            <div class="title-area">
+                <h2>PT. Asalta Mandiri Agung</h2>
+                <p>Dept. PPC<br>LOGISTICS & MATERIAL</p>
+            </div>
+        </div>
+        
+        <!-- 🔥 TABEL POJOK KANAN ATAS 🔥 -->
+        <div>
+            <table class="doc-control">
+                <tr>
+                    <th>TANGGAL PEMBUATAN</th>
+                    <td>{{ date('d F Y', strtotime($date)) }}</td>
+                </tr>
+                <tr>
+                    <th>NO. WOS</th>
+                    <td class="wos-val">{{ $displayWos }}</td>
+                </tr>
+            </table>
         </div>
     </div>
 
@@ -134,8 +171,7 @@
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
                         {{ $p->part_no }}<br>
-                        <!-- 🔥 INI DIA NOMOR WOS YANG DIMINTA! BERCETAK MERAH TEBAL 🔥 -->
-                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ $p->no_produksi }}</span>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name, 35) }}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
@@ -197,7 +233,7 @@
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
                         {{ $p->part_no }}<br>
-                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ $p->no_produksi }}</span>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name, 35) }}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
