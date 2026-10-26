@@ -136,6 +136,11 @@ class PPICController extends Controller
 
                 $item = clone $p; 
                 $item->display_shift = 'S1';
+                
+                // 🔥 FIX: Tarik No WOS Asli dari Batch Produksi
+                $bS1 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Pagi')->first();
+                $item->no_produksi = $bS1->no_produksi ?? '-';
+
                 $item->total_target = $t_s1;
                 $item->total_actual = (int)$actualS1;
                 $item->balance = $t_s1 - $actualS1;
@@ -161,6 +166,11 @@ class PPICController extends Controller
 
                 $item = clone $p; 
                 $item->display_shift = 'S2';
+
+                // 🔥 FIX: Tarik No WOS Asli dari Batch Produksi
+                $bS2 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Malam')->first();
+                $item->no_produksi = $bS2->no_produksi ?? '-';
+
                 $item->total_target = $t_s2;
                 $item->total_actual = (int)$actualS2;
                 $item->balance = $t_s2 - $actualS2;
@@ -239,6 +249,11 @@ class PPICController extends Controller
 
                 $item = clone $p; 
                 $item->display_shift = 'S1';
+
+                // 🔥 FIX: Tarik No WOS Asli
+                $bS1 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Pagi')->first();
+                $item->no_produksi = $bS1->no_produksi ?? '-';
+
                 $item->total_target = $t_s1;
                 $item->total_actual = (int)$actualS1;
                 $item->balance = $t_s1 - $actualS1;
@@ -264,6 +279,11 @@ class PPICController extends Controller
 
                 $item = clone $p; 
                 $item->display_shift = 'S2';
+
+                // 🔥 FIX: Tarik No WOS Asli
+                $bS2 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Malam')->first();
+                $item->no_produksi = $bS2->no_produksi ?? '-';
+
                 $item->total_target = $t_s2;
                 $item->total_actual = (int)$actualS2;
                 $item->balance = $t_s2 - $actualS2;
@@ -796,14 +816,27 @@ class PPICController extends Controller
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
+        // 🔥 FIX: Tarik No WOS Asli & Inject ke Plan 
         $plansS1 = $plansS1->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
-            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+            if ($batchData) {
+                if (str_ends_with($batchData->no_produksi, '-S')) return false;
+                $plan->no_produksi = $batchData->no_produksi;
+            } else {
+                $plan->no_produksi = '-';
+            }
+            return true;
         })->values();
 
         $plansS2 = $plansS2->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
-            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+            if ($batchData) {
+                if (str_ends_with($batchData->no_produksi, '-S')) return false;
+                $plan->no_produksi = $batchData->no_produksi;
+            } else {
+                $plan->no_produksi = '-';
+            }
+            return true;
         })->values();
 
         return view('PPIC.print_wos', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
@@ -824,9 +857,19 @@ class PPICController extends Controller
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
+        // 🔥 FIX: Tarik No WOS Asli & Inject ke Plan
         $allPlansFiltered = $allPlans->filter(function($plan) use ($batches) {
-            $batchData = $batches->where('plan_id', $plan->id)->first();
-            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+            $batchDataPagi = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
+            $batchDataMalam = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
+            
+            if (($batchDataPagi && str_ends_with($batchDataPagi->no_produksi, '-S')) || 
+                ($batchDataMalam && str_ends_with($batchDataMalam->no_produksi, '-S'))) {
+                return false;
+            }
+
+            $plan->no_produksi_s1 = $batchDataPagi->no_produksi ?? '-';
+            $plan->no_produksi_s2 = $batchDataMalam->no_produksi ?? '-';
+            return true;
         });
 
         $bigPlans = $allPlansFiltered->filter(function($p) { $code = strtoupper($p->line_code); return !str_contains($code, 'C') && !str_contains($code, 'SMALL'); })->values();
@@ -1482,16 +1525,15 @@ class PPICController extends Controller
             ->orderBy('welding_plans.id', 'asc')
             ->get();
 
-        // LOGIKA BARU: BACA ACTUAL SHIFT 1 DARI WELDING TERMINAL
         foreach ($plansS1 as $p) {
             $actual = (int) DB::table('welding_actuals')
                 ->where('part_no', $p->part_no)
-                ->where('shift', 'Pagi') // Shift 1
+                ->where('shift', 'Pagi') 
                 ->whereDate('created_at', $date)
                 ->sum('qty_ok');
             
             $p->actual_qty = $actual;
-            $p->total_actual = $actual; // Disediakan keduanya agar view dapat mengaksesnya dengan bebas
+            $p->total_actual = $actual; 
         }
 
         $plansS2 = DB::table('welding_plans')
@@ -1503,11 +1545,10 @@ class PPICController extends Controller
             ->orderBy('welding_plans.id', 'asc')
             ->get();
 
-        // LOGIKA BARU: BACA ACTUAL SHIFT 2 DARI WELDING TERMINAL
         foreach ($plansS2 as $p) {
             $actual = (int) DB::table('welding_actuals')
                 ->where('part_no', $p->part_no)
-                ->where('shift', 'Malam') // Shift 2
+                ->where('shift', 'Malam') 
                 ->whereDate('created_at', $date)
                 ->sum('qty_ok');
             
@@ -1531,12 +1572,8 @@ class PPICController extends Controller
     /**
      * 12. PRINT SERAH TERIMA WELDING (WIP)
      */
-    /**
-     * 12. PRINT SERAH TERIMA WELDING (WIP)
-     */
     public function printSerahTerimaWelding($date, $line_code)
     {
-        // 1. Bersihkan spasi tersembunyi pada nama mesin
         $clean_line = trim(urldecode($line_code));
 
         $plans = DB::table('welding_plans')
@@ -1561,18 +1598,15 @@ class PPICController extends Controller
         foreach ($batchesRaw as $batch) {
             $item = clone $batch;
             
-            // 2. Mapping variabel agar terbaca oleh template BPRM yang sama dengan Stamping
             $item->display_part_no = $batch->part_no;
             $item->display_part_name = $batch->part_name;
             $item->customer_code = $batch->customer_code ?? 'SAI';
             
-            // Karena Welding menggunakan barang setengah jadi (WIP), kolom RM dikosongkan/ditandai WIP
             $item->no_surat_jalan = 'WIP-STAMPING';
             $item->coil_id = '-';
             $item->spec = '-';
             $item->size = '-';
             
-            // Konversi kolom Welding Terminal ke format BPRM
             $item->qty_ambil_pcs = $batch->qty_masuk;
             $item->qty_hasil_ok = $batch->qty_ok;
             $item->qty_hasil_ng = $batch->qty_ng;
@@ -1581,7 +1615,6 @@ class PPICController extends Controller
             $allBatches->push($item);
         }
 
-        // 3. Pecah data berdasarkan Shift
         $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
         $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
         $batches = $allBatches;
@@ -1608,14 +1641,27 @@ class PPICController extends Controller
             ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
             ->get();
 
+        // 🔥 FIX: Tarik No WOS Asli & Inject ke Plan 
         $plansS1 = $plansS1->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
-            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+            if ($batchData) {
+                if (str_ends_with($batchData->no_produksi, '-S')) return false;
+                $plan->no_produksi = $batchData->no_produksi;
+            } else {
+                $plan->no_produksi = '-';
+            }
+            return true;
         })->values();
 
         $plansS2 = $plansS2->filter(function($plan) use ($batches) {
             $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
-            return !($batchData && str_ends_with($batchData->no_produksi, '-S'));
+            if ($batchData) {
+                if (str_ends_with($batchData->no_produksi, '-S')) return false;
+                $plan->no_produksi = $batchData->no_produksi;
+            } else {
+                $plan->no_produksi = '-';
+            }
+            return true;
         })->values();
 
         return view('PPIC.print_wos_small', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
@@ -1735,7 +1781,6 @@ class PPICController extends Controller
     {
         $cleanPart = trim($part_no);
 
-        // Ambil semua coil fisik yang terikat ke part ini
         $mappedCoilIds = DB::table('rm_stocks')
             ->where(function($q) use ($cleanPart) {
                 $q->where('material_code', $cleanPart)
@@ -1751,7 +1796,6 @@ class PPICController extends Controller
             ->get()
             ->unique('coil_id');
 
-        // Fallback spesifikasi material jika mapping spesifik kosong
         if ($availableCoils->isEmpty()) {
             $refStock = DB::table('rm_stocks')->where('material_code', $cleanPart)->first();
             if ($refStock) {
@@ -1778,7 +1822,6 @@ class PPICController extends Controller
     
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN)
-     * Mengecek ketersediaan stok WIP hasil stamping di tabel finished_goods
      */
     public function checkWipStockAjax($part_no)
     {
