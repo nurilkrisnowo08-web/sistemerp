@@ -42,8 +42,6 @@
         .text-left { text-align: left !important; padding-left: 5px !important; }
         .text-bold { font-weight: bold; }
         .text-blue { color: #2563eb !important; }
-        .text-green { color: #16a34a !important; font-weight: bold; }
-        .text-red { color: #dc2626 !important; font-weight: bold; }
         
         .shift-header { background: #f8fafc; text-align: left !important; padding: 4px 8px !important; font-size: 9px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; border-bottom: 2px solid #000; }
         .shift-header span { color: #dc2626; }
@@ -92,7 +90,7 @@
             </div>
         </div>
         
-        <!-- 🔥 TABEL POJOK KANAN ATAS 🔥 -->
+        <!-- TABEL POJOK KANAN ATAS -->
         <div>
             <table class="doc-control">
                 <tr>
@@ -171,7 +169,8 @@
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
                         {{ $p->part_no }}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name, 35) }}</span>
+                        <!-- 🔥 PENGAMAN NAMA PART (?? '') AGAR TIDAK ERROR 🔥 -->
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
@@ -233,7 +232,8 @@
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
                         {{ $p->part_no }}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name, 35) }}</span>
+                        <!-- 🔥 PENGAMAN NAMA PART (?? '') AGAR TIDAK ERROR 🔥 -->
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
