@@ -259,7 +259,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 5. HISTORY MUTASI STOK (WELDING VAULT LEDGER)
+     * 5. HISTORY MUTASI STOK
      */
     public function history(Request $request)
     {
@@ -296,7 +296,7 @@ class WeldingStockController extends Controller
     }
 
     /**
-     * 6. HISTORY BATCH WELDING (PRODUCTION VAULT)
+     * 6. HISTORY BATCH WELDING
      */
     public function historyWelding(Request $request)
     {
