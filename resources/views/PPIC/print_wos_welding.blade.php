@@ -2,65 +2,86 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>WOS WELDING - {{ $line_code }}</title>
-    <!-- Font Profesional Industri -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print WOS Welding - Station {{ $line_code }}</title>
     <style>
-        /* Setup Kertas A4 Memanjang (Landscape) */
-        @page { size: A4 landscape; margin: 10mm; }
-        body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; font-size: 10px; margin: 0; padding: 0; color: #0f172a; background-color: #fff; }
-        
-        .no-print-area { text-align: right; margin-bottom: 15px; padding: 15px; background: #f1f5f9; border-bottom: 2px solid #cbd5e1; }
-        .btn { padding: 10px 20px; font-size: 12px; font-weight: 700; border-radius: 6px; border: none; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
-        .btn-back { background: #64748b; color: white; margin-right: 10px; }
-        .btn-print { background: #2563eb; color: white; }
+        /* RESET & DASAR */
+        body { font-family: Arial, sans-serif; color: #000; background: #fff; margin: 0; padding: 10px; font-size: 9px; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        @page { size: A4 landscape; margin: 5mm; }
 
-        /* 🔥 PERBAIKAN HEADER CSS 🔥 */
-        .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px double #0f172a; padding-bottom: 15px; margin-bottom: 15px; }
-        
-        .logo-section { display: flex; align-items: center; width: 33%; }
-        .company-info { display: block; line-height: 1.3; text-transform: uppercase; }
-        .company-info h2 { margin: 0; font-size: 14px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; }
-        .company-info h3 { margin: 2px 0 0 0; font-size: 10px; font-weight: 700; color: #475569; }
-        
-        .title-section { width: 34%; text-align: center; }
-        .title-section h1 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: 1px; color: #0f172a;}
-        .title-section h3 { margin: 5px 0 0 0; font-size: 14px; font-weight: 700; color: #475569; }
+        /* KONTROL TOMBOL */
+        .print-controls { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px; }
+        .btn { padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 12px; text-decoration: none; display: inline-block; }
+        .btn-back { background: #475569; color: #fff; }
+        .btn-print { background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; }
+        @media print { .print-controls, .no-print-area { display: none !important; } }
 
-        .meta-section { width: 33%; text-align: right; font-size: 11px; font-weight: 700; line-height: 1.6; }
+        /* HEADER WOS (Diperbarui sesuai layout komputermu) */
+        .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; border-bottom: 3px double #000; padding-bottom: 10px; }
+        
+        .logo-section { display: flex; align-items: center; width: 30%; }
+        .logo-section img { height: 45px; margin-right: 15px; }
+        .company-info h2 { margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; }
+        .company-info h3 { margin: 2px 0 0 0; font-size: 10px; font-weight: bold; font-weight: normal; }
+        
+        .title-section { text-align: center; width: 40%; }
+        .title-section h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+        .title-section h3 { margin: 5px 0 0 0; font-size: 12px; font-weight: bold; color: #1e293b; }
 
-        /* 📋 Tabel WOS */
-        table.wos-table { width: 100%; border-collapse: collapse; text-align: center; }
-        table.wos-table th, table.wos-table td { border: 1px solid #1e293b; padding: 6px 4px; vertical-align: middle; }
-        table.wos-table th { background-color: #f1f5f9; font-weight: 800; font-size: 9px; text-transform: uppercase; color: #0f172a; }
-        
-        .part-info { text-align: left; padding-left: 8px !important;}
-        .part-no { font-weight: 800; font-size: 11px; display: block; }
-        .part-name { font-size: 9px; color: #475569; font-weight: 600; }
-        
-        .row-summary { background-color: #e2e8f0; font-weight: 800; font-size: 11px; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a;}
-        .target-box { font-weight: 900; font-size: 12px; color: #2563eb;}
-        .time-box { font-family: monospace; font-weight: bold; font-size: 11px;}
-        
-        .empty-row td { height: 25px; }
+        .meta-section { text-align: right; width: 30%; font-size: 10px; font-weight: bold; line-height: 1.6; }
+        .meta-section span.val { color: #dc2626; font-family: monospace; font-size: 11px; }
 
-        @media print { .no-print { display: none !important; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        /* MAIN TABLE */
+        .wos-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .wos-table th, .wos-table td { border: 1px solid #000; padding: 4px; text-align: center; vertical-align: middle; }
+        .wos-table th { background: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 8px; }
+        .wos-table td { font-size: 9px; height: 25px; }
+        
+        .text-left { text-align: left !important; padding-left: 5px !important; }
+        .text-bold { font-weight: bold; }
+        .text-blue { color: #2563eb !important; font-weight: bold; }
+        
+        .shift-header { background: #f8fafc; text-align: left !important; padding: 5px 8px !important; font-size: 9px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; border-bottom: 2px solid #000; }
+        .shift-header span { color: #dc2626; }
+        
+        /* FOOTER BLOCKS */
+        .footer-grid { display: flex; gap: 15px; margin-top: 5px; }
+        .problem-table { width: 45%; border-collapse: collapse; font-size: 9px; font-weight: bold; }
+        .problem-table th, .problem-table td { border: 1px solid #000; padding: 6px; text-align: left; }
+        .problem-table th { width: 30%; background: #f8fafc; }
+        .sig-table { width: 55%; border-collapse: collapse; font-size: 9px; font-weight: bold; text-align: center; }
+        .sig-table th, .sig-table td { border: 1px solid #000; padding: 6px; width: 25%; }
+        .sig-table th { background: #f8fafc; }
+        .sig-table td { height: 50px; vertical-align: bottom; padding-bottom: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="no-print no-print-area">
-        <button class="btn btn-back" onclick="window.close();">TUTUP HALAMAN</button>
-        <button class="btn btn-print" onclick="window.print()">🖨️ CETAK WOS (FULL DAY)</button>
+    @php
+        // Mengumpulkan No WOS Asli dari Controller untuk dipajang di Pojok Kanan Atas
+        $allWos = collect();
+        foreach($plansS1 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
+        foreach($plansS2 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
+        $uniqueWos = $allWos->unique()->values();
+        
+        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : 'AUTO-DEPLOY';
+        if($uniqueWos->count() > 1) {
+            $displayWos .= ' (+'.($uniqueWos->count() - 1).' WOS)';
+        }
+    @endphp
+
+    <!-- KONTROL TOMBOL -->
+    <div class="print-controls no-print-area">
+        <button onclick="window.close()" class="btn btn-back">⬅ TUTUP HALAMAN</button>
+        <button onclick="window.print()" class="btn btn-print">🖨️ CETAK WOS (FULL DAY)</button>
     </div>
 
-    @php $grandTarget = 0; $totalHoursS1 = 0; $totalHoursS2 = 0; @endphp
-
-    <!-- 🔥 HEADER DIPERBAIKI 🔥 -->
+    <!-- 🔥 HEADER DIPERBAIKI SESUAI LAYOUT KAMU 🔥 -->
     <div class="header-container">
         <!-- Logo & Nama PT -->
         <div class="logo-section">
-            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
             <div class="company-info">
                 <h2>PT. Asalta Mandiri Agung</h2>
                 <h3>Dept. PPC<br>LOGISTICS & PRODUCTION</h3>
@@ -72,147 +93,204 @@
             <h1>WORK ORDER SHEET</h1>
             <h3>[ WELDING STATION : {{ strtoupper($line_code) }} ]</h3>
         </div>
-        
-        <!-- Tanggal Kanan -->
+
+        <!-- Tanggal Kanan & Nomor WOS Dinamis -->
         <div class="meta-section">
             TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
-            NO DOKUMEN : WOS-{{ date('ymd', strtotime($date)) }}-{{ strtoupper(str_replace(' ', '', $line_code)) }}
+            NO DOKUMEN : <span class="val">{{ $displayWos }}</span>
         </div>
     </div>
-    </div>
 
-    <!-- TABEL DI BAWAH INI SAMA PERSIS 100% TIDAK DIUBAH -->
+    <!-- TABEL UTAMA WOS WELDING -->
     <table class="wos-table">
         <thead>
             <tr>
-                <th rowspan="2" width="20">NO</th>
-                <th rowspan="2" width="130">IDENTIFIKASI PART</th>
-                <th rowspan="2" width="45">CUST</th>
-                <th rowspan="2" width="25">MP</th>
-                <th rowspan="2" width="35">CAP /<br>HOUR</th>
-                <th rowspan="2" width="45">TARGET<br>SHIFT</th>
+                <th rowspan="2" style="width: 2%;">NO</th>
+                <th rowspan="2" style="width: 20%;">IDENTIFIKASI PART</th>
+                <th rowspan="2" style="width: 5%;">CUST</th>
+                <th rowspan="2" style="width: 3%;">MP</th>
+                <th rowspan="2" style="width: 5%;">CAP / HOUR</th>
+                <th rowspan="2" style="width: 6%;">TARGET SHIFT</th>
                 <th colspan="2">PLAN WAKTU</th>
-                <th rowspan="2" width="55">M/C LINE</th>
+                <th rowspan="2" style="width: 10%;">M/C LINE</th>
                 <th colspan="2">ACTUAL WAKTU</th>
                 <th colspan="3">HASIL PRODUKSI</th>
-                <th rowspan="2" width="100">KETERANGAN / DOWNTIME</th>
+                <th rowspan="2" style="width: 18%;">KETERANGAN / DOWNTIME</th>
             </tr>
             <tr>
-                <th width="35">START</th><th width="35">AKHIR</th>
-                <th width="35">MULAI</th><th width="35">SELESAI</th>
-                <th width="25">OK</th><th width="25">NG</th><th width="25">RET</th>
+                <th style="width: 5%;">START</th>
+                <th style="width: 5%;">AKHIR</th>
+                <th style="width: 5%;">MULAI</th>
+                <th style="width: 5%;">SELESAI</th>
+                <th style="width: 4%;">OK</th>
+                <th style="width: 4%;">NG</th>
+                <th style="width: 4%;">RET</th>
             </tr>
         </thead>
         <tbody>
-            
-            {{-- ================= SHIFT 1 ================= --}}
-            @if(isset($plansS1) && count($plansS1) > 0)
-                @php
-                    foreach($plansS1 as $p) {
-                        $t = $p->s1_plan_reg + $p->s1_plan_ot;
-                        $dur = ($p->cap_per_hour > 0 && $t > 0) ? ($t / $p->cap_per_hour) + (($p->dandory_time ?? 15) / 60) : 0;
-                        $totalHoursS1 += $dur;
-                    }
+            <!-- ===================== SHIFT 1 (PAGI) ===================== -->
+            @php 
+                $totalTargetS1 = 0; 
+                $totalWorkingS1 = 0;
+            @endphp
+            @foreach($plansS1 as $p)
+                @php 
+                    $target = $p->s1_plan_reg + $p->s1_plan_ot;
+                    $totalTargetS1 += $target;
+                    $dur = ($p->cap_per_hour > 0) ? ($target / $p->cap_per_hour) + (($p->dandory_time ?? 15) / 60) : 0;
+                    $totalWorkingS1 += $dur;
                 @endphp
-                <tr class="row-summary">
-                    <td colspan="15" style="text-align: left; padding-left: 10px; background-color: #f1f5f9;">
-                        SHIFT 1 (DAY OPS) | TOTAL ESTIMASI RUN-TIME : <span style="color:#dc2626;">{{ number_format($totalHoursS1, 1) }} JAM</span>
-                    </td>
-                </tr>
-                @php $lastFinish = "07:30"; $no = 1; @endphp
-                @foreach($plansS1 as $plan)
-                @php
-                    $target = $plan->s1_plan_reg + $plan->s1_plan_ot;
-                    $dur = ($plan->cap_per_hour > 0 && $target > 0) ? ($target / $plan->cap_per_hour) + (($plan->dandory_time ?? 15) / 60) : 0;
-                    $start = $lastFinish; 
-                    $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes")); 
-                    
-                    $batchData = isset($batches) ? $batches->where('part_no', $plan->part_no)->where('shift', 'Pagi')->first() : null;
-                    $grandTarget += $target; $lastFinish = $finish;
-                @endphp
-                <tr>
-                    <td>{{ $no++ }}</td>
-                    <td class="part-info">
-                        <span class="part-no">{{ $plan->part_no }}</span>
-                        <span class="part-name">{{ $plan->part_name ?? 'N/A' }}</span>
-                    </td>
-                    <td style="font-weight: bold;">{{ $plan->customer_code }}</td>
-                    <td>{{ $plan->manpower }}</td>
-                    <td style="font-weight: bold;">{{ $plan->cap_per_hour }}</td>
-                    <td class="target-box">{{ number_format($target) }}</td>
-                    <td class="time-box">{{ $start }}</td>
-                    <td class="time-box">{{ $finish }}</td>
-                    <td style="font-weight: 800; font-size:10px;">{{ $plan->line_code }}</td>
-                    <td></td><td></td>
-                    <td style="font-weight: 800; color: #10b981; font-size:11px;">{{ ($batchData && $batchData->qty_ok > 0) ? number_format($batchData->qty_ok) : '' }}</td>
-                    <td style="font-weight: 800; color: #ef4444; font-size:11px;">{{ ($batchData && $batchData->qty_ng > 0) ? number_format($batchData->qty_ng) : '' }}</td>
-                    <td style="font-weight: 800; color: #0284c7; font-size:11px;">{{ ($batchData && $batchData->qty_return > 0) ? number_format($batchData->qty_return) : '' }}</td>
-                    <td style="text-align: left; font-size: 8px;">{{ $batchData->keterangan ?? '' }}</td>
-                </tr>
-                @endforeach
-            @endif
+            @endforeach
 
-            {{-- ================= SHIFT 2 ================= --}}
-            @if(isset($plansS2) && count($plansS2) > 0)
-                @php
-                    foreach($plansS2 as $p) {
-                        $t = $p->s2_plan_reg + $p->s2_plan_ot;
-                        $dur = ($p->cap_per_hour > 0 && $t > 0) ? ($t / $p->cap_per_hour) + (($p->dandory_time ?? 15) / 60) : 0;
-                        $totalHoursS2 += $dur;
-                    }
-                @endphp
-                <tr class="row-summary">
-                    <td colspan="15" style="text-align: left; padding-left: 10px; background-color: #e2e8f0;">
-                        SHIFT 2 (NIGHT OPS) | TOTAL ESTIMASI RUN-TIME : <span style="color:#dc2626;">{{ number_format($totalHoursS2, 1) }} JAM</span>
-                    </td>
-                </tr>
-                @php $lastFinish = "19:30"; $no = 1; @endphp
-                @foreach($plansS2 as $plan)
-                @php
-                    $target = $plan->s2_plan_reg + $plan->s2_plan_ot;
-                    $dur = ($plan->cap_per_hour > 0 && $target > 0) ? ($target / $plan->cap_per_hour) + (($plan->dandory_time ?? 15) / 60) : 0;
-                    $start = $lastFinish; 
-                    $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes")); 
-                    
-                    $batchData = isset($batches) ? $batches->where('part_no', $plan->part_no)->where('shift', 'Malam')->first() : null;
-                    $grandTarget += $target; $lastFinish = $finish;
-                @endphp
-                <tr>
-                    <td>{{ $no++ }}</td>
-                    <td class="part-info">
-                        <span class="part-no">{{ $plan->part_no }}</span>
-                        <span class="part-name">{{ $plan->part_name ?? 'N/A' }}</span>
-                    </td>
-                    <td style="font-weight: bold;">{{ $plan->customer_code }}</td>
-                    <td>{{ $plan->manpower }}</td>
-                    <td style="font-weight: bold;">{{ $plan->cap_per_hour }}</td>
-                    <td class="target-box">{{ number_format($target) }}</td>
-                    <td class="time-box">{{ $start }}</td>
-                    <td class="time-box">{{ $finish }}</td>
-                    <td style="font-weight: 800; font-size:10px;">{{ $plan->line_code }}</td>
-                    <td></td><td></td>
-                    <td style="font-weight: 800; color: #10b981; font-size:11px;">{{ ($batchData && $batchData->qty_ok > 0) ? number_format($batchData->qty_ok) : '' }}</td>
-                    <td style="font-weight: 800; color: #ef4444; font-size:11px;">{{ ($batchData && $batchData->qty_ng > 0) ? number_format($batchData->qty_ng) : '' }}</td>
-                    <td style="font-weight: 800; color: #0284c7; font-size:11px;">{{ ($batchData && $batchData->qty_return > 0) ? number_format($batchData->qty_return) : '' }}</td>
-                    <td style="text-align: left; font-size: 8px;">{{ $batchData->keterangan ?? '' }}</td>
-                </tr>
-                @endforeach
-            @endif
-
-            {{-- Padding Baris Kosong --}}
-            @php $totalRows = (isset($plansS1) ? count($plansS1) : 0) + (isset($plansS2) ? count($plansS2) : 0); @endphp
-            @for($i = $totalRows; $i < 10; $i++)
-            <tr class="empty-row">
-                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+            <tr>
+                <td colspan="15" class="shift-header">
+                    SHIFT 1 (DAY OPS) | TOTAL ESTIMASI RUN-TIME : <span>{{ number_format($totalWorkingS1, 1) }} Jam</span>
+                </td>
             </tr>
+
+            @php $no = 1; $startTime = "07:30"; @endphp
+            @forelse($plansS1 as $p)
+                @php
+                    $target = $p->s1_plan_reg + $p->s1_plan_ot;
+                    $durMin = ($p->cap_per_hour > 0) ? round(($target / $p->cap_per_hour) * 60) + ($p->dandory_time ?? 15) : 0;
+                    $endTime = date('H:i', strtotime($startTime . " + $durMin minutes"));
+                @endphp
+                <tr>
+                    <td>{{ $no++ }}</td>
+                    <td class="text-left text-bold">
+                        {{ $p->part_no }}<br>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WELDING PART', 35) }}</span><br>
+                        <!-- 🔥 INJEKSI WOS ASLI DARI DATABASE 🔥 -->
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->no_produksi) }}</span>
+                    </td>
+                    <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
+                    <td>{{ $p->manpower ?? 1 }}</td>
+                    <td>{{ $p->cap_per_hour }}</td>
+                    <td class="text-blue">{{ number_format($target) }}</td>
+                    
+                    <td class="text-bold">{{ $startTime }}</td>
+                    <td class="text-bold">{{ $endTime }}</td>
+                    
+                    <td class="text-bold">{{ $p->line_code }}</td>
+                    
+                    <td></td>
+                    <td></td>
+                    
+                    <!-- Area Tulis Tangan Aktual -->
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    <td class="text-left" style="font-size: 8px;">AUTO-DEPLOY</td>
+                </tr>
+                @php $startTime = $endTime; @endphp
+            @empty
+                <tr><td colspan="15" style="padding: 10px; font-style: italic;">Tidak ada plan Shift 1 untuk line ini.</td></tr>
+            @endforelse
+
+            <!-- ===================== SHIFT 2 (MALAM) ===================== -->
+            @php 
+                $totalTargetS2 = 0; 
+                $totalWorkingS2 = 0;
+            @endphp
+            @foreach($plansS2 as $p)
+                @php 
+                    $target = $p->s2_plan_reg + $p->s2_plan_ot;
+                    $totalTargetS2 += $target;
+                    $dur = ($p->cap_per_hour > 0) ? ($target / $p->cap_per_hour) + (($p->dandory_time ?? 15) / 60) : 0;
+                    $totalWorkingS2 += $dur;
+                @endphp
+            @endforeach
+
+            @if($plansS2->count() > 0)
+            <tr>
+                <td colspan="15" class="shift-header" style="margin-top: 5px;">
+                    SHIFT 2 (NIGHT OPS) | TOTAL ESTIMASI RUN-TIME : <span>{{ number_format($totalWorkingS2, 1) }} Jam</span>
+                </td>
+            </tr>
+
+            @php $startTime = "19:30"; @endphp
+            @foreach($plansS2 as $p)
+                @php
+                    $target = $p->s2_plan_reg + $p->s2_plan_ot;
+                    $durMin = ($p->cap_per_hour > 0) ? round(($target / $p->cap_per_hour) * 60) + ($p->dandory_time ?? 15) : 0;
+                    $endTime = date('H:i', strtotime($startTime . " + $durMin minutes"));
+                @endphp
+                <tr>
+                    <td>{{ $no++ }}</td>
+                    <td class="text-left text-bold">
+                        {{ $p->part_no }}<br>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WELDING PART', 35) }}</span><br>
+                        <!-- 🔥 INJEKSI WOS ASLI DARI DATABASE 🔥 -->
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->no_produksi) }}</span>
+                    </td>
+                    <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
+                    <td>{{ $p->manpower ?? 1 }}</td>
+                    <td>{{ $p->cap_per_hour }}</td>
+                    <td class="text-blue">{{ number_format($target) }}</td>
+                    
+                    <td class="text-bold">{{ $startTime }}</td>
+                    <td class="text-bold">{{ $endTime }}</td>
+                    
+                    <td class="text-bold">{{ $p->line_code }}</td>
+                    
+                    <td></td>
+                    <td></td>
+                    
+                    <!-- Area Tulis Tangan Aktual -->
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    
+                    <td class="text-left" style="font-size: 8px;">AUTO-DEPLOY</td>
+                </tr>
+                @php $startTime = $endTime; @endphp
+            @endforeach
+            @endif
+
+            <!-- BARIS KOSONG UNTUK ISIAN MANUAL OPERATOR -->
+            @for ($i = 0; $i < 4; $i++)
+                <tr>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
             @endfor
 
-            <tr style="background-color: #cbd5e1; font-weight: 900; font-size: 13px;">
-                <td colspan="5" style="text-align: right; padding: 12px 15px;">TOTAL KESELURUHAN TARGET HARIAN : </td>
-                <td style="color: #dc2626;">{{ number_format($grandTarget) }}</td>
-                <td colspan="9"></td>
+            <!-- TOTAL BAWAH -->
+            <tr>
+                <td colspan="5" class="text-bold" style="background:#e2e8f0; text-align: right; padding-right: 15px;">TOTAL KESELURUHAN TARGET HARIAN :</td>
+                <td class="text-bold" style="background:#f1f5f9; color:#dc2626;">{{ number_format($totalTargetS1 + $totalTargetS2) }}</td>
+                <td colspan="9" style="background:#e2e8f0;"></td>
             </tr>
         </tbody>
     </table>
+
+    <!-- AREA BAWAH: PROBLEM & TANDA TANGAN -->
+    <div class="footer-grid">
+        <table class="problem-table">
+            <tr><th>PROBLEM</th><td></td></tr>
+            <tr><th>TEMPORARY ACTION</th><td></td></tr>
+            <tr><th>COUNTER MEASURE</th><td></td></tr>
+        </table>
+
+        <table class="sig-table">
+            <tr>
+                <th>DIBUAT</th>
+                <th>DIPERIKSA</th>
+                <th>DISETUJUI</th>
+                <th>DITERIMA</th>
+            </tr>
+            <tr>
+                <td>PPIC</td>
+                <td>LEADER PPIC</td>
+                <td>MANAGER</td>
+                <td>PRODUKSI</td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        window.onload = function() { setTimeout(function() { window.print(); }, 500); }
+    </script>
 </body>
 </html>
