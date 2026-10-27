@@ -10,23 +10,20 @@
     $end = $endDate ?? date('Y-m-d');
     $custFilter = request('customer') ?? null;
     $partFilter = request('part_no') ?? null;
-    $wosFilter = request('wos') ?? null; // ✨ Menangkap inputan pencarian WOS
+    $wosFilter = request('wos') ?? null;
 
-    // 1. Dropdown Part Berdasarkan Customer
     $availablePartsQuery = DB::table('finished_goods')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
     if ($custFilter && $custFilter != 'ALL') {
         $availablePartsQuery->where('customer', trim($custFilter));
     }
     $availableParts = $availablePartsQuery->get();
 
-    // 2. Saring Data History Berdasarkan Part Number
     if ($partFilter) {
         $historyData = $historyData->filter(function($item) use ($partFilter) {
             return $item->part_no == $partFilter;
         });
     }
 
-    // 3. Ambil WOS dari Stamping (IN)
     $inStamping = DB::table('production_logs')
         ->where('process_type', 'WELDING')
         ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
@@ -44,7 +41,6 @@
             ];
         });
 
-    // 4. Ambil WOS dari Return QC (IN)
     $inReturn = DB::table('quality_inspections')
         ->where('origin', 'WELDING')
         ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
@@ -63,7 +59,6 @@
             ];
         });
 
-    // 5. Ambil WOS dari Welding (OUT)
     $outWelding = DB::table('welding_batches')
         ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
         ->get()->map(function($item) {
@@ -80,15 +75,12 @@
             ];
         });
 
-    // 6. Gabungkan semua mutasi
     $allMutations = $inStamping->concat($inReturn)->concat($outWelding)->sortByDesc('jam');
 
-    // ✨ 7. LOGIKA PENCARIAN WOS ✨
     if ($wosFilter) {
         $allMutations = $allMutations->filter(function($item) use ($wosFilter) {
             return stripos($item->no_dokumen, $wosFilter) !== false;
         });
-
         $partsWithWos = $allMutations->pluck('part_no')->unique()->toArray();
         $historyData = $historyData->filter(function($item) use ($partsWithWos) {
             return in_array(str_replace([' ', '-'], '', trim($item->part_no)), $partsWithWos);
@@ -141,35 +133,128 @@
     .qty-in { color: var(--brand-success); font-weight: 900; font-family: 'JetBrains Mono'; font-size: 14px; }
     .qty-ret { color: var(--brand-return); font-weight: 900; font-family: 'JetBrains Mono'; font-size: 14px; }
     .qty-out { color: var(--brand-danger); font-weight: 900; font-family: 'JetBrains Mono'; font-size: 14px; }
-
     .btn-cyber { border-radius: 12px; font-weight: 800; padding: 8px 20px; letter-spacing: 0.5px; transition: 0.3s; }
 
+    /* 🔥 CSS KHUSUS PRINT - DIPERBAIKI 🔥 */
+    #printArea { display: none; }
     @media print {
         body { background: #fff; }
         .no-print { display: none !important; }
-        .part-group-card { border: 1px solid #000; margin-bottom: 20px; page-break-inside: avoid; box-shadow: none; border-radius: 0; }
-        .part-header { background: #f2f2f2 !important; -webkit-print-color-adjust: exact; border-bottom: 1px solid #000; }
-        .detail-table th, .detail-table td { border: 1px solid #000; padding: 8px !important; }
-        .s-pill { border: 1px solid #000; border-radius: 0; }
-        .wos-badge, .type-badge { border: 1px solid #000; background: transparent !important; color: #000 !important; border-radius: 0; }
-        #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; font-family: Arial, sans-serif; }
+        #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: #fff; color: #000; font-family: Arial, sans-serif; }
+        
+        .print-header-table { width: 100%; border-bottom: 3px double #000; margin-bottom: 20px; padding-bottom: 10px; }
+        .print-header-table td { vertical-align: middle; }
+        
+        .print-part-title { font-size: 12px; font-weight: bold; background: #e2e8f0 !important; -webkit-print-color-adjust: exact; padding: 8px; border: 1px solid #000; border-bottom: none; margin-top: 15px; }
+        .print-data-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 10px; }
+        .print-data-table th, .print-data-table td { border: 1px solid #000; padding: 6px 8px; text-align: center; }
+        .print-data-table th { background: #f8fafc !important; -webkit-print-color-adjust: exact; font-weight: bold; text-transform: uppercase; }
+        .print-data-table .text-left { text-align: left; }
+        
+        .print-totals { font-weight: bold; background: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
+        
+        .sig-table { width: 100%; margin-top: 40px; text-align: center; font-size: 11px; }
+        .sig-table td { width: 33.33%; padding-top: 60px; }
     }
 </style>
 
-{{-- AREA CETAK (Hanya Muncul Saat Print) --}}
-<div id="printArea" style="display: none;">
-    <div style="border-bottom: 3px double #000; margin-bottom: 20px; padding-bottom: 15px; text-align: center;">
-        <h1 style="margin:0; font-size: 20px; font-weight: bold;">PT. ASALTA MANDIRI AGUNG</h1>
-        <h3 style="margin:5px 0; font-size: 14px; letter-spacing: 1px;">DEPARTEMEN PPIC - WELDING VAULT LEDGER (TRACEABILITY)</h3>
-        <p style="margin:0; font-size: 11px;">
-            Customer: <strong>{{ request('customer') ?: 'ALL' }}</strong> | Part: <strong>{{ request('part_no') ?: 'ALL' }}</strong>
-            @if($wosFilter) | Filter WOS: <strong>{{ $wosFilter }}</strong> @endif
-            <br>
-            Periode Laporan: <strong>{{ date('d/m/Y', strtotime($start)) }}</strong> s/d <strong>{{ date('d/m/Y', strtotime($end)) }}</strong>
-        </p>
-    </div>
-</div>
+{{-- 🖨️ AREA KHUSUS PRINT (MUNCUL SAAT DI-PRINT SAJA) 🖨️ --}}
+<div id="printArea">
+    <!-- Kop Surat Resmi -->
+    <table class="print-header-table">
+        <tr>
+            <td style="width: 25%;">
+                <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" style="max-height: 50px;" alt="Logo ASALTA">
+            </td>
+            <td style="width: 50%; text-align: center;">
+                <h2 style="margin: 0; font-size: 16px; font-weight: 900; text-transform: uppercase;">PT. ASALTA MANDIRI AGUNG</h2>
+                <h4 style="margin: 5px 0; font-size: 12px; font-weight: normal; letter-spacing: 1px;">DEPARTEMEN PPIC - WELDING VAULT LEDGER (TRACEABILITY)</h4>
+            </td>
+            <td style="width: 25%; text-align: right; font-size: 10px; line-height: 1.5;">
+                <strong>Periode:</strong> {{ date('d/m/Y', strtotime($start)) }} - {{ date('d/m/Y', strtotime($end)) }}<br>
+                <strong>Print Date:</strong> {{ date('d/m/Y H:i') }}<br>
+                <strong>Filter WOS:</strong> {{ $wosFilter ?: 'SEMUA' }}
+            </td>
+        </tr>
+    </table>
 
+    <!-- 🔥 TABEL DATA CETAK 🔥 -->
+    @forelse($historyData as $h)
+        @php
+            $cleanPart = str_replace([' ', '-'], '', trim($h->part_no));
+            $mutations = $allMutations->get($cleanPart) ?? collect();
+        @endphp
+
+        <div class="print-part-title">
+            <span style="font-family: monospace;">{{ $h->part_no }}</span> - {{ $h->part_name }}
+            <div style="float: right; font-size: 10px; font-weight: normal;">
+                Saldo Awal: <strong>{{ number_format($h->stock_awal) }}</strong> | Live Balance: <strong>{{ number_format($h->stock_akhir) }}</strong>
+            </div>
+        </div>
+        
+        <table class="print-data-table">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">TGL & JAM</th>
+                    <th style="width: 15%;">TIPE</th>
+                    <th class="text-left" style="width: 40%;">WOS / DOKUMEN REFERENSI</th>
+                    <th style="width: 15%;">IN (PCS)</th>
+                    <th style="width: 15%;">OUT (PCS)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if($mutations->count() > 0)
+                    @foreach($mutations as $mut)
+                        <tr>
+                            <td>{{ date('d/m/Y H:i', strtotime($mut->jam)) }}</td>
+                            <td>{{ $mut->label }}</td>
+                            <td class="text-left" style="font-family: monospace; font-size: 9px;">{{ strtoupper($mut->no_dokumen) }}</td>
+                            <td>{{ $mut->in_qty > 0 ? '+'.number_format($mut->in_qty) : '-' }}</td>
+                            <td>{{ $mut->out_qty > 0 ? '-'.number_format($mut->out_qty) : '-' }}</td>
+                        </tr>
+                    @endforeach
+                    <tr class="print-totals">
+                        <td colspan="3" style="text-align: right;">TOTAL PERIODE INI:</td>
+                        <td>+{{ number_format($h->in_s + $h->in_r) }}</td>
+                        <td>-{{ number_format($h->total_out) }}</td>
+                    </tr>
+                @else
+                    <tr>
+                        <td colspan="5" style="font-style: italic; padding: 15px;">Tidak ada rincian mutasi untuk kriteria tersebut.</td>
+                    </tr>
+                @endif
+            </tbody>
+        </table>
+    @empty
+        <p style="text-align: center; margin-top: 50px; font-style: italic;">Tidak ada data pergerakan material pada periode yang dipilih.</p>
+    @endforelse
+
+    <!-- Tanda Tangan Print -->
+    @if($historyData->count() > 0)
+    <table class="sig-table">
+        <tr>
+            <td>
+                <strong>Disiapkan Oleh,</strong><br><br><br><br>
+                ( _____________________ )<br>
+                Admin Gudang
+            </td>
+            <td>
+                <strong>Diperiksa Oleh,</strong><br><br><br><br>
+                ( _____________________ )<br>
+                Leader QA
+            </td>
+            <td>
+                <strong>Disetujui Oleh,</strong><br><br><br><br>
+                ( _____________________ )<br>
+                Manager PPIC
+            </td>
+        </tr>
+    </table>
+    @endif
+</div>
+{{-- AKHIR AREA PRINT --}}
+
+{{-- 💻 TAMPILAN WEB UI NORMAL 💻 --}}
 <div class="container-fluid py-4 px-4 animate__animated animate__fadeIn no-print">
     
     {{-- HEADER JUDUL --}}
