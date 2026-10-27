@@ -302,12 +302,19 @@ class WeldingStockController extends Controller
     {
         $startDate = $request->start_date ?? date('Y-m-d');
         $endDate = $request->end_date ?? date('Y-m-d');
+        $searchWos = $request->wos ?? null; // ✨ Menangkap inputan pencarian WOS
 
-        $historyData = DB::table('welding_batches')
+        $query = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
             ->where('status', 'COMPLETED')
-            ->whereBetween(DB::raw('DATE(welding_batches.updated_at)'), [$startDate, $endDate])
-            ->select('welding_batches.*', 'line_welding.kode_line', 'line_welding.nama_line')
+            ->whereBetween(DB::raw('DATE(welding_batches.updated_at)'), [$startDate, $endDate]);
+
+        // ✨ Filter jika ada No WOS yang dicari
+        if ($searchWos) {
+            $query->where('welding_batches.no_produksi_stamping', 'LIKE', "%{$searchWos}%");
+        }
+
+        $historyData = $query->select('welding_batches.*', 'line_welding.kode_line', 'line_welding.nama_line')
             ->orderBy('updated_at', 'desc')
             ->get()
             ->map(function($h) {
@@ -315,6 +322,6 @@ class WeldingStockController extends Controller
                 return $h;
             });
 
-        return view('welding.welding_history_weldig', compact('historyData', 'startDate', 'endDate'));
+        return view('welding.welding_history_weldig', compact('historyData', 'startDate', 'endDate', 'searchWos'));
     }
 }
