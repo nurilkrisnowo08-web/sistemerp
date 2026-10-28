@@ -8,7 +8,6 @@
         /* RESET & DASAR */
         body { font-family: Arial, sans-serif; color: #000; background: #fff; margin: 0; padding: 10px; font-size: 9px; }
         * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
         @page { size: A4 landscape; margin: 5mm; }
 
         /* KONTROL TOMBOL */
@@ -16,45 +15,45 @@
         .btn { padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; font-size: 12px; text-decoration: none; display: inline-block; }
         .btn-back { background: #475569; color: #fff; }
         .btn-print { background: #f8fafc; color: #0f172a; border: 1px solid #cbd5e1; }
-        @media print { .print-controls { display: none !important; } }
+        @media print { .print-controls, .no-print-area { display: none !important; } }
 
         /* HEADER WOS */
-        .header-wos { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
-        .header-left { display: flex; align-items: center; }
-        .logo { width: 45px; margin-right: 15px; }
-        .title-area h2 { margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase; }
-        .title-area p { margin: 2px 0; font-size: 10px; font-weight: bold; }
+        .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; border-bottom: 3px double #000; padding-bottom: 10px; }
+        
+        .logo-section { display: flex; align-items: center; width: 30%; }
+        .logo-section img { height: 45px; margin-right: 15px; }
+        .company-info h2 { margin: 0; font-size: 14px; font-weight: 900; text-transform: uppercase; }
+        .company-info h3 { margin: 2px 0 0 0; font-size: 10px; font-weight: bold; font-weight: normal; }
+        
+        .title-section { text-align: center; width: 40%; }
+        .title-section h1 { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+        .title-section h3 { margin: 5px 0 0 0; font-size: 12px; font-weight: bold; color: #1e293b; }
 
-        /* TABEL POJOK KANAN ATAS (DOCUMENT CONTROL) */
-        .doc-control { border-collapse: collapse; font-size: 9px; font-weight: bold; text-align: left; }
-        .doc-control th, .doc-control td { border: 1px solid #000; padding: 4px 8px; }
-        .doc-control th { background: #f1f5f9; width: 120px; text-transform: uppercase; }
-        .doc-control td { font-family: monospace; font-size: 10px; }
-        .wos-val { color: #dc2626; font-size: 11px !important; }
+        .meta-section { text-align: right; width: 30%; font-size: 10px; font-weight: bold; line-height: 1.6; }
+        .meta-section span.val { color: #dc2626; font-family: monospace; font-size: 11px; }
 
         /* MAIN TABLE */
         .wos-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        .wos-table th, .wos-table td { border: 1px solid #000; padding: 3px; text-align: center; vertical-align: middle; }
+        .wos-table th, .wos-table td { border: 1px solid #000; padding: 4px; text-align: center; vertical-align: middle; }
         .wos-table th { background: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 8px; }
-        .wos-table td { font-size: 9px; height: 18px; }
+        .wos-table td { font-size: 9px; height: 25px; }
         
-        /* SPESIFIK KOLOM */
         .text-left { text-align: left !important; padding-left: 5px !important; }
         .text-bold { font-weight: bold; }
-        .text-blue { color: #2563eb !important; }
+        .text-blue { color: #2563eb !important; font-weight: bold; }
+        .text-green { color: #16a34a !important; font-weight: bold; }
+        .text-danger { color: #dc2626 !important; font-weight: bold; }
         
-        .shift-header { background: #f8fafc; text-align: left !important; padding: 4px 8px !important; font-size: 9px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; border-bottom: 2px solid #000; }
+        .shift-header { background: #f8fafc; text-align: left !important; padding: 5px 8px !important; font-size: 9px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; border-bottom: 2px solid #000; }
         .shift-header span { color: #dc2626; }
-
+        
         /* FOOTER BLOCKS */
         .footer-grid { display: flex; gap: 15px; margin-top: 5px; }
-        
         .problem-table { width: 45%; border-collapse: collapse; font-size: 9px; font-weight: bold; }
-        .problem-table th, .problem-table td { border: 1px solid #000; padding: 5px; text-align: left; }
+        .problem-table th, .problem-table td { border: 1px solid #000; padding: 6px; text-align: left; }
         .problem-table th { width: 30%; background: #f8fafc; }
-        
         .sig-table { width: 55%; border-collapse: collapse; font-size: 9px; font-weight: bold; text-align: center; }
-        .sig-table th, .sig-table td { border: 1px solid #000; padding: 5px; width: 25%; }
+        .sig-table th, .sig-table td { border: 1px solid #000; padding: 6px; width: 25%; }
         .sig-table th { background: #f8fafc; }
         .sig-table td { height: 50px; vertical-align: bottom; padding-bottom: 5px; }
     </style>
@@ -62,46 +61,44 @@
 <body>
 
     @php
-        // Mengumpulkan semua No WOS untuk ditaruh di pojok kanan atas
+        // Mengumpulkan No WOS Asli dari Controller untuk dipajang di Pojok Kanan Atas
         $allWos = collect();
-        foreach($plansS1 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
-        foreach($plansS2 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
+        foreach($plansS1 as $p) { if($p->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->no_produksi)); }
+        foreach($plansS2 as $p) { if($p->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->no_produksi)); }
         $uniqueWos = $allWos->unique()->values();
         
-        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : '-';
+        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : 'AUTO-DEPLOY';
         if($uniqueWos->count() > 1) {
             $displayWos .= ' (+'.($uniqueWos->count() - 1).' WOS)';
         }
     @endphp
 
     <!-- KONTROL TOMBOL -->
-    <div class="print-controls">
-        <button onclick="window.close()" class="btn btn-back">⬅ KEMBALI / TUTUP</button>
-        <button onclick="window.print()" class="btn btn-print">🖨️ PRINT WOS (FULL DAY)</button>
+    <div class="print-controls no-print-area">
+        <button onclick="window.close()" class="btn btn-back">⬅ TUTUP HALAMAN</button>
+        <button onclick="window.print()" class="btn btn-print">🖨️ CETAK WOS (FULL DAY)</button>
     </div>
 
-    <!-- HEADER KOP SURAT & TABEL DOKUMEN -->
-    <div class="header-wos">
-        <div class="header-left">
-            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" class="logo" alt="Logo" onerror="this.style.display='none'">
-            <div class="title-area">
+    <div class="header-container">
+        <!-- Logo & Nama PT -->
+        <div class="logo-section">
+            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
+            <div class="company-info">
                 <h2>PT. Asalta Mandiri Agung</h2>
-                <p>Dept. PPC<br>LOGISTICS & MATERIAL</p>
+                <h3>Dept. PPC<br>LOGISTICS & PRODUCTION</h3>
             </div>
         </div>
         
-        <!-- TABEL POJOK KANAN ATAS -->
-        <div>
-            <table class="doc-control">
-                <tr>
-                    <th>TANGGAL PEMBUATAN</th>
-                    <td>{{ date('d F Y', strtotime($date)) }}</td>
-                </tr>
-                <tr>
-                    <th>NO. WOS</th>
-                    <td class="wos-val">{{ $displayWos }}</td>
-                </tr>
-            </table>
+        <!-- Judul Tengah -->
+        <div class="title-section">
+            <h1>WORK ORDER SHEET</h1>
+            <h3>[ STAMPING STATION : {{ strtoupper($line_code) }} ]</h3>
+        </div>
+
+        <!-- Tanggal Kanan & Nomor WOS Dinamis -->
+        <div class="meta-section">
+            TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
+            NO DOKUMEN : <span class="val">{{ $displayWos }}</span>
         </div>
     </div>
 
@@ -110,28 +107,26 @@
         <thead>
             <tr>
                 <th rowspan="2" style="width: 2%;">NO</th>
-                <th rowspan="2" style="width: 14%;">PART NUMBER / IDENTIFICATION</th>
+                <th rowspan="2" style="width: 20%;">IDENTIFIKASI PART</th>
                 <th rowspan="2" style="width: 4%;">CUST</th>
                 <th rowspan="2" style="width: 3%;">MP</th>
                 <th rowspan="2" style="width: 3%;">PROC</th>
                 <th rowspan="2" style="width: 4%;">QTY LOT</th>
-                <th rowspan="2" style="width: 4%;">CAP / HOUR</th>
-                <th rowspan="2" style="width: 4%;">TOTAL TARGET</th>
-                <th rowspan="2" style="width: 4%;">TOTAL STROKE</th>
+                <th rowspan="2" style="width: 5%;">CAP / HOUR</th>
+                <th rowspan="2" style="width: 5%;">TOTAL TARGET</th>
+                <th rowspan="2" style="width: 5%;">TOTAL STROKE</th>
                 <th rowspan="2" style="width: 4%;">DANDORY (MIN)</th>
-                <th colspan="2">PLAN HOURS</th>
-                <th colspan="2">PLAN PRODUKSI</th>
-                <th rowspan="2" style="width: 4%;">TOTAL PLAN</th>
-                <th rowspan="2" style="width: 6%;">M/C LINE</th>
-                <th rowspan="2" style="width: 4%;">JAM</th>
-                <th colspan="3">ACTUAL PRODUKSI</th>
-                <th rowspan="2" style="width: 15%;">KETERANGAN</th>
+                <th colspan="2">PLAN WAKTU</th>
+                <th rowspan="2" style="width: 8%;">M/C LINE</th>
+                <th colspan="2">ACTUAL WAKTU</th>
+                <th colspan="3">HASIL PRODUKSI</th>
+                <th rowspan="2" style="width: 15%;">KETERANGAN / DOWNTIME</th>
             </tr>
             <tr>
                 <th style="width: 4%;">START</th>
                 <th style="width: 4%;">AKHIR</th>
-                <th style="width: 4%;">REG</th>
-                <th style="width: 4%;">OT</th>
+                <th style="width: 4%;">MULAI</th>
+                <th style="width: 4%;">SELESAI</th>
                 <th style="width: 4%;">OK</th>
                 <th style="width: 4%;">NG</th>
                 <th style="width: 4%;">WH</th>
@@ -140,8 +135,7 @@
         <tbody>
             <!-- ===================== SHIFT 1 (PAGI) ===================== -->
             @php 
-                $totalTargetS1 = 0; 
-                $totalWorkingS1 = 0;
+                $totalTargetS1 = 0; $totalWorkingS1 = 0;
             @endphp
             @foreach($plansS1 as $p)
                 @php 
@@ -153,8 +147,8 @@
             @endforeach
 
             <tr>
-                <td colspan="21" class="shift-header">
-                    TOTAL WORKING HOURS / SHIFT 1 (DAY OPS) : <span>{{ number_format($totalWorkingS1, 1) }} Jam</span> | TANGGAL: {{ date('d/m/Y', strtotime($date)) }}
+                <td colspan="19" class="shift-header">
+                    SHIFT 1 (DAY OPS) | TOTAL ESTIMASI RUN-TIME : <span>{{ number_format($totalWorkingS1, 1) }} Jam</span>
                 </td>
             </tr>
 
@@ -164,46 +158,54 @@
                     $target = $p->s1_plan_reg + $p->s1_plan_ot;
                     $durMin = ($p->cap_per_hour > 0) ? round(($target / $p->cap_per_hour) * 60) + ($p->dandory_time ?? 15) : 0;
                     $endTime = date('H:i', strtotime($startTime . " + $durMin minutes"));
+
+                    // ✨ Indikator Revisi ✨
+                    $revLabel = '';
+                    if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
+                        $revLabel = " <span style='color: #2563eb; font-weight: bold;'>[REV-{$matches[1]}]</span>";
+                    }
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
                         {{ $p->part_no }}<br>
-                        <!-- 🔥 PENGAMAN NAMA PART (?? '') AGAR TIDAK ERROR 🔥 -->
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span><br>
+                        <!-- 🔥 WOS ASLI MUNCUL DI SINI 🔥 -->
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->no_produksi) }}{!! $revLabel !!}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
                     <td>{{ $p->process_qty ?? 1 }}</td>
                     <td>{{ $p->qty_lot ?? 200 }}</td>
                     <td>{{ $p->cap_per_hour }}</td>
-                    <td class="text-bold">{{ number_format($target) }}</td>
-                    <td class="text-bold text-blue">{{ number_format($target) }}</td>
+                    <td class="text-blue">{{ number_format($target) }}</td>
+                    <td class="text-blue">{{ number_format($target) }}</td>
                     <td>{{ $p->dandory_time ?? 15 }}</td>
                     
                     <td class="text-bold">{{ $startTime }}</td>
                     <td class="text-bold">{{ $endTime }}</td>
                     
-                    <td>{{ number_format($p->s1_plan_reg) }}</td>
-                    <td>{{ number_format($p->s1_plan_ot) }}</td>
-                    <td class="text-bold">{{ number_format($target) }}</td>
                     <td class="text-bold">{{ $p->line_code }}</td>
+                    
+                    <!-- 🔥 INJEKSI AKTUAL WAKTU 🔥 -->
+                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
+                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
+                    
+                    <!-- 🔥 INJEKSI HASIL PRODUKSI 🔥 -->
+                    <td class="text-bold text-green" style="font-size: 11px;">{{ $p->actual_ok > 0 ? number_format($p->actual_ok) : '' }}</td>
+                    <td class="text-bold text-danger" style="font-size: 11px;">{{ $p->actual_ng > 0 ? number_format($p->actual_ng) : '' }}</td>
                     <td></td>
                     
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
+                    <td class="text-left" style="font-size: 8px;">{{ Str::limit($p->keterangan ?? 'AUTO-DEPLOY', 40) }}</td>
                 </tr>
                 @php $startTime = $endTime; @endphp
             @empty
-                <tr><td colspan="21" style="padding: 10px; font-style: italic;">Tidak ada plan Shift 1.</td></tr>
+                <tr><td colspan="19" style="padding: 10px; font-style: italic;">Tidak ada plan Shift 1 untuk line ini.</td></tr>
             @endforelse
 
             <!-- ===================== SHIFT 2 (MALAM) ===================== -->
             @php 
-                $totalTargetS2 = 0; 
-                $totalWorkingS2 = 0;
+                $totalTargetS2 = 0; $totalWorkingS2 = 0;
             @endphp
             @foreach($plansS2 as $p)
                 @php 
@@ -216,8 +218,8 @@
 
             @if($plansS2->count() > 0)
             <tr>
-                <td colspan="21" class="shift-header" style="margin-top: 5px;">
-                    TOTAL WORKING HOURS / SHIFT 2 (NIGHT OPS) : <span>{{ number_format($totalWorkingS2, 1) }} Jam</span> | TANGGAL: {{ date('d/m/Y', strtotime($date)) }}
+                <td colspan="19" class="shift-header" style="margin-top: 5px;">
+                    SHIFT 2 (NIGHT OPS) | TOTAL ESTIMASI RUN-TIME : <span>{{ number_format($totalWorkingS2, 1) }} Jam</span>
                 </td>
             </tr>
 
@@ -227,59 +229,63 @@
                     $target = $p->s2_plan_reg + $p->s2_plan_ot;
                     $durMin = ($p->cap_per_hour > 0) ? round(($target / $p->cap_per_hour) * 60) + ($p->dandory_time ?? 15) : 0;
                     $endTime = date('H:i', strtotime($startTime . " + $durMin minutes"));
+
+                    // ✨ Indikator Revisi ✨
+                    $revLabel = '';
+                    if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
+                        $revLabel = " <span style='color: #2563eb; font-weight: bold;'>[REV-{$matches[1]}]</span>";
+                    }
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
                         {{ $p->part_no }}<br>
-                        <!-- 🔥 PENGAMAN NAMA PART (?? '') AGAR TIDAK ERROR 🔥 -->
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span><br>
+                        <!-- 🔥 WOS ASLI MUNCUL DI SINI 🔥 -->
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->no_produksi) }}{!! $revLabel !!}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
                     <td>{{ $p->process_qty ?? 1 }}</td>
                     <td>{{ $p->qty_lot ?? 200 }}</td>
                     <td>{{ $p->cap_per_hour }}</td>
-                    <td class="text-bold">{{ number_format($target) }}</td>
-                    <td class="text-bold text-blue">{{ number_format($target) }}</td>
+                    <td class="text-blue">{{ number_format($target) }}</td>
+                    <td class="text-blue">{{ number_format($target) }}</td>
                     <td>{{ $p->dandory_time ?? 15 }}</td>
                     
                     <td class="text-bold">{{ $startTime }}</td>
                     <td class="text-bold">{{ $endTime }}</td>
                     
-                    <td>{{ number_format($p->s2_plan_reg) }}</td>
-                    <td>{{ number_format($p->s2_plan_ot) }}</td>
-                    <td class="text-bold">{{ number_format($target) }}</td>
                     <td class="text-bold">{{ $p->line_code }}</td>
+                    
+                    <!-- 🔥 INJEKSI AKTUAL WAKTU 🔥 -->
+                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
+                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
+                    
+                    <!-- 🔥 INJEKSI HASIL PRODUKSI 🔥 -->
+                    <td class="text-bold text-green" style="font-size: 11px;">{{ $p->actual_ok > 0 ? number_format($p->actual_ok) : '' }}</td>
+                    <td class="text-bold text-danger" style="font-size: 11px;">{{ $p->actual_ng > 0 ? number_format($p->actual_ng) : '' }}</td>
                     <td></td>
                     
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
+                    <td class="text-left" style="font-size: 8px;">{{ Str::limit($p->keterangan ?? 'AUTO-DEPLOY', 40) }}</td>
                 </tr>
                 @php $startTime = $endTime; @endphp
             @endforeach
             @endif
 
             <!-- BARIS KOSONG UNTUK ISIAN MANUAL OPERATOR -->
-            @for ($i = 0; $i < 6; $i++)
+            @for ($i = 0; $i < 4; $i++)
                 <tr>
-                    <td>-</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 </tr>
             @endfor
 
             <!-- TOTAL BAWAH -->
             <tr>
-                <td colspan="7" class="text-left text-bold" style="background:#f1f5f9; padding-left:10px;">NO PLANING : {{ date('dmy', strtotime($date)) }}-{{ strtoupper($line_code) }}</td>
-                <td class="text-bold">{{ number_format($totalTargetS1 + $totalTargetS2) }}</td>
-                <td class="text-bold text-blue">{{ number_format($totalTargetS1 + $totalTargetS2) }}</td>
-                <td colspan="3" style="background:#f1f5f9;"></td>
-                <td class="text-bold">{{ number_format($plansS1->sum('s1_plan_reg') + $plansS2->sum('s2_plan_reg')) }}</td>
-                <td class="text-bold">{{ number_format($plansS1->sum('s1_plan_ot') + $plansS2->sum('s2_plan_ot')) }}</td>
-                <td class="text-bold">{{ number_format($totalTargetS1 + $totalTargetS2) }}</td>
-                <td colspan="6" style="background:#f1f5f9;"></td>
+                <td colspan="7" class="text-bold" style="background:#e2e8f0; text-align: right; padding-right: 15px;">TOTAL KESELURUHAN TARGET HARIAN :</td>
+                <td class="text-bold" style="background:#f1f5f9; color:#dc2626;">{{ number_format($totalTargetS1 + $totalTargetS2) }}</td>
+                <td colspan="11" style="background:#e2e8f0;"></td>
             </tr>
         </tbody>
     </table>
