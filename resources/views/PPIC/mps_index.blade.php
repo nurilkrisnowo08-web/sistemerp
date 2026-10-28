@@ -11,24 +11,20 @@
     }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: var(--p-dark); }
     
-    /* Typography & Headers */
     .hud-title { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
     .glass-card { background: white; border-radius: 24px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px -5px rgba(0,0,0,0.03); overflow: hidden; transition: 0.3s; }
     .glass-card:hover { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.06); transform: translateY(-3px); }
     
-    /* Machine Switcher (Pill Nav) */
     .machine-switcher { background: #f1f5f9; padding: 6px; border-radius: 50px; display: inline-flex; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
     .machine-switcher .btn { border-radius: 50px; font-weight: 800; padding: 10px 28px; font-size: 12px; letter-spacing: 0.5px; transition: 0.3s; text-transform: uppercase; }
     .machine-switcher .btn.active { background: var(--p-primary); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35); }
     .machine-switcher .btn:not(.active) { color: var(--p-slate); }
     .machine-switcher .btn:not(.active):hover { background: #e2e8f0; color: var(--p-dark); }
 
-    /* Top Cards with Gradients */
     .card-grad-1 { background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); border-left: 5px solid var(--p-primary); }
     .card-grad-2 { background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-left: 5px solid var(--p-success); }
     .card-grad-3 { background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); border-left: 5px solid var(--p-warning); }
     
-    /* Tables */
     .table-mps { width: 100%; border-collapse: separate; border-spacing: 0; }
     .table-mps thead th { background: #f8fafc; padding: 18px 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--p-slate); border-bottom: 2px solid #e2e8f0; }
     .table-mps tbody td { padding: 18px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600; vertical-align: middle; transition: 0.2s; }
@@ -42,7 +38,6 @@
     .footer-summary { background: var(--p-dark) !important; color: white !important; font-family: 'Orbitron', sans-serif; font-weight: 800; }
     .footer-summary td { border: none !important; padding: 22px !important; }
     
-    /* Revisi Badge */
     .rev-badge { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; margin-left: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     
     .t-mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
@@ -67,17 +62,16 @@
         </div>
     @endif
 
-    {{-- 🛰️ HEADER & NAVIGATION --}}
+    {{-- HEADER & NAVIGATION --}}
     <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-4 gap-3">
         <div>
             <h2 class="hud-title m-0" style="font-size: 28px;">WOS_TERMINAL <span class="text-primary"> Smart MRP</span></h2>
             <p class="text-muted small font-weight-bold uppercase mb-0 mt-1"><i class="far fa-calendar-alt mr-2"></i> Operational Date: <span class="text-dark">{{ date('d F Y', strtotime($date)) }}</span></p>
         </div>
 
-      {{-- 🔥 TOMBOL SWITCHER BIG / SMALL PRESS 🔥 --}}
         <div class="machine-switcher mx-xl-auto my-3 my-xl-0">
-            <a href="{{ url('planning/mps') }}" class="btn"><i class="fas fa-industry mr-2"></i>BIG PRESS</a>
-            <a href="{{ url('planning/mps/small') }}" class="btn active"><i class="fas fa-cogs mr-2"></i>SMALL PRESS</a>
+            <a href="{{ url('planning/mps') }}" class="btn active"><i class="fas fa-industry mr-2"></i>BIG PRESS</a>
+            <a href="{{ url('planning/mps/small') }}" class="btn"><i class="fas fa-cogs mr-2"></i>SMALL PRESS</a>
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -93,7 +87,7 @@
         </div>
     </div>
 
-    {{-- 📊 4 KARTU INDIKATOR (TOP CARDS) --}}
+    {{-- TOP CARDS --}}
     <div class="row mb-4">
         <div class="col-md-3 mb-3 mb-md-0">
             <div class="glass-card card-grad-1 p-4 text-center">
@@ -125,7 +119,7 @@
         </div>
     </div>
 
-    {{-- 📑 DAFTAR MPS PER MESIN --}}
+    {{-- DAFTAR MPS PER MESIN --}}
     <div class="glass-card">
         <div class="table-responsive">
             <table class="table-mps text-center">
@@ -186,7 +180,6 @@
                                         $balanceStatus = 'balance-success'; $balanceIcon = 'fa-check-circle'; $balanceText = '0';
                                     }
 
-                                    // Deteksi Jumlah Revisi
                                     $revLabel = '';
                                     if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                                         $revLabel = "<span class='rev-badge shadow-sm'><i class='fas fa-info-circle mr-1'></i>REV-{$matches[1]}</span>";
@@ -222,62 +215,6 @@
                                         @endif
                                     </td>
                                 </tr>
-
-                                @if($p->total_actual == 0)
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
-                                    <div class="modal-dialog modal-dialog-centered" role="document">
-                                        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                                            <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase" style="letter-spacing: 1px;"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sync Material</h6>
-                                                <button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button>
-                                            </div>
-                                            <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
-                                                @csrf @method('PUT')
-                                                <div class="modal-body p-4 p-md-5 bg-light">
-                                                    <div class="alert alert-warning border-0 shadow-sm small font-weight-bold mb-4" style="background: #fffbeb; color: #b45309;">
-                                                        <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
-                                                    </div>
-                                                    <div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
-                                                        <h6 class="font-weight-bold text-primary mb-3 pb-3 border-bottom"><i class="fas fa-cube mr-2"></i>{{ $p->part_no }} <span class="text-muted mx-2">|</span> {{ $p->line_code }}</h6>
-                                                        <div class="row">
-                                                            <div class="col-6 mb-3">
-                                                                <label class="small font-weight-bold text-dark">S1 Reguler</label>
-                                                                <input type="number" name="s1_plan_reg" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s1_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6 mb-3">
-                                                                <label class="small font-weight-bold text-warning">S1 OT</label>
-                                                                <input type="number" name="s1_plan_ot" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s1_plan_ot }}" min="0">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold text-dark">S2 Reguler</label>
-                                                                <input type="number" name="s2_plan_reg" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s2_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold text-warning">S2 OT</label>
-                                                                <input type="number" name="s2_plan_ot" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s2_plan_ot }}" min="0">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold text-dark">Cap/Hour</label>
-                                                            <input type="number" name="cap_per_hour" class="form-control text-center font-weight-bold" style="border-radius: 12px;" value="{{ $p->cap_per_hour }}">
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold text-dark">Dandory (m)</label>
-                                                            <input type="number" name="dandory_time" class="form-control text-center font-weight-bold" style="border-radius: 12px;" value="{{ $p->dandory_time ?? 15 }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer bg-white border-0 p-4 justify-content-between">
-                                                    <button type="button" class="btn btn-light font-weight-bold border rounded-pill px-4" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark rounded-pill px-4"><i class="fas fa-sync-alt mr-2"></i> UPDATE & SYNC</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
                             @endforeach
                         @endif
 
@@ -298,7 +235,6 @@
                                         $balanceStatus = 'balance-success'; $balanceIcon = 'fa-check-circle'; $balanceText = '0';
                                     }
 
-                                    // Deteksi Jumlah Revisi
                                     $revLabel = '';
                                     if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                                         $revLabel = "<span class='rev-badge shadow-sm'><i class='fas fa-info-circle mr-1'></i>REV-{$matches[1]}</span>";
@@ -334,62 +270,6 @@
                                         @endif
                                     </td>
                                 </tr>
-
-                                @if($p->total_actual == 0)
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
-                                    <div class="modal-dialog modal-dialog-centered" role="document">
-                                        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                                            <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase" style="letter-spacing: 1px;"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sync Material</h6>
-                                                <button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button>
-                                            </div>
-                                            <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
-                                                @csrf @method('PUT')
-                                                <div class="modal-body p-4 p-md-5 bg-light">
-                                                    <div class="alert alert-warning border-0 shadow-sm small font-weight-bold mb-4" style="background: #fffbeb; color: #b45309;">
-                                                        <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
-                                                    </div>
-                                                    <div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
-                                                        <h6 class="font-weight-bold text-primary mb-3 pb-3 border-bottom"><i class="fas fa-cube mr-2"></i>{{ $p->part_no }} <span class="text-muted mx-2">|</span> {{$p->line_code }}</h6>
-                                                        <div class="row">
-                                                            <div class="col-6 mb-3">
-                                                                <label class="small font-weight-bold text-dark">S1 Reguler</label>
-                                                                <input type="number" name="s1_plan_reg" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s1_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6 mb-3">
-                                                                <label class="small font-weight-bold text-warning">S1 OT</label>
-                                                                <input type="number" name="s1_plan_ot" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s1_plan_ot }}" min="0">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold text-dark">S2 Reguler</label>
-                                                                <input type="number" name="s2_plan_reg" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s2_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold text-warning">S2 OT</label>
-                                                                <input type="number" name="s2_plan_ot" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s2_plan_ot }}" min="0">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold text-dark">Cap/Hour</label>
-                                                            <input type="number" name="cap_per_hour" class="form-control text-center font-weight-bold" style="border-radius: 12px;" value="{{ $p->cap_per_hour }}">
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold text-dark">Dandory (m)</label>
-                                                            <input type="number" name="dandory_time" class="form-control text-center font-weight-bold" style="border-radius: 12px;" value="{{ $p->dandory_time ?? 15 }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer bg-white border-0 p-4 justify-content-between">
-                                                    <button type="button" class="btn btn-light font-weight-bold border rounded-pill px-4" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark rounded-pill px-4"><i class="fas fa-sync-alt mr-2"></i> UPDATE & SYNC</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
                             @endforeach
                         @endif
 
@@ -400,7 +280,7 @@
                                 <i class="fas fa-calendar-times fa-2x" style="color: #94a3b8;"></i>
                             </div>
                             <h6 class="font-weight-bold text-dark mb-1">MPS Kosong</h6>
-                            <span style="font-size: 13px;">Belum ada jadwal produksi Big Press hari ini.</span>
+                            <span style="font-size: 13px;">Belum ada jadwal produksi Big Press untuk tanggal ini.</span>
                         </td>
                     </tr>
                     @endforelse
@@ -425,7 +305,11 @@
     </div>
 </div>
 
-{{-- MODAL REGISTER --}}
+{{-- =========================================================================
+     MODAL SECTION DIPINDAH KE LUAR TABEL AGAR TIDAK TERPOTONG OVERFLOW TABEL 
+     ========================================================================= --}}
+
+{{-- 1. MODAL REGISTER --}}
 <div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
         <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
@@ -486,11 +370,8 @@
                             <div class="mb-3 p-2 rounded" style="background-color: #f0fdf4; border: 1px dashed #10b981;">
                                 <label class="small font-weight-bold text-success"><i class="fas fa-link mr-1"></i> Separating Part (Opsional)</label>
                                 <select name="part_no_separator" id="select_part_separator" class="form-control input-industrial border-success" style="font-size: 11px;">
-                                    <option value="">-- TANPA SEPARATING (TIDAK ADA PASANGAN) --</option>
+                                    <option value="">-- TANPA SEPARATING --</option>
                                 </select>
-                                <div class="text-muted mt-1" style="font-size: 9.5px; line-height: 1.3;">
-                                    Jika part Kiri/Kanan (cth: 35 & 36), pilih pasangannya. WOS akan otomatis <b>DIGABUNG JADI 1 BARIS</b> dan stok RM cuma dipotong sekali.
-                                </div>
                             </div>
 
                             <div class="shift-toggle-pill mb-3 w-100">
@@ -498,6 +379,7 @@
                                 <button type="button" id="m_btn_s2" class="shift-btn w-50" style="background:transparent; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
                                 <input type="hidden" name="active_shift_input" id="m_active_shift" value="1">
                             </div>
+                            
                             <div class="bg-light p-3 rounded-lg border">
                                 <div id="m_box_s1">
                                     <label class="small font-weight-bold">S1 Reguler Plan</label>
@@ -529,35 +411,89 @@
     </div>
 </div>
 
+{{-- 2. KUMPULAN MODAL EDIT (DIPINDAH KE LUAR TABEL AGAR TIDAK KEPOTONG) --}}
+@foreach ($groupedPlans as $lineCode => $plansInLine)
+    @foreach ($plansInLine as $p)
+        @if($p->total_actual == 0)
+        <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                    <div class="modal-header bg-warning text-dark p-4 border-0">
+                        <h6 class="modal-title font-weight-bold uppercase" style="letter-spacing: 1px;"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sync Material</h6>
+                        <button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
+                        @csrf @method('PUT')
+                        <div class="modal-body p-4 p-md-5 bg-light">
+                            <div class="alert alert-warning border-0 shadow-sm small font-weight-bold mb-4" style="background: #fffbeb; color: #b45309;">
+                                <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border mb-4">
+                                <h6 class="font-weight-bold text-primary mb-3 pb-3 border-bottom"><i class="fas fa-cube mr-2"></i>{{ $p->part_no }} <span class="text-muted mx-2">|</span> {{ $p->line_code }}</h6>
+                                <div class="row">
+                                    <div class="col-6 mb-3">
+                                        <label class="small font-weight-bold text-dark">S1 Reguler</label>
+                                        <input type="number" name="s1_plan_reg" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s1_plan_reg }}" min="0">
+                                    </div>
+                                    <div class="col-6 mb-3">
+                                        <label class="small font-weight-bold text-warning">S1 OT</label>
+                                        <input type="number" name="s1_plan_ot" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s1_plan_ot }}" min="0">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small font-weight-bold text-dark">S2 Reguler</label>
+                                        <input type="number" name="s2_plan_reg" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s2_plan_reg }}" min="0">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small font-weight-bold text-warning">S2 OT</label>
+                                        <input type="number" name="s2_plan_ot" class="form-control font-weight-bold text-center" style="border-radius: 12px; background: #f8fafc;" value="{{ $p->s2_plan_ot }}" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="small font-weight-bold text-dark">Cap/Hour</label>
+                                    <input type="number" name="cap_per_hour" class="form-control text-center font-weight-bold" style="border-radius: 12px;" value="{{ $p->cap_per_hour }}">
+                                </div>
+                                <div class="col-6">
+                                    <label class="small font-weight-bold text-dark">Dandory (m)</label>
+                                    <input type="number" name="dandory_time" class="form-control text-center font-weight-bold" style="border-radius: 12px;" value="{{ $p->dandory_time ?? 15 }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-white border-0 p-4 justify-content-between">
+                            <button type="button" class="btn btn-light font-weight-bold border rounded-pill px-4" data-dismiss="modal">BATAL</button>
+                            <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark rounded-pill px-4"><i class="fas fa-sync-alt mr-2"></i> UPDATE & SYNC</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endif
+    @endforeach
+@endforeach
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     function modalShiftSwitch(s) {
         const isS1 = s === 1;
         document.getElementById('m_btn_s1').style.background = isS1 ? '#4361ee' : 'transparent';
         document.getElementById('m_btn_s1').style.color = isS1 ? 'white' : '#64748b';
-
         document.getElementById('m_btn_s2').style.background = !isS1 ? '#0f172a' : 'transparent';
         document.getElementById('m_btn_s2').style.color = !isS1 ? 'white' : '#64748b';
-
         document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
         document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
         document.getElementById('m_active_shift').value = s;
-
         if (isS1) {
-            document.getElementById('s2_reg').value = 0;
-            document.getElementById('s2_ot').value = 0;
+            document.getElementById('s2_reg').value = 0; document.getElementById('s2_ot').value = 0;
         } else {
-            document.getElementById('s1_reg').value = 0;
-            document.getElementById('s1_ot').value = 0;
+            document.getElementById('s1_reg').value = 0; document.getElementById('s1_ot').value = 0;
         }
-
         calculateLiveHours();
     }
 
     function calculateLiveHours() {
         const cap = parseFloat(document.getElementById('input_cap').value) || 1;
         const dandory = parseFloat(document.getElementById('input_dandory').value) || 0;
-        
         const s1 = (parseFloat(document.getElementById('s1_reg').value) || 0) + (parseFloat(document.getElementById('s1_ot').value) || 0);
         const s2 = (parseFloat(document.getElementById('s2_reg').value) || 0) + (parseFloat(document.getElementById('s2_ot').value) || 0);
         
@@ -575,12 +511,10 @@
         fetch(`/get-parts-and-specs/${this.value}`).then(r => r.json()).then(data => {
             let html = '<option value="">-- SELECT PART --</option>';
             let htmlSep = '<option value="">-- TANPA SEPARATING (TIDAK ADA PASANGAN) --</option>';
-            
             data.parts.forEach(p => {
                 html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
                 htmlSep += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
             });
-            
             document.getElementById('select_part').innerHTML = html;
             document.getElementById('select_part_separator').innerHTML = htmlSep;
         });
@@ -590,21 +524,14 @@
         let type = this.options[this.selectedIndex].getAttribute('data-type');
         let capInput = document.getElementById('input_cap');
         let activeShift = document.getElementById('m_active_shift').value;
-        
         if(type === 'BIG') { 
             capInput.value = 320; 
-            if (activeShift == 1) {
-                document.getElementById('s1_reg').value = 2400; document.getElementById('s2_reg').value = 0; 
-            } else {
-                document.getElementById('s1_reg').value = 0; document.getElementById('s2_reg').value = 2400; 
-            }
+            if (activeShift == 1) { document.getElementById('s1_reg').value = 2400; document.getElementById('s2_reg').value = 0; }
+            else { document.getElementById('s1_reg').value = 0; document.getElementById('s2_reg').value = 2400; }
         } else { 
             capInput.value = 500; 
-            if (activeShift == 1) {
-                document.getElementById('s1_reg').value = 4000; document.getElementById('s2_reg').value = 0;
-            } else {
-                document.getElementById('s1_reg').value = 0; document.getElementById('s2_reg').value = 4000;
-            }
+            if (activeShift == 1) { document.getElementById('s1_reg').value = 4000; document.getElementById('s2_reg').value = 0; }
+            else { document.getElementById('s1_reg').value = 0; document.getElementById('s2_reg').value = 4000; }
         }
         calculateLiveHours();
     });
@@ -614,7 +541,6 @@
             let submitBtn = $(this).find('button:contains("AUTHORIZE & DEPLOY")');
             if(submitBtn.length === 0) submitBtn = $(this).find('button[type="submit"]');
             
-            // 🔥 HANYA tambah Box Peringatan RM jika modalnya adalah modal "Register Plan Baru"
             if (submitBtn.length > 0 && $(this).attr('id') === 'modalAddPlan' && $(this).find('.rmValidationMsg').length === 0) {
                 submitBtn.parent().prepend('<div class="rmValidationMsg w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>');
             }
@@ -638,8 +564,7 @@
             
             if (totalPcs === 0) {
                 msgBox.html('<span class="text-muted font-weight-bold"><i class="fas fa-info-circle"></i> Input target qty untuk cek ketersediaan material.</span>');
-                submitBtn.prop('disabled', true);
-                return;
+                submitBtn.prop('disabled', true); return;
             }
             
             if (requiredSheet > currentRmStock) {
@@ -686,10 +611,7 @@
         
         $('input[name="s1_plan_reg"], input[name="s1_plan_ot"], input[name="s2_plan_reg"], input[name="s2_plan_ot"]').on('input', function() {
             let modal = $(this).closest('.modal');
-            // 🔥 PASTIKAN JS INI HANYA MENGUNCI TOMBOL DI MODAL REGISTER (BUKAN MODAL EDIT!) 🔥
-            if (modal.attr('id') === 'modalAddPlan') {
-                validateRmStock(modal);
-            }
+            if (modal.attr('id') === 'modalAddPlan') validateRmStock(modal);
         });
     });
 </script>
