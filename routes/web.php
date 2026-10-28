@@ -188,6 +188,11 @@ Route::get('/wos-delivery/print', [App\Http\Controllers\DeliveryController::clas
 Route::get('planning/mps/small', [PPICController::class, 'mpsSmallIndex'])->name('ppic.mps.small');
 Route::put('/planning/mps/update-wos/{id}', [PPICController::class, 'updateWos'])->name('ppic.wos.update');
 Route::put('/planning/mps/update-wos/{id}', [PPICController::class, 'updateWos'])->name('ppic.wos.update');
+// Rute untuk Print WOS Small Press
+Route::get('/planning/mps/print-wos-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosSmall']);
+
+// Rute untuk Print BPRM / Serah Terima Small Press
+Route::get('/planning/mps/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall']);
 
 
     // RM Adjustments
