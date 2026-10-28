@@ -564,7 +564,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 4. UPDATE & REVISI WOS STAMPING 🔥 (SUPER AMAN: BISA LINTAS HARI) 🔥
+     * 4. UPDATE & REVISI WOS STAMPING
      */
     public function updateWos(Request $request, $id)
     {
@@ -586,7 +586,6 @@ class PPICController extends Controller
             $sampleBatch = $existingBatches->first();
             $suffix = '';
             
-            // Siapkan Base WOS Default jika tabel batch kosong
             $baseNoProdS1 = 'WOS-S1-REV-' . date('YmdHis');
             $baseNoProdS2 = 'WOS-S2-REV-' . date('YmdHis', strtotime('+1 sec'));
 
@@ -602,7 +601,6 @@ class PPICController extends Controller
             }
             $is_separating_sub = ($suffix === '-S');
 
-            // 🔥 Ekstrak & Hitung Jumlah Revisi dari Keterangan Sebelumnya 🔥
             $revCount = 1;
             if ($sampleBatch && preg_match('/\(R(\d+)\)/', $sampleBatch->keterangan, $matches)) {
                 $revCount = (int)$matches[1] + 1;
@@ -617,7 +615,6 @@ class PPICController extends Controller
             $new_target_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
             $new_total = $new_target_s1 + $new_target_s2;
 
-            // KUNCI: Pertahankan tanggal asli plan agar tidak hilang dari layar operator saat ganti hari
             $logTimestamp = date('Y-m-d H:i:s', strtotime($plan->plan_date . ' ' . date('H:i:s')));
             $cleanPart = trim($plan->part_no);
 
@@ -643,7 +640,7 @@ class PPICController extends Controller
             }
             $firstStock = $availableStocks->first();
 
-            // 1. LOGIKA JIKA REVISI JADI 0 (BATALKAN WOS)
+            // 1. REVISI JADI 0
             if ($new_total <= 0) {
                 if (!$is_separating_sub) {
                     $batchNumbers = $existingBatches->pluck('no_produksi')->toArray();
@@ -695,7 +692,7 @@ class PPICController extends Controller
                 return redirect()->back()->with('success', "✅ Jadwal Berhasil Dibatalkan (Target 0). Seluruh lembar material dikembalikan ke Gudang RM!");
             }
 
-            // 2. LOGIKA JIKA TARGET BERUBAH (BUKAN 0)
+            // 2. REVISI BERUBAH JUMLAH
             if (!$is_separating_sub) {
                 if (!$firstStock) throw new \Exception("Database Material untuk part [{$plan->part_no}] tidak terdeteksi!");
 
@@ -742,7 +739,6 @@ class PPICController extends Controller
                 $cavity = 1; $rm_stock_id = 0; $selisih_lembar = 0;
             }
 
-            // Update Master Plan
             DB::table('production_plans')->where('id', $id)->update([
                 's1_plan_reg'  => $request->s1_plan_reg ?? 0, 's1_plan_ot'   => $request->s1_plan_ot ?? 0,
                 's2_plan_reg'  => $request->s2_plan_reg ?? 0, 's2_plan_ot'   => $request->s2_plan_ot ?? 0,
@@ -756,7 +752,6 @@ class PPICController extends Controller
             $mesin = DB::table('line')->where('kode_Line', $request->line_code ?? $plan->line_code)->first();
             $mesin_id = $mesin ? $mesin->id : ($sampleBatch ? $sampleBatch->mesin_id : null);
 
-            // 🔥 UPDATE BATCH TANPA MENGHAPUS (Mencegah RM Logs yatim piatu & bug beda hari) 🔥
             $bS1 = $existingBatches->where('shift', 'Pagi')->first();
             if ($new_target_s1 > 0) {
                 if ($bS1) {
@@ -853,7 +848,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 5B. PRINT WOS BUNDLE (BIG & SMALL)
+     * 5B. PRINT WOS BUNDLE
      */
     public function printWosBundle($date)
     {
@@ -888,14 +883,11 @@ class PPICController extends Controller
     }
 
     /**
-     * 6. PRINT SURAT SERAH TERIMA MATERIAL (BPRM)
+     * 6. PRINT SURAT SERAH TERIMA MATERIAL (BPRM) - BIG PRESS
      */
     public function printSerahTerima($date, $shift, $line_code)
     {
-        $planIds = DB::table('production_plans')
-            ->where('plan_date', $date)
-            ->where('line_code', $line_code)
-            ->pluck('id');
+        $planIds = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->pluck('id');
 
         $batchesRaw = DB::table('produksi_batches')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
@@ -905,53 +897,59 @@ class PPICController extends Controller
             ->orderBy('produksi_batches.id', 'asc')
             ->get();
 
-        if ($batchesRaw->isEmpty()) {
-            return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
-        }
+        if ($batchesRaw->isEmpty()) return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin ini.');
 
         $allBatches = collect();
 
         foreach ($batchesRaw as $batch) {
-            $isPair = strpos($batch->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($batch->no_produksi, '-M');
             $subPartNo = null;
             $subPartName = null;
 
-            if ($isPair) {
-                if (strpos($batch->keterangan, 'PAIR_MAIN:') === 0) {
-                    $subPartNo = str_replace('PAIR_MAIN:', '', $batch->keterangan);
-                } else {
-                    $timePrefix = substr($batch->no_produksi, 0, strrpos($batch->no_produksi, '-'));
-                    $subBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
-                    $subPartNo = $subBatch ? $subBatch->material_code : null;
-                }
-                if ($subPartNo) {
+            if (str_ends_with($batch->no_produksi, '-M')) {
+                $timePrefix = substr($batch->no_produksi, 0, strrpos($batch->no_produksi, '-'));
+                $subBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
+                if ($subBatch) {
+                    $subPartNo = $subBatch->material_code;
                     $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
                 }
+            } elseif (strpos($batch->keterangan, 'PAIR_MAIN:') === 0) {
+                $subPartNo = str_replace('PAIR_MAIN:', '', $batch->keterangan);
+                $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
             }
 
             $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
             $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
 
+            // ✨ LOGIC BARU: GROUP BY COIL AGAR REVISI TIDAK MENJADIKAN BARIS DOBEL ✨
             $coilsUsed = DB::table('rm_production_logs')
                 ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
                 ->where('rm_production_logs.no_produksi', $batch->no_produksi)
                 ->select(
-                    'rm_production_logs.pcs_used',
                     'rm_production_logs.rm_stock_id',
                     'rm_stocks.coil_id',
                     'rm_stocks.spec',
                     'rm_stocks.size',
                     'rm_stocks.material_name',
                     'rm_stocks.customer as stock_cust',
-                    'rm_stocks.no_surat_jalan as stock_sj'
+                    'rm_stocks.no_surat_jalan as stock_sj',
+                    DB::raw('SUM(rm_production_logs.pcs_used) as total_used')
                 )
-                ->orderBy('rm_production_logs.id', 'asc')
+                ->groupBy(
+                    'rm_production_logs.rm_stock_id',
+                    'rm_stocks.coil_id',
+                    'rm_stocks.spec',
+                    'rm_stocks.size',
+                    'rm_stocks.material_name',
+                    'rm_stocks.customer',
+                    'rm_stocks.no_surat_jalan'
+                )
+                ->orderBy('rm_stocks.id', 'asc')
                 ->get();
 
             if ($coilsUsed->isNotEmpty()) {
                 foreach ($coilsUsed as $c) {
                     $item = clone $batch;
-                    $item->qty_ambil_pcs = $c->pcs_used;
+                    $item->qty_ambil_pcs = $c->total_used; // Menggunakan SUM yang sudah ditotal
                     $item->coil_id = $c->coil_id;
                     $item->spec = $c->spec;
                     $item->size = $c->size;
@@ -963,14 +961,9 @@ class PPICController extends Controller
                     if (!empty($c->stock_sj) && $c->stock_sj !== '-') {
                         $item->no_surat_jalan = $c->stock_sj;
                     } else {
-                        $incomingSj = DB::table('rm_incoming_logs')
-                            ->where('rm_stock_id', $c->rm_stock_id)
-                            ->where('source', 'supplier')
-                            ->orderBy('id', 'desc')
-                            ->value('no_produksi');
+                        $incomingSj = DB::table('rm_incoming_logs')->where('rm_stock_id', $c->rm_stock_id)->where('source', 'supplier')->orderBy('id', 'desc')->value('no_produksi');
                         $item->no_surat_jalan = $incomingSj ?? '-';
                     }
-
                     $allBatches->push($item);
                 }
             } else {
@@ -1342,46 +1335,55 @@ class PPICController extends Controller
         $allBatches = collect();
 
         foreach ($batchesRaw as $batch) {
-            $isPair = strpos($batch->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($batch->no_produksi, '-M');
             $subPartNo = null;
             $subPartName = null;
 
-            if ($isPair) {
-                if (strpos($batch->keterangan, 'PAIR_MAIN:') === 0) {
-                    $subPartNo = str_replace('PAIR_MAIN:', '', $batch->keterangan);
-                } else {
-                    $timePrefix = substr($batch->no_produksi, 0, strrpos($batch->no_produksi, '-'));
-                    $subBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
-                    $subPartNo = $subBatch ? $subBatch->material_code : null;
-                }
-                if ($subPartNo) {
+            if (str_ends_with($batch->no_produksi, '-M')) {
+                $timePrefix = substr($batch->no_produksi, 0, strrpos($batch->no_produksi, '-'));
+                $subBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
+                if ($subBatch) {
+                    $subPartNo = $subBatch->material_code;
                     $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
                 }
+            } elseif (strpos($batch->keterangan, 'PAIR_MAIN:') === 0) {
+                $subPartNo = str_replace('PAIR_MAIN:', '', $batch->keterangan);
+                $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
             }
 
+            // ✨ Menggabungkan Nama Part Utama / Part Pasangan dengan rapi
             $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
             $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
 
+            // ✨ LOGIC BARU: GROUP BY COIL AGAR REVISI TIDAK MENJADIKAN BARIS DOBEL ✨
             $coilsUsed = DB::table('rm_production_logs')
                 ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
                 ->where('rm_production_logs.no_produksi', $batch->no_produksi)
                 ->select(
-                    'rm_production_logs.pcs_used',
                     'rm_production_logs.rm_stock_id',
                     'rm_stocks.coil_id',
                     'rm_stocks.spec',
                     'rm_stocks.size',
                     'rm_stocks.material_name',
                     'rm_stocks.customer as stock_cust',
-                    'rm_stocks.no_surat_jalan as stock_sj'
+                    'rm_stocks.no_surat_jalan as stock_sj',
+                    DB::raw('SUM(rm_production_logs.pcs_used) as total_used')
                 )
-                ->orderBy('rm_production_logs.id', 'asc')
+                ->groupBy(
+                    'rm_production_logs.rm_stock_id',
+                    'rm_stocks.coil_id',
+                    'rm_stocks.spec',
+                    'rm_stocks.size',
+                    'rm_stocks.material_name',
+                    'rm_stocks.customer',
+                    'rm_stocks.no_surat_jalan'
+                )
+                ->orderBy('rm_stocks.id', 'asc')
                 ->get();
 
             if ($coilsUsed->isNotEmpty()) {
                 foreach ($coilsUsed as $c) {
                     $item = clone $batch;
-                    $item->qty_ambil_pcs = $c->pcs_used;
+                    $item->qty_ambil_pcs = $c->total_used; // Menggunakan SUM yang sudah ditotal
                     $item->coil_id = $c->coil_id;
                     $item->spec = $c->spec;
                     $item->size = $c->size;
@@ -1400,7 +1402,6 @@ class PPICController extends Controller
                             ->value('no_produksi');
                         $item->no_surat_jalan = $incomingSj ?? '-';
                     }
-
                     $allBatches->push($item);
                 }
             } else {
