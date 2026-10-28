@@ -24,6 +24,10 @@
     .footer-summary { background: var(--p-success) !important; color: white !important; font-family: 'Orbitron'; font-weight: 800; }
     .footer-summary td { border: none !important; padding: 20px !important; }
     .anim-up { animation: fadeInUp 0.5s ease-out; }
+    
+    /* Revisi Badge */
+    .rev-badge { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; margin-left: 8px; }
+
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
@@ -155,10 +159,19 @@
                                         $balanceIcon = 'fa-check-circle';
                                         $balanceText = '0';
                                     }
+
+                                    // ✨ FITUR DETEKSI JUMLAH REVISI ✨
+                                    $revLabel = '';
+                                    if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
+                                        $revLabel = "<span class='rev-badge shadow-sm'><i class='fas fa-info-circle mr-1'></i>REV-{$matches[1]}</span>";
+                                    }
                                 @endphp
                                 <tr>
                                     <td class="text-muted">{{ $index + 1 }}</td>
-                                    <td class="text-left pl-4 part-cell">{{ $p->part_no }} <br> <small class="text-muted">{{ $p->customer_code }}</small></td>
+                                    <td class="text-left pl-4 part-cell">
+                                        {{ $p->part_no }} {!! $revLabel !!}
+                                        <br> <small class="text-muted">{{ $p->customer_code }}</small>
+                                    </td>
                                     <td><span class="badge badge-light border">{{ $p->manpower }}P</span></td>
                                     <td>{{ $p->process_qty }}</td>
                                     <td class="font-weight-bold">{{ number_format($p->total_target) }}</td>
@@ -189,7 +202,7 @@
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h6>
+                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sync Material</h6>
                                                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
                                             <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
@@ -232,7 +245,7 @@
                                                 </div>
                                                 <div class="modal-footer bg-white border-0 p-3">
                                                     <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC MATERIAL</button>
+                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -261,10 +274,19 @@
                                         $balanceStatus = 'balance-success';
                                         $balanceIcon = 'fa-check-circle';$balanceText = '0';
                                     }
+
+                                    // ✨ FITUR DETEKSI JUMLAH REVISI ✨
+                                    $revLabel = '';
+                                    if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
+                                        $revLabel = "<span class='rev-badge shadow-sm'><i class='fas fa-info-circle mr-1'></i>REV-{$matches[1]}</span>";
+                                    }
                                 @endphp
                                 <tr>
                                     <td class="text-muted">{{ $index + 1 }}</td>
-                                    <td class="text-left pl-4 part-cell">{{ $p->part_no }} <br> <small class="text-muted">{{ $p->customer_code }}</small></td>
+                                    <td class="text-left pl-4 part-cell">
+                                        {{ $p->part_no }} {!! $revLabel !!}
+                                        <br> <small class="text-muted">{{ $p->customer_code }}</small>
+                                    </td>
                                     <td><span class="badge badge-light border">{{ $p->manpower }}P</span></td>
                                     <td>{{ $p->process_qty }}</td>
                                     <td class="font-weight-bold">{{ number_format($p->total_target) }}</td>
@@ -295,7 +317,7 @@
                                     <div class="modal-dialog modal-dialog-centered" role="document">
                                         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
                                             <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h6>
+                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sync Material</h6>
                                                 <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
                                             </div>
                                             <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
@@ -338,7 +360,7 @@
                                                 </div>
                                                 <div class="modal-footer bg-white border-0 p-3">
                                                     <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC MATERIAL</button>
+                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -349,7 +371,7 @@
                         @endif
 
                     @empty
-                    <tr><td colspan="11" class="py-5 text-center text-muted font-weight-bold h5">-- BELUM ADA JADWAL PRODUKSI HARI INI --</td></tr>
+                    <tr><td colspan="11" class="py-5 text-center text-muted font-weight-bold h5">-- BELUM ADA JADWAL PRODUKSI --</td></tr>
                     @endforelse
                 </tbody>
                 @if ($groupedPlans->count() > 0)
@@ -426,8 +448,6 @@
 
                         <div class="col-md-4 pl-4">
                             <h6 class="font-weight-bold text-success mb-3">03. QUANTITY_PLANNING</h6>
-
-                            {{-- ✨ FITUR SEPARATING PART DROPDOWN --}}
                             <div class="mb-3 p-2 rounded" style="background-color: #f0fdf4; border: 1px dashed #10b981;">
                                 <label class="small font-weight-bold text-success"><i class="fas fa-link mr-1"></i> Separating Part (Opsional)</label>
                                 <select name="part_no_separator" id="select_part_separator" class="form-control input-industrial border-success" style="font-size: 11px;">
@@ -439,8 +459,8 @@
                             </div>
 
                             <div class="shift-toggle-pill mb-3 w-100">
-                                <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="border:none; border-radius:50px; padding:10px; background:#4361ee; color:white;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
-                                <button type="button" id="m_btn_s2" class="shift-btn w-50" style="border:none; border-radius:50px; padding:10px; background:none; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
+                                <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="border:none; background:#4361ee; color:white;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
+                                <button type="button" id="m_btn_s2" class="shift-btn w-50" style="border:none; background:none; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
                                 <input type="hidden" name="active_shift_input" id="m_active_shift" value="1">
                             </div>
                             <div class="bg-light p-3 rounded-lg border">
@@ -474,6 +494,7 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     function modalShiftSwitch(s) {
         const isS1 = s === 1;
@@ -510,7 +531,6 @@
         
         const label = document.getElementById('live_load_label');
         label.innerHTML = `<span class="text-primary">S1: ${hoursS1.toFixed(1)}H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: ${hoursS2.toFixed(1)}H</span>`;
-        
         label.parentElement.className = (hoursS1 > 12 || hoursS2 > 12) ? "alert alert-danger border-0 rounded-lg text-center mt-3 py-3 shadow-sm" : "alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm";
     }
 
@@ -539,39 +559,33 @@
         if(type === 'BIG') { 
             capInput.value = 320; 
             if (activeShift == 1) {
-                document.getElementById('s1_reg').value = 2400; 
-                document.getElementById('s2_reg').value = 0; 
+                document.getElementById('s1_reg').value = 2400; document.getElementById('s2_reg').value = 0; 
             } else {
-                document.getElementById('s1_reg').value = 0; 
-                document.getElementById('s2_reg').value = 2400; 
+                document.getElementById('s1_reg').value = 0; document.getElementById('s2_reg').value = 2400; 
             }
         } else { 
             capInput.value = 500; 
             if (activeShift == 1) {
-                document.getElementById('s1_reg').value = 4000; 
-                document.getElementById('s2_reg').value = 0;
+                document.getElementById('s1_reg').value = 4000; document.getElementById('s2_reg').value = 0;
             } else {
-                document.getElementById('s1_reg').value = 0; 
-                document.getElementById('s2_reg').value = 4000;
+                document.getElementById('s1_reg').value = 0; document.getElementById('s2_reg').value = 4000;
             }
         }
         calculateLiveHours();
     });
-</script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function() { // 1. Tambahkan kotak notifikasi ke SETIAP modal agar tidak tumpang tindih$('.modal').each(function() {
+
+    $(document).ready(function() { 
+        $('.modal').each(function() {
             let submitBtn = $(this).find('button:contains("AUTHORIZE & DEPLOY")');
             if(submitBtn.length === 0) submitBtn = $(this).find('button[type="submit"]');
             
-            if (submitBtn.length > 0 && $(this).find('.rmValidationMsg').length === 0) {
+            // 🔥 HANYA tambah Box Peringatan RM jika modalnya adalah modal "Register Plan Baru"
+            if (submitBtn.length > 0 && $(this).attr('id') === 'modalAddPlan' && $(this).find('.rmValidationMsg').length === 0) {
                 submitBtn.parent().prepend('<div class="rmValidationMsg w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>');
             }
         });
         
-        // 2. Fungsi inti kalkulasi Real-Time yang di-SCOPE khusus ke Modal yang sedang aktif
         function validateRmStock(modal) {
-            // Mengambil input hanya dari dalam modal yang sedang dibuka
             let s1_reg = parseInt(modal.find('input[name="s1_plan_reg"]').val()) || 0;
             let s1_ot = parseInt(modal.find('input[name="s1_plan_ot"]').val()) || 0;
             let s2_reg = parseInt(modal.find('input[name="s2_plan_reg"]').val()) || 0;
@@ -612,11 +626,10 @@
             }
         }
         
-        // 3. Auto-Trigger saat nama Part dipilih di Dropdown
         $('select[name="part_no"]').on('change', function() {
-            let modal = $(this).closest('.modal'); // Fokus ke modal saat ini
+            let modal = $(this).closest('.modal'); 
             let partNo = $(this).val();
-            if (!partNo) return;
+            if (!partNo || modal.attr('id') !== 'modalAddPlan') return; 
             
             let submitBtn = modal.find('button:contains("AUTHORIZE & DEPLOY")');
             if(submitBtn.length === 0) submitBtn = modal.find('button[type="submit"]');
@@ -627,7 +640,6 @@
             
             $.get('/planning/ppic/check-rm-stock/' + encodeURIComponent(partNo), function(res) {
                 if (res.status === 'success') {
-                    // Simpan data RM ke dalam memori modal itu sendiri
                     modal.data('rm-stock', res.total_stock);
                     modal.data('cavity', res.cavity);
                     validateRmStock(modal);
@@ -637,10 +649,13 @@
             });
         });
         
-        // 4. Auto-Trigger saat angka mulai diketik
         $('input[name="s1_plan_reg"], input[name="s1_plan_ot"], input[name="s2_plan_reg"], input[name="s2_plan_ot"]').on('input', function() {
-            let modal = $(this).closest('.modal'); // Fokus ke modal saat ini
-            validateRmStock(modal);
-        });;
+            let modal = $(this).closest('.modal');
+            // 🔥 PASTIKAN JS INI HANYA MENGUNCI TOMBOL DI MODAL REGISTER (BUKAN MODAL EDIT!) 🔥
+            if (modal.attr('id') === 'modalAddPlan') {
+                validateRmStock(modal);
+            }
+        });
+    });
 </script>
 @endsection
