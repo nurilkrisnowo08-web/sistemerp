@@ -200,8 +200,8 @@
                 </td>
                 
                 <td class="title-area" style="width: 40%;">
-                    <h1>BUKTI PENYERAHAN MATERIAL </h1>
-                    <h2>(BPRM - STAMPING SMALL PRESS )</h2>
+                    <h1>BUKTI PENYERAHAN MATERIAL</h1>
+                    <h2>(BPRM - BIG PRESS)</h2>
                 </td>
                 
                 <td class="meta-box-area" style="width: 30%;">
