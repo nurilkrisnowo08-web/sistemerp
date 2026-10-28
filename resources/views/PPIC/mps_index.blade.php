@@ -78,7 +78,7 @@
         <div class="machine-switcher mx-xl-auto my-3 my-xl-0">
             <a href="#" class="btn active"><i class="fas fa-industry mr-2"></i>BIG PRESS</a>
             {{-- Sesuaikan URL di bawah ini dengan route/link Small Press milikmu --}}
-            <a href="{{ url('/ppic/mps/small') }}" class="btn"><i class="fas fa-cogs mr-2"></i>SMALL PRESS</a>
+            <a href="{{ url('/ppic/mps/small_mps') }}" class="btn"><i class="fas fa-cogs mr-2"></i>SMALL PRESS</a>
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
