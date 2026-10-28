@@ -60,11 +60,8 @@
     @php
         // Kumpulkan Nomor WOS untuk Header
         $allWos = collect();
-        foreach($batchesS1 as $b) { if($b->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $b->no_produksi)); }
-        foreach($batchesS2 as $b) { if($b->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $b->no_produksi)); }
-        $uniqueWos = $allWos->unique()->values();
-        
-        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : '-';
+        foreach($batchesS1 as $b) { if($b->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '',$b->no_produksi)); }
+        foreach($batchesS2 as$b) { if($b->no_produksi != '-')$allWos->push(preg_replace('/-REV-.*/', '', $b->no_produksi)); }$uniqueWos = $allWos->unique()->values();$displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : '-';
         if($uniqueWos->count() > 1) {
             $displayWos .= ' (+'.($uniqueWos->count() - 1).')';
         }
@@ -117,142 +114,12 @@
         <thead>
             <tr>
                 <th rowspan="2" style="width: 2%;">NO</th>
-                <th rowspan="2" style="width: 4%;">CUSTOMER</th>
-                <th rowspan="2" style="width: 14%;">PART NUMBER</th>
-                <th rowspan="2" style="width: 17%;">PART NAME</th>
+                <th rowspan="2" style="width: 5%;">CUSTOMER</th>
+                <th rowspan="2" style="width: 15%;">PART NUMBER</th>
+                <th rowspan="2" style="width: 18%;">PART NAME</th>
                 <th rowspan="2" style="width: 8%;">NO. SJ</th>
-                <th rowspan="2" style="width: 10%;">NO. COIL</th>
-                <th rowspan="2" style="width: 7%;">SPEC</th>
-                <th rowspan="2" style="width: 8%;">SIZE</th>
+                <th rowspan="2" style="width: 8%;">NO. COIL</th>
+                <th rowspan="2" style="width: 6%;">SPEC</th>
+                <th rowspan="2" style="width: 10%;">SIZE</th>
                 <th colspan="2">QUANTITY</th>
                 <th colspan="5">ACTUAL PRODUCTION</th>
-                <th rowspan="2" style="width: 10%;">REMARK</th>
-            </tr>
-            <tr>
-                <th style="width: 4%;">SHEET</th>
-                <th style="width: 4%;">PCS</th>
-                <th style="width: 4%;">OK</th>
-                <th style="width: 4%;">WIP</th>
-                <th style="width: 4%;">NG</th>
-                <th style="width: 4%;">REPAIR</th>
-                <th style="width: 4%;">RETURN</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- ================= SHIFT 1 ================= -->
-            <tr>
-                <td colspan="19" class="shift-header">SHIFT I</td>
-            </tr>
-            @php $no = 1; @endphp
-            @forelse($batchesS1 as $b)
-                @php
-                    // Cek Status Revisi atau Auto-Deploy
-                    $revLabel = '';
-                    if (isset($b->keterangan) && preg_match('/\(R(\d+)\)/', $b->keterangan, $matches)) {
-                        $revLabel = "DIREVISI PPIC (R{$matches[1]})";
-                    } elseif (strpos($b->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($b->no_produksi, '-M')) {
-                        $revLabel = "AUTO-DEPLOY (MERGED)";
-                    } else {
-                        $revLabel = "AUTO-DEPLOY FROM PPIC";
-                    }
-                @endphp
-                <tr>
-                    <td>{{ $no++ }}</td>
-                    <td class="text-bold">{{ $b->customer_code }}</td>
-                    <td class="text-left text-bold" style="font-family: monospace;">{{ strtoupper($b->display_part_no) }}</td>
-                    <td class="text-left" style="font-size: 8px;">{{ strtoupper($b->display_part_name) }}</td>
-                    <td class="text-bold" style="font-size: 8px;">{{ strtoupper($b->no_surat_jalan) }}</td>
-                    <td class="text-bold">{{ strtoupper($b->coil_id) }}</td>
-                    <td>{{ $b->spec }}</td>
-                    <td>{{ $b->size }}</td>
-                    <td class="text-bold">{{ number_format($b->qty_ambil_pcs) }}</td>
-                    <td class="text-bold">{{ number_format($b->qty_ambil_pcs) }}</td>
-                    
-                    <!-- Area Isian Manual Aktual Tulis Tangan -->
-                    <td></td><td></td><td></td><td></td><td></td>
-                    
-                    <td class="text-left" style="font-size: 7px;">{{ $revLabel }}</td>
-                </tr>
-            @empty
-                <tr><td colspan="19" style="padding: 10px; font-style: italic;">Tidak ada request material untuk Shift 1.</td></tr>
-            @endforelse
-            
-            <!-- Baris Kosong Cadangan S1 -->
-            @for ($i = 0; $i < 2; $i++)
-                <tr>
-                    <td>{{ $no++ }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td>
-                </tr>
-            @endfor
-
-            <!-- ================= SHIFT 2 ================= -->
-            <tr>
-                <td colspan="19" class="shift-header">SHIFT II</td>
-            </tr>
-            @php $no = 1; @endphp
-            @foreach($batchesS2 as $b)
-                @php
-                    $revLabel = '';
-                    if (isset($b->keterangan) && preg_match('/\(R(\d+)\)/', $b->keterangan, $matches)) {
-                        $revLabel = "DIREVISI PPIC (R{$matches[1]})";
-                    } elseif (strpos($b->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($b->no_produksi, '-M')) {
-                        $revLabel = "AUTO-DEPLOY (MERGED)";
-                    } else {
-                        $revLabel = "AUTO-DEPLOY FROM PPIC";
-                    }
-                @endphp
-                <tr>
-                    <td>{{ $no++ }}</td>
-                    <td class="text-bold">{{ $b->customer_code }}</td>
-                    <td class="text-left text-bold" style="font-family: monospace;">{{ strtoupper($b->display_part_no) }}</td>
-                    <td class="text-left" style="font-size: 8px;">{{ strtoupper($b->display_part_name) }}</td>
-                    <td class="text-bold" style="font-size: 8px;">{{ strtoupper($b->no_surat_jalan) }}</td>
-                    <td class="text-bold">{{ strtoupper($b->coil_id) }}</td>
-                    <td>{{ $b->spec }}</td>
-                    <td>{{ $b->size }}</td>
-                    <td class="text-bold">{{ number_format($b->qty_ambil_pcs) }}</td>
-                    <td class="text-bold">{{ number_format($b->qty_ambil_pcs) }}</td>
-                    
-                    <!-- Area Isian Manual Aktual Tulis Tangan -->
-                    <td></td><td></td><td></td><td></td><td></td>
-                    
-                    <td class="text-left" style="font-size: 7px;">{{ $revLabel }}</td>
-                </tr>
-            @endforeach
-            
-            <!-- Baris Kosong Cadangan S2 -->
-            @for ($i = 0; $i < 3; $i++)
-                <tr>
-                    <td>{{ $no++ }}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
-                    <td></td><td></td><td></td><td></td><td></td><td></td>
-                </tr>
-            @endfor
-        </tbody>
-    </table>
-
-    <div class="footer-grid">
-        <div class="note-box">
-            Note :
-        </div>
-
-        <table class="sig-table">
-            <tr>
-                <th>DISETUJUI</th>
-                <th>DIPERIKSA</th>
-                <th>DIBUAT</th>
-                <th>DITERIMA</th>
-            </tr>
-            <tr>
-                <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
-                <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
-                <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
-                <td>( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )</td>
-            </tr>
-        </table>
-    </div>
-
-    <script>
-        window.onload = function() { setTimeout(function() { window.print(); }, 500); }
-    </script>
-</body>
-</html>
