@@ -74,10 +74,10 @@
             <p class="text-muted small font-weight-bold uppercase mb-0 mt-1"><i class="far fa-calendar-alt mr-2"></i> Operational Date: <span class="text-dark">{{ date('d F Y', strtotime($date)) }}</span></p>
         </div>
 
-       {{-- 🔥 TOMBOL SWITCHER BIG / SMALL PRESS 🔥 --}}
+      {{-- 🔥 TOMBOL SWITCHER BIG / SMALL PRESS 🔥 --}}
         <div class="machine-switcher mx-xl-auto my-3 my-xl-0">
-            <a href="{{ url('planning/mps') }}" class="btn active"><i class="fas fa-industry mr-2"></i>BIG PRESS</a>
-            <a href="{{ url('planning/mps/small') }}" class="btn"><i class="fas fa-cogs mr-2"></i>SMALL PRESS</a>
+            <a href="{{ url('planning/mps') }}" class="btn"><i class="fas fa-industry mr-2"></i>BIG PRESS</a>
+            <a href="{{ url('planning/mps/small') }}" class="btn active"><i class="fas fa-cogs mr-2"></i>SMALL PRESS</a>
         </div>
 
         <div class="d-flex align-items-center gap-2 flex-wrap">
