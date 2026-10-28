@@ -1,646 +1,303 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
     :root {
-        --p-primary: #4361ee; --p-dark: #0f172a; --p-success: #10b981; 
-        --p-danger: #ef4444; --p-warning: #f59e0b; --p-slate: #64748b;
+        --c-blue: #3b82f6; --c-green: #10b981; --c-yellow: #f59e0b; 
+        --c-red: #ef4444; --c-dark: #0f172a; --bg-main: #f1f5f9;
+        --border-color: #e2e8f0;
     }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: var(--p-dark); }
-    .glass-card { background: white; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
-    .hud-title { font-family: 'Orbitron'; font-weight: 800; letter-spacing: -1px; }
-    .shift-toggle-pill { background: #f1f5f9; padding: 5px; border-radius: 50px; display: inline-flex; gap: 5px; }
-    .shift-btn { border: none; padding: 8px 25px; border-radius: 50px; font-weight: 800; font-size: 11px; transition: 0.3s; color: var(--p-slate); text-decoration: none !important; }
-    .table-mps { width: 100%; border-collapse: separate; border-spacing: 0; }
-    .table-mps thead th { background: #f1f5f9; padding: 15px 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--p-slate); border-bottom: 2px solid #e2e8f0; }
-    .table-mps tbody td { padding: 15px 10px; border-bottom: 1px solid #f1f5f9; font-size: 12px; font-weight: 600; vertical-align: middle; }
-    .part-cell { border-left: 4px solid var(--p-primary); background: #f8faff; font-weight: 800 !important; color: var(--p-primary); }
-    .badge-time { background: #fff9c4; color: #856404; font-family: 'JetBrains Mono'; padding: 5px 10px; border-radius: 6px; font-weight: 700; border: 1px solid #ffe58f; }
-    .badge-balance { padding: 6px 12px; border-radius: 8px; font-family: 'Orbitron'; font-size: 11px; }
-    .balance-danger { background: rgba(239, 68, 68, 0.1); color: var(--p-danger); border: 1px solid var(--p-danger); }
-    .balance-success { background: rgba(16, 185, 129, 0.1); color: var(--p-success); border: 1px solid var(--p-success); }
-    .footer-summary { background: var(--p-success) !important; color: white !important; font-family: 'Orbitron'; font-weight: 800; }
-    .footer-summary td { border: none !important; padding: 20px !important; }
-    .anim-up { animation: fadeInUp 0.5s ease-out; }
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--bg-main); color: #1e293b; }
+    
+    .sys-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 32px; color: var(--c-dark); letter-spacing: -1px; text-transform: uppercase; }
+    .sys-title span { color: var(--c-blue); }
+    .sys-subtitle { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+    /* Top Cards */
+    .stat-card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid var(--border-color); border-bottom: 5px solid; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; height: 100%; transition: 0.3s; }
+    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+    .stat-card h5 { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 10px; letter-spacing: 1px; }
+    .stat-card h2 { font-family: 'Orbitron'; font-size: 38px; font-weight: 900; margin: 0; }
+    
+    .card-target { border-bottom-color: var(--c-blue); } .card-target h2 { color: var(--c-blue); }
+    .card-actual { border-bottom-color: var(--c-green); } .card-actual h2 { color: var(--c-green); }
+    .card-dandory { border-bottom-color: var(--c-yellow); } .card-dandory h2 { color: var(--c-yellow); }
+    .card-scope { border-bottom-color: var(--c-dark); background: var(--c-dark); border: none; }
+    .card-scope h5 { color: #94a3b8; } .card-scope h2 { color: #fff; font-size: 26px; margin-top: 10px; }
+
+    /* Line Group Box */
+    .line-box { background: #fff; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid var(--border-color); margin-bottom: 30px; overflow: hidden; }
+    .line-header { background: #f8fafc; padding: 20px 25px; border-bottom: 2px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+    .line-header h3 { font-family: 'Orbitron'; font-weight: 900; font-size: 20px; color: var(--c-dark); margin: 0; letter-spacing: 1px; }
+    
+    /* Table Styling */
+    .mps-table { width: 100%; font-size: 11px; border-collapse: collapse; }
+    .mps-table th { background: #f1f5f9; color: #475569; font-weight: 800; text-transform: uppercase; padding: 15px 12px; text-align: center; border-bottom: 1px solid var(--border-color); border-right: 1px solid #e2e8f0; }
+    .mps-table td { padding: 15px 12px; font-weight: 600; text-align: center; vertical-align: middle; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9; }
+    .mps-table .text-left { text-align: left; }
+    
+    .shift-row { background: #f8fafc; text-align: left !important; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 10px 15px !important; color: #475569; border-bottom: 2px solid var(--border-color); }
+    .shift-row span { color: var(--c-blue); }
+    .shift-row.s2 span { color: var(--c-dark); }
+    
+    .t-mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 12px; }
+    .rev-badge { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 6px; font-size: 9px; font-weight: 900; margin-left: 8px; }
+
+    .btn-cyber { border-radius: 12px; font-weight: 800; padding: 10px 20px; font-size: 12px; letter-spacing: 0.5px; transition: 0.3s; }
+    .btn-cyber:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    
+    .input-date-custom { background: #f8fafc; border: 2px solid #cbd5e1; font-weight: 800; font-family: 'JetBrains Mono'; color: var(--c-dark); padding: 8px 15px; border-radius: 12px; outline: none; transition: 0.3s; }
+    .input-date-custom:focus { border-color: var(--c-blue); background: #fff; }
 </style>
 
-<div class="container-fluid mt-4 mb-5 anim-up">
-    @if(session('success'))
-        <div class="alert alert-success border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #10b981 !important; background-color: #d1fae5;">
-            <h6 class="font-weight-bold mb-1"><i class="fas fa-check-circle mr-2 text-success"></i>Sukses!</h6>
-            <p class="mb-0 text-dark" style="font-size: 13px;">{{ session('success') }}</p>
-        </div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #ef4444 !important; background-color: #fee2e2;">
-            <h6 class="font-weight-bold mb-1 text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>Peringatan Sistem!</h6>
-            <p class="mb-0 text-dark" style="font-size: 13px;">{{ session('error') }}</p>
-        </div>
-    @endif
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid py-4 px-4 animate__animated animate__fadeIn">
+    
+    {{-- HEADER --}}
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
         <div>
-            <h2 class="hud-title m-0">WOS_TERMINAL <span class="text-primary"> Smart MRP</span></h2>
-            <p class="text-muted small font-weight-bold uppercase mb-0"><i class="fas fa-calendar-alt mr-2"></i> Operational Date: {{ date('d F Y', strtotime($date)) }}</p>
+            <div class="sys-title">WOS_TERMINAL <span>Smart MRP</span></div>
+            <div class="sys-subtitle"><i class="far fa-calendar-alt mr-1"></i> Operational Date: {{ date('d F Y', strtotime($date)) }}</div>
         </div>
-        <div class="d-flex align-items-center gap-3">
-            <form action="" method="GET" class="d-flex mr-2">
-                <input type="date" name="date" class="form-control rounded-pill border-dark px-4 shadow-sm font-weight-bold" value="{{ $date }}" onchange="this.form.submit()">
+        <div class="d-flex gap-2 mt-3 mt-md-0 align-items-center">
+            <form action="" method="GET" class="mr-3">
+                <input type="date" name="date" class="input-date-custom" value="{{ $date }}" onchange="this.form.submit()">
             </form>
-            <a href="{{ route('ppic.wos.print_bundle', ['date' => $date]) }}" class="btn btn-dark shadow font-weight-bold rounded-pill px-4 mr-2" target="_blank">
-                <i class="fas fa-print mr-2 text-warning"></i> PRINT ALL WOS
+            <a href="{{ route('ppic.printWosBundle', ['date' => $date]) }}" target="_blank" class="btn btn-dark btn-cyber shadow-sm mr-2">
+                <i class="fas fa-print mr-2"></i> PRINT ALL WOS
             </a>
-            <button class="btn btn-primary shadow font-weight-bold rounded-pill px-4" data-toggle="modal" data-target="#modalAddPlan">
+            <button class="btn btn-primary btn-cyber shadow-sm" data-toggle="modal" data-target="#modalRegister">
                 <i class="fas fa-plus-circle mr-2"></i> REGISTER PLAN
             </button>
         </div>
     </div>
 
+    {{-- 4 KARTU INDIKATOR (TOP CARDS) --}}
     <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="glass-card p-3 text-center border-left border-primary" style="border-left-width: 5px !important;">
-                <small class="text-muted font-weight-bold uppercase">Total Target (Qty)</small>
-                <h3 class="font-weight-bold mb-0 text-primary">{{ number_format($totalPlanQty) }}</h3>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="stat-card card-target">
+                <h5>Total Target (Qty)</h5>
+                <h2>{{ number_format($totalPlanQty) }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="stat-card card-actual">
+                <h5>Total Actual (Qty)</h5>
+                <h2>{{ number_format($groupedPlans->flatten()->sum('total_actual')) }}</h2>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="stat-card card-dandory">
+                <h5>Switch Loss (Dandory)</h5>
+                <h2>{{ number_format($totalDandory) }}<span style="font-size: 20px;">m</span></h2>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="glass-card p-3 text-center border-left border-info" style="border-left-width: 5px !important;">
-                <small class="text-muted font-weight-bold uppercase">Workload (Hours)</small>
-                <h4 class="font-weight-bold mb-0 mt-1 text-info">
-                    <span class="text-primary">S1: {{ round($totalWorkingHoursS1, 1) }}h</span>
-                    <span class="text-muted mx-1">|</span>
-                    <span class="text-dark">S2: {{ round($totalWorkingHoursS2, 1) }}h</span>
-                </h4>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="glass-card p-3 text-center border-left border-warning" style="border-left-width: 5px !important;">
-                <small class="text-muted font-weight-bold uppercase">Switch Loss (Dandory)</small>
-                <h3 class="font-weight-bold mb-0 text-warning">{{ $totalDandory }}m</h3>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="glass-card p-3 text-center bg-dark text-white">
-                <small class="text-info font-weight-bold uppercase">Scope Data</small>
-                <h3 class="font-weight-bold mb-0">FULL DAY (S1+S2)</h3>
+            <div class="stat-card card-scope">
+                <h5>Scope Data</h5>
+                <h2>FULL DAY (S1+S2)</h2>
             </div>
         </div>
     </div>
 
-    <div class="glass-card overflow-hidden">
-        <div class="table-responsive">
-            <table class="table-mps text-center">
-                <thead>
-                    <tr>
-                        <th style="width: 50px;">#</th>
-                        <th class="text-left pl-4">Identification</th>
-                        <th>MP</th>
-                        <th>Proc</th>
-                        <th>Target</th>
-                        <th>Actual</th>
-                        <th>Balance</th>
-                        <th class="text-primary">Start</th>
-                        <th class="text-primary">Finish</th>
-                        <th>Dandory</th>
-                        <th width="100">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($groupedPlans as $lineCode => $plansInLine)
-                        <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; border-top: 5px solid #1e293b;">
-                            <td colspan="9" class="text-left pl-4">
-                                <h5 class="font-weight-bold text-dark m-0 uppercase tracking-widest py-2">
-                                    <i class="fas fa-industry mr-2 text-primary"></i> M/C LINE : {{ $lineCode }}
-                                </h5>
-                            </td>
-                            <td colspan="2" class="text-right pr-4">
-                                <div class="btn-group shadow-sm">
-                                    <a href="{{ route('ppic.wos.print', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" class="btn btn-primary btn-sm font-weight-bold" target="_blank" title="Print Kertas WOS (Full Day)">
-                                        <i class="fas fa-print mr-1"></i> WOS
-                                    </a>
-                                    <a href="{{ route('ppic.material.print', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" class="btn btn-success btn-sm font-weight-bold" target="_blank" title="Print Serah Terima Material (Full Day)">
-                                        <i class="fas fa-box-open mr-1"></i> MATERIAL
-                                    </a>
-                                </div>
-                            </td>
+    {{-- DAFTAR MPS PER MESIN --}}
+    @forelse($groupedPlans as $lineCode => $plans)
+        <div class="line-box animate__animated animate__fadeInUp">
+            <div class="line-header">
+                <h3><i class="fas fa-industry text-primary mr-2"></i> M/C LINE : {{ strtoupper($line_code ?? $lineCode) }}</h3>
+                <div>
+                    <a href="{{ route('ppic.printWos', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" target="_blank" class="btn btn-outline-primary btn-sm btn-cyber bg-white">
+                        <i class="fas fa-print mr-1"></i> WOS
+                    </a>
+                    <a href="{{ route('ppic.printSerahTerima', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" target="_blank" class="btn btn-success btn-sm btn-cyber ml-2">
+                        <i class="fas fa-box-open mr-1"></i> MATERIAL
+                    </a>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="mps-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width: 3%;">#</th>
+                            <th rowspan="2" class="text-left" style="width: 25%;">IDENTIFICATION</th>
+                            <th rowspan="2" style="width: 5%;">MP</th>
+                            <th rowspan="2" style="width: 5%;">PROC</th>
+                            <th rowspan="2" style="width: 6%;">CAP/HOUR</th>
+                            <th rowspan="2" style="width: 8%;">TARGET</th>
+                            <th colspan="2">PLAN WAKTU</th>
+                            <th rowspan="2" style="width: 8%;">DANDORY</th>
+                            <th rowspan="2" style="width: 8%;">AKSI</th>
                         </tr>
-
-                        @php 
-                            $s1Plans = $plansInLine->where('display_shift', 'S1')->values();
-                            $s2Plans = $plansInLine->where('display_shift', 'S2')->values();
-                        @endphp
-
+                        <tr>
+                            <th style="width: 8%;">START</th>
+                            <th style="width: 8%;">FINISH</th>
+                        </tr>
+                    </thead>
+                    <tbody>
                         {{-- SHIFT 1 --}}
-                        @if ($s1Plans->count() > 0)
-                            <tr style="background-color: #e2e8f0;">
-                                <td colspan="11" class="text-left pl-4 font-weight-bold" style="font-size: 11px; color: #334155;">
-                                    <i class="fas fa-sun text-warning mr-1"></i> SHIFT 1 (DAY OPS)
-                                </td>
+                        @php $s1Plans = $plans->where('display_shift', 'S1'); $no = 1; @endphp
+                        @if($s1Plans->count() > 0)
+                            <tr>
+                                <td colspan="10" class="shift-row"><i class="fas fa-sun text-warning mr-1"></i> SHIFT 1 (DAY OPS)</td>
                             </tr>
-                            @foreach ($s1Plans as $index => $p)
-                                @php 
-                                    if ($p->balance < 0) {
-                                        $balanceStatus = 'balance-success';
-                                        $balanceIcon = 'fa-plus-circle';
-                                        $balanceText = '+' . number_format(abs($p->balance));
-                                    } elseif ($p->balance > 0) {
-                                        $balanceStatus = 'balance-danger';
-                                        $balanceIcon = 'fa-exclamation-triangle';
-                                        $balanceText = number_format($p->balance);
-                                    } else {
-                                        $balanceStatus = 'balance-success';
-                                        $balanceIcon = 'fa-check-circle';
-                                        $balanceText = '0';
+                            @foreach($s1Plans as $p)
+                                @php
+                                    // Deteksi Status Revisi
+                                    $revLabel = '';
+                                    if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
+                                        $revLabel = "<span class='rev-badge'>REV-{$matches[1]}</span>";
                                     }
                                 @endphp
                                 <tr>
-                                    <td class="text-muted">{{ $index + 1 }}</td>
-                                    <td class="text-left pl-4 part-cell">{{ $p->part_no }} <br> <small class="text-muted">{{ $p->customer_code }}</small></td>
-                                    <td><span class="badge badge-light border">{{ $p->manpower }}P</span></td>
-                                    <td>{{ $p->process_qty }}</td>
-                                    <td class="font-weight-bold">{{ number_format($p->total_target) }}</td>
-                                    <td class="text-primary font-weight-bold">{{ number_format($p->total_actual) }}</td>
-                                    <td>
-                                        <span class="badge-balance {{ $balanceStatus }}">
-                                            <i class="fas {{ $balanceIcon }} mr-1"></i> {{ $balanceText }}
-                                        </span>
+                                    <td>{{ $no++ }}</td>
+                                    <td class="text-left">
+                                        <div class="text-primary font-weight-bold" style="font-size: 13px;">
+                                            {{ $p->part_no }} {!! $revLabel !!}
+                                        </div>
+                                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{{ $p->customer_code }}</div>
                                     </td>
-                                    <td><span class="badge-time">{{ $p->start_time }}</span></td>
-                                    <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
-                                    <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
+                                    <td>{{ $p->manpower ?? 1 }}P</td>
+                                    <td>{{ $p->process_qty ?? 1 }}</td>
+                                    <td class="t-mono text-muted">{{ $p->cap_per_hour }}</td>
+                                    <td class="t-mono" style="color: var(--c-blue); font-size: 14px;">{{ number_format($p->total_target) }}</td>
+                                    
+                                    <td class="t-mono bg-light" style="color: #475569;">{{ $p->start_time }}</td>
+                                    <td class="t-mono bg-light" style="color: #475569;">{{ $p->ahir_time }}</td>
+                                    
+                                    <td class="t-mono text-muted">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        @if($p->total_actual > 0)
-                                            <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold" disabled title="Terkunci: Produksi Sudah Mulai (Aktual > 0)">
-                                                <i class="fas fa-lock"></i>
-                                            </button>
-                                        @else
-                                            <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" title="Revisi Target">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        @endif
+                                        <button class="btn btn-warning btn-sm shadow-sm" style="border-radius: 8px;" data-toggle="modal" data-target="#modalRevise{{ $p->id }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                     </td>
                                 </tr>
-
-                                @if($p->total_actual == 0)
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{ $p->display_shift }}" tabindex="-1" role="dialog">
-                                    <div class="modal-dialog modal-dialog-centered" role="document">
-                                        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                                            <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h6>
-                                                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                                            </div>
-                                            <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
-                                                @csrf @method('PUT')
-                                                <div class="modal-body p-4 bg-light">
-                                                    <div class="alert alert-warning border-0 shadow-sm small font-weight-bold">
-                                                        <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
-                                                    </div>
-                                                    <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
-                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{ $p->line_code }}</label>
-                                                        <div class="row">
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold">S1 Reguler</label>
-                                                                <input type="number" name="s1_plan_reg" class="form-control" value="{{ $p->s1_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold text-warning">S1 OT</label>
-                                                                <input type="number" name="s1_plan_ot" class="form-control" value="{{ $p->s1_plan_ot }}" min="0">
-                                                            </div>
-                                                            <div class="col-6 mt-3">
-                                                                <label class="small font-weight-bold">S2 Reguler</label>
-                                                                <input type="number" name="s2_plan_reg" class="form-control" value="{{ $p->s2_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6 mt-3">
-                                                                <label class="small font-weight-bold text-warning">S2 OT</label>
-                                                                <input type="number" name="s2_plan_ot" class="form-control" value="{{ $p->s2_plan_ot }}" min="0">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold">Cap/Hour</label>
-                                                            <input type="number" name="cap_per_hour" class="form-control" value="{{ $p->cap_per_hour }}">
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold">Dandory (m)</label>
-                                                            <input type="number" name="dandory_time" class="form-control" value="{{ $p->dandory_time ?? 15 }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer bg-white border-0 p-3">
-                                                    <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC MATERIAL</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
                             @endforeach
                         @endif
 
                         {{-- SHIFT 2 --}}
-                        @if ($s2Plans->count() > 0)
-                            <tr style="background-color: #cbd5e1;">
-                                <td colspan="11" class="text-left pl-4 font-weight-bold" style="font-size: 11px; color: #1e293b;">
-                                    <i class="fas fa-moon text-dark mr-1"></i> SHIFT 2 (NIGHT OPS)
-                                </td>
+                        @php $s2Plans = $plans->where('display_shift', 'S2'); $no = 1; @endphp
+                        @if($s2Plans->count() > 0)
+                            <tr>
+                                <td colspan="10" class="shift-row s2"><i class="fas fa-moon text-secondary mr-1"></i> SHIFT 2 (NIGHT OPS)</td>
                             </tr>
-                            @foreach ($s2Plans as $index =>$p)
-                                @php 
-                                    if ($p->balance < 0) {
-                                        $balanceStatus = 'balance-success';$balanceIcon = 'fa-plus-circle';
-                                        $balanceText = '+' . number_format(abs($p->balance));
-                                    } elseif ($p->balance > 0) {
-                                        $balanceStatus = 'balance-danger';$balanceIcon = 'fa-exclamation-triangle';
-                                        $balanceText = number_format($p->balance);
-                                    } else {
-                                        $balanceStatus = 'balance-success';
-                                        $balanceIcon = 'fa-check-circle';$balanceText = '0';
+                            @foreach($s2Plans as $p)
+                                @php
+                                    $revLabel = '';
+                                    if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
+                                        $revLabel = "<span class='rev-badge'>REV-{$matches[1]}</span>";
                                     }
                                 @endphp
                                 <tr>
-                                    <td class="text-muted">{{ $index + 1 }}</td>
-                                    <td class="text-left pl-4 part-cell">{{ $p->part_no }} <br> <small class="text-muted">{{ $p->customer_code }}</small></td>
-                                    <td><span class="badge badge-light border">{{ $p->manpower }}P</span></td>
-                                    <td>{{ $p->process_qty }}</td>
-                                    <td class="font-weight-bold">{{ number_format($p->total_target) }}</td>
-                                    <td class="text-primary font-weight-bold">{{ number_format($p->total_actual) }}</td>
-                                    <td>
-                                        <span class="badge-balance {{ $balanceStatus }}">
-                                            <i class="fas {{ $balanceIcon }} mr-1"></i> {{ $balanceText }}
-                                        </span>
+                                    <td>{{ $no++ }}</td>
+                                    <td class="text-left">
+                                        <div class="text-primary font-weight-bold" style="font-size: 13px;">
+                                            {{ $p->part_no }} {!! $revLabel !!}
+                                        </div>
+                                        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">{{ $p->customer_code }}</div>
                                     </td>
-                                    <td><span class="badge-time">{{ $p->start_time }}</span></td>
-                                    <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
-                                    <td class="text-muted small">{{ $p->dandory_time ?? 15 }}m</td>
+                                    <td>{{ $p->manpower ?? 1 }}P</td>
+                                    <td>{{ $p->process_qty ?? 1 }}</td>
+                                    <td class="t-mono text-muted">{{ $p->cap_per_hour }}</td>
+                                    <td class="t-mono" style="color: var(--c-blue); font-size: 14px;">{{ number_format($p->total_target) }}</td>
+                                    
+                                    <td class="t-mono bg-light" style="color: #475569;">{{ $p->start_time }}</td>
+                                    <td class="t-mono bg-light" style="color: #475569;">{{ $p->ahir_time }}</td>
+                                    
+                                    <td class="t-mono text-muted">{{ $p->dandory_time ?? 15 }}m</td>
                                     <td>
-                                        @if($p->total_actual > 0)
-                                            <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold" disabled title="Terkunci: Produksi Sudah Mulai (Aktual > 0)">
-                                                <i class="fas fa-lock"></i>
-                                            </button>
-                                        @else
-                                            <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" title="Revisi Target">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        @endif
+                                        <button class="btn btn-warning btn-sm shadow-sm" style="border-radius: 8px;" data-toggle="modal" data-target="#modalRevise{{ $p->id }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                     </td>
                                 </tr>
-
-                                @if($p->total_actual == 0)
-                                <div class="modal fade" id="modalEditPlan-{{ $p->id }}-{{$p->display_shift }}" tabindex="-1" role="dialog">
-                                    <div class="modal-dialog modal-dialog-centered" role="document">
-                                        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                                            <div class="modal-header bg-warning text-dark p-4 border-0">
-                                                <h6 class="modal-title font-weight-bold uppercase"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h6>
-                                                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                                            </div>
-                                            <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
-                                                @csrf @method('PUT')
-                                                <div class="modal-body p-4 bg-light">
-                                                    <div class="alert alert-warning border-0 shadow-sm small font-weight-bold">
-                                                        <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
-                                                    </div>
-                                                    <div class="form-group bg-white p-3 rounded shadow-sm border mb-3">
-                                                        <label class="font-weight-bold text-primary mb-2 d-block border-bottom pb-2">{{ $p->part_no }} - {{$p->line_code }}</label>
-                                                        <div class="row">
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold">S1 Reguler</label>
-                                                                <input type="number" name="s1_plan_reg" class="form-control" value="{{ $p->s1_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="small font-weight-bold text-warning">S1 OT</label>
-                                                                <input type="number" name="s1_plan_ot" class="form-control" value="{{ $p->s1_plan_ot }}" min="0">
-                                                            </div>
-                                                            <div class="col-6 mt-3">
-                                                                <label class="small font-weight-bold">S2 Reguler</label>
-                                                                <input type="number" name="s2_plan_reg" class="form-control" value="{{ $p->s2_plan_reg }}" min="0">
-                                                            </div>
-                                                            <div class="col-6 mt-3">
-                                                                <label class="small font-weight-bold text-warning">S2 OT</label>
-                                                                <input type="number" name="s2_plan_ot" class="form-control" value="{{ $p->s2_plan_ot }}" min="0">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div class="row">
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold">Cap/Hour</label>
-                                                            <input type="number" name="cap_per_hour" class="form-control" value="{{ $p->cap_per_hour }}">
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="small font-weight-bold">Dandory (m)</label>
-                                                            <input type="number" name="dandory_time" class="form-control" value="{{ $p->dandory_time ?? 15 }}">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer bg-white border-0 p-3">
-                                                    <button type="button" class="btn btn-light font-weight-bold border" data-dismiss="modal">BATAL</button>
-                                                    <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark"><i class="fas fa-save mr-1"></i> UPDATE & SYNC MATERIAL</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                @endif
                             @endforeach
                         @endif
-
-                    @empty
-                    <tr><td colspan="11" class="py-5 text-center text-muted font-weight-bold h5">-- BELUM ADA JADWAL PRODUKSI HARI INI --</td></tr>
-                    @endforelse
-                </tbody>
-                @if ($groupedPlans->count() > 0)
-                <tfoot>
-                    <tr class="footer-summary">
-                        <td colspan="4" class="text-right uppercase">Daily Summary Total :</td>
-                        <td>{{ number_format($totalPlanQty) }}</td>
-                        <td colspan="2" class="text-right">Total Est. Work :</td>
-                        <td colspan="2" class="text-center">S1: {{ round($totalWorkingHoursS1, 1) }}H | S2: {{ round($totalWorkingHoursS2, 1) }}H</td>
-                        <td colspan="2"></td>
-                    </tr>
-                </tfoot>
-                @endif
-            </table>
-        </div>
-    </div>
-</div>
-
-{{-- MODAL REGISTER --}}
-<div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
-        <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
-            <div class="modal-header bg-primary text-white p-4">
-                <h5 class="modal-title hud-title"><i class="fas fa-plus-circle mr-2"></i> REGISTER_PLAN_SYSTEM</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                        
+                        {{-- FOOTER SUMMARY PER MESIN --}}
+                        <tr style="background: #0f172a; color: #fff;">
+                            <td colspan="10" class="text-center font-weight-bold" style="padding: 12px; font-size: 11px; letter-spacing: 1px;">
+                                DAILY SUMMARY TARGET LINE {{ $lineCode }} = <span style="color: #38bdf8;">{{ number_format($plans->sum('total_target')) }} PCS</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <form action="{{ route('ppic.mps.store') }}" method="POST">
-                @csrf
-                <div class="modal-body p-5">
-                    <div class="row">
-                        <div class="col-md-4 border-right">
-                            <h6 class="font-weight-bold text-primary mb-3">01. PRODUCT_IDENTITY</h6>
-                            <div class="form-group">
-                                <label class="small font-weight-bold">Select Line</label>
-                                <select name="line_code" id="select_line" class="form-control input-industrial" required>
-                                    <option value="">-- CHOOSE LINE --</option>
-                                    @foreach ($availableLines as $l)
-                                        <option value="{{ $l->kode_Line }}" data-type="{{ str_contains(strtoupper($l->nama_Line), 'BIG') ? 'BIG' : 'SMALL' }}">{{ $l->kode_Line }} - {{$l->nama_Line }}</option>
-                                    @endforeach
-                                </select>
+        </div>
+        
+        {{-- MODAL REVISI PER PLAN --}}
+        @foreach($plans->unique('id') as $p)
+        <div class="modal fade" id="modalRevise{{ $p->id }}" tabindex="-1" data-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                    <div class="modal-header bg-warning p-4 border-0">
+                        <h5 class="modal-title font-weight-black text-dark"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sinkronisasi Material</h5>
+                        <button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button>
+                    </div>
+                    <form action="{{ route('mps.updateWos', $p->id) }}" method="POST">
+                        @csrf @method('PUT')
+                        <div class="modal-body p-4 p-md-5">
+                            <div class="alert alert-warning border-0" style="background: #fef3c7; color: #b45309; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                                <i class="fas fa-exclamation-circle mr-1"></i> Ubah target menjadi 0 jika ingin membatalkan WOS. Selisih material akan dikalkulasi otomatis ke gudang.
                             </div>
-                            <div class="form-group">
-                                <label class="small font-weight-bold">Customer</label>
-                                <select name="customer_code" id="select_customer" class="form-control input-industrial" required>
-                                    <option value="">-- CHOOSE --</option>
-                                    @foreach ($availableCustomers as $c)
-                                        <option value="{{ $c->code }}">{{ $c->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="small font-weight-bold">Part Identification</label>
-                                <select name="part_no" id="select_part" class="form-control input-industrial" required>
-                                    <option value="">-- SELECT CUSTOMER FIRST --</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 border-right px-4">
-                            <h6 class="font-weight-bold text-info mb-3">02. PERFORMANCE_METRICS</h6>
-                            <div class="row">
-                                <div class="col-6"><label class="small font-weight-bold">Manpower</label><input type="number" name="manpower" class="form-control input-industrial mb-3" value="8"></div>
-                                <div class="col-6"><label class="small font-weight-bold">Process</label><input type="number" name="process_qty" class="form-control input-industrial mb-3" value="4"></div>
-                                <div class="col-6"><label class="small font-weight-bold text-primary">Cap/Hour</label><input type="number" name="cap_per_hour" id="input_cap" class="form-control input-industrial mb-3 font-weight-bold border-primary" value="320" required></div>
-                                <div class="col-6"><label class="small font-weight-bold text-warning">Dandory (m)</label><input type="number" name="dandory_time" id="input_dandory" class="form-control input-industrial mb-3" value="15"></div>
-                            </div>
-                            <div class="alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm">
-                                <small class="d-block font-weight-bold uppercase mb-1">Calculated M/C Load</small>
-                                <h5 class="hud-title mb-0" id="live_load_label">
-                                    <span class="text-primary">S1: 0.0H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: 0.0H</span>
-                                </h5>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4 pl-4">
-                            <h6 class="font-weight-bold text-success mb-3">03. QUANTITY_PLANNING</h6>
-
-                            {{-- ✨ FITUR SEPARATING PART DROPDOWN --}}
-                            <div class="mb-3 p-2 rounded" style="background-color: #f0fdf4; border: 1px dashed #10b981;">
-                                <label class="small font-weight-bold text-success"><i class="fas fa-link mr-1"></i> Separating Part (Opsional)</label>
-                                <select name="part_no_separator" id="select_part_separator" class="form-control input-industrial border-success" style="font-size: 11px;">
-                                    <option value="">-- TANPA SEPARATING (TIDAK ADA PASANGAN) --</option>
-                                </select>
-                                <div class="text-muted mt-1" style="font-size: 9.5px; line-height: 1.3;">
-                                    Jika part Kiri/Kanan (cth: 35 & 36), pilih pasangannya. WOS akan otomatis <b>DIGABUNG JADI 1 BARIS</b> dan stok RM cuma dipotong sekali.
-                                </div>
-                            </div>
-
-                            <div class="shift-toggle-pill mb-3 w-100">
-                                <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="border:none; border-radius:50px; padding:10px; background:#4361ee; color:white;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
-                                <button type="button" id="m_btn_s2" class="shift-btn w-50" style="border:none; border-radius:50px; padding:10px; background:none; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
-                                <input type="hidden" name="active_shift_input" id="m_active_shift" value="1">
-                            </div>
-                            <div class="bg-light p-3 rounded-lg border">
-                                <div id="m_box_s1">
-                                    <label class="small font-weight-bold">S1 Reguler Plan</label>
-                                    <input type="number" name="s1_plan_reg" id="s1_reg" class="form-control input-industrial mb-2 calc-trigger" value="0">
-                                    <label class="small font-weight-bold text-warning">S1 Overtime Plan</label>
-                                    <input type="number" name="s1_plan_ot" id="s1_ot" class="form-control input-industrial calc-trigger" value="0">
-                                </div>
-                                <div id="m_box_s2" style="display: none;">
-                                    <label class="small font-weight-bold">S2 Reguler Plan</label>
-                                    <input type="number" name="s2_plan_reg" id="s2_reg" class="form-control input-industrial mb-2 calc-trigger" value="0">
-                                    <label class="small font-weight-bold text-warning">S2 Overtime Plan</label>
-                                    <input type="number" name="s2_plan_ot" id="s2_ot" class="form-control input-industrial calc-trigger" value="0">
+                            
+                            <div class="border rounded-lg p-4 mb-4">
+                                <h6 class="text-primary font-weight-bold mb-3">{{ $p->part_no }} — {{ $p->line_code }}</h6>
+                                <div class="row">
+                                    <div class="col-md-6 form-group">
+                                        <label class="small font-weight-bold text-dark">S1 Reguler</label>
+                                        <input type="number" name="s1_plan_reg" class="form-control text-center font-weight-bold" style="border-radius: 10px;" value="{{ $p->s1_plan_reg }}">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label class="small font-weight-bold text-warning">S1 OT</label>
+                                        <input type="number" name="s1_plan_ot" class="form-control text-center font-weight-bold" style="border-radius: 10px;" value="{{ $p->s1_plan_ot }}">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label class="small font-weight-bold text-dark">S2 Reguler</label>
+                                        <input type="number" name="s2_plan_reg" class="form-control text-center font-weight-bold" style="border-radius: 10px;" value="{{ $p->s2_plan_reg }}">
+                                    </div>
+                                    <div class="col-md-6 form-group">
+                                        <label class="small font-weight-bold text-warning">S2 OT</label>
+                                        <input type="number" name="s2_plan_ot" class="form-control text-center font-weight-bold" style="border-radius: 10px;" value="{{ $p->s2_plan_ot }}">
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div class="mt-3">
-                                <input type="hidden" name="plan_date" value="{{ $date }}">
-                                <textarea name="remark" class="form-control" rows="2" style="border-radius:12px;" placeholder="Optional remark..."></textarea>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label class="small font-weight-bold text-dark">Cap/Hour</label>
+                                    <input type="number" name="cap_per_hour" class="form-control text-center" style="border-radius: 10px;" value="{{ $p->cap_per_hour }}">
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label class="small font-weight-bold text-dark">Dandory (m)</label>
+                                    <input type="number" name="dandory_time" class="form-control text-center" style="border-radius: 10px;" value="{{ $p->dandory_time }}">
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        <div class="modal-footer border-0 bg-light p-4 justify-content-center">
+                            <button type="button" class="btn btn-outline-secondary btn-cyber bg-white" data-dismiss="modal">BATAL</button>
+                            <button type="submit" class="btn btn-warning btn-cyber"><i class="fas fa-save mr-2"></i> UPDATE & SYNC MATERIAL</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="modal-footer bg-light p-4">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-dismiss="modal">ABORT</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-5 font-weight-black shadow-lg">AUTHORIZE & DEPLOY</button>
-                </div>
-            </form>
+            </div>
         </div>
-    </div>
+        @endforeach
+
+    @empty
+        <div class="text-center py-5 bg-white rounded-2xl border border-dashed text-muted mt-4 shadow-sm">
+            <i class="fas fa-calendar-times fa-3x mb-3" style="color: #cbd5e1;"></i>
+            <h5 class="font-weight-bold text-dark">MPS Kosong</h5>
+            <p class="small">Tidak ada jadwal produksi Big Press yang terdaftar untuk tanggal ini.</p>
+        </div>
+    @endforelse
+
 </div>
 
-<script>
-    function modalShiftSwitch(s) {
-        const isS1 = s === 1;
-        document.getElementById('m_btn_s1').style.background = isS1 ? '#4361ee' : 'none';
-        document.getElementById('m_btn_s1').style.color = isS1 ? 'white' : '#64748b';
+{{-- MODAL REGISTER PLAN (Menggunakan struktur yang sama dengan sebelumnya) --}}
+@include('PPIC.modals.register_mps_modal') 
 
-        document.getElementById('m_btn_s2').style.background = !isS1 ? '#0f172a' : 'none';
-        document.getElementById('m_btn_s2').style.color = !isS1 ? 'white' : '#64748b';
-
-        document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
-        document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
-        document.getElementById('m_active_shift').value = s;
-
-        if (isS1) {
-            document.getElementById('s2_reg').value = 0;
-            document.getElementById('s2_ot').value = 0;
-        } else {
-            document.getElementById('s1_reg').value = 0;
-            document.getElementById('s1_ot').value = 0;
-        }
-
-        calculateLiveHours();
-    }
-
-    function calculateLiveHours() {
-        const cap = parseFloat(document.getElementById('input_cap').value) || 1;
-        const dandory = parseFloat(document.getElementById('input_dandory').value) || 0;
-        
-        const s1 = (parseFloat(document.getElementById('s1_reg').value) || 0) + (parseFloat(document.getElementById('s1_ot').value) || 0);
-        const s2 = (parseFloat(document.getElementById('s2_reg').value) || 0) + (parseFloat(document.getElementById('s2_ot').value) || 0);
-        
-        let hoursS1 = s1 > 0 ? (s1 / cap) + (dandory / 60) : 0;
-        let hoursS2 = s2 > 0 ? (s2 / cap) + (dandory / 60) : 0;
-        
-        const label = document.getElementById('live_load_label');
-        label.innerHTML = `<span class="text-primary">S1: ${hoursS1.toFixed(1)}H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: ${hoursS2.toFixed(1)}H</span>`;
-        
-        label.parentElement.className = (hoursS1 > 12 || hoursS2 > 12) ? "alert alert-danger border-0 rounded-lg text-center mt-3 py-3 shadow-sm" : "alert alert-info border-0 rounded-lg text-center mt-3 py-3 shadow-sm";
-    }
-
-    document.querySelectorAll('.calc-trigger, #input_cap, #input_dandory').forEach(i => i.addEventListener('input', calculateLiveHours));
-
-    document.getElementById('select_customer').addEventListener('change', function() {
-        fetch(`/get-parts-and-specs/${this.value}`).then(r => r.json()).then(data => {
-            let html = '<option value="">-- SELECT PART --</option>';
-            let htmlSep = '<option value="">-- TANPA SEPARATING (TIDAK ADA PASANGAN) --</option>';
-            
-            data.parts.forEach(p => {
-                html += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
-                htmlSep += `<option value="${p.part_no}">${p.part_no} - ${p.part_name}</option>`;
-            });
-            
-            document.getElementById('select_part').innerHTML = html;
-            document.getElementById('select_part_separator').innerHTML = htmlSep;
-        });
-    });
-
-    document.getElementById('select_line').addEventListener('change', function() {
-        let type = this.options[this.selectedIndex].getAttribute('data-type');
-        let capInput = document.getElementById('input_cap');
-        let activeShift = document.getElementById('m_active_shift').value;
-        
-        if(type === 'BIG') { 
-            capInput.value = 320; 
-            if (activeShift == 1) {
-                document.getElementById('s1_reg').value = 2400; 
-                document.getElementById('s2_reg').value = 0; 
-            } else {
-                document.getElementById('s1_reg').value = 0; 
-                document.getElementById('s2_reg').value = 2400; 
-            }
-        } else { 
-            capInput.value = 500; 
-            if (activeShift == 1) {
-                document.getElementById('s1_reg').value = 4000; 
-                document.getElementById('s2_reg').value = 0;
-            } else {
-                document.getElementById('s1_reg').value = 0; 
-                document.getElementById('s2_reg').value = 4000;
-            }
-        }
-        calculateLiveHours();
-    });
-</script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function() { // 1. Tambahkan kotak notifikasi ke SETIAP modal agar tidak tumpang tindih$('.modal').each(function() {
-            let submitBtn = $(this).find('button:contains("AUTHORIZE & DEPLOY")');
-            if(submitBtn.length === 0) submitBtn = $(this).find('button[type="submit"]');
-            
-            if (submitBtn.length > 0 && $(this).find('.rmValidationMsg').length === 0) {
-                submitBtn.parent().prepend('<div class="rmValidationMsg w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>');
-            }
-        });
-        
-        // 2. Fungsi inti kalkulasi Real-Time yang di-SCOPE khusus ke Modal yang sedang aktif
-        function validateRmStock(modal) {
-            // Mengambil input hanya dari dalam modal yang sedang dibuka
-            let s1_reg = parseInt(modal.find('input[name="s1_plan_reg"]').val()) || 0;
-            let s1_ot = parseInt(modal.find('input[name="s1_plan_ot"]').val()) || 0;
-            let s2_reg = parseInt(modal.find('input[name="s2_plan_reg"]').val()) || 0;
-            let s2_ot = parseInt(modal.find('input[name="s2_plan_ot"]').val()) || 0;
-            
-            let currentRmStock = modal.data('rm-stock') || 0;
-            let currentCavity = modal.data('cavity') || 1;
-            
-            let totalPcs = s1_reg + s1_ot + s2_reg + s2_ot;
-            let requiredSheet = Math.ceil(totalPcs / currentCavity);
-            
-            let submitBtn = modal.find('button:contains("AUTHORIZE & DEPLOY")');
-            if(submitBtn.length === 0) submitBtn = modal.find('button[type="submit"]');
-            let msgBox = modal.find('.rmValidationMsg');
-            
-            if (totalPcs === 0) {
-                msgBox.html('<span class="text-muted font-weight-bold"><i class="fas fa-info-circle"></i> Input target qty untuk cek ketersediaan material.</span>');
-                submitBtn.prop('disabled', true);
-                return;
-            }
-            
-            if (requiredSheet > currentRmStock) {
-                msgBox.html(`
-                    <div class="alert alert-danger p-2 m-0 border-0 shadow-sm animate__animated animate__headShake" style="border-radius:10px;">
-                        <b>❌ STOK RM TIDAK CUKUP!</b><br>
-                        Butuh: <b style="font-size:14px;">${requiredSheet}</b> Lembar | Tersedia: <b>${currentRmStock}</b> Lembar (Cav: ${currentCavity})
-                    </div>
-                `);
-                submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
-            } else {
-                msgBox.html(`
-                    <div class="alert alert-success p-2 m-0 border-0 shadow-sm" style="border-radius:10px; background-color: #d1fae5; color: #065f46;">
-                        <b>✅ STOK RM AMAN!</b><br>
-                        Butuh: <b>${requiredSheet}</b> Lembar | Tersedia: <b>${currentRmStock}</b> Lembar (Cav: ${currentCavity})
-                    </div>
-                `);
-                submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
-            }
-        }
-        
-        // 3. Auto-Trigger saat nama Part dipilih di Dropdown
-        $('select[name="part_no"]').on('change', function() {
-            let modal = $(this).closest('.modal'); // Fokus ke modal saat ini
-            let partNo = $(this).val();
-            if (!partNo) return;
-            
-            let submitBtn = modal.find('button:contains("AUTHORIZE & DEPLOY")');
-            if(submitBtn.length === 0) submitBtn = modal.find('button[type="submit"]');
-            let msgBox = modal.find('.rmValidationMsg');
-            
-            msgBox.html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek stok di Gudang RM...</span>');
-            submitBtn.prop('disabled', true);
-            
-            $.get('/planning/ppic/check-rm-stock/' + encodeURIComponent(partNo), function(res) {
-                if (res.status === 'success') {
-                    // Simpan data RM ke dalam memori modal itu sendiri
-                    modal.data('rm-stock', res.total_stock);
-                    modal.data('cavity', res.cavity);
-                    validateRmStock(modal);
-                }
-            }).fail(function() {
-                msgBox.html('<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Gagal terhubung ke database gudang.</span>');
-            });
-        });
-        
-        // 4. Auto-Trigger saat angka mulai diketik
-        $('input[name="s1_plan_reg"], input[name="s1_plan_ot"], input[name="s2_plan_reg"], input[name="s2_plan_ot"]').on('input', function() {
-            let modal = $(this).closest('.modal'); // Fokus ke modal saat ini
-            validateRmStock(modal);
-        });;
-</script>
 @endsection
