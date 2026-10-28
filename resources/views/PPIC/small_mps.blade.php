@@ -86,19 +86,20 @@
 
         <div class="d-flex align-items-center flex-wrap gap-2 mt-3 mt-md-0">
             <div class="oneui-segmented-wrap mr-3">
-                <a href="{{ route('ppic.mps.index') }}" class="oneui-segmented-btn">
+                <a href="{{ url('planning/mps') }}" class="oneui-segmented-btn">
                     <i class="fas fa-industry mr-1"></i> Big Press
                 </a>
-                <a href="{{ route('ppic.mps.small') }}" class="oneui-segmented-btn active">
+                <a href="{{ url('planning/mps/small') }}" class="oneui-segmented-btn active">
                     <i class="fas fa-cogs mr-1"></i> Small Press
                 </a>
             </div>
 
-            <form action="{{ route('ppic.mps.small') }}" method="GET" class="d-flex align-items-center mr-2">
+            <form action="{{ url('planning/mps/small') }}" method="GET" class="d-flex align-items-center mr-2">
                 <input type="date" name="date" value="{{ $date }}" class="form-control font-weight-bold border" onchange="this.form.submit()" style="border-radius: 9999px; font-size: 12px; padding: 6px 14px; height: auto;">
             </form>
 
-            <a href="{{ route('ppic.wos.print_bundle', ['date' => $date]) }}" target="_blank" class="btn-oneui btn-oneui-dark mr-2">
+            <!-- ✨ MENGGUNAKAN URL() AGAR TIDAK ERROR ROUTENOTFOUND ✨ -->
+            <a href="{{ url('/planning/mps/print-bundle/' . $date) }}" target="_blank" class="btn-oneui btn-oneui-dark mr-2">
                 <i class="fas fa-print"></i> Cetak Semua WOS
             </a>
 
@@ -146,10 +147,11 @@
                 <i class="fas fa-microchip text-primary"></i> LINE MESIN: <b style="font-family: 'Orbitron';">{{ strtoupper($lineCode) }}</b>
             </h6>
             <div>
-                <a href="{{ route('ppic.wos.print_small', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
+                <!-- ✨ MENGGUNAKAN URL() AGAR TIDAK ERROR ROUTENOTFOUND ✨ -->
+                <a href="{{ url('/planning/mps/print-wos-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
                     <i class="fas fa-file-alt"></i> WOS
                 </a>
-                <a href="{{ route('ppic.serahterima.print_small', ['date' => $date, 'shift' => 'ALL', 'line_code' => $lineCode]) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4;">
+                <a href="{{ url('/planning/mps/print-serahterima-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4;">
                     <i class="fas fa-pallet"></i> BPRM
                 </a>
             </div>
@@ -161,15 +163,15 @@
                     <tr>
                         <th width="4%" class="text-center">#</th>
                         <th width="22%" class="text-left pl-4">Part Identification</th>
-                        <th width="6%">MP</th>
-                        <th width="6%">Proc</th>
+                        <th width="6%" class="text-center">MP</th>
+                        <th width="6%" class="text-center">Proc</th>
                         <th width="10%" class="text-right">Target</th>
                         <th width="10%" class="text-right text-primary">Actual</th>
-                        <th width="10%">Balance</th>
-                        <th width="8%">Mulai</th>
-                        <th width="8%">Selesai</th>
-                        <th width="8%">Dandory</th>
-                        <th width="8%">Aksi</th>
+                        <th width="10%" class="text-center">Balance</th>
+                        <th width="8%" class="text-center">Mulai</th>
+                        <th width="8%" class="text-center">Selesai</th>
+                        <th width="8%" class="text-center">Dandory</th>
+                        <th width="10%" class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -185,12 +187,10 @@
                         </tr>
                         @foreach($plansS1 as $idx => $p)
                         @php
-                            // Status Badge
                             if ($p->balance < 0) { $balanceStatus = 'badge-pill-success'; $balanceIcon = 'fa-plus-circle'; $balanceText = '+' . number_format(abs($p->balance)); } 
                             elseif ($p->balance > 0) { $balanceStatus = 'badge-pill-danger'; $balanceIcon = 'fa-clock'; $balanceText = 'Sisa ' . number_format($p->balance); } 
                             else { $balanceStatus = 'badge-pill-success'; $balanceIcon = 'fa-check-circle'; $balanceText = 'Selesai'; }
 
-                            // Revisi Label
                             $revLabel = '';
                             if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                                 $revLabel = "<span class='rev-badge shadow-sm'><i class='fas fa-info-circle mr-1'></i>REV-{$matches[1]}</span>";
@@ -438,7 +438,8 @@
                         </div>
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
-                    <form action="{{ route('ppic.wos.update', $p->id) }}" method="POST">
+                    {{-- ✨ MENGGUNAKAN URL() UNTUK FORM UPDATE ✨ --}}
+                    <form action="{{ url('/planning/mps/update-wos/' . $p->id) }}" method="POST">
                         @csrf
                         @method('PUT')
                         <div class="modal-body p-4 bg-white">
