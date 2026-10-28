@@ -148,7 +148,7 @@
             </h6>
             <div>
                 <!-- ✨ MENGGUNAKAN URL() AGAR TIDAK ERROR ROUTENOTFOUND ✨ -->
-                <a href="{{ url('/planning/mps/print_wos_small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
+                <a href="{{ url('/planning/mps/print_wos-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
                     <i class="fas fa-file-alt"></i> WOS
                 </a>
                 <a href="{{ url('/planning/mps/print-serahterima-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4;">
