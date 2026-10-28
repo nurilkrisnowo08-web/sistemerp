@@ -21,8 +21,8 @@
         .header-container { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
         .logo-section { display: flex; align-items: center; width: 30%; }
         .logo-section img { height: 40px; margin-right: 10px; }
-        .company-info h2 { margin: 0; font-size: 13px; font-weight: bold; }
-        .company-info p { margin: 2px 0 0 0; font-size: 9px; }
+        .company-info h2 { margin: 0; font-size: 13px; font-weight: bold; text-transform: uppercase; }
+        .company-info p { margin: 2px 0 0 0; font-size: 9px; font-weight: bold; }
 
         .title-section { text-align: center; width: 40%; }
         .title-section h1 { margin: 0; font-size: 18px; font-weight: bold; text-decoration: underline; }
@@ -117,13 +117,13 @@
         <thead>
             <tr>
                 <th rowspan="2" style="width: 2%;">NO</th>
-                <th rowspan="2" style="width: 5%;">CUSTOMER</th>
-                <th rowspan="2" style="width: 15%;">PART NUMBER</th>
-                <th rowspan="2" style="width: 18%;">PART NAME</th>
+                <th rowspan="2" style="width: 4%;">CUSTOMER</th>
+                <th rowspan="2" style="width: 14%;">PART NUMBER</th>
+                <th rowspan="2" style="width: 17%;">PART NAME</th>
                 <th rowspan="2" style="width: 8%;">NO. SJ</th>
-                <th rowspan="2" style="width: 8%;">NO. COIL</th>
-                <th rowspan="2" style="width: 6%;">SPEC</th>
-                <th rowspan="2" style="width: 10%;">SIZE</th>
+                <th rowspan="2" style="width: 10%;">NO. COIL</th>
+                <th rowspan="2" style="width: 7%;">SPEC</th>
+                <th rowspan="2" style="width: 8%;">SIZE</th>
                 <th colspan="2">QUANTITY</th>
                 <th colspan="5">ACTUAL PRODUCTION</th>
                 <th rowspan="2" style="width: 10%;">REMARK</th>
@@ -146,12 +146,11 @@
             @php $no = 1; @endphp
             @forelse($batchesS1 as $b)
                 @php
-                    // Cek Status Revisi
+                    // Cek Status Revisi atau Auto-Deploy
                     $revLabel = '';
                     if (isset($b->keterangan) && preg_match('/\(R(\d+)\)/', $b->keterangan, $matches)) {
                         $revLabel = "DIREVISI PPIC (R{$matches[1]})";
                     } elseif (strpos($b->keterangan, 'PAIR_MAIN:') === 0 || str_ends_with($b->no_produksi, '-M')) {
-                        // Jika tidak direvisi tapi ini part gabungan
                         $revLabel = "AUTO-DEPLOY (MERGED)";
                     } else {
                         $revLabel = "AUTO-DEPLOY FROM PPIC";

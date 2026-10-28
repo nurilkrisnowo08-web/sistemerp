@@ -902,52 +902,39 @@ class PPICController extends Controller
             $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
             $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
 
-            // ✨ LOGIC BARU: GROUP BY COIL AGAR REVISI TIDAK MENJADIKAN BARIS DOBEL ✨
+            // ✨ LOGIC BARU: GROUP BY NO_PRODUKSI AGAR MUTLAK JADI 1 BARIS (GABUNG COIL JIKA LEBIH DARI 1) ✨
             $coilsUsed = DB::table('rm_production_logs')
                 ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
                 ->where('rm_production_logs.no_produksi', $batch->no_produksi)
                 ->select(
-                    'rm_production_logs.rm_stock_id',
-                    'rm_stocks.coil_id',
-                    'rm_stocks.spec',
-                    'rm_stocks.size',
-                    'rm_stocks.material_name',
-                    'rm_stocks.customer as stock_cust',
-                    'rm_stocks.no_surat_jalan as stock_sj',
+                    DB::raw('GROUP_CONCAT(DISTINCT rm_stocks.coil_id SEPARATOR ", ") as coil_id'),
+                    DB::raw('MAX(rm_stocks.spec) as spec'),
+                    DB::raw('MAX(rm_stocks.size) as size'),
+                    DB::raw('MAX(rm_stocks.material_name) as material_name'),
+                    DB::raw('MAX(rm_stocks.customer) as stock_cust'),
+                    DB::raw('GROUP_CONCAT(DISTINCT rm_stocks.no_surat_jalan SEPARATOR ", ") as stock_sj'),
                     DB::raw('SUM(rm_production_logs.pcs_used) as total_used')
                 )
-                ->groupBy(
-                    'rm_production_logs.rm_stock_id',
-                    'rm_stocks.coil_id',
-                    'rm_stocks.spec',
-                    'rm_stocks.size',
-                    'rm_stocks.material_name',
-                    'rm_stocks.customer',
-                    'rm_stocks.no_surat_jalan'
-                )
-                ->orderBy('rm_stocks.id', 'asc')
-                ->get();
+                ->groupBy('rm_production_logs.no_produksi')
+                ->first();
 
-            if ($coilsUsed->isNotEmpty()) {
-                foreach ($coilsUsed as $c) {
-                    $item = clone $batch;
-                    $item->qty_ambil_pcs = $c->total_used; // Menggunakan SUM yang sudah ditotal
-                    $item->coil_id = $c->coil_id;
-                    $item->spec = $c->spec;
-                    $item->size = $c->size;
-                    $item->material_name = $c->material_name;
-                    $item->customer_code = $batch->part_cust ?? $c->stock_cust ?? 'SAI';
-                    $item->display_part_no = $displayPartNo;
-                    $item->display_part_name = $displayPartName;
+            if ($coilsUsed && $coilsUsed->total_used > 0) {
+                $item = clone $batch;
+                $item->qty_ambil_pcs = $coilsUsed->total_used;
+                $item->coil_id = $coilsUsed->coil_id;
+                $item->spec = $coilsUsed->spec;
+                $item->size = $coilsUsed->size;
+                $item->material_name = $coilsUsed->material_name;
+                $item->customer_code = $batch->part_cust ?? $coilsUsed->stock_cust ?? 'SAI';
+                $item->display_part_no = $displayPartNo;
+                $item->display_part_name = $displayPartName;
 
-                    if (!empty($c->stock_sj) && $c->stock_sj !== '-') {
-                        $item->no_surat_jalan = $c->stock_sj;
-                    } else {
-                        $incomingSj = DB::table('rm_incoming_logs')->where('rm_stock_id', $c->rm_stock_id)->where('source', 'supplier')->orderBy('id', 'desc')->value('no_produksi');
-                        $item->no_surat_jalan = $incomingSj ?? '-';
-                    }
-                    $allBatches->push($item);
+                if (!empty($coilsUsed->stock_sj) && $coilsUsed->stock_sj !== '-') {
+                    $item->no_surat_jalan = $coilsUsed->stock_sj;
+                } else {
+                    $item->no_surat_jalan = '-';
                 }
+                $allBatches->push($item);
             } else {
                 $stockData = DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->first();
                 $item = clone $batch;
@@ -1336,56 +1323,39 @@ class PPICController extends Controller
             $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
             $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
 
-            // ✨ LOGIC BARU: GROUP BY COIL AGAR REVISI TIDAK MENJADIKAN BARIS DOBEL ✨
+            // ✨ LOGIC BARU: GROUP BY NO_PRODUKSI AGAR MUTLAK JADI 1 BARIS (GABUNG COIL JIKA LEBIH DARI 1) ✨
             $coilsUsed = DB::table('rm_production_logs')
                 ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
                 ->where('rm_production_logs.no_produksi', $batch->no_produksi)
                 ->select(
-                    'rm_production_logs.rm_stock_id',
-                    'rm_stocks.coil_id',
-                    'rm_stocks.spec',
-                    'rm_stocks.size',
-                    'rm_stocks.material_name',
-                    'rm_stocks.customer as stock_cust',
-                    'rm_stocks.no_surat_jalan as stock_sj',
+                    DB::raw('GROUP_CONCAT(DISTINCT rm_stocks.coil_id SEPARATOR ", ") as coil_id'),
+                    DB::raw('MAX(rm_stocks.spec) as spec'),
+                    DB::raw('MAX(rm_stocks.size) as size'),
+                    DB::raw('MAX(rm_stocks.material_name) as material_name'),
+                    DB::raw('MAX(rm_stocks.customer) as stock_cust'),
+                    DB::raw('GROUP_CONCAT(DISTINCT rm_stocks.no_surat_jalan SEPARATOR ", ") as stock_sj'),
                     DB::raw('SUM(rm_production_logs.pcs_used) as total_used')
                 )
-                ->groupBy(
-                    'rm_production_logs.rm_stock_id',
-                    'rm_stocks.coil_id',
-                    'rm_stocks.spec',
-                    'rm_stocks.size',
-                    'rm_stocks.material_name',
-                    'rm_stocks.customer',
-                    'rm_stocks.no_surat_jalan'
-                )
-                ->orderBy('rm_stocks.id', 'asc')
-                ->get();
+                ->groupBy('rm_production_logs.no_produksi')
+                ->first();
 
-            if ($coilsUsed->isNotEmpty()) {
-                foreach ($coilsUsed as $c) {
-                    $item = clone $batch;
-                    $item->qty_ambil_pcs = $c->total_used; // Menggunakan SUM yang sudah ditotal
-                    $item->coil_id = $c->coil_id;
-                    $item->spec = $c->spec;
-                    $item->size = $c->size;
-                    $item->material_name = $c->material_name;
-                    $item->customer_code = $batch->part_cust ?? $c->stock_cust ?? 'SAI';
-                    $item->display_part_no = $displayPartNo;
-                    $item->display_part_name = $displayPartName;
+            if ($coilsUsed && $coilsUsed->total_used > 0) {
+                $item = clone $batch;
+                $item->qty_ambil_pcs = $coilsUsed->total_used; // Menggunakan SUM yang sudah ditotal
+                $item->coil_id = $coilsUsed->coil_id;
+                $item->spec = $coilsUsed->spec;
+                $item->size = $coilsUsed->size;
+                $item->material_name = $coilsUsed->material_name;
+                $item->customer_code = $batch->part_cust ?? $coilsUsed->stock_cust ?? 'SAI';
+                $item->display_part_no = $displayPartNo;
+                $item->display_part_name = $displayPartName;
 
-                    if (!empty($c->stock_sj) && $c->stock_sj !== '-') {
-                        $item->no_surat_jalan = $c->stock_sj;
-                    } else {
-                        $incomingSj = DB::table('rm_incoming_logs')
-                            ->where('rm_stock_id', $c->rm_stock_id)
-                            ->where('source', 'supplier')
-                            ->orderBy('id', 'desc')
-                            ->value('no_produksi');
-                        $item->no_surat_jalan = $incomingSj ?? '-';
-                    }
-                    $allBatches->push($item);
+                if (!empty($coilsUsed->stock_sj) && $coilsUsed->stock_sj !== '-') {
+                    $item->no_surat_jalan = $coilsUsed->stock_sj;
+                } else {
+                    $item->no_surat_jalan = '-';
                 }
+                $allBatches->push($item);
             } else {
                 $stockData = DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->first();
                 $item = clone $batch;
