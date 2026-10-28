@@ -94,7 +94,7 @@
 
     .table-container {
         background: #ffffff;
-        margin: 25px 35px;
+        margin: 0 35px;
         border-radius: 22px;
         border: 1px solid var(--ios-border);
         overflow: hidden;
@@ -305,109 +305,237 @@
         </a>
         @foreach($customers as $c)
             <a href="{{ route('produksi.index', ['area' => $area, 'shift' => $selectedShift, 'customer' => trim($c->code), 'date' => $date]) }}" 
-               class="tab-btn {{ request('customer') == trim($c->code) ? 'active' : '' }}" style="{{ request('customer') == trim($c->code) ? 'background:#10b981;box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);' : '' }}">
+                class="tab-btn {{ request('customer') == trim($c->code) ? 'active' : '' }}" style="{{ request('customer') == trim($c->code) ? 'background:#10b981;box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);' : '' }}">
                 {{ strtoupper($c->code) }}
             </a>
         @endforeach
     </div>
 
-    <div class="table-container">
-        <table class="table-industrial">
-            <thead>
-                <tr>
-                    <th width="4%" class="text-center">No.</th>
-                    <th width="14%">ID WOS</th>
-                    <th width="24%">Part Identification</th>
-                    <th width="15%">Workstation & Shift</th>
-                    <th width="12%">Destination</th>
-                    <th width="11%" class="text-right">Total Jatah</th>
-                    <th width="9%" class="text-center">Status</th>
-                    <th width="11%" class="text-right">Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($activeProductions as $idx => $p)
-                <tr>
-                    <td class="text-center font-weight-bold text-muted">{{ $idx + 1 }}</td>
-                    <td>
-                        @if($p->qty_return > 0)
-                            <span class="badge mb-1 animate__animated animate__pulse animate__infinite" style="background: #6366f1; color: #fff; font-size: 8px; padding: 3px 6px; border-radius: 4px;">
-                                <i class="fas fa-redo-alt mr-1"></i> REWORK QC
-                            </span><br>
-                        @endif
-                        <span class="id-tag">{{ $p->no_produksi }}</span>
-                    </td>
-                    <td>
-                        @php 
-                            $isMainPair = isset($p->is_separating) && $p->is_separating;
-                            $pairedPartCode = $isMainPair ? $p->paired_part : null;
-                            $childParts = DB::table('produksi_batch_parts')->where('batch_id', $p->batch_id)->pluck('part_no')->toArray();
-                            
-                            if ($isMainPair) { $displayParts = $p->material_code . ' & ' . $pairedPartCode; } 
-                            elseif (count($childParts) > 0) { $displayParts = implode(' & ', $childParts); } 
-                            else { $displayParts = $p->material_code; }
-                        @endphp
-                        <div class="font-weight-bold text-dark font-family-jetbrains" style="font-size: 13px;">{{ $displayParts }}</div>
-                        <small class="text-muted font-weight-bold">
-                            {{ $p->coil_id ?? 'COIL' }} 
-                            <span class="badge badge-light border ml-1 px-2 py-0" style="border-radius: 4px;">Cav: {{ $p->cavity ?? 1 }}</span>
-                            <span class="text-muted ml-1">• {{ $p->customer ?? 'CLIENT' }}</span>
-                        </small>
-                    </td>
-                    <td>
-                        <div class="d-flex flex-column gap-1">
-                            <div><span class="badge-pill-ios {{ $p->area_type === 'SMALL' ? 'badge-area-small' : 'badge-area-big' }}">{{ $p->area_type === 'SMALL' ? '⚙️' : '🏭' }} {{ $p->area_label }} ({{ $p->line_names ?? $p->kode_Line }})</span></div>
-                            <div><span class="badge-pill-ios {{ $p->shift_code === 'S1' ? 'badge-shift-s1' : 'badge-shift-s2' }}">{{ $p->shift_code === 'S1' ? '☀️' : '🌙' }} {{ $p->shift_label }}</span></div>
-                        </div>
-                    </td>
-                    <td>
-                        @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
-                        @if(strtoupper($route) == 'WELDING') 
-                            <span class="badge-pill-ios badge-welding">WELDING</span> 
-                        @else 
-                            <span class="badge-pill-ios badge-fg">FINISHED GOOD</span> 
-                        @endif
-                    </td>
-                    <td class="text-right font-family-jetbrains font-weight-bold">
-                        @if($p->qty_return > 0)
-                            <span class="text-primary" style="font-size: 14px;">{{ number_format($p->qty_return) }}</span>
-                            <div style="font-size: 8px; color: var(--ios-muted);">PCS REWORK</div>
-                        @else
-                            <span class="text-dark" style="font-size: 13px;">{{ number_format($p->total_qty_batch) }} <small class="text-muted">pcs</small></span><br>
-                            <small class="text-muted">({{ number_format($p->qty_ambil_pcs) }} lbr)</small>
-                        @endif
-                    </td>
-                    <td class="text-center">
-                        @if($p->status == 'PROBLEM')
-                            <span class="badge-pill-ios badge-problem animate__animated animate__flash animate__infinite"><i class="fas fa-exclamation-triangle"></i> PROBLEM</span>
-                        @else
-                            <span class="badge-pill-ios badge-proses">{{ $p->status }}</span>
-                        @endif
-                    </td>
-                    <td class="text-right">
-                        <div class="d-flex justify-content-end align-items-center">
-                            <button class="btn btn-outline-danger btn-sm p-0 mr-2 shadow-sm rounded-circle" style="width: 32px; height: 32px;" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" title="REPORT PROBLEM">
-                                <i class="fas fa-radiation-alt" style="font-size: 11px;"></i>
-                            </button>
-                            <button class="btn btn-success btn-spring px-3 font-weight-bold shadow-sm" style="background: var(--ios-green);" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">
-                                INPUT RESULT
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                @empty 
-                <tr>
-                    <td colspan="8" class="py-5 text-center text-muted">
-                        <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
-                        <span class="font-weight-bold">-- SISTEM IDLE: TIDAK ADA BATCH AKTIF BERJALAN --</span>
-                    </td>
-                </tr> 
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    {{-- ✨ LOGIKA GROUPING BERDASARKAN TANGGAL & MESIN ✨ --}}
+    @php
+        $groupedByDate = $activeProductions->groupBy('plan_date');
+    @endphp
+
+    @forelse($groupedByDate as $tanggal => $dailyBatches)
+        <div class="px-5 mt-4 mb-3">
+            <h4 class="font-weight-bold text-dark m-0" style="font-size: 16px;">
+                <i class="far fa-calendar-alt text-primary mr-2"></i> JADWAL TANGGAL: <span class="text-primary">{{ date('d F Y', strtotime($tanggal)) }}</span>
+            </h4>
+        </div>
+
+        @php
+            $bigPressBatches = $dailyBatches->filter(function($b) {
+                return $b->area_type === 'BIG';
+            });
+            $smallPressBatches = $dailyBatches->filter(function($b) {
+                return $b->area_type === 'SMALL';
+            });
+        @endphp
+
+        <!-- 🏭 TABEL BIG PRESS -->
+        @if($bigPressBatches->count() > 0)
+        <div class="table-container mb-4 mt-0">
+            <div class="bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
+                <h6 class="font-weight-bold m-0" style="color: #0f172a;"><i class="fas fa-industry text-primary mr-2"></i> BIG PRESS AREA</h6>
+            </div>
+            <table class="table-industrial">
+                <thead>
+                    <tr>
+                        <th width="4%" class="text-center">No.</th>
+                        <th width="14%">ID WOS</th>
+                        <th width="24%">Part Identification</th>
+                        <th width="15%">Workstation & Shift</th>
+                        <th width="12%">Destination</th>
+                        <th width="11%" class="text-right">Total Jatah</th>
+                        <th width="9%" class="text-center">Status</th>
+                        <th width="11%" class="text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($bigPressBatches as $idx => $p)
+                        <!-- ✨ BARIS ASLI TIDAK ADA YANG DIUBAH ✨ -->
+                        <tr>
+                            <td class="text-center font-weight-bold text-muted">{{ $loop->iteration }}</td>
+                            <td>
+                                @if($p->qty_return > 0)
+                                    <span class="badge mb-1 animate__animated animate__pulse animate__infinite" style="background: #6366f1; color: #fff; font-size: 8px; padding: 3px 6px; border-radius: 4px;">
+                                        <i class="fas fa-redo-alt mr-1"></i> REWORK QC
+                                    </span><br>
+                                @endif
+                                <span class="id-tag">{{ $p->no_produksi }}</span>
+                            </td>
+                            <td>
+                                @php 
+                                    $isMainPair = isset($p->is_separating) && $p->is_separating;
+                                    $pairedPartCode = $isMainPair ? $p->paired_part : null;
+                                    $childParts = DB::table('produksi_batch_parts')->where('batch_id', $p->batch_id)->pluck('part_no')->toArray();
+                                    
+                                    if ($isMainPair) { $displayParts = $p->material_code . ' & ' . $pairedPartCode; } 
+                                    elseif (count($childParts) > 0) { $displayParts = implode(' & ', $childParts); } 
+                                    else { $displayParts = $p->material_code; }
+                                @endphp
+                                <div class="font-weight-bold text-dark font-family-jetbrains" style="font-size: 13px;">{{ $displayParts }}</div>
+                                <small class="text-muted font-weight-bold">
+                                    {{ $p->coil_id ?? 'COIL' }} 
+                                    <span class="badge badge-light border ml-1 px-2 py-0" style="border-radius: 4px;">Cav: {{ $p->cavity ?? 1 }}</span>
+                                    <span class="text-muted ml-1">{{ $p->customer ?? 'CLIENT' }}</span>
+                                </small>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <div><span class="badge-pill-ios badge-area-big">🏭 {{ $p->area_label }} ({{ $p->line_names ?? $p->kode_Line }})</span></div>
+                                    <div><span class="badge-pill-ios {{ $p->shift_code === 'S1' ? 'badge-shift-s1' : 'badge-shift-s2' }}">{{ $p->shift_code === 'S1' ? '☀️' : '🌙' }} {{ $p->shift_label }}</span></div>
+                                </div>
+                            </td>
+                            <td>
+                                @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
+                                @if(strtoupper($route) == 'WELDING') 
+                                    <span class="badge-pill-ios badge-welding">WELDING</span> 
+                                @else 
+                                    <span class="badge-pill-ios badge-fg">FINISHED GOOD</span> 
+                                @endif
+                            </td>
+                            <td class="text-right font-family-jetbrains font-weight-bold">
+                                @if($p->qty_return > 0)
+                                    <span class="text-primary" style="font-size: 14px;">{{ number_format($p->qty_return) }}</span>
+                                    <div style="font-size: 8px; color: var(--ios-muted);">PCS REWORK</div>
+                                @else
+                                    <span class="text-dark" style="font-size: 13px;">{{ number_format($p->total_qty_batch) }} <small class="text-muted">pcs</small></span><br>
+                                    <small class="text-muted">({{ number_format($p->qty_ambil_pcs) }} lbr)</small>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @if($p->status == 'PROBLEM')
+                                    <span class="badge-pill-ios badge-problem animate__animated animate__flash animate__infinite"><i class="fas fa-exclamation-triangle"></i> PROBLEM</span>
+                                @else
+                                    <span class="badge-pill-ios badge-proses">{{ $p->status }}</span>
+                                @endif
+                            </td>
+                            <td class="text-right">
+                                <div class="d-flex justify-content-end align-items-center">
+                                    <button class="btn btn-outline-danger btn-sm p-0 mr-2 shadow-sm rounded-circle" style="width: 32px; height: 32px;" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" title="REPORT PROBLEM">
+                                        <i class="fas fa-radiation-alt" style="font-size: 11px;"></i>
+                                    </button>
+                                    <button class="btn btn-success btn-spring px-3 font-weight-bold shadow-sm" style="background: var(--ios-green);" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">
+                                        INPUT RESULT
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
+
+        <!-- ⚙️ TABEL SMALL PRESS -->
+        @if($smallPressBatches->count() > 0)
+        <div class="table-container mb-4 mt-0">
+            <div class="bg-white border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
+                <h6 class="font-weight-bold m-0" style="color: #b45309;"><i class="fas fa-cogs text-warning mr-2"></i> SMALL PRESS AREA</h6>
+            </div>
+            <table class="table-industrial">
+                <thead style="background: #fffbeb;">
+                    <tr>
+                        <th width="4%" class="text-center">No.</th>
+                        <th width="14%">ID WOS</th>
+                        <th width="24%">Part Identification</th>
+                        <th width="15%">Workstation & Shift</th>
+                        <th width="12%">Destination</th>
+                        <th width="11%" class="text-right">Total Jatah</th>
+                        <th width="9%" class="text-center">Status</th>
+                        <th width="11%" class="text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($smallPressBatches as $idx => $p)
+                        <!-- ✨ BARIS ASLI TIDAK ADA YANG DIUBAH ✨ -->
+                        <tr>
+                            <td class="text-center font-weight-bold text-muted">{{ $loop->iteration }}</td>
+                            <td>
+                                @if($p->qty_return > 0)
+                                    <span class="badge mb-1 animate__animated animate__pulse animate__infinite" style="background: #6366f1; color: #fff; font-size: 8px; padding: 3px 6px; border-radius: 4px;">
+                                        <i class="fas fa-redo-alt mr-1"></i> REWORK QC
+                                    </span><br>
+                                @endif
+                                <span class="id-tag">{{ $p->no_produksi }}</span>
+                            </td>
+                            <td>
+                                @php 
+                                    $isMainPair = isset($p->is_separating) && $p->is_separating;
+                                    $pairedPartCode = $isMainPair ? $p->paired_part : null;
+                                    $childParts = DB::table('produksi_batch_parts')->where('batch_id', $p->batch_id)->pluck('part_no')->toArray();
+                                    
+                                    if ($isMainPair) { $displayParts = $p->material_code . ' & ' . $pairedPartCode; } 
+                                    elseif (count($childParts) > 0) { $displayParts = implode(' & ', $childParts); } 
+                                    else { $displayParts = $p->material_code; }
+                                @endphp
+                                <div class="font-weight-bold text-dark font-family-jetbrains" style="font-size: 13px;">{{ $displayParts }}</div>
+                                <small class="text-muted font-weight-bold">
+                                    {{ $p->coil_id ?? 'COIL' }} 
+                                    <span class="badge badge-light border ml-1 px-2 py-0" style="border-radius: 4px;">Cav: {{ $p->cavity ?? 1 }}</span>
+                                    <span class="text-muted ml-1">{{ $p->customer ?? 'CLIENT' }}</span>
+                                </small>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <div><span class="badge-pill-ios badge-area-small">⚙️ {{ $p->area_label }} ({{ $p->line_names ?? $p->kode_Line }})</span></div>
+                                    <div><span class="badge-pill-ios {{ $p->shift_code === 'S1' ? 'badge-shift-s1' : 'badge-shift-s2' }}">{{ $p->shift_code === 'S1' ? '☀️' : '🌙' }} {{ $p->shift_label }}</span></div>
+                                </div>
+                            </td>
+                            <td>
+                                @php $route = DB::table('parts')->where('part_no', $p->material_code)->value('next_process'); @endphp
+                                @if(strtoupper($route) == 'WELDING') 
+                                    <span class="badge-pill-ios badge-welding">WELDING</span> 
+                                @else 
+                                    <span class="badge-pill-ios badge-fg">FINISHED GOOD</span> 
+                                @endif
+                            </td>
+                            <td class="text-right font-family-jetbrains font-weight-bold">
+                                @if($p->qty_return > 0)
+                                    <span class="text-primary" style="font-size: 14px;">{{ number_format($p->qty_return) }}</span>
+                                    <div style="font-size: 8px; color: var(--ios-muted);">PCS REWORK</div>
+                                @else
+                                    <span class="text-dark" style="font-size: 13px;">{{ number_format($p->total_qty_batch) }} <small class="text-muted">pcs</small></span><br>
+                                    <small class="text-muted">({{ number_format($p->qty_ambil_pcs) }} lbr)</small>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @if($p->status == 'PROBLEM')
+                                    <span class="badge-pill-ios badge-problem animate__animated animate__flash animate__infinite"><i class="fas fa-exclamation-triangle"></i> PROBLEM</span>
+                                @else
+                                    <span class="badge-pill-ios badge-proses">{{ $p->status }}</span>
+                                @endif
+                            </td>
+                            <td class="text-right">
+                                <div class="d-flex justify-content-end align-items-center">
+                                    <button class="btn btn-outline-danger btn-sm p-0 mr-2 shadow-sm rounded-circle" style="width: 32px; height: 32px;" data-toggle="modal" data-target="#modalProblem{{ $p->batch_id }}" title="REPORT PROBLEM">
+                                        <i class="fas fa-radiation-alt" style="font-size: 11px;"></i>
+                                    </button>
+                                    <button class="btn btn-success btn-spring px-3 font-weight-bold shadow-sm" style="background: var(--ios-green);" data-toggle="modal" data-target="#modalInputHasil{{ $p->batch_id }}">
+                                        INPUT RESULT
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @endif
+
+    @empty
+        <div class="table-container">
+            <div class="py-5 text-center text-muted">
+                <i class="fas fa-check-circle text-success fa-2x mb-2 d-block"></i>
+                <span class="font-weight-bold">-- SISTEM IDLE: TIDAK ADA BATCH AKTIF BERJALAN --</span>
+            </div>
+        </div>
+    @endforelse
+
 </div>
 
+{{-- MODAL & SCRIPT ASLI TIDAK ADA YANG DIHAPUS --}}
 @foreach($activeProductions as $p)
 @php 
     $currentTarget = ($p->qty_return > 0) ? ($p->qty_return * ($p->cavity ?? 1)) : $p->total_qty_batch; 
@@ -493,7 +621,6 @@
                                 @else
                                     <div class="form-group">
                                         <label class="text-success font-weight-bold">QTY HASIL OK (PCS)</label>
-                                        {{-- ✨ PERBAIKAN: CLASS calc-input DITAMBAHKAN ✨ --}}
                                         <input type="number" name="qty_hasil_ok" id="ok_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-3" required value="0">
                                     </div>
                                 @endif
@@ -501,10 +628,8 @@
 
                             <div class="col-md-4">
                                 <label class="font-weight-bold text-danger">Return Sheet (Lbr)</label>
-                                {{-- ✨ PERBAIKAN: CLASS calc-input DITAMBAHKAN ✨ --}}
                                 <input type="number" name="qty_return_warehouse" id="return_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-2" value="0">
                                 
-                                {{-- ✨ PERBAIKAN: CLASS calc-input UNTUK INPUT NG BIASA ✨ --}}
                                 <label class="font-weight-bold text-danger mt-3">NG Biasa (Pcs)</label>
                                 <input type="number" name="qty_hasil_ng" id="ng_{{ $p->batch_id }}" data-id="{{ $p->batch_id }}" class="input-tactical calc-input mb-2" value="0">
                                 <small class="text-muted d-block mt-2" style="font-size:10px; line-height: 1.3;">Return dikalikan {{ $p->cavity ?? 1 }} Pcs saat sinkronisasi Gap</small>
@@ -597,7 +722,7 @@
                 @csrf
                 <div class="modal-body p-4 bg-white">
                     <div class="form-group">
-                        <label>01. BATCH ID</label>
+                        <label>BATCH ID</label>
                         <input type="text" name="no_produksi" class="input-tactical font-family-jetbrains font-weight-bold text-primary" value="PROD-{{ date('Ymd-His') }}" readonly>
                     </div>
 
@@ -753,7 +878,7 @@
 
                 if (!hasParts) {
                      let oldOk = parseInt($(`#ok_${id}`).val()) || 0;
-                     let oldNg = parseInt($(`#ng_${id}`).val()) || 0; // ✨ NG Biasa Ditambahkan
+                     let oldNg = parseInt($(`#ng_${id}`).val()) || 0;
                      maxPartUsage = oldOk + oldNg;
                 }
             }

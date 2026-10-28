@@ -17,10 +17,10 @@ class ProduksiController extends Controller
      */
     public function index(Request $request)
     {
-        $area = $request->area ?? 'all'; // Default 'all' agar Line C muncul
+        $area = $request->area ?? 'all'; 
         $selectedShift = $request->shift ?? 'ALL';
         $customerFilter = $request->customer;
-        $date = $request->date; // Tanggal operasional (opsional)
+        $date = $request->date; 
 
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
@@ -28,7 +28,7 @@ class ProduksiController extends Controller
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
             ->select(
-                DB::raw('MIN(produksi_batches.id) as batch_id'), // Menghindari error strict mode
+                DB::raw('MIN(produksi_batches.id) as batch_id'), 
                 'produksi_batches.no_produksi', 
                 'produksi_batches.shift',
                 'produksi_batches.material_code',
@@ -47,6 +47,7 @@ class ProduksiController extends Controller
                 'rm_stocks.material_name',
                 'parts.part_name',
                 'production_plans.customer_code as plan_customer',
+                'production_plans.plan_date', // ✨ DITAMBAHKAN AGAR BISA GROUPING TANGGAL DI BLADE ✨
                 DB::raw('COALESCE(line.kode_Line, "UNKNOWN") as kode_Line'),
                 DB::raw('COALESCE(GROUP_CONCAT(line.kode_Line SEPARATOR ", "), line.kode_Line) as line_names'),
                 DB::raw('SUM(produksi_batches.qty_ambil_pcs * produksi_batches.cavity) as total_qty_batch')
@@ -76,6 +77,7 @@ class ProduksiController extends Controller
                 'rm_stocks.material_name', 
                 'parts.part_name',
                 'production_plans.customer_code',
+                'production_plans.plan_date', // ✨ DITAMBAHKAN GROUP BY ✨
                 'line.kode_Line'
             );
 
@@ -106,7 +108,6 @@ class ProduksiController extends Controller
             $query->whereDate('produksi_batches.created_at', $date);
         }
 
-        // ✨ Diurutkan secara ASCENDING agar WOS pertama ada di urutan pertama ✨
         $activeProductionsRaw = $query->orderBy('batch_id', 'asc')->get();
         
         $activeProductions = $activeProductionsRaw->map(function ($item) {
@@ -149,6 +150,11 @@ class ProduksiController extends Controller
             } else {
                 $item->shift_label = 'SHIFT 1 (PAGI)';
                 $item->shift_code = 'S1';
+            }
+
+            // Jika plan_date tidak ditemukan (legacy record), ambil dari created_at
+            if (empty($item->plan_date)) {
+                $item->plan_date = date('Y-m-d', strtotime($item->created_at));
             }
 
             return $item;
