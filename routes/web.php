@@ -186,6 +186,7 @@ Route::put('/wos-delivery/{id}', [App\Http\Controllers\DeliveryController::class
 Route::get('/wos-delivery/check-stock/{part_no}', [App\Http\Controllers\DeliveryController::class, 'wosCheckStock'])->name('delivery.wos.checkStock');
 Route::get('/wos-delivery/print', [App\Http\Controllers\DeliveryController::class, 'wosPrint'])->name('delivery.wos.print');
 Route::get('planning/mps/small', [PPICController::class, 'mpsSmallIndex'])->name('ppic.mps.small');
+Route::put('/planning/mps/update-wos/{id}', [PPICController::class, 'updateWos'])->name('ppic.wos.update');
 
 
     // RM Adjustments
