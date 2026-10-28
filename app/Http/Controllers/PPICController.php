@@ -13,22 +13,18 @@ class PPICController extends Controller
      */
     public function index(Request $request)
     {
-        $date = $request->date ?? date('Y-m-d');
-        $today = date('Y-m-d');
-        
-        $alerts = DB::table('produksi_batches')
+        $date =$request->date ?? date('Y-m-d');
+        $today = date('Y-m-d');$alerts = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
             ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at')
             ->get();
 
-        $plans = DB::table('production_plans')->where('plan_date', $date)->get();
-        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-        $chartLabels = []; $chartTargets = []; $chartActuals = [];
+        $plans = DB::table('production_plans')->where('plan_date',$date)->get();
+        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];$chartLabels = []; $chartTargets = [];$chartActuals = [];
 
-        foreach($plans as $p) {
-            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            $actualPerPart = DB::table('production_actuals')
+        foreach($plans as$p) {
+            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot +$p->s2_plan_reg + $p->s2_plan_ot);$actualPerPart = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
                 ->where('line_code', '!=', 'WELDING AREA')
@@ -36,40 +32,36 @@ class PPICController extends Controller
             
             $p->actual_qty = (int)$actualPerPart;
             $p->plan_qty = (int)$targetPerPart;
-            $chartLabels[] = $p->part_no;
+            $chartLabels[] =$p->part_no;
             $chartTargets[] = (int)$targetPerPart;
             $chartActuals[] = (int)$actualPerPart;
 
-            $batchStatuses = DB::table('produksi_batches')->where('plan_id', $p->id)->pluck('status');
-            $isAllBatchCompleted = $batchStatuses->isNotEmpty() && $batchStatuses->every(fn($st) => $st === 'COMPLETED');
+            $batchStatuses = DB::table('produksi_batches')->where('plan_id', $p->id)->pluck('status');$isAllBatchCompleted = $batchStatuses->isNotEmpty() &&$batchStatuses->every(fn($st) =>$st === 'COMPLETED');
 
-            if ($isAllBatchCompleted || ($targetPerPart > 0 && $actualPerPart >= $targetPerPart)) { 
-                $statusCount['completed']++; 
+            if ($isAllBatchCompleted || ($targetPerPart > 0 &&$actualPerPart >= $targetPerPart)) {$statusCount['completed']++; 
             }
-            elseif ($date < $today && $actualPerPart < $targetPerPart) { 
-                $statusCount['shortage']++; 
+            elseif ($date < $today &&$actualPerPart < $targetPerPart) {$statusCount['shortage']++; 
             }
-            elseif ($actualPerPart > 0) { 
-                $statusCount['running']++; 
+            elseif ($actualPerPart > 0) {$statusCount['running']++; 
             }
             else { 
                 $statusCount['waiting']++; 
             }
         }
 
-        $totalPlan = $plans->sum('plan_qty') ?: 0;
-        $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+        $totalPlan =$plans->sum('plan_qty') ?: 0;
+        $totalActual =$plans->sum('actual_qty') ?: 0;
+        $achievementRate =$totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+        $dailyLabels = []; $dailyOk = [];$dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
             $dailyLabels[] = date('d M', strtotime($d));
-            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
-            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
+            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
+            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
         }
 
-        $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
+        $monthlyLabels = []; $monthlyOk = [];$monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
             $monthlyLabels[] = date('M', strtotime("-$i months"));
@@ -90,13 +82,13 @@ class PPICController extends Controller
      */
     public function mpsIndex(Request $request)
     {
-        $date = $request->date ?? date('Y-m-d');
+        $date =$request->date ?? date('Y-m-d');
 
         $availableLines = DB::table('line')
             ->where('kode_Line', 'NOT LIKE', '%C%')
             ->where('kode_Line', 'NOT LIKE', '%SMALL%')
             ->get();
-        $bigLineCodes = $availableLines->pluck('kode_Line')->toArray();
+        $bigLineCodes =$availableLines->pluck('kode_Line')->toArray();
 
         $allPlans = DB::table('production_plans')
             ->where('plan_date', $date)
@@ -111,19 +103,17 @@ class PPICController extends Controller
         $totalDandory = 0;
 
         $processedPlans = collect();
-        $lineFinishTimeS1 = []; 
-        $lineFinishTimeS2 = [];
+        $lineFinishTimeS1 = [];$lineFinishTimeS2 = [];
 
-        foreach($allPlans as $p) {
-            $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
+        foreach($allPlans as$p) {
+            $cekSub = DB::table('produksi_batches')->where('plan_id',$p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
             if ($cekSub) continue;
 
-            $t_s1 = $p->s1_plan_reg + $p->s1_plan_ot;
-            $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
-            $dandory = $p->dandory_time ?? 15;
+            $t_s1 = $p->s1_plan_reg +$p->s1_plan_ot;
+            $t_s2 = $p->s2_plan_reg +$p->s2_plan_ot;
+            $dandory =$p->dandory_time ?? 15;
 
-            if ($t_s1 > 0) {
-                $actualS1 = DB::table('production_actuals')
+            if ($t_s1 > 0) {$actualS1 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Pagi')
                     ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
                     ->sum('qty_ok');
@@ -131,28 +121,27 @@ class PPICController extends Controller
                 $dur = ($p->cap_per_hour > 0) ? ($t_s1 / $p->cap_per_hour) + ($dandory / 60) : 0;
                 $start = $lineFinishTimeS1[$p->line_code] ?? "07:30";
                 $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
-                $lineFinishTimeS1[$p->line_code] = $finish;
+                $lineFinishTimeS1[$p->line_code] =$finish;
 
-                $item = clone $p; 
+                $item = clone$p; 
                 $item->display_shift = 'S1';
                 
-                $bS1 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Pagi')->first();
-                $item->no_produksi = $bS1->no_produksi ?? '-';
+                $bS1 = DB::table('produksi_batches')->where('plan_id',$p->id)->where('shift', 'Pagi')->first();
+                $item->no_produksi =$bS1->no_produksi ?? '-';
 
-                $item->total_target = $t_s1;
+                $item->total_target =$t_s1;
                 $item->total_actual = (int)$actualS1;
-                $item->balance = $t_s1 - $actualS1;
-                $item->start_time = $start;
-                $item->ahir_time = $finish;
+                $item->balance = $t_s1 -$actualS1;
+                $item->start_time =$start;
+                $item->ahir_time =$finish;
                 $processedPlans->push($item);
 
-                $totalPlanQty += $t_s1;
-                $totalWorkingHoursS1 += $dur; 
-                $totalDandory += $dandory;
+                $totalPlanQty +=$t_s1;
+                $totalWorkingHoursS1 +=$dur; 
+                $totalDandory +=$dandory;
             }
 
-            if ($t_s2 > 0) {
-                $actualS2 = DB::table('production_actuals')
+            if ($t_s2 > 0) {$actualS2 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Malam')
                     ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
                     ->sum('qty_ok');
@@ -160,31 +149,29 @@ class PPICController extends Controller
                 $dur = ($p->cap_per_hour > 0) ? ($t_s2 / $p->cap_per_hour) + ($dandory / 60) : 0;
                 $start = $lineFinishTimeS2[$p->line_code] ?? "19:30";
                 $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
-                $lineFinishTimeS2[$p->line_code] = $finish;
+                $lineFinishTimeS2[$p->line_code] =$finish;
 
-                $item = clone $p; 
+                $item = clone$p; 
                 $item->display_shift = 'S2';
 
-                $bS2 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Malam')->first();
-                $item->no_produksi = $bS2->no_produksi ?? '-';
+                $bS2 = DB::table('produksi_batches')->where('plan_id',$p->id)->where('shift', 'Malam')->first();
+                $item->no_produksi =$bS2->no_produksi ?? '-';
 
-                $item->total_target = $t_s2;
+                $item->total_target =$t_s2;
                 $item->total_actual = (int)$actualS2;
-                $item->balance = $t_s2 - $actualS2;
-                $item->start_time = $start;
-                $item->ahir_time = $finish;
+                $item->balance = $t_s2 -$actualS2;
+                $item->start_time =$start;
+                $item->ahir_time =$finish;
                 $processedPlans->push($item);
 
-                $totalPlanQty += $t_s2;
-                $totalWorkingHoursS2 += $dur; 
-                $totalDandory += $dandory;
+                $totalPlanQty +=$t_s2;
+                $totalWorkingHoursS2 +=$dur; 
+                $totalDandory +=$dandory;
             }
         }
 
-        $groupedPlans = $processedPlans->groupBy('line_code');
-        $availableLines = DB::table('line')->get();
-        $availableCustomers = DB::table('customers')->get();
-        $availableParts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
+        $groupedPlans = $processedPlans->groupBy('line_code');$availableLines = DB::table('line')->get();
+        $availableCustomers = DB::table('customers')->get();$availableParts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
 
         return view('PPIC.mps_index', compact(
             'groupedPlans', 'date', 'availableLines', 'availableCustomers', 'availableParts',
@@ -197,16 +184,15 @@ class PPICController extends Controller
      */
     public function mpsSmallIndex(Request $request)
     {
-        $date = $request->date ?? date('Y-m-d');
+        $date =$request->date ?? date('Y-m-d');
 
         $availableLines = DB::table('line')
-            ->where(function($q) {
-                $q->where('kode_Line', 'LIKE', '%C%')
+            ->where(function($q) {$q->where('kode_Line', 'LIKE', '%C%')
                   ->orWhere('kode_Line', 'LIKE', '%SMALL%')
                   ->orWhere('nama_Line', 'LIKE', '%SMALL%');
             })
             ->get();
-        $smallLineCodes = $availableLines->pluck('kode_Line')->toArray();
+        $smallLineCodes =$availableLines->pluck('kode_Line')->toArray();
 
         $allPlans = DB::table('production_plans')
             ->where('plan_date', $date)
@@ -221,19 +207,17 @@ class PPICController extends Controller
         $totalDandory = 0;
 
         $processedPlans = collect();
-        $lineFinishTimeS1 = []; 
-        $lineFinishTimeS2 = [];
+        $lineFinishTimeS1 = [];$lineFinishTimeS2 = [];
 
-        foreach($allPlans as $p) {
-            $cekSub = DB::table('produksi_batches')->where('plan_id', $p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
+        foreach($allPlans as$p) {
+            $cekSub = DB::table('produksi_batches')->where('plan_id',$p->id)->where('no_produksi', 'LIKE', '%-S')->exists();
             if ($cekSub) continue;
 
-            $t_s1 = $p->s1_plan_reg + $p->s1_plan_ot;
-            $t_s2 = $p->s2_plan_reg + $p->s2_plan_ot;
-            $dandory = $p->dandory_time ?? 15;
+            $t_s1 = $p->s1_plan_reg +$p->s1_plan_ot;
+            $t_s2 = $p->s2_plan_reg +$p->s2_plan_ot;
+            $dandory =$p->dandory_time ?? 15;
 
-            if ($t_s1 > 0) {
-                $actualS1 = DB::table('production_actuals')
+            if ($t_s1 > 0) {$actualS1 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Pagi')
                     ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
                     ->sum('qty_ok');
@@ -241,28 +225,27 @@ class PPICController extends Controller
                 $dur = ($p->cap_per_hour > 0) ? ($t_s1 / $p->cap_per_hour) + ($dandory / 60) : 0;
                 $start = $lineFinishTimeS1[$p->line_code] ?? "07:30";
                 $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
-                $lineFinishTimeS1[$p->line_code] = $finish;
+                $lineFinishTimeS1[$p->line_code] =$finish;
 
-                $item = clone $p; 
+                $item = clone$p; 
                 $item->display_shift = 'S1';
 
-                $bS1 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Pagi')->first();
-                $item->no_produksi = $bS1->no_produksi ?? '-';
+                $bS1 = DB::table('produksi_batches')->where('plan_id',$p->id)->where('shift', 'Pagi')->first();
+                $item->no_produksi =$bS1->no_produksi ?? '-';
 
-                $item->total_target = $t_s1;
+                $item->total_target =$t_s1;
                 $item->total_actual = (int)$actualS1;
-                $item->balance = $t_s1 - $actualS1;
-                $item->start_time = $start;
-                $item->ahir_time = $finish;
+                $item->balance = $t_s1 -$actualS1;
+                $item->start_time =$start;
+                $item->ahir_time =$finish;
                 $processedPlans->push($item);
 
-                $totalPlanQty += $t_s1;
-                $totalWorkingHoursS1 += $dur; 
-                $totalDandory += $dandory;
+                $totalPlanQty +=$t_s1;
+                $totalWorkingHoursS1 +=$dur; 
+                $totalDandory +=$dandory;
             }
 
-            if ($t_s2 > 0) {
-                $actualS2 = DB::table('production_actuals')
+            if ($t_s2 > 0) {$actualS2 = DB::table('production_actuals')
                     ->where('part_no', $p->part_no)->where('shift', 'Malam')
                     ->whereDate('created_at', $date)->where('line_code', '!=', 'WELDING AREA')
                     ->sum('qty_ok');
@@ -270,30 +253,29 @@ class PPICController extends Controller
                 $dur = ($p->cap_per_hour > 0) ? ($t_s2 / $p->cap_per_hour) + ($dandory / 60) : 0;
                 $start = $lineFinishTimeS2[$p->line_code] ?? "19:30";
                 $finish = date('H:i', strtotime($start . " + " . round($dur * 60) . " minutes"));
-                $lineFinishTimeS2[$p->line_code] = $finish;
+                $lineFinishTimeS2[$p->line_code] =$finish;
 
-                $item = clone $p; 
+                $item = clone$p; 
                 $item->display_shift = 'S2';
 
-                $bS2 = DB::table('produksi_batches')->where('plan_id', $p->id)->where('shift', 'Malam')->first();
-                $item->no_produksi = $bS2->no_produksi ?? '-';
+                $bS2 = DB::table('produksi_batches')->where('plan_id',$p->id)->where('shift', 'Malam')->first();
+                $item->no_produksi =$bS2->no_produksi ?? '-';
 
-                $item->total_target = $t_s2;
+                $item->total_target =$t_s2;
                 $item->total_actual = (int)$actualS2;
-                $item->balance = $t_s2 - $actualS2;
-                $item->start_time = $start;
-                $item->ahir_time = $finish;
+                $item->balance = $t_s2 -$actualS2;
+                $item->start_time =$start;
+                $item->ahir_time =$finish;
                 $processedPlans->push($item);
 
-                $totalPlanQty += $t_s2;
-                $totalWorkingHoursS2 += $dur; 
-                $totalDandory += $dandory;
+                $totalPlanQty +=$t_s2;
+                $totalWorkingHoursS2 +=$dur; 
+                $totalDandory +=$dandory;
             }
         }
 
-        $groupedPlans = $processedPlans->groupBy('line_code');
-        $availableCustomers = DB::table('customers')->get();
-        $availableParts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
+        $groupedPlans =$processedPlans->groupBy('line_code');
+        $availableCustomers = DB::table('customers')->get();$availableParts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
 
         return view('PPIC.small_mps', compact(
             'groupedPlans', 'date', 'availableLines', 'availableCustomers', 'availableParts',
@@ -304,9 +286,9 @@ class PPICController extends Controller
     /**
      * 2C. AJAX HELPER: GET PARTS BY CUSTOMER
      */
-    public function getPartsByCustomer(Request $request, $customer = null)
+    public function getPartsByCustomer(Request $request,$customer = null)
     {
-        $cust = $customer ?? $request->customer_code ?? $request->customer;
+        $cust =$customer ?? $request->customer_code ?? $request->customer;
         $parts = DB::table('parts')
             ->where('customer_code', trim($cust))
             ->select('part_no', 'part_name', 'customer_code')
