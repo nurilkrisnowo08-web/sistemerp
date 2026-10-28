@@ -85,21 +85,22 @@
         </div>
 
         <div class="d-flex align-items-center flex-wrap gap-2 mt-3 mt-md-0">
+            {{-- Room Switcher --}}
             <div class="oneui-segmented-wrap mr-3">
-                <a href="{{ url('planning/mps') }}" class="oneui-segmented-btn">
+                <a href="{{ url('/planning/mps') }}" class="oneui-segmented-btn">
                     <i class="fas fa-industry mr-1"></i> Big Press
                 </a>
-                <a href="{{ url('planning/mps/small') }}" class="oneui-segmented-btn active">
+                <a href="{{ url('/planning/mps/small') }}" class="oneui-segmented-btn active">
                     <i class="fas fa-cogs mr-1"></i> Small Press
                 </a>
             </div>
 
-            <form action="{{ url('planning/mps/small') }}" method="GET" class="d-flex align-items-center mr-2">
+            {{-- Date Picker --}}
+            <form action="{{ url('/planning/mps/small') }}" method="GET" class="d-flex align-items-center mr-2">
                 <input type="date" name="date" value="{{ $date }}" class="form-control font-weight-bold border" onchange="this.form.submit()" style="border-radius: 9999px; font-size: 12px; padding: 6px 14px; height: auto;">
             </form>
 
-            <!-- ✨ MENGGUNAKAN URL() AGAR TIDAK ERROR ROUTENOTFOUND ✨ -->
-            <a href="{{ url('/planning/mps/print_wos_small/' . $date) }}" target="_blank" class="btn-oneui btn-oneui-dark mr-2">
+            <a href="{{ url('/planning/mps/print-bundle/' . $date) }}" target="_blank" class="btn-oneui btn-oneui-dark mr-2">
                 <i class="fas fa-print"></i> Cetak Semua WOS
             </a>
 
@@ -109,7 +110,7 @@
         </div>
     </div>
 
-    {{-- 4 KARTU KPI METRIC --}}
+    {{-- 📊 4 KARTU KPI METRIC (ONE UI STYLE) --}}
     <div class="row mb-4">
         <div class="col-md-3 mb-2">
             <div class="oneui-metric-card" style="border-left: 4px solid var(--oneui-primary);">
@@ -139,7 +140,7 @@
         </div>
     </div>
 
-    {{-- DAFTAR JADWAL MESIN SMALL PRESS --}}
+    {{-- 📋 DAFTAR JADWAL MESIN SMALL PRESS --}}
     @forelse($groupedPlans as $lineCode => $plans)
     <div class="oneui-line-card">
         <div class="oneui-line-header">
@@ -147,11 +148,11 @@
                 <i class="fas fa-microchip text-primary"></i> LINE MESIN: <b style="font-family: 'Orbitron';">{{ strtoupper($lineCode) }}</b>
             </h6>
             <div>
-                <!-- ✨ MENGGUNAKAN URL() AGAR TIDAK ERROR ROUTENOTFOUND ✨ -->
-                <a href="{{ url('/planning/mps/print_wos-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff;">
-                    <i class="fas fa-file-alt"></i> WOS
+                <!-- ✨ PRINT TOMBOL MENGGUNAKAN URL() ✨ -->
+                <a href="{{ url('/planning/mps/print-wos-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-primary py-1 px-3 mr-1" style="border: 1px solid #bfdbfe; background: #eff6ff; text-decoration: none; color: #1d4ed8;">
+                    <i class="fas fa-file-alt"></i> WOS[cite: 18]
                 </a>
-                <a href="{{ url('/planning/mps/print-serahterima-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4;">
+                <a href="{{ url('/planning/mps/print-serahterima-small/' . $date . '/ALL/' . $lineCode) }}" target="_blank" class="btn-oneui btn-outline-success py-1 px-3" style="border: 1px solid #bbf7d0; background: #f0fdf4; text-decoration: none; color: #15803d;">
                     <i class="fas fa-pallet"></i> BPRM
                 </a>
             </div>
@@ -162,7 +163,7 @@
                 <thead>
                     <tr>
                         <th width="4%" class="text-center">#</th>
-                        <th width="22%" class="text-left pl-4">Part Identification</th>
+                        <th width="20%">Part Identification</th>
                         <th width="6%" class="text-center">MP</th>
                         <th width="6%" class="text-center">Proc</th>
                         <th width="10%" class="text-right">Target</th>
@@ -183,7 +184,7 @@
                     {{-- SHIFT 1 --}}
                     @if($plansS1->count() > 0)
                         <tr class="shift-divider-row">
-                            <td colspan="11" class="pl-4"><i class="fas fa-sun text-warning mr-1" style="font-size: 14px;"></i> SHIFT 1 (OPERASIONAL PAGI)</td>
+                            <td colspan="11"><i class="fas fa-sun text-warning mr-1"></i> SHIFT 1 (OPERASIONAL PAGI)</td>
                         </tr>
                         @foreach($plansS1 as $idx => $p)
                         @php
@@ -198,7 +199,7 @@
                         @endphp
                         <tr>
                             <td class="text-center font-weight-bold text-muted">{{ $loop->iteration }}</td>
-                            <td class="text-left pl-4 part-cell">
+                            <td class="text-left pl-4 part-cell" style="border-left: 4px solid var(--oneui-primary);">
                                 <span class="part-code-text">{{ $p->part_no }} {!! $revLabel !!}</span>
                                 <span class="customer-sub">{{ $p->customer_code ?? 'CUSTOMER' }}</span>
                             </td>
@@ -230,7 +231,7 @@
                     {{-- SHIFT 2 --}}
                     @if($plansS2->count() > 0)
                         <tr class="shift-divider-row">
-                            <td colspan="11" class="pl-4"><i class="fas fa-moon text-primary mr-1" style="font-size: 14px;"></i> SHIFT 2 (OPERASIONAL MALAM)</td>
+                            <td colspan="11"><i class="fas fa-moon text-primary mr-1"></i> SHIFT 2 (OPERASIONAL MALAM)</td>
                         </tr>
                         @foreach($plansS2 as $idx => $p)
                         @php
@@ -245,7 +246,7 @@
                         @endphp
                         <tr>
                             <td class="text-center font-weight-bold text-muted">{{ $loop->iteration }}</td>
-                            <td class="text-left pl-4 part-cell">
+                            <td class="text-left pl-4 part-cell" style="border-left: 4px solid var(--oneui-primary);">
                                 <span class="part-code-text">{{ $p->part_no }} {!! $revLabel !!}</span>
                                 <span class="customer-sub">{{ $p->customer_code ?? 'CUSTOMER' }}</span>
                             </td>
@@ -308,7 +309,8 @@
                 </div>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
-            <form action="{{ route('ppic.mps.store') }}" method="POST">
+            <!-- ✨ ACTION MENGGUNAKAN URL() ✨ -->
+            <form action="{{ url('/planning/mps/store') }}" method="POST">
                 @csrf
                 <input type="hidden" name="plan_date" value="{{ $date }}">
                 <div class="modal-body p-4 bg-white">
@@ -438,7 +440,7 @@
                         </div>
                         <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
-                    {{-- ✨ MENGGUNAKAN URL() UNTUK FORM UPDATE ✨ --}}
+                    <!-- ✨ ACTION MENGGUNAKAN URL() ✨ -->
                     <form action="{{ url('/planning/mps/update-wos/' . $p->id) }}" method="POST">
                         @csrf
                         @method('PUT')
@@ -474,7 +476,7 @@
                         </div>
                         <div class="modal-footer bg-light px-4 py-3 justify-content-between border-top-0">
                             <button type="button" class="btn-oneui bg-white text-muted border" data-dismiss="modal">Batal</button>
-                            <button type="submit" class="btn-oneui" style="background: var(--oneui-warning); color: #fff;"><i class="fas fa-sync-alt"></i> Simpan Revisi</button>
+                            <button type="submit" class="btn-oneui" style="background: var(--oneui-warning); color: #fff;"><i class="fas fa-sync-alt mr-1"></i> Simpan Revisi</button>
                         </div>
                     </form>
                 </div>
