@@ -48,7 +48,7 @@
     }
     
     body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; }
-    .heading-audit { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase; }
+    .heading-audit { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 900; letter-spacing: -0.5px; text-transform: uppercase; }
 
     /* 📊 STAT CARDS */
     .stat-card { background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #e2e8f0; transition: 0.3s; position: relative; overflow: hidden; height: 100%; }
@@ -64,10 +64,10 @@
     .row-clickable:hover { background: #f8fafc !important; cursor: pointer; }
 
     /* 🏷️ BADGES & CHIPS */
-    .coil-badge { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 2px 6px; display: inline-block; margin: 1px 0; white-space: nowrap; }
-    .ng-chip { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px; padding: 2px 6px; display: inline-block; margin: 1px; white-space: nowrap; }
-    .pair-badge { font-size: 8px; font-weight: 800; background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; border-radius: 4px; padding: 1px 5px; text-transform: uppercase; }
-    .cavity-pill { font-size: 8px; font-weight: 800; background: #e2e8f0; color: #334155; border-radius: 3px; padding: 1px 4px; }
+    .coil-badge { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 4px; padding: 3px 6px; display: inline-block; margin: 2px 0; white-space: nowrap; }
+    .ng-chip { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; font-weight: 700; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px; padding: 3px 6px; display: inline-block; margin: 2px; white-space: nowrap; }
+    .pair-badge { font-size: 8px; font-weight: 800; background: #fdf4ff; color: #a21caf; border: 1px solid #f5d0fe; border-radius: 4px; padding: 2px 5px; text-transform: uppercase; }
+    .cavity-pill { font-size: 8px; font-weight: 800; background: #e2e8f0; color: #334155; border-radius: 4px; padding: 2px 5px; }
 
     /* 🛡️ MODAL */
     .modal-audit { border-radius: 28px !important; border: none !important; }
@@ -80,11 +80,23 @@
         .screen-only, .no-print, .main-sidebar, .main-header, .btn, .filter-bar, .modal, #sidebarToggle, .navbar { display: none !important; }
         body { background: white !important; margin: 0; padding: 0; font-size: 8.5px; }
         .print-template { display: block !important; width: 100% !important; color: #000 !important; }
-        .print-header { border-bottom: 2.5px solid #000; margin-bottom: 12px; padding-bottom: 8px; }
-        .print-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .print-table th { background: #f1f5f9 !important; border: 1px solid #000; padding: 6px 4px; font-size: 8px; text-transform: uppercase; font-weight: 800; }
+        
+        .print-header-container { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 15px; }
+        .print-logo-section { display: flex; align-items: center; gap: 15px; }
+        .print-logo-section img { height: 42px; }
+        .print-company-info h2 { margin: 0; font-size: 16px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+        .print-company-info p { margin: 2px 0 0; font-size: 10px; font-weight: 700; color: #475569; }
+        
+        .print-meta { text-align: right; line-height: 1.4; }
+        
+        .print-recap-grid { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 10px; }
+        .summary-box { flex: 1; border: 1px solid #000; border-radius: 4px; overflow: hidden; text-align: center; }
+        .summary-title { background: #f1f5f9; padding: 4px; font-size: 8px; font-weight: 800; border-bottom: 1px solid #000; text-transform: uppercase; }
+        .summary-value { padding: 6px; font-size: 12px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+        
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        .print-table th { background: #f8fafc !important; border: 1px solid #000; padding: 6px 4px; font-size: 8px; text-transform: uppercase; font-weight: 800; }
         .print-table td { border: 1px solid #000; padding: 5px 4px; font-size: 8.5px; vertical-align: top; }
-        .summary-box { border: 1px solid #000; padding: 6px 10px; text-align: center; width: 18%; font-weight: 800; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
     }
 </style>
 
@@ -92,33 +104,33 @@
 
     {{-- 🖨️ LEMBAR CETAK PROFESIONAL (A4 LANDSCAPE) --}}
     <div class="print-template">
-        <div class="print-header">
-            <table style="width: 100%;">
-                <tr>
-                    <td>
-                        <h2 style="margin: 0; font-weight: 900; font-size: 20px;">PT ASALTA MANDIRI AGUNG</h2>
-                        <p style="margin: 2px 0 0; font-size: 11px; font-weight: 700; color: #475569;">Stamping Production Audit & Traceability Report</p>
-                    </td>
-                    <td style="text-align: right; vertical-align: bottom;">
-                        <p style="margin: 0; font-size: 11px;"><b>PERIOD:</b> {{ $periodString }}</p>
-                        <p style="margin: 2px 0 0; font-size: 8px;">Printed on: {{ date('d/m/Y H:i') }}</p>
-                    </td>
-                </tr>
-            </table>
+        <div class="print-header-container">
+            <div class="print-logo-section">
+                <!-- Gunakan Asset Logo Perusahaan -->
+                <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
+                <div class="print-company-info">
+                    <h2>PT ASALTA MANDIRI AGUNG</h2>
+                    <p>STAMPING PRODUCTION AUDIT & TRACEABILITY REPORT</p>
+                </div>
+            </div>
+            <div class="print-meta">
+                <p style="margin: 0; font-size: 11px;"><b>PERIOD DATE:</b> {{ strtoupper($periodString) }}</p>
+                <p style="margin: 2px 0 0; font-size: 8px;">Printed on: {{ date('d M Y, H:i') }}</p>
+            </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; margin-bottom: 14px;">
-            <div class="summary-box">TOTAL TAKE: {{ number_format($totalTake) }}</div>
-            <div class="summary-box">TOTAL OK: {{ number_format($totalOk) }}</div>
-            <div class="summary-box">TOTAL REJECT: {{ number_format($totalNg) }}</div>
-            <div class="summary-box">RETURN RM: {{ number_format($totalRet) }}</div>
-            <div class="summary-box">PERFORMANCE: {{ number_format($performance, 1) }}%</div>
+        <div class="print-recap-grid">
+            <div class="summary-box"><div class="summary-title">Total Material Take</div><div class="summary-value">{{ number_format($totalTake) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Verified OK</div><div class="summary-value">{{ number_format($totalOk) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Total Reject NG</div><div class="summary-value">{{ number_format($totalNg) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Returned RM</div><div class="summary-value">{{ number_format($totalRet) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Global Performance</div><div class="summary-value">{{ number_format($performance, 1) }}%</div></div>
         </div>
 
         <table class="print-table">
             <thead>
                 <tr>
-                    <th width="11%">Timestamp / Shift</th>
+                    <th width="11%">Plan Date / Shift</th>
                     <th width="14%">Batch ID / Machine</th>
                     <th width="18%">Part Information</th>
                     <th width="18%">Coil / Material Terpakai</th>
@@ -132,7 +144,8 @@
                 @forelse($histories as $h)
                 <tr>
                     <td>
-                        <b>{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</b><br>
+                        <!-- ✨ Menggunakan Plan Date (Sesuai Jadwal PPIC) ✨ -->
+                        <b>{{ date('d/m/Y', strtotime($h->plan_date ?? $h->created_at)) }}</b><br>
                         <span style="font-size: 7.5px;">Shift: {{ $h->shift }}</span>
                     </td>
                     <td>
@@ -144,7 +157,7 @@
                         <span class="cavity-pill">Cav:{{ $h->cavity ?? 1 }}</span><br>
                         <span style="font-size: 7.5px; color: #475569;">{{ $h->part_name ?? '-' }}</span>
                         @if($h->is_separating && $h->paired_part)
-                            <div style="margin-top: 2px; border-top: 1px dashed #cbd5e1; padding-top: 2px;">
+                            <div style="margin-top: 3px; border-top: 1px dashed #94a3b8; padding-top: 3px;">
                                 <span class="pair-badge">PAIR</span> <b>{{ $h->paired_part }}</b><br>
                                 <span style="font-size: 7px; color: #475569;">{{ $h->paired_part_name ?? '-' }}</span>
                             </div>
@@ -153,7 +166,7 @@
                     <td>
                         @if(isset($h->coils_used) && count($h->coils_used) > 0)
                             @foreach($h->coils_used as $c)
-                                <div style="font-family:'JetBrains Mono'; font-size:7.5px;">
+                                <div style="font-family:'JetBrains Mono'; font-size:7.5px; margin-bottom: 2px;">
                                     🏷️ {{ $c->coil_id }}: <b>{{ number_format($c->pcs_used) }} lbr</b>
                                 </div>
                             @endforeach
@@ -183,7 +196,7 @@
                             </div>
                         @endif
                         @if($h->is_separating && !empty($h->paired_ng_remark) && $h->paired_ng_remark !== '-')
-                            <div style="font-family:'JetBrains Mono'; font-size:7px; color: #6b21a8;">
+                            <div style="font-family:'JetBrains Mono'; font-size:7px; color: #6b21a8; margin-bottom: 2px;">
                                 <b>Pair Defect:</b> {{ $h->paired_ng_remark }}
                             </div>
                         @endif
@@ -211,19 +224,27 @@
 
     {{-- 🖥️ TAMPILAN MONITOR (SCREEN VIEW) --}}
     <div class="screen-only">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-            <div>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4">
+            <div class="mb-3 mb-md-0">
                 <h2 class="heading-audit m-0">QUALITY_AUDIT <span class="text-primary">SYSTEM</span></h2>
                 <p class="text-muted small font-weight-bold mb-0 text-uppercase tracking-widest">Production Traceability Matrix // Period: {{ $periodString }}</p>
             </div>
-            <div class="d-flex mt-3 mt-md-0">
-                <form action="{{ route('produksi.history') }}" method="GET" class="d-flex align-items-center shadow-sm p-1 px-2 bg-white rounded-pill border mr-2">
-                    <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent shadow-none font-weight-bold" style="width: 135px;">
-                    <span class="mx-1 text-muted font-weight-bold">to</span>
-                    <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent shadow-none font-weight-bold" style="width: 135px;">
-                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3 ml-2"><i class="fas fa-sync-alt"></i></button>
+            
+            <div class="d-flex flex-column gap-2">
+                {{-- Form Filter Periode, Customer, dan Part --}}
+                <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
+                    <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
+                    <span class="text-muted font-weight-bold small">to</span>
+                    <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
+                    
+                    <div class="border-left pl-2 d-flex gap-1">
+                        <input type="text" name="customer" value="{{ request('customer') }}" class="form-control form-control-sm font-weight-bold" placeholder="Customer" style="width: 90px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                        <input type="text" name="part_no" value="{{ request('part_no') }}" class="form-control form-control-sm font-weight-bold" placeholder="Part No" style="width: 120px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-sm px-3 ml-1 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-filter mr-1"></i> Filter</button>
+                    <button type="button" onclick="window.print()" class="btn btn-dark btn-sm px-3 ml-1 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-print mr-1"></i> Print</button>
                 </form>
-                <button onclick="window.print()" class="btn btn-dark rounded-pill px-4 shadow-sm font-weight-bold"><i class="fas fa-print mr-2"></i> PRINT REPORT</button>
             </div>
         </div>
 
@@ -248,7 +269,7 @@
                 <table class="table table-hud mb-0">
                     <thead>
                         <tr>
-                            <th class="pl-4">Time / Machine</th>
+                            <th class="pl-4">Plan Date / Time</th>
                             <th>Batch ID</th>
                             <th>Part Details</th>
                             <th>Coil / Material Terpakai</th>
@@ -268,8 +289,10 @@
                         @endphp
                         <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
                             <td class="pl-4">
-                                <div class="font-weight-bold text-dark">{{ date('d/m/y H:i', strtotime($h->updated_at)) }}</div>
-                                <div class="small text-muted font-weight-bold"><i class="fas fa-industry text-primary mr-1"></i> {{ $h->kode_Line ?? 'LINE' }} ({{ $h->shift }})</div>
+                                <!-- ✨ Menampilkan Plan Date sebagai Patokan Utama ✨ -->
+                                <div class="font-weight-bold text-dark"><i class="far fa-calendar-check text-success mr-1"></i> {{ date('d M Y', strtotime($h->plan_date ?? $h->created_at)) }}</div>
+                                <div class="small text-muted font-weight-bold"><i class="fas fa-clock text-primary mr-1"></i> Input: {{ date('H:i', strtotime($h->updated_at)) }}</div>
+                                <div class="small text-muted font-weight-bold mt-1"><i class="fas fa-industry text-secondary mr-1"></i> {{ $h->kode_Line ?? 'LINE' }} ({{ $h->shift }})</div>
                             </td>
                             <td>
                                 <span class="font-family-jetbrains font-weight-bold text-primary">{{ $h->no_produksi }}</span>
@@ -351,7 +374,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="py-5 text-center text-muted italic">Belum ada riwayat produksi yang tercatat pada periode ini.</td>
+                            <td colspan="9" class="py-5 text-center text-muted font-italic">Belum ada riwayat produksi yang tercatat pada periode ini.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -399,7 +422,7 @@
                                 <div class="font-weight-bold text-dark" id="det-cavity">1</div>
                             </div>
                             <div class="col-6 mb-2">
-                                <small class="stat-label">Finish Time</small>
+                                <small class="stat-label">Finish / Input Time</small>
                                 <div class="font-weight-bold small text-muted" id="det-time">-</div>
                             </div>
                         </div>

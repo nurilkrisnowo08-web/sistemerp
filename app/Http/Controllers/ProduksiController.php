@@ -12,8 +12,6 @@ class ProduksiController extends Controller
 {
     /**
      * 1. STAMPING TERMINAL LINE CONTROL (SINKRON DENGAN ALUR WOS PPIC)
-     * - Memisahkan Area Big Press vs Small Press
-     * - Membagi Operasional Shift 1 & Shift 2
      */
     public function index(Request $request)
     {
@@ -47,7 +45,7 @@ class ProduksiController extends Controller
                 'rm_stocks.material_name',
                 'parts.part_name',
                 'production_plans.customer_code as plan_customer',
-                'production_plans.plan_date', // ✨ DITAMBAHKAN AGAR BISA GROUPING TANGGAL DI BLADE ✨
+                'production_plans.plan_date', // ✨ Grouping Parameter
                 DB::raw('COALESCE(line.kode_Line, "UNKNOWN") as kode_Line'),
                 DB::raw('COALESCE(GROUP_CONCAT(line.kode_Line SEPARATOR ", "), line.kode_Line) as line_names'),
                 DB::raw('SUM(produksi_batches.qty_ambil_pcs * produksi_batches.cavity) as total_qty_batch')
@@ -77,7 +75,7 @@ class ProduksiController extends Controller
                 'rm_stocks.material_name', 
                 'parts.part_name',
                 'production_plans.customer_code',
-                'production_plans.plan_date', // ✨ DITAMBAHKAN GROUP BY ✨
+                'production_plans.plan_date', 
                 'line.kode_Line'
             );
 
@@ -152,7 +150,6 @@ class ProduksiController extends Controller
                 $item->shift_code = 'S1';
             }
 
-            // Jika plan_date tidak ditemukan (legacy record), ambil dari created_at
             if (empty($item->plan_date)) {
                 $item->plan_date = date('Y-m-d', strtotime($item->created_at));
             }
@@ -251,7 +248,7 @@ class ProduksiController extends Controller
     public function storeResult(Request $request, $id) { return back(); }
 
     /**
-     * ✨ UPDATE RESULT: SINKRON HASIL DENGAN actual_stock & UPDATE SEPARATING SUB-PART ✨
+     * ✨ UPDATE RESULT: SINKRON HASIL MUTLAK DENGAN TANGGAL JADWAL (PLAN_DATE) ✨
      */
     public function updateResult(Request $request, $id)
     {
@@ -262,6 +259,9 @@ class ProduksiController extends Controller
         try {
             $qty_ok_new = (int)$request->qty_hasil_ok; 
             $ng_parent_update = (int)$request->qty_hasil_ng; 
+
+            // 🔥 AMBIL TANGGAL PLAN (JADWAL ASLI) BUKAN TANGGAL KLIK TOMBOL 🔥
+            $planDate = DB::table('production_plans')->where('id', $p->plan_id)->value('plan_date') ?? date('Y-m-d', strtotime($p->created_at));
 
             if ($request->has('qty_hasil_ok_parts') && is_array($request->qty_hasil_ok_parts)) {
                 $max_ok = 0;
@@ -303,11 +303,12 @@ class ProduksiController extends Controller
             $target = ($partMaster && !empty($partMaster->next_process)) ? strtoupper(trim($partMaster->next_process)) : 'FG';
 
             if ($qty_ok_new > 0) {
+                // Catat history masuk dengan tanggal plan
                 DB::table('production_logs')->insert([
                     'part_no'      => $p->material_code, 
                     'qty'          => $qty_ok_new, 
                     'process_type' => ($target == 'WELDING') ? 'WELDING' : 'FG', 
-                    'created_at'   => now(), 
+                    'created_at'   => $planDate . ' ' . date('H:i:s'), 
                     'updated_at'   => now()
                 ]);
 
@@ -364,7 +365,7 @@ class ProduksiController extends Controller
                         'pcs_in'        => $qty_return_sheet, 
                         'source'        => 'return',
                         'no_produksi'   => $p->no_produksi, 
-                        'created_at'    => now()
+                        'created_at'    => $planDate . ' ' . date('H:i:s')
                     ]);
                 }
             }
@@ -379,12 +380,12 @@ class ProduksiController extends Controller
                 'qty_return'           => 0, 
                 'status'               => $status_akhir,
                 'keterangan'           => $request->keterangan ?? $p->keterangan, 
-                'updated_at'           => now()
+                'updated_at'           => now() // Ini waktu edit sesungguhnya (untuk audit jejak)
             ]);
 
             $this->syncToActual($id); 
 
-            $actual = DB::table('production_actuals')->where('part_no', $p->material_code)->whereDate('created_at', date('Y-m-d', strtotime($p->created_at)))->first();
+            $actual = DB::table('production_actuals')->where('part_no', $p->material_code)->whereDate('created_at', $planDate)->first();
             if ($actual && !empty($ng_details)) {
                 foreach ($ng_details as $detail) {
                     DB::table('production_ng_logs')->insert([
@@ -392,7 +393,7 @@ class ProduksiController extends Controller
                         'no_produksi' => $p->no_produksi, 
                         'ng_type'     => $detail['type'], 
                         'qty'         => $detail['qty'], 
-                        'created_at'  => now()
+                        'created_at'  => $planDate . ' ' . date('H:i:s')
                     ]);
                 }
             }
@@ -420,7 +421,7 @@ class ProduksiController extends Controller
                             'part_no'      => $p_sub->material_code, 
                             'qty'          => $qty_ok_sub, 
                             'process_type' => ($subTarget == 'WELDING') ? 'WELDING' : 'FG', 
-                            'created_at'   => now(), 
+                            'created_at'   => $planDate . ' ' . date('H:i:s'),
                             'updated_at'   => now()
                         ]);
 
@@ -463,19 +464,27 @@ class ProduksiController extends Controller
             }
 
             DB::commit(); 
-            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Berhasil Disimpan!');
+            return redirect()->route('produksi.index')->with('success', 'Hasil Produksi Berhasil Disimpan sesuai dengan Tanggal Jadwal!');
         } catch (\Exception $e) { 
             DB::rollback(); 
             return back()->with('error', $e->getMessage()); 
         }
     }
 
+    /**
+     * ✨ SINKRON KE ACTUAL MUTLAK MENGGUNAKAN TANGGAL JADWAL (PLAN_DATE) ✨
+     */
     private function syncToActual($batchId)
     {
         $batch = DB::table('produksi_batches')->where('id', $batchId)->first();
         if (!$batch) return;
+        
         $lineCode = DB::table('line')->where('id', $batch->mesin_id)->value('kode_Line') ?? 'UNKNOWN';
-        $dateOnly = date('Y-m-d', strtotime($batch->created_at));
+        
+        // Paksa sistem untuk mengikat hasil aktual ke tanggal plan aslinya
+        $planDate = DB::table('production_plans')->where('id', $batch->plan_id)->value('plan_date');
+        $dateOnly = $planDate ? $planDate : date('Y-m-d', strtotime($batch->created_at));
+        
         DB::table('production_actuals')->updateOrInsert(
             ['part_no' => $batch->material_code, 'line_code' => $lineCode, 'created_at' => $dateOnly],
             ['shift' => $batch->shift, 'qty_ok' => $batch->qty_hasil_ok, 'qty_ng' => $batch->qty_hasil_ng, 'updated_at' => now()]
@@ -484,15 +493,20 @@ class ProduksiController extends Controller
 
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
     
+    /**
+     * ✨ HISTORY & CHART MUTLAK BERDASARKAN TANGGAL JADWAL (PLAN_DATE) ✨
+     */
     public function history(Request $request) 
     { 
         $startDate = $request->start_date ?? date('Y-m-d', strtotime('-6 days'));
         $endDate = $request->end_date ?? date('Y-m-d');
 
+        // Mengubah acuan filter tanggal dari 'updated_at' ke 'plan_date'
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
+            ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->select(
                 'produksi_batches.*',
                 'line.kode_Line',
@@ -501,12 +515,13 @@ class ProduksiController extends Controller
                 'rm_stocks.coil_id',
                 'rm_stocks.spec',
                 'rm_stocks.size',
-                'rm_stocks.customer'
+                'rm_stocks.customer',
+                'production_plans.plan_date'
             )
             ->where('produksi_batches.status', 'COMPLETED')
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
-            ->whereBetween(DB::raw('DATE(produksi_batches.updated_at)'), [$startDate, $endDate])
-            ->orderBy('produksi_batches.updated_at', 'desc');
+            ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate])
+            ->orderBy(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), 'desc');
 
         $historiesRaw = $query->paginate(50); 
 
@@ -595,14 +610,16 @@ class ProduksiController extends Controller
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
+        // CHART & STATISTIK JUGA MENGGUNAKAN TANGGAL JADWAL
         $dailyStats = DB::table('produksi_batches')
+            ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->select(
-                DB::raw('DATE(updated_at) as tgl'),
-                DB::raw('SUM(qty_hasil_ok) as total_ok'),
-                DB::raw('SUM(qty_hasil_ng) as total_ng')
+                DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at)) as tgl'),
+                DB::raw('SUM(produksi_batches.qty_hasil_ok) as total_ok'),
+                DB::raw('SUM(produksi_batches.qty_hasil_ng) as total_ng')
             )
-            ->where('status', 'COMPLETED')
-            ->whereBetween(DB::raw('DATE(updated_at)'), [$startDate, $endDate])
+            ->where('produksi_batches.status', 'COMPLETED')
+            ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate])
             ->groupBy('tgl')
             ->orderBy('tgl', 'asc')
             ->get();
