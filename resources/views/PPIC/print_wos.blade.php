@@ -56,28 +56,14 @@
         .sig-table th, .sig-table td { border: 1px solid #000; padding: 6px; width: 25%; }
         .sig-table th { background: #f8fafc; }
         .sig-table td { height: 50px; vertical-align: bottom; padding-bottom: 5px; }
+
+        .split-line { border-top: 1px dashed #94a3b8; display: block; padding-top: 3px; margin-top: 3px; }
     </style>
 </head>
 <body>
 
     @php
-        // Helper untuk memformat angka Aktual OK & NG
-        if (!function_exists('formatMergedQty')) {
-            function formatMergedQty($val) {
-                if ($val === null || $val === '' || $val === '0' || $val === '0 / 0') return '';
-                $arr = explode(' / ', (string)$val);
-                $res = [];
-                $sum = 0;
-                foreach($arr as $v) {
-                    $num = (int)$v;
-                    $sum += $num;
-                    $res[] = number_format($num);
-                }
-                return $sum > 0 ? implode(' / ', $res) : '';
-            }
-        }
-
-        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS BESERTA NILAINYA ✨
+        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS BESERTA NILAINYA (ATAS-BAWAH) ✨
         function mergeWosPlans($plans) {
             $merged = collect();
             foreach($plans as $p) {
@@ -88,33 +74,53 @@
                     $baseProd = 'UNREG-' . $p->id; 
                 }
                 
+                // Ambil 2 digit terakhir dari Part Number sebagai Identitas (contoh: 35 dari 61635)
+                $partSplit = explode('-', $p->part_no);
+                $partPrefix = $partSplit[0];
+                $shortLabel = substr($partPrefix, -2);
+                
                 if (!$merged->has($baseProd)) {
                     $item = clone $p;
                     $item->display_part_no = $item->part_no;
                     $item->display_part_name = $item->part_name ?? 'WOS PART';
                     $item->display_no_produksi = preg_replace('/-[MS]$/', '', $p->no_produksi);
                     
-                    // Simpan Aktual OK & NG sebagai String agar bisa digabung
-                    $item->actual_ok_str = (string)($item->actual_ok ?? 0);
-                    $item->actual_ng_str = (string)($item->actual_ng ?? 0);
+                    $isSeparating = preg_match('/-[MS]$/', $p->no_produksi) || strpos($p->keterangan ?? '', 'PAIR_MAIN:') === 0;
+                    
+                    if ($isSeparating) {
+                        $ok_val = ($item->actual_ok > 0) ? $item->actual_ok : '';
+                        $ng_val = ($item->actual_ng > 0) ? $item->actual_ng : '';
+                        $item->actual_ok_str = "<b>{$shortLabel}:</b> " . $ok_val;
+                        $item->actual_ng_str = "<b>{$shortLabel}:</b> " . $ng_val;
+                    } else {
+                        $item->actual_ok_str = ($item->actual_ok > 0) ? $item->actual_ok : '';
+                        $item->actual_ng_str = ($item->actual_ng > 0) ? $item->actual_ng : '';
+                    }
                     
                     $merged->put($baseProd, $item);
                 } else {
                     $existing = $merged->get($baseProd);
                     
-                    // Gabungkan Part Number
                     if (!str_contains($existing->display_part_no, $p->part_no)) {
-                        $existing->display_part_no .= ' / ' . $p->part_no;
+                        $existing->display_part_no .= '<br><span class="split-line">' . $p->part_no . '</span>';
                         
-                        // Gabungkan Part Name
                         $pName = $p->part_name ?? 'WOS PART';
-                        if (!str_contains($existing->display_part_name, $pName)) {
-                            $existing->display_part_name .= ' / ' . $pName;
+                        $existing->display_part_name .= '<br><span class="split-line">' . $pName . '</span>';
+                        
+                        // Konversi part pertama jika belum pakai format label
+                        if (!str_contains($existing->actual_ok_str, '<b>')) {
+                             $oldShort = substr(explode('-', $existing->part_no)[0], -2);
+                             $oldOk = ($existing->actual_ok > 0) ? $existing->actual_ok : '';
+                             $oldNg = ($existing->actual_ng > 0) ? $existing->actual_ng : '';
+                             $existing->actual_ok_str = "<b>{$oldShort}:</b> " . $oldOk;
+                             $existing->actual_ng_str = "<b>{$oldShort}:</b> " . $oldNg;
                         }
                         
-                        // ✨ Gabungkan Angka Aktual OK & NG Kiri Kanan ✨
-                        $existing->actual_ok_str .= ' / ' . ($p->actual_ok ?? 0);
-                        $existing->actual_ng_str .= ' / ' . ($p->actual_ng ?? 0);
+                        $newOk = ($p->actual_ok > 0) ? $p->actual_ok : '';
+                        $newNg = ($p->actual_ng > 0) ? $p->actual_ng : '';
+                        
+                        $existing->actual_ok_str .= '<br><span class="split-line"><b>' . $shortLabel . ':</b> ' . $newOk . '</span>';
+                        $existing->actual_ng_str .= '<br><span class="split-line"><b>' . $shortLabel . ':</b> ' . $newNg . '</span>';
                     }
                     
                     $merged->put($baseProd, $existing);
@@ -163,7 +169,7 @@
 
         <!-- Tanggal Kanan & Nomor WOS Dinamis -->
         <div class="meta-section">
-            TANGGAL : <span style="color:#2563eb;">{{ date('d F Y', strtotime($date)) }}</span><br>
+            TANGGAL : <span style="color:#2563eb;">{{ date('d-m-Y', strtotime($date)) }}</span><br>
             NO DOKUMEN : <span class="val">{{ $displayWos }}</span>
         </div>
     </div>
@@ -193,8 +199,8 @@
                 <th style="width: 4%;">AKHIR</th>
                 <th style="width: 4%;">MULAI</th>
                 <th style="width: 4%;">SELESAI</th>
-                <th style="width: 4%;">OK</th>
-                <th style="width: 4%;">NG</th>
+                <th style="width: 5%;">OK</th>
+                <th style="width: 5%;">NG</th>
                 <th style="width: 4%;">WH</th>
             </tr>
         </thead>
@@ -234,8 +240,8 @@
                 <tr>
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
-                        {{ $p->display_part_no }}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->display_part_name, 50) }}</span><br>
+                        {!! $p->display_part_no !!}<br>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{!! $p->display_part_name !!}</span><br>
                         <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
@@ -255,9 +261,9 @@
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
                     
-                    <!-- ✨ HASIL OK DAN NG AKAN MUNCUL SEBAGAI 399 / 400 JIKA DIGABUNG ✨ -->
-                    <td class="text-bold text-green" style="font-size: 11px;">{{ formatMergedQty($p->actual_ok_str) }}</td>
-                    <td class="text-bold text-danger" style="font-size: 11px;">{{ formatMergedQty($p->actual_ng_str) }}</td>
+                    <!-- ✨ HASIL OK DAN NG MUNCUL TERSUSUN KE BAWAH JIKA DIGABUNG ✨ -->
+                    <td class="text-bold text-green" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ok_str !!}</td>
+                    <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ng_str !!}</td>
                     <td></td>
                     
                     <td class="text-left" style="font-size: 8px;">
@@ -309,8 +315,8 @@
                 <tr>
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
-                        {{ $p->display_part_no }}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->display_part_name, 50) }}</span><br>
+                        {!! $p->display_part_no !!}<br>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{!! $p->display_part_name !!}</span><br>
                         <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
@@ -330,9 +336,8 @@
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
                     
-                    <!-- ✨ HASIL OK DAN NG AKAN MUNCUL SEBAGAI 399 / 400 JIKA DIGABUNG ✨ -->
-                    <td class="text-bold text-green" style="font-size: 11px;">{{ formatMergedQty($p->actual_ok_str) }}</td>
-                    <td class="text-bold text-danger" style="font-size: 11px;">{{ formatMergedQty($p->actual_ng_str) }}</td>
+                    <td class="text-bold text-green" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ok_str !!}</td>
+                    <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ng_str !!}</td>
                     <td></td>
                     
                     <td class="text-left" style="font-size: 8px;">
