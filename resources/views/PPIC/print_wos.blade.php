@@ -61,14 +61,29 @@
 <body>
 
     @php
-        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS ✨
+        // Helper untuk memformat angka Aktual OK & NG
+        if (!function_exists('formatMergedQty')) {
+            function formatMergedQty($val) {
+                if ($val === null || $val === '' || $val === '0' || $val === '0 / 0') return '';
+                $arr = explode(' / ', (string)$val);
+                $res = [];
+                $sum = 0;
+                foreach($arr as $v) {
+                    $num = (int)$v;
+                    $sum += $num;
+                    $res[] = number_format($num);
+                }
+                return $sum > 0 ? implode(' / ', $res) : '';
+            }
+        }
+
+        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS BESERTA NILAINYA ✨
         function mergeWosPlans($plans) {
             $merged = collect();
             foreach($plans as $p) {
                 // Hilangkan akhiran -M atau -S agar terdeteksi sebagai WOS yang sama
                 $baseProd = preg_replace('/-[MS]$/', '', $p->no_produksi);
                 
-                // Jika belum diregister (masih '-'), pastikan tidak digabung ngawur dengan antrean idle lainnya
                 if (empty($baseProd) || $baseProd === '-') {
                     $baseProd = 'UNREG-' . $p->id; 
                 }
@@ -77,7 +92,12 @@
                     $item = clone $p;
                     $item->display_part_no = $item->part_no;
                     $item->display_part_name = $item->part_name ?? 'WOS PART';
-                    $item->display_no_produksi = preg_replace('/-[MS]$/', '', $p->no_produksi); // Tampilkan tanpa -M / -S
+                    $item->display_no_produksi = preg_replace('/-[MS]$/', '', $p->no_produksi);
+                    
+                    // Simpan Aktual OK & NG sebagai String agar bisa digabung
+                    $item->actual_ok_str = (string)($item->actual_ok ?? 0);
+                    $item->actual_ng_str = (string)($item->actual_ng ?? 0);
+                    
                     $merged->put($baseProd, $item);
                 } else {
                     $existing = $merged->get($baseProd);
@@ -85,17 +105,17 @@
                     // Gabungkan Part Number
                     if (!str_contains($existing->display_part_no, $p->part_no)) {
                         $existing->display_part_no .= ' / ' . $p->part_no;
+                        
+                        // Gabungkan Part Name
+                        $pName = $p->part_name ?? 'WOS PART';
+                        if (!str_contains($existing->display_part_name, $pName)) {
+                            $existing->display_part_name .= ' / ' . $pName;
+                        }
+                        
+                        // ✨ Gabungkan Angka Aktual OK & NG Kiri Kanan ✨
+                        $existing->actual_ok_str .= ' / ' . ($p->actual_ok ?? 0);
+                        $existing->actual_ng_str .= ' / ' . ($p->actual_ng ?? 0);
                     }
-                    
-                    // Gabungkan Part Name
-                    $pName = $p->part_name ?? 'WOS PART';
-                    if (!str_contains($existing->display_part_name, $pName)) {
-                        $existing->display_part_name .= ' / ' . $pName;
-                    }
-                    
-                    // Ambil angka Aktual (OK/NG) terbesar di antara keduanya
-                    $existing->actual_ok = max($existing->actual_ok ?? 0, $p->actual_ok ?? 0);
-                    $existing->actual_ng = max($existing->actual_ng ?? 0, $p->actual_ng ?? 0);
                     
                     $merged->put($baseProd, $existing);
                 }
@@ -235,8 +255,9 @@
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
                     
-                    <td class="text-bold text-green" style="font-size: 11px;">{{ $p->actual_ok > 0 ? number_format($p->actual_ok) : '' }}</td>
-                    <td class="text-bold text-danger" style="font-size: 11px;">{{ $p->actual_ng > 0 ? number_format($p->actual_ng) : '' }}</td>
+                    <!-- ✨ HASIL OK DAN NG AKAN MUNCUL SEBAGAI 399 / 400 JIKA DIGABUNG ✨ -->
+                    <td class="text-bold text-green" style="font-size: 11px;">{{ formatMergedQty($p->actual_ok_str) }}</td>
+                    <td class="text-bold text-danger" style="font-size: 11px;">{{ formatMergedQty($p->actual_ng_str) }}</td>
                     <td></td>
                     
                     <td class="text-left" style="font-size: 8px;">
@@ -309,8 +330,9 @@
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
                     
-                    <td class="text-bold text-green" style="font-size: 11px;">{{ $p->actual_ok > 0 ? number_format($p->actual_ok) : '' }}</td>
-                    <td class="text-bold text-danger" style="font-size: 11px;">{{ $p->actual_ng > 0 ? number_format($p->actual_ng) : '' }}</td>
+                    <!-- ✨ HASIL OK DAN NG AKAN MUNCUL SEBAGAI 399 / 400 JIKA DIGABUNG ✨ -->
+                    <td class="text-bold text-green" style="font-size: 11px;">{{ formatMergedQty($p->actual_ok_str) }}</td>
+                    <td class="text-bold text-danger" style="font-size: 11px;">{{ formatMergedQty($p->actual_ng_str) }}</td>
                     <td></td>
                     
                     <td class="text-left" style="font-size: 8px;">
