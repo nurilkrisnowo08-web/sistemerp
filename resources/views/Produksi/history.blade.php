@@ -2,7 +2,7 @@
 
 @section('content')
 @php
-    // Setup Tanggal dari Controller
+    // Setup Tanggal
     $startD = $startDate ?? date('Y-m-d', strtotime('-6 days'));
     $endD = $endDate ?? date('Y-m-d');
     
@@ -12,36 +12,7 @@
         $periodString = date('d M Y', strtotime($startD)) . ' - ' . date('d M Y', strtotime($endD));
     }
 
-    // Kalkulasi Data untuk KPI Box
-    $totalTake = 0; 
-    $totalOk = 0; 
-    $totalNg = 0; 
-    $totalRet = 0;
-    
-    if(isset($histories) && count($histories) > 0) {
-        foreach($histories as $h) {
-            $totalTake += $h->qty_ambil_pcs;
-            $totalRet += $h->qty_return_warehouse;
-            $totalOk += $h->qty_hasil_ok;
-            $totalNg += $h->qty_hasil_ng;
-
-            if ($h->is_separating) {
-                $totalOk += ($h->paired_ok ?? 0);
-                $totalNg += ($h->paired_ng ?? 0);
-            }
-        }
-    }
-
-    $totalProduksi = $totalOk + $totalNg;
-    if ($totalProduksi > 0) {
-        $performance = ($totalOk / $totalProduksi) * 100;
-        if ($performance > 99.9 && $totalNg > 0) {
-            $performance = 99.9;
-        }
-    } else {
-        $performance = 0;
-    }
-
+    // AMBIL DATA UNTUK DROPDOWN FILTER
     $filterCustomers = \DB::table('customers')->select('code', 'name')->orderBy('code', 'asc')->get();
     $filterParts = \DB::table('parts')->select('part_no', 'customer_code')->orderBy('part_no', 'asc')->get();
 @endphp
@@ -133,6 +104,7 @@
             </div>
         </div>
 
+        <!-- ✨ DATA MENGGUNAKAN VARIABEL GLOBAL DARI CONTROLLER ✨ -->
         <div class="print-recap-grid">
             <div class="summary-box"><div class="summary-title">Total Material Take</div><div class="summary-value">{{ number_format($globalTakePcs ?? 0) }} Pcs</div></div>
             <div class="summary-box"><div class="summary-title">Verified OK</div><div class="summary-value">{{ number_format($globalOk ?? 0) }}</div></div>
@@ -158,8 +130,25 @@
             <tbody>
                 @forelse($histories as $h)
                 @php 
-                    $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
-                    $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                    $isFiltered = !empty($partFilter);
+                    $isFilteredToMain = $isFiltered && ($partFilter == $h->material_code);
+                    $isFilteredToSub = $isFiltered && ($partFilter == $h->paired_part);
+                    
+                    $batchTake = $h->qty_ambil_pcs;
+                    $batchRet = $h->qty_return_warehouse ?? 0;
+                    $batchEffTake = max(0, $batchTake - $batchRet);
+
+                    if ($isFilteredToMain) {
+                        $okToShow = $h->qty_hasil_ok;
+                        $ngToShow = $h->qty_hasil_ng;
+                        $takeToShow = $batchEffTake;
+                    } elseif ($isFilteredToSub) {
+                        $okToShow = $h->paired_ok ?? 0;
+                        $ngToShow = $h->paired_ng ?? 0;
+                        $takeToShow = $batchEffTake;
+                    } else {
+                        $okToShow = clone($h); // Flag untuk tampilan normal ganda
+                    }
                     
                     if ($h->is_separating) {
                         $p1Split = explode('-', $h->material_code);
@@ -204,7 +193,11 @@
                         {{ number_format($h->qty_ambil_pcs) }}
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #15803d;">
-                        @if($h->is_separating)
+                        @if($isFilteredToMain)
+                            {{ number_format($okToShow) }}<br><span style="font-size: 6px;">(Filtered: {{ $p1Label }})</span>
+                        @elseif($isFilteredToSub)
+                            {{ number_format($okToShow) }}<br><span style="font-size: 6px;">(Filtered: {{ $p2Label }})</span>
+                        @elseif($h->is_separating)
                             <b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ok) }}
                             <div class="split-line text-purple" style="color: #9333ea;">
                                 <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ok) }}
@@ -214,7 +207,11 @@
                         @endif
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #b91c1c;">
-                        @if($h->is_separating)
+                        @if($isFilteredToMain)
+                            {{ number_format($ngToShow) }}<br><span style="font-size: 6px;">(Filtered: {{ $p1Label }})</span>
+                        @elseif($isFilteredToSub)
+                            {{ number_format($ngToShow) }}<br><span style="font-size: 6px;">(Filtered: {{ $p2Label }})</span>
+                        @elseif($h->is_separating)
                             <b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ng) }}
                             <div class="split-line text-purple" style="color: #9333ea;">
                                 <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ng) }}
@@ -274,12 +271,14 @@
             </div>
             
             <div class="d-flex flex-column gap-2">
+                {{-- Form Filter Periode, Customer, dan Part --}}
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
                     <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     <span class="text-muted font-weight-bold small">to</span>
                     <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     
                     <div class="border-left pl-2 d-flex gap-1">
+                        {{-- DROPDOWN CUSTOMER --}}
                         <select name="customer" id="filter_customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Cust</option>
                             @foreach($filterCustomers as $c)
@@ -289,6 +288,7 @@
                             @endforeach
                         </select>
 
+                        {{-- DROPDOWN PART NO (Akan difilter oleh JS) --}}
                         <select name="part_no" id="filter_part" class="form-control form-control-sm font-weight-bold text-dark" style="width: 160px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Part</option>
                             @foreach($filterParts as $p)
@@ -341,16 +341,42 @@
                     <tbody>
                         @forelse($histories as $h)
                         @php 
-                            // ✨ YIELD DI TABEL MURNI MENGGUNAKAN (OK / TOTAL OUTPUT)
-                            $totalBatchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
-                            $totalBatchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                            // ✨ YIELD DI TABEL MURNI MENGGUNAKAN FILTER ✨
+                            $isFiltered = !empty($partFilter);
+                            $isFilteredToMain = $isFiltered && ($partFilter == $h->material_code);
+                            $isFilteredToSub = $isFiltered && ($partFilter == $h->paired_part);
                             
-                            $totalOutput = $totalBatchOk + $totalBatchNg;
-                            
-                            $yld = $totalOutput > 0 ? ($totalBatchOk / $totalOutput) * 100 : 0;
-                            if ($yld > 99.9 && $totalBatchNg > 0) $yld = 99.9;
+                            $batchTake = $h->qty_ambil_pcs;
+                            $batchRet = $h->qty_return_warehouse ?? 0;
+                            $batchEffTake = max(0, $batchTake - $batchRet);
 
-                            // ✨ SETUP LABEL IDENTITAS PART KIRI & KANAN ✨
+                            // Jika filter pada Part tertentu, hanya baca variabel tersebut
+                            if ($isFilteredToMain) {
+                                $okToShow = $h->qty_hasil_ok;
+                                $ngToShow = $h->qty_hasil_ng;
+                                $takeToShow = $batchEffTake;
+                            } elseif ($isFilteredToSub) {
+                                $okToShow = $h->paired_ok ?? 0;
+                                $ngToShow = $h->paired_ng ?? 0;
+                                $takeToShow = $batchEffTake;
+                            } else {
+                                $okToShow = clone($h); // Placeholder objek biar bisa dicek array-nya di bawah
+                                $takeToShow = $batchEffTake * ($h->is_separating ? 2 : 1);
+                            }
+                            
+                            // Hitung Yield Baris
+                            if ($isFilteredToMain || $isFilteredToSub) {
+                                $totalOutput = $okToShow + $ngToShow;
+                                $yld = $totalOutput > 0 ? ($okToShow / $totalOutput) * 100 : 0;
+                                if ($yld > 99.9 && $ngToShow > 0) $yld = 99.9;
+                            } else {
+                                $totalBatchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
+                                $totalBatchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                                $totalOutput = $totalBatchOk + $totalBatchNg;
+                                $yld = $totalOutput > 0 ? ($totalBatchOk / $totalOutput) * 100 : 0;
+                                if ($yld > 99.9 && $totalBatchNg > 0) $yld = 99.9;
+                            }
+
                             if ($h->is_separating) {
                                 $p1Split = explode('-', $h->material_code);
                                 $p1Label = substr($p1Split[0], -2);
@@ -359,7 +385,7 @@
                                 $p2Label = substr($p2Split[0], -2);
                             }
                         @endphp
-                        <tr class="row-clickable" onclick='showDeepDive(@json($h), {{ $totalBatchOk }}, {{ $totalBatchNg }}, {{ $yld }})'>
+                        <tr class="row-clickable" onclick='showDeepDive(@json($h), {{ $isFilteredToMain || $isFilteredToSub ? $okToShow : ($h->qty_hasil_ok + ($h->paired_ok ?? 0)) }}, {{ $isFilteredToMain || $isFilteredToSub ? $ngToShow : ($h->qty_hasil_ng + ($h->paired_ng ?? 0)) }}, {{ $yld }}, {{ $takeToShow }}, "{{ $isFilteredToMain || $isFilteredToSub ? ($isFilteredToMain ? $p1Label : $p2Label) : "ALL" }}")'>
                             <td class="pl-4">
                                 <div class="font-weight-bold text-dark"><i class="far fa-calendar-check text-success mr-1"></i> {{ date('d M Y', strtotime($h->plan_date ?? $h->created_at)) }}</div>
                                 <div class="small text-muted font-weight-bold"><i class="fas fa-clock text-primary mr-1"></i> Input: {{ date('H:i', strtotime($h->updated_at)) }}</div>
@@ -375,8 +401,8 @@
                                 </div>
                                 <div class="small text-muted">{{ $h->part_name ?? '-' }}</div>
 
-                                @if($h->is_separating && $h->paired_part)
-                                    <div class="split-line">
+                                @if($h->is_separating &&$h->paired_part)
+                                    <div class="mt-1 pt-1 border-top">
                                         <span class="pair-badge">PAIR</span> 
                                         <span class="font-weight-bold text-dark">{{ $h->paired_part }}</span>
                                         <div class="small text-muted">{{ $h->paired_part_name ?? '-' }}</div>
@@ -400,8 +426,14 @@
                                 {{ number_format($h->qty_ambil_pcs) }}
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-success">
-                                {{-- Menampilkan OK Kiri & Kanan Terpisah dengan Garis Putus-putus --}}
-                                @if($h->is_separating)
+                                {{-- Menampilkan OK Sesuai Filter atau Default Gabungan (Kiri-Kanan) --}}
+                                @if($isFilteredToMain)
+                                    <span style="font-size: 14px;">{{ number_format($okToShow) }}</span>
+                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Filtered: {{ $p1Label }})</div>
+                                @elseif($isFilteredToSub)
+                                    <span style="font-size: 14px;">{{ number_format($okToShow) }}</span>
+                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Filtered: {{ $p2Label }})</div>
+                                @elseif($h->is_separating)
                                     <div style="font-size: 13px;"><b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ok) }}</div>
                                     <div class="split-line text-purple" style="font-size: 13px; color: #9333ea;">
                                         <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ok) }}
@@ -411,8 +443,14 @@
                                 @endif
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-danger">
-                                {{-- Menampilkan NG Kiri & Kanan Terpisah dengan Garis Putus-putus --}}
-                                @if($h->is_separating)
+                                {{-- Menampilkan NG Sesuai Filter atau Default Gabungan (Kiri-Kanan) --}}
+                                @if($isFilteredToMain)
+                                    <span style="font-size: 14px;">{{ number_format($ngToShow) }}</span>
+                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Filtered: {{ $p1Label }})</div>
+                                @elseif($isFilteredToSub)
+                                    <span style="font-size: 14px;">{{ number_format($ngToShow) }}</span>
+                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Filtered: {{ $p2Label }})</div>
+                                @elseif($h->is_separating)
                                     <div style="font-size: 13px;"><b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ng) }}</div>
                                     <div class="split-line text-purple" style="font-size: 13px; color: #9333ea;">
                                         <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ng) }}
@@ -489,7 +527,7 @@
                         <h5 class="font-weight-bold text-primary mb-3" id="det-batch"></h5>
                         <div class="row">
                             <div class="col-6 mb-2">
-                                <small class="stat-label">Primary Part</small>
+                                <small class="stat-label">Primary Part <span id="det-filter-tag" style="display:none;color:#d97706;font-size:8px;border:1px solid #d97706;border-radius:4px;padding:0 3px;">FILTERED</span></small>
                                 <div class="font-weight-bold text-dark" id="det-part">-</div>
                             </div>
                             <div class="col-6 mb-2">
@@ -618,16 +656,33 @@
     let donut = null;
     let tempDonutData = { ok: 0, ng: 0 };
 
-    function showDeepDive(h, trueOk, trueNg, yieldPercent) {
+    function showDeepDive(h, trueOk, trueNg, yieldPercent, trueTakePcs, filteredLabel) {
         tempDonutData = { ok: trueOk, ng: trueNg };
 
         document.getElementById('det-batch').innerText = h.no_produksi;
-        document.getElementById('det-part').innerText = h.material_code + (h.part_name ? ' (' + h.part_name + ')' : '');
+        
+        let partInfo = h.material_code + (h.part_name ? ' (' + h.part_name + ')' : '');
+        const tagFilter = document.getElementById('det-filter-tag');
+        
+        // Membaca Kondisi Jika Filter Sedang Aktif
+        if (filteredLabel !== "ALL") {
+            tagFilter.style.display = 'inline-block';
+            tagFilter.innerText = "FILTERED: " + filteredLabel;
+            if (h.is_separating && !partInfo.includes(filteredLabel)) {
+                partInfo = h.paired_part + (h.paired_part_name ? ' (' + h.paired_part_name + ')' : '');
+            }
+        } else {
+            tagFilter.style.display = 'none';
+        }
+        
+        document.getElementById('det-part').innerText = partInfo;
+        
         document.getElementById('det-line').innerText = (h.kode_Line || 'LINE A') + ' - Shift ' + (h.shift || '1');
         document.getElementById('det-cavity').innerText = h.cavity || 1;
         document.getElementById('det-time').innerText = h.updated_at;
         
-        document.getElementById('det-take').innerText = Number(h.qty_ambil_pcs).toLocaleString();
+        // Data sudah murni berdasarkan filter Blade
+        document.getElementById('det-take').innerText = Number(trueTakePcs).toLocaleString();
         document.getElementById('det-ok').innerText = Number(trueOk).toLocaleString();
         document.getElementById('det-ng').innerText = Number(trueNg).toLocaleString();
         document.getElementById('det-ret').innerText = Number(h.qty_return_warehouse || 0).toLocaleString();
@@ -638,7 +693,7 @@
         document.getElementById('det-remark').innerText = h.keterangan ? h.keterangan : 'Tidak ada catatan remark khusus.';
 
         const pairBox = document.getElementById('det-separating-box');
-        if (h.is_separating && h.paired_part) {
+        if (h.is_separating && h.paired_part && filteredLabel === "ALL") {
             pairBox.style.display = 'block';
             document.getElementById('det-pair-part').innerText = h.paired_part + (h.paired_part_name ? ' - ' + h.paired_part_name : '');
             document.getElementById('det-pair-ok').innerText = Number(h.paired_ok || 0).toLocaleString();

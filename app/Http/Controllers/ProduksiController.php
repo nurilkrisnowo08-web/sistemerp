@@ -375,7 +375,7 @@ class ProduksiController extends Controller
                 'qty_return'           => 0, 
                 'status'               => $status_akhir,
                 'keterangan'           => $request->keterangan ?? $p->keterangan, 
-                'updated_at'           => now() 
+                'updated_at'           => now()
             ]);
 
             $this->syncToActual($id); 
@@ -485,7 +485,7 @@ class ProduksiController extends Controller
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
     
     /**
-     * ✨ HISTORY & CHART MURNI BERDASARKAN YIELD (OK / TAKE) ✨
+     * ✨ HISTORY & CHART FILTER - KINI MEMISAHKAN DATA KALAU SPESIFIK PART DIPILIH ✨
      */
     public function history(Request $request) 
     { 
@@ -495,6 +495,7 @@ class ProduksiController extends Controller
         $customerFilter = $request->customer;
         $partFilter = $request->part_no;
 
+        // 1. QUERY UNTUK TABEL: Tetap ambil base prod (-M) agar layout tidak berantakan
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
@@ -518,6 +519,8 @@ class ProduksiController extends Controller
         if (!empty($customerFilter)) {
             $query->where('rm_stocks.customer', trim($customerFilter));
         }
+        
+        // PENTING: Jika filter mencari Part 36 (-S), harus tetap ditarik lewat Keterangan-nya
         if (!empty($partFilter)) {
             $query->where(function($q) use ($partFilter) {
                 $q->where('produksi_batches.material_code', trim($partFilter))
@@ -526,7 +529,6 @@ class ProduksiController extends Controller
         }
 
         $query->orderBy(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), 'desc');
-
         $historiesRaw = $query->paginate(50); 
 
         $historiesRaw->getCollection()->transform(function ($item) {
@@ -617,7 +619,8 @@ class ProduksiController extends Controller
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
-        // ✨ HITUNG STATISTIK GLOBAL & CHART (MENGGUNAKAN YIELD DARI TOTAL TAKE PCS) ✨
+        // 2. QUERY UNTUK STATS & CHART (AMBIL SEMUA, TERMASUK -S)
+        // Kita cabut larangan `NOT LIKE '%-S'` agar kalau Part 36 (LH) di filter, datanya tetap masuk chart!
         $statsQuery = DB::table('produksi_batches')
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
@@ -628,6 +631,7 @@ class ProduksiController extends Controller
                 'produksi_batches.cavity',
                 'produksi_batches.qty_hasil_ok',
                 'produksi_batches.qty_hasil_ng',
+                'produksi_batches.material_code',
                 DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at)) as tgl')
             )
             ->where('produksi_batches.status', 'COMPLETED')
@@ -637,37 +641,43 @@ class ProduksiController extends Controller
             $statsQuery->where('rm_stocks.customer', trim($customerFilter));
         }
         if (!empty($partFilter)) {
-            $statsQuery->where(function($q) use ($partFilter) {
-                $q->where('produksi_batches.material_code', trim($partFilter))
-                  ->orWhere('produksi_batches.keterangan', 'LIKE', '%' . trim($partFilter) . '%');
-            });
+            $statsQuery->where('produksi_batches.material_code', trim($partFilter));
         }
         
         $statsRaw = $statsQuery->get();
 
-        // 1. Simpan Effective Take untuk Part Utama (-M) 
-        // agar part pasangannya (-S) juga tahu berapa total Take-nya
+        // Cari base takes (Target Material) untuk mengamankan data lembar dari part utama (-M)
+        $baseTakesQuery = DB::table('produksi_batches')
+            ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
+            ->where('produksi_batches.status', 'COMPLETED')
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
+            ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate]);
+        
+        if (!empty($customerFilter)) {
+            $baseTakesQuery->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
+                           ->where('rm_stocks.customer', trim($customerFilter));
+        }
+        
+        $allMains = $baseTakesQuery->select('no_produksi', 'qty_ambil_pcs', 'qty_return_warehouse', 'cavity')->get();
         $mainTakes = [];
-        foreach ($statsRaw as $row) {
-            if (!str_ends_with($row->no_produksi, '-S')) {
-                $baseProd = preg_replace('/-[MS]$/', '', $row->no_produksi);
-                $take = $row->qty_ambil_pcs * ($row->cavity ?? 1);
-                $ret = ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
-                $mainTakes[$baseProd] = max(0, $take - $ret);
-            }
+        foreach ($allMains as $m) {
+            $baseProd = preg_replace('/-[MS]$/', '', $m->no_produksi);
+            $take = $m->qty_ambil_pcs * ($m->cavity ?? 1);
+            $ret = ($m->qty_return_warehouse ?? 0) * ($m->cavity ?? 1);
+            $mainTakes[$baseProd] = max(0, $take - $ret);
         }
 
-        // 2. Loop Semua Data (Termasuk Separating LH) Untuk Totalan Harian & Global
         $dailyAgg = [];
         $globalTakePcs = 0;
         $globalOk = 0;
         $globalNg = 0;
         $globalRet = 0;
+        $processedTakesGlobal = [];
 
         foreach ($statsRaw as $row) {
             $tgl = $row->tgl;
             if (!isset($dailyAgg[$tgl])) {
-                $dailyAgg[$tgl] = ['ok' => 0, 'ng' => 0, 'take_pcs' => 0];
+                $dailyAgg[$tgl] = ['ok' => 0, 'ng' => 0, 'take_pcs' => 0, 'processed_take' => []];
             }
             
             $ok = (int)$row->qty_hasil_ok;
@@ -679,21 +689,29 @@ class ProduksiController extends Controller
             $globalNg += $ng;
             
             $baseProd = preg_replace('/-[MS]$/', '', $row->no_produksi);
+            $effTake = $mainTakes[$baseProd] ?? 0;
             
-            if (!str_ends_with($row->no_produksi, '-S')) {
-                $effTake = $mainTakes[$baseProd] ?? 0;
-                $dailyAgg[$tgl]['take_pcs'] += $effTake;
-                $globalTakePcs += $effTake;
-                $globalRet += ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
+            // JIKA FILLTER ALL PART: Jangan Hitung Take Dobel untuk 1 Lembar yang sama.
+            // JIKA FILTER 1 PART SPESIFIK: Tiap baris akan menyumbang 1 Target Take Pcs.
+            if (empty($partFilter)) {
+                if (!isset($processedTakesGlobal[$baseProd])) {
+                    $globalTakePcs += ($effTake * 2); // 1 Lembar jadi Kiri Kanan
+                    $processedTakesGlobal[$baseProd] = true;
+                }
+                if (!isset($dailyAgg[$tgl]['processed_take'][$baseProd])) {
+                    $dailyAgg[$tgl]['take_pcs'] += ($effTake * 2);
+                    $dailyAgg[$tgl]['processed_take'][$baseProd] = true;
+                }
             } else {
-                // Untuk Part Separating (Pasangannya), dia memakan Take yang sama
-                $effTake = $mainTakes[$baseProd] ?? 0;
-                $dailyAgg[$tgl]['take_pcs'] += $effTake;
                 $globalTakePcs += $effTake;
+                $dailyAgg[$tgl]['take_pcs'] += $effTake;
+            }
+
+            if (!str_ends_with($row->no_produksi, '-S')) {
+                $globalRet += ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
             }
         }
 
-        // Global KPI Percentage
         $globalPerf = $globalTakePcs > 0 ? ($globalOk / $globalTakePcs) * 100 : 0;
         if ($globalPerf > 99.9 && $globalNg > 0) $globalPerf = 99.9;
 
@@ -725,8 +743,7 @@ class ProduksiController extends Controller
             $currentDate = strtotime('+1 day', $currentDate);
         }
 
-        // Kembalikan Semua Kalkulasi Ke View Blade
-        return view('Produksi.history', compact('histories', 'activeProductions', 'startDate', 'endDate', 'chartLabels', 'chartOk', 'chartNg', 'chartPerf', 'globalTakePcs', 'globalOk', 'globalNg', 'globalRet', 'globalPerf')); 
+        return view('Produksi.history', compact('histories', 'activeProductions', 'startDate', 'endDate', 'chartLabels', 'chartOk', 'chartNg', 'chartPerf', 'globalTakePcs', 'globalOk', 'globalNg', 'globalRet', 'globalPerf', 'partFilter')); 
     }
     
     public function getSpecsByCustomer($customer) 
