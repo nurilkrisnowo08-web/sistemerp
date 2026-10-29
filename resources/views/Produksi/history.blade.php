@@ -32,10 +32,20 @@
         }
     }
 
-    $penyebut = $totalTake - $totalRet;
-    $performance = $penyebut > 0 ? ($totalOk / $penyebut) * 100 : 0;
+    // ✨ FIX LOGIKA GLOBAL PERFORMANCE (MURNI YIELD OK VS NG) ✨
+    // Dijamin tidak akan pernah melebihi 100%
+    $totalProduksi = $totalOk + $totalNg;
+    if ($totalProduksi > 0) {
+        $performance = ($totalOk / $totalProduksi) * 100;
+        // Jika ada NG tapi persentase membulat ke 100%, tahan di 99.9%
+        if ($performance > 99.9 && $totalNg > 0) {
+            $performance = 99.9;
+        }
+    } else {
+        $performance = 0;
+    }
 
-    // ✨ AMBIL DATA UNTUK DROPDOWN FILTER & TAMBAHKAN CUSTOMER_CODE ✨
+    // AMBIL DATA UNTUK DROPDOWN FILTER
     $filterCustomers = \DB::table('customers')->select('code', 'name')->orderBy('code', 'asc')->get();
     $filterParts = \DB::table('parts')->select('part_no', 'customer_code')->orderBy('part_no', 'asc')->get();
 @endphp
@@ -228,7 +238,6 @@
     <div class="screen-only">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4">
             
-            {{-- ✨ DITAMBAHKAN TOMBOL KEMBALI & HEADER ✨ --}}
             <div class="mb-3 mb-md-0 d-flex align-items-center">
                 <a href="{{ route('produksi.index') }}" class="btn btn-light rounded-circle shadow-sm border mr-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Terminal">
                     <i class="fas fa-arrow-left text-primary"></i>
@@ -511,13 +520,11 @@
                 const partCust = $(this).data('customer') ? $(this).data('customer').trim() : "";
                 const isAllOption = $(this).val() === "";
                 
-                // Jika "All Cust" dipilih (kosong), tampilkan semua. Jika Customer tertentu dipilih, cocokkan atribut data-customer
                 if (isAllOption || !selectedCust || partCust === selectedCust) {
                     $partSelect.append($(this).clone());
                 }
             });
             
-            // Kembalikan pilihan part jika masih tersedia di daftar yang baru
             if ($partSelect.find(`option[value="${currentPart}"]`).length > 0) {
                 $partSelect.val(currentPart);
             } else {
@@ -525,13 +532,9 @@
             }
         }
 
-        // Panggil fungsi saat dropdown Customer diganti
         $custSelect.on('change', updatePartDropdown);
-        
-        // Panggil sekali saat web pertama kali dimuat untuk menyelaraskan dropdown
         updatePartDropdown();
         
-        // Jika ada filter part_no di URL (dari request sebelumnya), paksa pilih
         let reqPart = "{{ request('part_no') }}";
         if (reqPart) {
             $partSelect.val(reqPart);
@@ -593,10 +596,8 @@
         document.getElementById('det-yield-val').innerText = yld + "%";
         document.getElementById('det-yield-val').style.color = yld >= 90 ? '#10b981' : '#ef4444';
         
-        // Catatan Remark
         document.getElementById('det-remark').innerText = h.keterangan ? h.keterangan : 'Tidak ada catatan remark khusus.';
 
-        // Separating Pair
         const pairBox = document.getElementById('det-separating-box');
         if (h.is_separating && h.paired_part) {
             pairBox.style.display = 'block';
@@ -607,7 +608,6 @@
             pairBox.style.display = 'none';
         }
 
-        // Coil List
         let coilHtml = '';
         if (h.coils_used && h.coils_used.length > 0) {
             h.coils_used.forEach(c => {
@@ -620,7 +620,6 @@
         }
         document.getElementById('det-coil-list').innerHTML = coilHtml;
 
-        // Reject NG List
         let ngHtml = '';
         if(h.ng_details && h.ng_details.length > 0) {
             h.ng_details.forEach(item => {
