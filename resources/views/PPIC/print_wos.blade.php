@@ -38,14 +38,33 @@
         .wos-table th { background: #f1f5f9; font-weight: bold; text-transform: uppercase; font-size: 8px; }
         .wos-table td { font-size: 9px; height: 25px; }
         
-        .text-left { text-align: left !important; padding-left: 5px !important; }
+        .text-left { text-align: left !important; padding-left: 6px !important; }
         .text-bold { font-weight: bold; }
         .text-blue { color: #2563eb !important; font-weight: bold; }
         .text-green { color: #16a34a !important; font-weight: bold; }
         .text-danger { color: #dc2626 !important; font-weight: bold; }
         
-        .shift-header { background: #f8fafc; text-align: left !important; padding: 5px 8px !important; font-size: 9px; font-weight: bold; text-transform: uppercase; border: 1px solid #000; border-bottom: 2px solid #000; }
-        .shift-header span { color: #dc2626; }
+        /* 🔥 HEADER SHIFT DIPERBAIKI 🔥 */
+        .shift-header { 
+            background: #e2e8f0; 
+            text-align: left !important; 
+            padding: 6px 10px !important; 
+            font-size: 9px; 
+            font-weight: 900; 
+            letter-spacing: 0.5px;
+            border: 1px solid #000; 
+            border-bottom: 2px solid #000; 
+        }
+        .shift-header span { 
+            color: #dc2626; 
+            font-family: monospace; 
+            font-size: 10px; 
+            background: #fff;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            margin-left: 5px;
+        }
         
         /* FOOTER BLOCKS */
         .footer-grid { display: flex; gap: 15px; margin-top: 5px; }
@@ -57,29 +76,37 @@
         .sig-table th { background: #f8fafc; }
         .sig-table td { height: 50px; vertical-align: bottom; padding-bottom: 5px; }
 
-        .split-line { border-top: 1px dashed #94a3b8; display: block; padding-top: 3px; margin-top: 3px; }
+        /* 🔥 PEMISAH PART YANG DIGABUNG 🔥 */
+        .split-line { 
+            border-top: 1px dashed #cbd5e1; 
+            display: block; 
+            padding-top: 4px; 
+            margin-top: 4px; 
+        }
+        
+        /* Wrapper untuk Identitas Part agar rapi */
+        .part-identity-wrapper {
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
     </style>
 </head>
 <body>
 
     @php
-        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS (KOSONG JIKA BELUM ADA HASIL) ✨
+        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS (LEBIH RAPI) ✨
         function mergeWosPlans($plans) {
             $merged = collect();
             foreach($plans as $p) {
-                // Hilangkan akhiran -M atau -S agar terdeteksi sebagai WOS yang sama
                 $baseProd = preg_replace('/-[MS]$/', '', $p->no_produksi);
-                
                 if (empty($baseProd) || $baseProd === '-') {
                     $baseProd = 'UNREG-' . $p->id; 
                 }
                 
-                // Ambil 2 digit terakhir dari Part Number sebagai Identitas (contoh: 35 dari 61635)
                 $partSplit = explode('-', $p->part_no);
                 $partPrefix = $partSplit[0];
                 $shortLabel = substr($partPrefix, -2);
                 
-                // 🔥 CEK APAKAH SUDAH DIINPUT RESULT OLEH PPIC 🔥
                 $hasResult = ($p->actual_ok > 0 || $p->actual_ng > 0);
                 
                 if (!$merged->has($baseProd)) {
@@ -91,7 +118,6 @@
                     $isSeparating = preg_match('/-[MS]$/', $p->no_produksi) || strpos($p->keterangan ?? '', 'PAIR_MAIN:') === 0;
                     
                     if ($isSeparating) {
-                        // Jika belum ada result, string angkanya dikosongkan agar bisa ditulis manual
                         $ok_val = $hasResult ? number_format((int)($item->actual_ok ?? 0)) : '';
                         $ng_val = $hasResult ? number_format((int)($item->actual_ng ?? 0)) : '';
                         $item->actual_ok_str = "<b>{$shortLabel}:</b> " . $ok_val;
@@ -107,12 +133,11 @@
                     $existingHasResult = ($existing->actual_ok > 0 || $existing->actual_ng > 0);
                     
                     if (!str_contains($existing->display_part_no, $p->part_no)) {
-                        $existing->display_part_no .= '<br><span class="split-line">' . $p->part_no . '</span>';
+                        $existing->display_part_no .= '<span class="split-line">' . $p->part_no . '</span>';
                         
                         $pName = $p->part_name ?? 'WOS PART';
-                        $existing->display_part_name .= '<br><span class="split-line">' . $pName . '</span>';
+                        $existing->display_part_name .= '<span class="split-line">' . $pName . '</span>';
                         
-                        // Konversi part pertama jika belum pakai format label
                         if (!str_contains($existing->actual_ok_str, '<b>')) {
                              $oldShort = substr(explode('-', $existing->part_no)[0], -2);
                              $oldOk = $existingHasResult ? number_format((int)($existing->actual_ok ?? 0)) : '';
@@ -124,11 +149,10 @@
                         $newOk = $hasResult ? number_format((int)($p->actual_ok ?? 0)) : '';
                         $newNg = $hasResult ? number_format((int)($p->actual_ng ?? 0)) : '';
                         
-                        $existing->actual_ok_str .= '<br><span class="split-line"><b>' . $shortLabel . ':</b> ' . $newOk . '</span>';
-                        $existing->actual_ng_str .= '<br><span class="split-line"><b>' . $shortLabel . ':</b> ' . $newNg . '</span>';
+                        $existing->actual_ok_str .= '<span class="split-line"><b>' . $shortLabel . ':</b> ' . $newOk . '</span>';
+                        $existing->actual_ng_str .= '<span class="split-line"><b>' . $shortLabel . ':</b> ' . $newNg . '</span>';
                     }
                     
-                    // Update max result detection
                     $existing->actual_ok = max($existing->actual_ok ?? 0, $p->actual_ok ?? 0);
                     $existing->actual_ng = max($existing->actual_ng ?? 0, $p->actual_ng ?? 0);
                     
@@ -138,11 +162,9 @@
             return $merged->values();
         }
 
-        // Terapkan fungsi merge
         $plansS1 = mergeWosPlans($plansS1);
         $plansS2 = mergeWosPlans($plansS2);
 
-        // Kumpulkan Nomor WOS untuk Header Pojok Kanan Atas
         $allWos = collect();
         foreach($plansS1 as $p) { if($p->display_no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->display_no_produksi)); }
         foreach($plansS2 as $p) { if($p->display_no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->display_no_produksi)); }
@@ -229,7 +251,7 @@
 
             <tr>
                 <td colspan="19" class="shift-header">
-                    SHIFT 1 (DAY OPS) | TOTAL ESTIMASI RUN-TIME : <span>{{ number_format($totalWorkingS1, 1) }} Jam</span>
+                    SHIFT 1 (DAY OPS) | TOTAL ESTIMASI RUN-TIME: <span>{{ number_format($totalWorkingS1, 1) }} JAM</span>
                 </td>
             </tr>
 
@@ -240,21 +262,25 @@
                     $durMin = ($p->cap_per_hour > 0) ? round(($target / $p->cap_per_hour) * 60) + ($p->dandory_time ?? 15) : 0;
                     $endTime = date('H:i', strtotime($startTime . " + $durMin minutes"));
 
-                    // ✨ Indikator Revisi ✨
                     $revLabel = '';
                     if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                         $revLabel = " <span style='color: #2563eb; font-weight: bold;'>[REV-{$matches[1]}]</span>";
                     }
                     
-                    // Cek Result Untuk Mengisi Waktu Aktual
                     $hasResult = ($p->actual_ok > 0 || $p->actual_ng > 0);
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
-                    <td class="text-left text-bold">
-                        {!! $p->display_part_no !!}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{!! $p->display_part_name !!}</span><br>
-                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}</span>
+                    <td class="text-left">
+                        <div class="part-identity-wrapper text-bold">
+                            {!! $p->display_part_no !!}
+                        </div>
+                        <div class="part-identity-wrapper" style="font-size: 8px; color: #475569;">
+                            {!! $p->display_part_name !!}
+                        </div>
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px; font-weight: bold;">
+                            {{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}
+                        </span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
@@ -270,13 +296,11 @@
                     
                     <td class="text-bold">{{ $p->line_code }}</td>
                     
-                    <!-- ✨ JIKA BELUM ADA RESULT (OK/NG), WAKTU AKTUAL DIBIARKAN KOSONG ✨ -->
                     <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_start ?: '') : '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_end ?: '') : '' }}</td>
                     
-                    <!-- ✨ HASIL OK DAN NG MUNCUL TERSUSUN KE BAWAH JIKA DIGABUNG (KOSONG JIKA BLM ADA RESULT) ✨ -->
-                    <td class="text-bold text-green" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ok_str !!}</td>
-                    <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ng_str !!}</td>
+                    <td class="text-bold text-green" style="font-size: 10px; line-height: 1.5;">{!! $p->actual_ok_str !!}</td>
+                    <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.5;">{!! $p->actual_ng_str !!}</td>
                     <td></td>
                     
                     <td class="text-left" style="font-size: 8px;">
@@ -308,7 +332,7 @@
             @if($plansS2->count() > 0)
             <tr>
                 <td colspan="19" class="shift-header" style="margin-top: 5px;">
-                    SHIFT 2 (NIGHT OPS) | TOTAL ESTIMASI RUN-TIME : <span>{{ number_format($totalWorkingS2, 1) }} Jam</span>
+                    SHIFT 2 (NIGHT OPS) | TOTAL ESTIMASI RUN-TIME: <span>{{ number_format($totalWorkingS2, 1) }} JAM</span>
                 </td>
             </tr>
 
@@ -319,21 +343,25 @@
                     $durMin = ($p->cap_per_hour > 0) ? round(($target / $p->cap_per_hour) * 60) + ($p->dandory_time ?? 15) : 0;
                     $endTime = date('H:i', strtotime($startTime . " + $durMin minutes"));
 
-                    // ✨ Indikator Revisi ✨
                     $revLabel = '';
                     if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                         $revLabel = " <span style='color: #2563eb; font-weight: bold;'>[REV-{$matches[1]}]</span>";
                     }
                     
-                    // Cek Result Untuk Mengisi Waktu Aktual
                     $hasResult = ($p->actual_ok > 0 || $p->actual_ng > 0);
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
-                    <td class="text-left text-bold">
-                        {!! $p->display_part_no !!}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{!! $p->display_part_name !!}</span><br>
-                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}</span>
+                    <td class="text-left">
+                        <div class="part-identity-wrapper text-bold">
+                            {!! $p->display_part_no !!}
+                        </div>
+                        <div class="part-identity-wrapper" style="font-size: 8px; color: #475569;">
+                            {!! $p->display_part_name !!}
+                        </div>
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px; font-weight: bold;">
+                            {{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}
+                        </span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
@@ -349,13 +377,11 @@
                     
                     <td class="text-bold">{{ $p->line_code }}</td>
                     
-                    <!-- ✨ JIKA BELUM ADA RESULT (OK/NG), WAKTU AKTUAL DIBIARKAN KOSONG ✨ -->
                     <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_start ?: '') : '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_end ?: '') : '' }}</td>
                     
-                    <!-- ✨ HASIL OK DAN NG MUNCUL TERSUSUN KE BAWAH JIKA DIGABUNG (KOSONG JIKA BLM ADA RESULT) ✨ -->
-                    <td class="text-bold text-green" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ok_str !!}</td>
-                    <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ng_str !!}</td>
+                    <td class="text-bold text-green" style="font-size: 10px; line-height: 1.5;">{!! $p->actual_ok_str !!}</td>
+                    <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.5;">{!! $p->actual_ng_str !!}</td>
                     <td></td>
                     
                     <td class="text-left" style="font-size: 8px;">
