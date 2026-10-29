@@ -252,14 +252,12 @@
             </div>
             
             <div class="d-flex flex-column gap-2">
-                {{-- Form Filter Periode, Customer, dan Part --}}
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
                     <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     <span class="text-muted font-weight-bold small">to</span>
                     <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     
                     <div class="border-left pl-2 d-flex gap-1">
-                        {{-- DROPDOWN CUSTOMER --}}
                         <select name="customer" id="filter_customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Cust</option>
                             @foreach($filterCustomers as $c)
@@ -269,7 +267,6 @@
                             @endforeach
                         </select>
 
-                        {{-- DROPDOWN PART NO (Akan difilter oleh JS) --}}
                         <select name="part_no" id="filter_part" class="form-control form-control-sm font-weight-bold text-dark" style="width: 160px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Part</option>
                             @foreach($filterParts as $p)
@@ -324,6 +321,7 @@
                         @php 
                             $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
                             $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                            // Murni Yield OK per Baris Batch
                             $yld = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk +$batchNg)) * 100 : 0;
                         @endphp
                         <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
@@ -463,7 +461,6 @@
                             </div>
                         </div>
 
-                        {{-- Rincian Separating di Modal --}}
                         <div id="det-separating-box" class="p-2 bg-light rounded border mt-2" style="display: none;">
                             <small class="stat-label text-primary d-block font-weight-bold">🔗 Separating Pair Connected</small>
                             <span class="font-weight-bold small" id="det-pair-part">-</span>
@@ -475,7 +472,6 @@
                     </div>
                 </div>
 
-                {{-- Baris KPI Mini --}}
                 <div class="row mb-3">
                     <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label">Take</small><div class="h5 font-weight-bold m-0" id="det-take">0</div></div></div>
                     <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label text-success">OK Total</small><div class="h5 font-weight-bold text-success m-0" id="det-ok">0</div></div></div>
@@ -483,19 +479,16 @@
                     <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label text-info">Return</small><div class="h5 font-weight-bold text-info m-0" id="det-ret">0</div></div></div>
                 </div>
 
-                {{-- Rincian Coil / Bundle Fisik --}}
                 <div class="p-3 bg-light rounded border mb-3">
                     <small class="stat-label d-block mb-2"><i class="fas fa-boxes mr-1 text-primary"></i> Material Coil/Bundle Breakdown</small>
                     <div id="det-coil-list" class="d-flex flex-wrap gap-2"></div>
                 </div>
 
-                {{-- Rincian Reject NG --}}
                 <div class="p-3 bg-light rounded border mb-3">
                     <small class="stat-label d-block mb-2 text-danger"><i class="fas fa-exclamation-triangle mr-1"></i> Specific NG (Reject Types)</small>
                     <div id="det-ng-list" class="row"></div>
                 </div>
 
-                {{-- Remark / Keterangan Teks --}}
                 <div class="p-3 bg-white rounded border">
                     <small class="stat-label d-block text-muted mb-1"><i class="far fa-sticky-note mr-1 text-warning"></i> Production Remarks & Notes</small>
                     <p class="mb-0 font-italic text-dark small" id="det-remark">-</p>
@@ -554,7 +547,7 @@
     if(chartLabels.length > 0) {
         new ApexCharts(document.querySelector("#trendChart"), {
             series: [
-                { name: 'Performance %', type: 'line', data: chartPerf },
+                { name: 'Performance % (Yield)', type: 'line', data: chartPerf },
                 { name: 'OK Units', type: 'area', data: chartOk },
                 { name: 'NG Units', type: 'area', data: chartNg }
             ],
@@ -567,7 +560,7 @@
                 labels: { style: { fontWeight: 700 } }
             },
             yaxis: [
-                { title: { text: "Performance %", style: { fontWeight: 800 } }, min: 0, max: 100, labels: { formatter: (val) => val.toFixed(1) + "%" } }, 
+                { title: { text: "Performance % (Yield)", style: { fontWeight: 800 } }, min: 0, max: 100, labels: { formatter: (val) => val.toFixed(1) + "%" } }, 
                 { opposite: true, title: { text: "Units (Pcs)", style: { fontWeight: 800 } }, min: 0, labels: { formatter: (val) => Math.round(val) } }
             ],
             legend: { position: 'top', fontWeight: 700 },
@@ -581,10 +574,18 @@
     let tempDonutData = { ok: 0, ng: 0 };
 
     function showDeepDive(h) {
+        // ✨ Hitung Murni Yield OK per Modal ✨
         const ok = (parseInt(h.qty_hasil_ok) || 0) + (h.is_separating ? (parseInt(h.paired_ok) || 0) : 0);
         const ng = (parseInt(h.qty_hasil_ng) || 0) + (h.is_separating ? (parseInt(h.paired_ng) || 0) : 0);
         const total = ok + ng;
-        const yld = total > 0 ? Math.round((ok / total) * 100) : 0;
+        let yld = total > 0 ? (ok / total) * 100 : 0;
+        
+        // Tahan desimal di 99.9% agar tidak membulat sempurna jika ada cacat/NG
+        if (yld > 99.9 && ng > 0) {
+            yld = 99.9;
+        } else {
+            yld = Math.round(yld * 10) / 10; 
+        }
         
         tempDonutData = { ok: ok, ng: ng };
 
@@ -597,6 +598,7 @@
         document.getElementById('det-ok').innerText = Number(ok).toLocaleString();
         document.getElementById('det-ng').innerText = Number(ng).toLocaleString();
         document.getElementById('det-ret').innerText = Number(h.qty_return_warehouse || 0).toLocaleString();
+        
         document.getElementById('det-yield-val').innerText = yld + "%";
         document.getElementById('det-yield-val').style.color = yld >= 90 ? '#10b981' : '#ef4444';
         

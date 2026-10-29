@@ -11,9 +11,7 @@ use Illuminate\Support\Str;
 class ProduksiController extends Controller
 {
     /**
-     * 1. STAMPING TERMINAL LINE CONTROL (SINKRON DENGAN ALUR WOS PPIC)
-     * - Memisahkan Area Big Press vs Small Press
-     * - Membagi Operasional Shift 1 & Shift 2
+     * 1. STAMPING TERMINAL LINE CONTROL
      */
     public function index(Request $request)
     {
@@ -47,7 +45,7 @@ class ProduksiController extends Controller
                 'rm_stocks.material_name',
                 'parts.part_name',
                 'production_plans.customer_code as plan_customer',
-                'production_plans.plan_date',
+                'production_plans.plan_date', 
                 DB::raw('COALESCE(line.kode_Line, "UNKNOWN") as kode_Line'),
                 DB::raw('COALESCE(GROUP_CONCAT(line.kode_Line SEPARATOR ", "), line.kode_Line) as line_names'),
                 DB::raw('SUM(produksi_batches.qty_ambil_pcs * produksi_batches.cavity) as total_qty_batch')
@@ -249,9 +247,6 @@ class ProduksiController extends Controller
 
     public function storeResult(Request $request, $id) { return back(); }
 
-    /**
-     * ✨ UPDATE RESULT: SINKRON HASIL MUTLAK DENGAN TANGGAL JADWAL (PLAN_DATE) ✨
-     */
     public function updateResult(Request $request, $id)
     {
         $p = DB::table('produksi_batches')->where('id', $id)->first();
@@ -490,14 +485,13 @@ class ProduksiController extends Controller
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
     
     /**
-     * ✨ HISTORY & CHART MUTLAK BERDASARKAN TANGGAL JADWAL (PLAN_DATE) DAN FILTER ✨
+     * ✨ HISTORY & CHART MURNI BERDASARKAN YIELD (OK / TAKE) ✨
      */
     public function history(Request $request) 
     { 
         $startDate = $request->start_date ?? date('Y-m-d', strtotime('-6 days'));
         $endDate = $request->end_date ?? date('Y-m-d');
         
-        // ✨ Tangkap Filter Dropdown
         $customerFilter = $request->customer;
         $partFilter = $request->part_no;
 
@@ -521,7 +515,6 @@ class ProduksiController extends Controller
             ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') 
             ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate]);
 
-        // ✨ Aplikasikan Filter ke Data Tabel
         if (!empty($customerFilter)) {
             $query->where('rm_stocks.customer', trim($customerFilter));
         }
@@ -615,8 +608,6 @@ class ProduksiController extends Controller
                 ? $ngLogs->map(fn($n) => "{$n->ng_type}: {$n->qty}")->implode(', ')
                 : ($item->qty_hasil_ng > 0 ? "Defect: {$item->qty_hasil_ng} pcs" : '-');
 
-            // ✨ INJEKSI PENYELAMAT BLADE: UBAH FORMAT TAKE DARI LEMBAR KE PCS ✨
-            // (Ini membuat perhitungan HUD Blade otomatis waras <= 100%)
             $item->qty_ambil_pcs = $item->qty_ambil_pcs * ($item->cavity ?? 1);
             $item->qty_return_warehouse = $item->qty_return_warehouse * ($item->cavity ?? 1);
 
@@ -626,14 +617,18 @@ class ProduksiController extends Controller
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
-        // ✨ APLIKASIKAN FILTER KE GRAFIK & STATISTIK ✨
+        // ✨ HITUNG STATISTIK GLOBAL & CHART (MENGGUNAKAN YIELD DARI TOTAL TAKE PCS) ✨
         $statsQuery = DB::table('produksi_batches')
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->select(
-                DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at)) as tgl'),
-                DB::raw('SUM(produksi_batches.qty_hasil_ok) as total_ok'),
-                DB::raw('SUM(produksi_batches.qty_hasil_ng) as total_ng')
+                'produksi_batches.no_produksi',
+                'produksi_batches.qty_ambil_pcs',
+                'produksi_batches.qty_return_warehouse',
+                'produksi_batches.cavity',
+                'produksi_batches.qty_hasil_ok',
+                'produksi_batches.qty_hasil_ng',
+                DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at)) as tgl')
             )
             ->where('produksi_batches.status', 'COMPLETED')
             ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate]);
@@ -647,9 +642,62 @@ class ProduksiController extends Controller
                   ->orWhere('produksi_batches.keterangan', 'LIKE', '%' . trim($partFilter) . '%');
             });
         }
+        
+        $statsRaw = $statsQuery->get();
 
-        $dailyStats = $statsQuery->groupBy('tgl')->orderBy('tgl', 'asc')->get();
+        // 1. Simpan Effective Take untuk Part Utama (-M) 
+        // agar part pasangannya (-S) juga tahu berapa total Take-nya
+        $mainTakes = [];
+        foreach ($statsRaw as $row) {
+            if (!str_ends_with($row->no_produksi, '-S')) {
+                $baseProd = preg_replace('/-[MS]$/', '', $row->no_produksi);
+                $take = $row->qty_ambil_pcs * ($row->cavity ?? 1);
+                $ret = ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
+                $mainTakes[$baseProd] = max(0, $take - $ret);
+            }
+        }
 
+        // 2. Loop Semua Data (Termasuk Separating LH) Untuk Totalan Harian & Global
+        $dailyAgg = [];
+        $globalTakePcs = 0;
+        $globalOk = 0;
+        $globalNg = 0;
+        $globalRet = 0;
+
+        foreach ($statsRaw as $row) {
+            $tgl = $row->tgl;
+            if (!isset($dailyAgg[$tgl])) {
+                $dailyAgg[$tgl] = ['ok' => 0, 'ng' => 0, 'take_pcs' => 0];
+            }
+            
+            $ok = (int)$row->qty_hasil_ok;
+            $ng = (int)$row->qty_hasil_ng;
+            
+            $dailyAgg[$tgl]['ok'] += $ok;
+            $dailyAgg[$tgl]['ng'] += $ng;
+            $globalOk += $ok;
+            $globalNg += $ng;
+            
+            $baseProd = preg_replace('/-[MS]$/', '', $row->no_produksi);
+            
+            if (!str_ends_with($row->no_produksi, '-S')) {
+                $effTake = $mainTakes[$baseProd] ?? 0;
+                $dailyAgg[$tgl]['take_pcs'] += $effTake;
+                $globalTakePcs += $effTake;
+                $globalRet += ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
+            } else {
+                // Untuk Part Separating (Pasangannya), dia memakan Take yang sama
+                $effTake = $mainTakes[$baseProd] ?? 0;
+                $dailyAgg[$tgl]['take_pcs'] += $effTake;
+                $globalTakePcs += $effTake;
+            }
+        }
+
+        // Global KPI Percentage
+        $globalPerf = $globalTakePcs > 0 ? ($globalOk / $globalTakePcs) * 100 : 0;
+        if ($globalPerf > 99.9 && $globalNg > 0) $globalPerf = 99.9;
+
+        // 3. Masukkan ke Grafik (Chart)
         $chartLabels = []; 
         $chartOk = []; 
         $chartNg = []; 
@@ -662,34 +710,23 @@ class ProduksiController extends Controller
             $dateStr = date('Y-m-d', $currentDate);
             $chartLabels[] = date('d M', $currentDate);
             
-            $stat = $dailyStats->firstWhere('tgl', $dateStr);
-            
-            if ($stat) {
-                $ok = (int)$stat->total_ok;
-                $ng = (int)$stat->total_ng;
-                $chartOk[] = $ok;
-                $chartNg[] = $ng;
+            if (isset($dailyAgg[$dateStr])) {
+                $d = $dailyAgg[$dateStr];
+                $chartOk[] = $d['ok'];
+                $chartNg[] = $d['ng'];
                 
-                $total = $ok + $ng;
-                
-                // ✨ FIX PEMBULATAN YIELD ✨
-                if ($total > 0) {
-                    $perf = ($ok / $total) * 100;
-                    // Cegah nilai seperti 99.8% dibulatkan ke atas jadi 100% sempurna
-                    $chartPerf[] = ($perf > 99 && $perf < 100) ? 99.9 : round($perf, 1);
-                } else {
-                    $chartPerf[] = 0;
-                }
+                $perf = $d['take_pcs'] > 0 ? ($d['ok'] / $d['take_pcs']) * 100 : 0;
+                $chartPerf[] = ($perf > 99 && $d['ng'] > 0) ? 99.9 : round($perf, 1);
             } else {
                 $chartOk[] = 0;
                 $chartNg[] = 0;
                 $chartPerf[] = 0;
             }
-            
             $currentDate = strtotime('+1 day', $currentDate);
         }
 
-        return view('Produksi.history', compact('histories', 'activeProductions', 'startDate', 'endDate', 'chartLabels', 'chartOk', 'chartNg', 'chartPerf')); 
+        // Kembalikan Semua Kalkulasi Ke View Blade
+        return view('Produksi.history', compact('histories', 'activeProductions', 'startDate', 'endDate', 'chartLabels', 'chartOk', 'chartNg', 'chartPerf', 'globalTakePcs', 'globalOk', 'globalNg', 'globalRet', 'globalPerf')); 
     }
     
     public function getSpecsByCustomer($customer) 
