@@ -35,9 +35,9 @@
     $penyebut = $totalTake - $totalRet;
     $performance = $penyebut > 0 ? ($totalOk / $penyebut) * 100 : 0;
 
-    // ✨ AMBIL DATA UNTUK DROPDOWN FILTER ✨
+    // ✨ AMBIL DATA UNTUK DROPDOWN FILTER & TAMBAHKAN CUSTOMER_CODE ✨
     $filterCustomers = \DB::table('customers')->select('code', 'name')->orderBy('code', 'asc')->get();
-    $filterParts = \DB::table('parts')->select('part_no')->orderBy('part_no', 'asc')->get();
+    $filterParts = \DB::table('parts')->select('part_no', 'customer_code')->orderBy('part_no', 'asc')->get();
 @endphp
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -110,7 +110,6 @@
     <div class="print-template">
         <div class="print-header-container">
             <div class="print-logo-section">
-                <!-- Gunakan Asset Logo Perusahaan -->
                 <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
                 <div class="print-company-info">
                     <h2>PT ASALTA MANDIRI AGUNG</h2>
@@ -148,7 +147,6 @@
                 @forelse($histories as $h)
                 <tr>
                     <td>
-                        <!-- ✨ Menggunakan Plan Date (Sesuai Jadwal PPIC) ✨ -->
                         <b>{{ date('d/m/Y', strtotime($h->plan_date ?? $h->created_at)) }}</b><br>
                         <span style="font-size: 7.5px;">Shift: {{ $h->shift }}</span>
                     </td>
@@ -229,21 +227,28 @@
     {{-- 🖥️ TAMPILAN MONITOR (SCREEN VIEW) --}}
     <div class="screen-only">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4">
-            <div class="mb-3 mb-md-0">
-                <h2 class="heading-audit m-0">QUALITY_AUDIT <span class="text-primary">SYSTEM</span></h2>
-                <p class="text-muted small font-weight-bold mb-0 text-uppercase tracking-widest">Production Traceability Matrix // Period: {{ $periodString }}</p>
+            
+            {{-- ✨ DITAMBAHKAN TOMBOL KEMBALI & HEADER ✨ --}}
+            <div class="mb-3 mb-md-0 d-flex align-items-center">
+                <a href="{{ route('produksi.index') }}" class="btn btn-light rounded-circle shadow-sm border mr-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" title="Kembali ke Terminal">
+                    <i class="fas fa-arrow-left text-primary"></i>
+                </a>
+                <div>
+                    <h2 class="heading-audit m-0">QUALITY_AUDIT <span class="text-primary">SYSTEM</span></h2>
+                    <p class="text-muted small font-weight-bold mb-0 text-uppercase tracking-widest">Production Traceability Matrix // Period: {{ $periodString }}</p>
+                </div>
             </div>
             
             <div class="d-flex flex-column gap-2">
-                {{-- Form Filter Periode, Customer, dan Part (SEKARANG DROPDOWN) --}}
+                {{-- Form Filter Periode, Customer, dan Part --}}
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
                     <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     <span class="text-muted font-weight-bold small">to</span>
                     <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     
                     <div class="border-left pl-2 d-flex gap-1">
-                        {{-- ✨ DROPDOWN CUSTOMER ✨ --}}
-                        <select name="customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                        {{-- DROPDOWN CUSTOMER --}}
+                        <select name="customer" id="filter_customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Cust</option>
                             @foreach($filterCustomers as $c)
                                 <option value="{{ trim($c->code) }}" {{ request('customer') == trim($c->code) ? 'selected' : '' }}>
@@ -252,11 +257,11 @@
                             @endforeach
                         </select>
 
-                        {{-- ✨ DROPDOWN PART NO ✨ --}}
-                        <select name="part_no" class="form-control form-control-sm font-weight-bold text-dark" style="width: 150px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                        {{-- DROPDOWN PART NO (Akan difilter oleh JS) --}}
+                        <select name="part_no" id="filter_part" class="form-control form-control-sm font-weight-bold text-dark" style="width: 160px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Part</option>
                             @foreach($filterParts as $p)
-                                <option value="{{ $p->part_no }}" {{ request('part_no') == $p->part_no ? 'selected' : '' }}>
+                                <option value="{{ $p->part_no }}" data-customer="{{ trim($p->customer_code) }}" {{ request('part_no') == $p->part_no ? 'selected' : '' }}>
                                     {{ $p->part_no }}
                                 </option>
                             @endforeach
@@ -310,7 +315,6 @@
                         @endphp
                         <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
                             <td class="pl-4">
-                                <!-- ✨ Menampilkan Plan Date sebagai Patokan Utama ✨ -->
                                 <div class="font-weight-bold text-dark"><i class="far fa-calendar-check text-success mr-1"></i> {{ date('d M Y', strtotime($h->plan_date ?? $h->created_at)) }}</div>
                                 <div class="small text-muted font-weight-bold"><i class="fas fa-clock text-primary mr-1"></i> Input: {{ date('H:i', strtotime($h->updated_at)) }}</div>
                                 <div class="small text-muted font-weight-bold mt-1"><i class="fas fa-industry text-secondary mr-1"></i> {{ $h->kode_Line ?? 'LINE' }} ({{ $h->shift }})</div>
@@ -325,7 +329,6 @@
                                 </div>
                                 <div class="small text-muted">{{ $h->part_name ?? '-' }}</div>
 
-                                {{-- Jika Ada Separating Part (Ganda) --}}
                                 @if($h->is_separating &&$h->paired_part)
                                     <div class="mt-1 pt-1 border-top">
                                         <span class="pair-badge">PAIR</span> 
@@ -335,7 +338,6 @@
                                 @endif
                             </td>
                             <td>
-                                {{-- Rincian Coil Fisik yang Dipakai --}}
                                 @if(isset($h->coils_used) && count($h->coils_used) > 0)
                                     <div class="d-flex flex-column">
                                         @foreach($h->coils_used as $c)
@@ -364,7 +366,6 @@
                                 @endif
                             </td>
                             <td>
-                                {{-- Rincian Jenis NG --}}
                                 @if(isset($h->ng_details) && count($h->ng_details) > 0)
                                     <div class="d-flex flex-wrap mb-1">
                                         @foreach($h->ng_details as $ng)
@@ -373,14 +374,12 @@
                                     </div>
                                 @endif
 
-                                {{-- Rincian Jenis NG Part Pasangan --}}
                                 @if($h->is_separating && !empty($h->paired_ng_remark) &&$h->paired_ng_remark !== '-')
                                     <div class="small font-weight-bold" style="color: #9333ea;">
                                         <i class="fas fa-link mr-1"></i> Pair Defect: {{ $h->paired_ng_remark }}
                                     </div>
                                 @endif
 
-                                {{-- Tulisan Remark / Catatan Form --}}
                                 @if(!empty($h->keterangan))
                                     <div class="small text-muted font-italic mt-1">
                                         <i class="far fa-comment-dots mr-1"></i> {{ $h->keterangan }}
@@ -490,7 +489,55 @@
     </div>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // ✨ JS SAKTI: CASCADING DROPDOWN FILTER CUSTOMER -> PART NO ✨
+    $(document).ready(function() {
+        const $custSelect = $('#filter_customer');
+        const $partSelect = $('#filter_part');
+        
+        // Simpan semua opsi Part No di dalam memori saat web pertama diload
+        const allParts = $partSelect.find('option').clone();
+
+        function updatePartDropdown() {
+            const selectedCust = $custSelect.val().trim();
+            const currentPart = $partSelect.val();
+            
+            // Kosongkan dropdown Part No
+            $partSelect.empty();
+            
+            // Isi kembali berdasarkan Customer yang dipilih
+            allParts.each(function() {
+                const partCust = $(this).data('customer') ? $(this).data('customer').trim() : "";
+                const isAllOption = $(this).val() === "";
+                
+                // Jika "All Cust" dipilih (kosong), tampilkan semua. Jika Customer tertentu dipilih, cocokkan atribut data-customer
+                if (isAllOption || !selectedCust || partCust === selectedCust) {
+                    $partSelect.append($(this).clone());
+                }
+            });
+            
+            // Kembalikan pilihan part jika masih tersedia di daftar yang baru
+            if ($partSelect.find(`option[value="${currentPart}"]`).length > 0) {
+                $partSelect.val(currentPart);
+            } else {
+                $partSelect.val("");
+            }
+        }
+
+        // Panggil fungsi saat dropdown Customer diganti
+        $custSelect.on('change', updatePartDropdown);
+        
+        // Panggil sekali saat web pertama kali dimuat untuk menyelaraskan dropdown
+        updatePartDropdown();
+        
+        // Jika ada filter part_no di URL (dari request sebelumnya), paksa pilih
+        let reqPart = "{{ request('part_no') }}";
+        if (reqPart) {
+            $partSelect.val(reqPart);
+        }
+    });
+
     // 📊 SCRIPT GRAFIK TREND PRODUKSI HARIAN
     const chartLabels = @json($chartLabels ?? []);
     const chartOk = @json($chartOk ?? []);
