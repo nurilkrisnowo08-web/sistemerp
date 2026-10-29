@@ -2,7 +2,7 @@
 
 @section('content')
 @php
-    // Setup Tanggal
+    // Setup Tanggal dari Controller
     $startD = $startDate ?? date('Y-m-d', strtotime('-6 days'));
     $endD = $endDate ?? date('Y-m-d');
     
@@ -104,7 +104,6 @@
             </div>
         </div>
 
-        <!-- ✨ DATA MENGGUNAKAN VARIABEL GLOBAL DARI CONTROLLER ✨ -->
         <div class="print-recap-grid">
             <div class="summary-box"><div class="summary-title">Total Material Take</div><div class="summary-value">{{ number_format($globalTakePcs ?? 0) }} Pcs</div></div>
             <div class="summary-box"><div class="summary-title">Verified OK</div><div class="summary-value">{{ number_format($globalOk ?? 0) }}</div></div>
@@ -147,9 +146,13 @@
                         $ngToShow = $h->paired_ng ?? 0;
                         $takeToShow = $batchEffTake;
                     } else {
-                        $okToShow = clone($h); // Flag untuk tampilan normal ganda
+                        $okToShow = clone($h); // Flag
                     }
                     
+                    // ✨ FIX: INISIALISASI VARIABEL UNTUK MENCEGAH UNDEFINED ERROR ✨
+                    $p1Label = $h->material_code; 
+                    $p2Label = '';
+
                     if ($h->is_separating) {
                         $p1Split = explode('-', $h->material_code);
                         $p1Label = substr($p1Split[0], -2);
@@ -350,7 +353,6 @@
                             $batchRet = $h->qty_return_warehouse ?? 0;
                             $batchEffTake = max(0, $batchTake - $batchRet);
 
-                            // Jika filter pada Part tertentu, hanya baca variabel tersebut
                             if ($isFilteredToMain) {
                                 $okToShow = $h->qty_hasil_ok;
                                 $ngToShow = $h->qty_hasil_ng;
@@ -360,7 +362,7 @@
                                 $ngToShow = $h->paired_ng ?? 0;
                                 $takeToShow = $batchEffTake;
                             } else {
-                                $okToShow = clone($h); // Placeholder objek biar bisa dicek array-nya di bawah
+                                $okToShow = clone($h); 
                                 $takeToShow = $batchEffTake * ($h->is_separating ? 2 : 1);
                             }
                             
@@ -376,6 +378,10 @@
                                 $yld = $totalOutput > 0 ? ($totalBatchOk / $totalOutput) * 100 : 0;
                                 if ($yld > 99.9 && $totalBatchNg > 0) $yld = 99.9;
                             }
+
+                            // ✨ FIX: INISIALISASI VARIABEL UNTUK MENCEGAH UNDEFINED ERROR ✨
+                            $p1Label = $h->material_code; 
+                            $p2Label = '';
 
                             if ($h->is_separating) {
                                 $p1Split = explode('-', $h->material_code);
@@ -426,7 +432,6 @@
                                 {{ number_format($h->qty_ambil_pcs) }}
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-success">
-                                {{-- Menampilkan OK Sesuai Filter atau Default Gabungan (Kiri-Kanan) --}}
                                 @if($isFilteredToMain)
                                     <span style="font-size: 14px;">{{ number_format($okToShow) }}</span>
                                     <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Filtered: {{ $p1Label }})</div>
@@ -443,7 +448,6 @@
                                 @endif
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-danger">
-                                {{-- Menampilkan NG Sesuai Filter atau Default Gabungan (Kiri-Kanan) --}}
                                 @if($isFilteredToMain)
                                     <span style="font-size: 14px;">{{ number_format($ngToShow) }}</span>
                                     <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Filtered: {{ $p1Label }})</div>
@@ -664,10 +668,9 @@
         let partInfo = h.material_code + (h.part_name ? ' (' + h.part_name + ')' : '');
         const tagFilter = document.getElementById('det-filter-tag');
         
-        // Membaca Kondisi Jika Filter Sedang Aktif
         if (filteredLabel !== "ALL") {
             tagFilter.style.display = 'inline-block';
-            tagFilter.innerText = "FILTERED: " + filteredLabel;
+            tagFilter.innerText = "FILTERED";
             if (h.is_separating && !partInfo.includes(filteredLabel)) {
                 partInfo = h.paired_part + (h.paired_part_name ? ' (' + h.paired_part_name + ')' : '');
             }
@@ -681,7 +684,6 @@
         document.getElementById('det-cavity').innerText = h.cavity || 1;
         document.getElementById('det-time').innerText = h.updated_at;
         
-        // Data sudah murni berdasarkan filter Blade
         document.getElementById('det-take').innerText = Number(trueTakePcs).toLocaleString();
         document.getElementById('det-ok').innerText = Number(trueOk).toLocaleString();
         document.getElementById('det-ng').innerText = Number(trueNg).toLocaleString();
