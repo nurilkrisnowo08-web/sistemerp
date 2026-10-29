@@ -12,7 +12,36 @@
         $periodString = date('d M Y', strtotime($startD)) . ' - ' . date('d M Y', strtotime($endD));
     }
 
-    // AMBIL DATA UNTUK DROPDOWN FILTER
+    // Kalkulasi Data untuk KPI Box
+    $totalTake = 0; 
+    $totalOk = 0; 
+    $totalNg = 0; 
+    $totalRet = 0;
+    
+    if(isset($histories) && count($histories) > 0) {
+        foreach($histories as $h) {
+            $totalTake += $h->qty_ambil_pcs;
+            $totalRet += $h->qty_return_warehouse;
+            $totalOk += $h->qty_hasil_ok;
+            $totalNg += $h->qty_hasil_ng;
+
+            if ($h->is_separating) {
+                $totalOk += ($h->paired_ok ?? 0);
+                $totalNg += ($h->paired_ng ?? 0);
+            }
+        }
+    }
+
+    $totalProduksi = $totalOk + $totalNg;
+    if ($totalProduksi > 0) {
+        $performance = ($totalOk / $totalProduksi) * 100;
+        if ($performance > 99.9 && $totalNg > 0) {
+            $performance = 99.9;
+        }
+    } else {
+        $performance = 0;
+    }
+
     $filterCustomers = \DB::table('customers')->select('code', 'name')->orderBy('code', 'asc')->get();
     $filterParts = \DB::table('parts')->select('part_no', 'customer_code')->orderBy('part_no', 'asc')->get();
 @endphp
@@ -78,7 +107,11 @@
         .print-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
         .print-table th { background: #f8fafc !important; border: 1px solid #000; padding: 6px 4px; font-size: 8px; text-transform: uppercase; font-weight: 800; }
         .print-table td { border: 1px solid #000; padding: 5px 4px; font-size: 8.5px; vertical-align: top; }
+        
+        .split-line { border-top: 1px dashed #cbd5e1; display: block; padding-top: 2px; margin-top: 2px; }
     }
+    
+    .split-line { border-top: 1px dashed #cbd5e1; display: block; padding-top: 4px; margin-top: 4px; }
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
@@ -100,7 +133,6 @@
             </div>
         </div>
 
-        <!-- ✨ DATA MENGGUNAKAN VARIABEL GLOBAL DARI CONTROLLER ✨ -->
         <div class="print-recap-grid">
             <div class="summary-box"><div class="summary-title">Total Material Take</div><div class="summary-value">{{ number_format($globalTakePcs ?? 0) }} Pcs</div></div>
             <div class="summary-box"><div class="summary-title">Verified OK</div><div class="summary-value">{{ number_format($globalOk ?? 0) }}</div></div>
@@ -126,9 +158,16 @@
             <tbody>
                 @forelse($histories as $h)
                 @php 
-                    // ✨ MENGHITUNG SEBAGAI 1 PART UTUH ✨
-                    $totalBatchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
-                    $totalBatchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                    $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
+                    $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                    
+                    if ($h->is_separating) {
+                        $p1Split = explode('-', $h->material_code);
+                        $p1Label = substr($p1Split[0], -2);
+                        
+                        $p2Split = explode('-', $h->paired_part);
+                        $p2Label = substr($p2Split[0], -2);
+                    }
                 @endphp
                 <tr>
                     <td>
@@ -144,7 +183,7 @@
                         <span class="cavity-pill">Cav:{{ $h->cavity ?? 1 }}</span><br>
                         <span style="font-size: 7.5px; color: #475569;">{{ $h->part_name ?? '-' }}</span>
                         @if($h->is_separating && $h->paired_part)
-                            <div style="margin-top: 3px; border-top: 1px dashed #94a3b8; padding-top: 3px;">
+                            <div class="split-line">
                                 <span class="pair-badge">PAIR</span> <b>{{ $h->paired_part }}</b><br>
                                 <span style="font-size: 7px; color: #475569;">{{ $h->paired_part_name ?? '-' }}</span>
                             </div>
@@ -165,15 +204,23 @@
                         {{ number_format($h->qty_ambil_pcs) }}
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #15803d;">
-                        {{ number_format($totalBatchOk) }}
                         @if($h->is_separating)
-                            <br><span style="font-size: 6.5px; color: #64748b; font-weight: normal;">(Merged L/R)</span>
+                            <b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ok) }}
+                            <div class="split-line text-purple" style="color: #9333ea;">
+                                <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ok) }}
+                            </div>
+                        @else
+                            {{ number_format($h->qty_hasil_ok) }}
                         @endif
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #b91c1c;">
-                        {{ number_format($totalBatchNg) }}
                         @if($h->is_separating)
-                            <br><span style="font-size: 6.5px; color: #64748b; font-weight: normal;">(Merged L/R)</span>
+                            <b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ng) }}
+                            <div class="split-line text-purple" style="color: #9333ea;">
+                                <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ng) }}
+                            </div>
+                        @else
+                            {{ number_format($h->qty_hasil_ng) }}
                         @endif
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #d97706;">
@@ -227,14 +274,12 @@
             </div>
             
             <div class="d-flex flex-column gap-2">
-                {{-- Form Filter Periode, Customer, dan Part --}}
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
                     <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     <span class="text-muted font-weight-bold small">to</span>
                     <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     
                     <div class="border-left pl-2 d-flex gap-1">
-                        {{-- DROPDOWN CUSTOMER --}}
                         <select name="customer" id="filter_customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Cust</option>
                             @foreach($filterCustomers as $c)
@@ -244,7 +289,6 @@
                             @endforeach
                         </select>
 
-                        {{-- DROPDOWN PART NO (Akan difilter oleh JS) --}}
                         <select name="part_no" id="filter_part" class="form-control form-control-sm font-weight-bold text-dark" style="width: 160px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Part</option>
                             @foreach($filterParts as $p)
@@ -298,15 +342,22 @@
                         @forelse($histories as $h)
                         @php 
                             // ✨ YIELD DI TABEL MURNI MENGGUNAKAN (OK / TOTAL OUTPUT)
-                            // Jika separating, otomatis ditambahkan karena kita menghitungnya sebagai SATU PART UTUH
                             $totalBatchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
                             $totalBatchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
                             
                             $totalOutput = $totalBatchOk + $totalBatchNg;
                             
                             $yld = $totalOutput > 0 ? ($totalBatchOk / $totalOutput) * 100 : 0;
-                            // Tahan pembulatan jika ada cacat/NG
                             if ($yld > 99.9 && $totalBatchNg > 0) $yld = 99.9;
+
+                            // ✨ SETUP LABEL IDENTITAS PART KIRI & KANAN ✨
+                            if ($h->is_separating) {
+                                $p1Split = explode('-', $h->material_code);
+                                $p1Label = substr($p1Split[0], -2);
+                                
+                                $p2Split = explode('-', $h->paired_part);
+                                $p2Label = substr($p2Split[0], -2);
+                            }
                         @endphp
                         <tr class="row-clickable" onclick='showDeepDive(@json($h), {{ $totalBatchOk }}, {{ $totalBatchNg }}, {{ $yld }})'>
                             <td class="pl-4">
@@ -325,7 +376,7 @@
                                 <div class="small text-muted">{{ $h->part_name ?? '-' }}</div>
 
                                 @if($h->is_separating && $h->paired_part)
-                                    <div class="mt-1 pt-1 border-top">
+                                    <div class="split-line">
                                         <span class="pair-badge">PAIR</span> 
                                         <span class="font-weight-bold text-dark">{{ $h->paired_part }}</span>
                                         <div class="small text-muted">{{ $h->paired_part_name ?? '-' }}</div>
@@ -349,15 +400,25 @@
                                 {{ number_format($h->qty_ambil_pcs) }}
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-success">
-                                <span style="font-size: 14px;">{{ number_format($totalBatchOk) }}</span>
+                                {{-- Menampilkan OK Kiri & Kanan Terpisah dengan Garis Putus-putus --}}
                                 @if($h->is_separating)
-                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Merged L/R)</div>
+                                    <div style="font-size: 13px;"><b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ok) }}</div>
+                                    <div class="split-line text-purple" style="font-size: 13px; color: #9333ea;">
+                                        <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ok) }}
+                                    </div>
+                                @else
+                                    <span style="font-size: 14px;">{{ number_format($h->qty_hasil_ok) }}</span>
                                 @endif
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-danger">
-                                <span style="font-size: 14px;">{{ number_format($totalBatchNg) }}</span>
+                                {{-- Menampilkan NG Kiri & Kanan Terpisah dengan Garis Putus-putus --}}
                                 @if($h->is_separating)
-                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Merged L/R)</div>
+                                    <div style="font-size: 13px;"><b>{{ $p1Label }}:</b> {{ number_format($h->qty_hasil_ng) }}</div>
+                                    <div class="split-line text-purple" style="font-size: 13px; color: #9333ea;">
+                                        <b>{{ $p2Label }}:</b> {{ number_format($h->paired_ng) }}
+                                    </div>
+                                @else
+                                    <span style="font-size: 14px;">{{ number_format($h->qty_hasil_ng) }}</span>
                                 @endif
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-warning">
@@ -372,7 +433,7 @@
                                     </div>
                                 @endif
 
-                                @if($h->is_separating && !empty($h->paired_ng_remark) && $h->paired_ng_remark !== '-')
+                                @if($h->is_separating && !empty($h->paired_ng_remark) &&$h->paired_ng_remark !== '-')
                                     <div class="small font-weight-bold" style="color: #9333ea;">
                                         <i class="fas fa-link mr-1"></i> Pair Defect: {{ $h->paired_ng_remark }}
                                     </div>
@@ -445,10 +506,13 @@
                             </div>
                         </div>
 
-                        {{-- Box Separating disembunyikan karena sudah di-merge --}}
                         <div id="det-separating-box" class="p-2 bg-light rounded border mt-2" style="display: none;">
                             <small class="stat-label text-primary d-block font-weight-bold">🔗 Separating Pair Connected</small>
                             <span class="font-weight-bold small" id="det-pair-part">-</span>
+                            <div class="d-flex gap-2 mt-1 small font-weight-bold">
+                                <span class="text-success mr-3">OK: <span id="det-pair-ok">0</span></span>
+                                <span class="text-danger">NG: <span id="det-pair-ng">0</span></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -563,7 +627,6 @@
         document.getElementById('det-cavity').innerText = h.cavity || 1;
         document.getElementById('det-time').innerText = h.updated_at;
         
-        // Memakai parameter yang sudah digabung akurat dari blade
         document.getElementById('det-take').innerText = Number(h.qty_ambil_pcs).toLocaleString();
         document.getElementById('det-ok').innerText = Number(trueOk).toLocaleString();
         document.getElementById('det-ng').innerText = Number(trueNg).toLocaleString();
@@ -578,6 +641,8 @@
         if (h.is_separating && h.paired_part) {
             pairBox.style.display = 'block';
             document.getElementById('det-pair-part').innerText = h.paired_part + (h.paired_part_name ? ' - ' + h.paired_part_name : '');
+            document.getElementById('det-pair-ok').innerText = Number(h.paired_ok || 0).toLocaleString();
+            document.getElementById('det-pair-ng').innerText = Number(h.paired_ng || 0).toLocaleString();
         } else {
             pairBox.style.display = 'none';
         }
