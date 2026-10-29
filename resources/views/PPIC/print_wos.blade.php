@@ -63,7 +63,7 @@
 <body>
 
     @php
-        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS BESERTA NILAINYA (ATAS-BAWAH) ✨
+        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS (KOSONG JIKA BELUM ADA HASIL) ✨
         function mergeWosPlans($plans) {
             $merged = collect();
             foreach($plans as $p) {
@@ -79,6 +79,9 @@
                 $partPrefix = $partSplit[0];
                 $shortLabel = substr($partPrefix, -2);
                 
+                // 🔥 CEK APAKAH SUDAH DIINPUT RESULT OLEH PPIC 🔥
+                $hasResult = ($p->actual_ok > 0 || $p->actual_ng > 0);
+                
                 if (!$merged->has($baseProd)) {
                     $item = clone $p;
                     $item->display_part_no = $item->part_no;
@@ -88,18 +91,20 @@
                     $isSeparating = preg_match('/-[MS]$/', $p->no_produksi) || strpos($p->keterangan ?? '', 'PAIR_MAIN:') === 0;
                     
                     if ($isSeparating) {
-                        $ok_val = ($item->actual_ok > 0) ? $item->actual_ok : '';
-                        $ng_val = ($item->actual_ng > 0) ? $item->actual_ng : '';
+                        // Jika belum ada result, string angkanya dikosongkan agar bisa ditulis manual
+                        $ok_val = $hasResult ? number_format((int)($item->actual_ok ?? 0)) : '';
+                        $ng_val = $hasResult ? number_format((int)($item->actual_ng ?? 0)) : '';
                         $item->actual_ok_str = "<b>{$shortLabel}:</b> " . $ok_val;
                         $item->actual_ng_str = "<b>{$shortLabel}:</b> " . $ng_val;
                     } else {
-                        $item->actual_ok_str = ($item->actual_ok > 0) ? $item->actual_ok : '';
-                        $item->actual_ng_str = ($item->actual_ng > 0) ? $item->actual_ng : '';
+                        $item->actual_ok_str = $hasResult ? number_format((int)($item->actual_ok ?? 0)) : '';
+                        $item->actual_ng_str = $hasResult ? number_format((int)($item->actual_ng ?? 0)) : '';
                     }
                     
                     $merged->put($baseProd, $item);
                 } else {
                     $existing = $merged->get($baseProd);
+                    $existingHasResult = ($existing->actual_ok > 0 || $existing->actual_ng > 0);
                     
                     if (!str_contains($existing->display_part_no, $p->part_no)) {
                         $existing->display_part_no .= '<br><span class="split-line">' . $p->part_no . '</span>';
@@ -110,18 +115,22 @@
                         // Konversi part pertama jika belum pakai format label
                         if (!str_contains($existing->actual_ok_str, '<b>')) {
                              $oldShort = substr(explode('-', $existing->part_no)[0], -2);
-                             $oldOk = ($existing->actual_ok > 0) ? $existing->actual_ok : '';
-                             $oldNg = ($existing->actual_ng > 0) ? $existing->actual_ng : '';
+                             $oldOk = $existingHasResult ? number_format((int)($existing->actual_ok ?? 0)) : '';
+                             $oldNg = $existingHasResult ? number_format((int)($existing->actual_ng ?? 0)) : '';
                              $existing->actual_ok_str = "<b>{$oldShort}:</b> " . $oldOk;
                              $existing->actual_ng_str = "<b>{$oldShort}:</b> " . $oldNg;
                         }
                         
-                        $newOk = ($p->actual_ok > 0) ? $p->actual_ok : '';
-                        $newNg = ($p->actual_ng > 0) ? $p->actual_ng : '';
+                        $newOk = $hasResult ? number_format((int)($p->actual_ok ?? 0)) : '';
+                        $newNg = $hasResult ? number_format((int)($p->actual_ng ?? 0)) : '';
                         
                         $existing->actual_ok_str .= '<br><span class="split-line"><b>' . $shortLabel . ':</b> ' . $newOk . '</span>';
                         $existing->actual_ng_str .= '<br><span class="split-line"><b>' . $shortLabel . ':</b> ' . $newNg . '</span>';
                     }
+                    
+                    // Update max result detection
+                    $existing->actual_ok = max($existing->actual_ok ?? 0, $p->actual_ok ?? 0);
+                    $existing->actual_ng = max($existing->actual_ng ?? 0, $p->actual_ng ?? 0);
                     
                     $merged->put($baseProd, $existing);
                 }
@@ -236,6 +245,9 @@
                     if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                         $revLabel = " <span style='color: #2563eb; font-weight: bold;'>[REV-{$matches[1]}]</span>";
                     }
+                    
+                    // Cek Result Untuk Mengisi Waktu Aktual
+                    $hasResult = ($p->actual_ok > 0 || $p->actual_ng > 0);
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
@@ -258,10 +270,11 @@
                     
                     <td class="text-bold">{{ $p->line_code }}</td>
                     
-                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
-                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
+                    <!-- ✨ JIKA BELUM ADA RESULT (OK/NG), WAKTU AKTUAL DIBIARKAN KOSONG ✨ -->
+                    <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_start ?: '') : '' }}</td>
+                    <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_end ?: '') : '' }}</td>
                     
-                    <!-- ✨ HASIL OK DAN NG MUNCUL TERSUSUN KE BAWAH JIKA DIGABUNG ✨ -->
+                    <!-- ✨ HASIL OK DAN NG MUNCUL TERSUSUN KE BAWAH JIKA DIGABUNG (KOSONG JIKA BLM ADA RESULT) ✨ -->
                     <td class="text-bold text-green" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ok_str !!}</td>
                     <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ng_str !!}</td>
                     <td></td>
@@ -311,6 +324,9 @@
                     if (isset($p->keterangan) && preg_match('/\(R(\d+)\)/', $p->keterangan, $matches)) {
                         $revLabel = " <span style='color: #2563eb; font-weight: bold;'>[REV-{$matches[1]}]</span>";
                     }
+                    
+                    // Cek Result Untuk Mengisi Waktu Aktual
+                    $hasResult = ($p->actual_ok > 0 || $p->actual_ng > 0);
                 @endphp
                 <tr>
                     <td>{{ $no++ }}</td>
@@ -333,9 +349,11 @@
                     
                     <td class="text-bold">{{ $p->line_code }}</td>
                     
-                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
-                    <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
+                    <!-- ✨ JIKA BELUM ADA RESULT (OK/NG), WAKTU AKTUAL DIBIARKAN KOSONG ✨ -->
+                    <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_start ?: '') : '' }}</td>
+                    <td class="text-bold" style="color: #2563eb;">{{ $hasResult ? ($p->actual_end ?: '') : '' }}</td>
                     
+                    <!-- ✨ HASIL OK DAN NG MUNCUL TERSUSUN KE BAWAH JIKA DIGABUNG (KOSONG JIKA BLM ADA RESULT) ✨ -->
                     <td class="text-bold text-green" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ok_str !!}</td>
                     <td class="text-bold text-danger" style="font-size: 10px; line-height: 1.4;">{!! $p->actual_ng_str !!}</td>
                     <td></td>
