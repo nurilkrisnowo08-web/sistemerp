@@ -61,10 +61,56 @@
 <body>
 
     @php
-        // Mengumpulkan No WOS Asli dari Controller untuk dipajang di Pojok Kanan Atas
+        // ✨ FUNGSI SAKTI: MENGGABUNGKAN PART KIRI & KANAN JADI SATU BARIS ✨
+        function mergeWosPlans($plans) {
+            $merged = collect();
+            foreach($plans as $p) {
+                // Hilangkan akhiran -M atau -S agar terdeteksi sebagai WOS yang sama
+                $baseProd = preg_replace('/-[MS]$/', '', $p->no_produksi);
+                
+                // Jika belum diregister (masih '-'), pastikan tidak digabung ngawur dengan antrean idle lainnya
+                if (empty($baseProd) || $baseProd === '-') {
+                    $baseProd = 'UNREG-' . $p->id; 
+                }
+                
+                if (!$merged->has($baseProd)) {
+                    $item = clone $p;
+                    $item->display_part_no = $item->part_no;
+                    $item->display_part_name = $item->part_name ?? 'WOS PART';
+                    $item->display_no_produksi = preg_replace('/-[MS]$/', '', $p->no_produksi); // Tampilkan tanpa -M / -S
+                    $merged->put($baseProd, $item);
+                } else {
+                    $existing = $merged->get($baseProd);
+                    
+                    // Gabungkan Part Number
+                    if (!str_contains($existing->display_part_no, $p->part_no)) {
+                        $existing->display_part_no .= ' / ' . $p->part_no;
+                    }
+                    
+                    // Gabungkan Part Name
+                    $pName = $p->part_name ?? 'WOS PART';
+                    if (!str_contains($existing->display_part_name, $pName)) {
+                        $existing->display_part_name .= ' / ' . $pName;
+                    }
+                    
+                    // Ambil angka Aktual (OK/NG) terbesar di antara keduanya
+                    $existing->actual_ok = max($existing->actual_ok ?? 0, $p->actual_ok ?? 0);
+                    $existing->actual_ng = max($existing->actual_ng ?? 0, $p->actual_ng ?? 0);
+                    
+                    $merged->put($baseProd, $existing);
+                }
+            }
+            return $merged->values();
+        }
+
+        // Terapkan fungsi merge
+        $plansS1 = mergeWosPlans($plansS1);
+        $plansS2 = mergeWosPlans($plansS2);
+
+        // Kumpulkan Nomor WOS untuk Header Pojok Kanan Atas
         $allWos = collect();
-        foreach($plansS1 as $p) { if($p->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->no_produksi)); }
-        foreach($plansS2 as $p) { if($p->no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->no_produksi)); }
+        foreach($plansS1 as $p) { if($p->display_no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->display_no_produksi)); }
+        foreach($plansS2 as $p) { if($p->display_no_produksi != '-') $allWos->push(preg_replace('/-REV-.*/', '', $p->display_no_produksi)); }
         $uniqueWos = $allWos->unique()->values();
         
         $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : 'AUTO-DEPLOY';
@@ -168,10 +214,9 @@
                 <tr>
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
-                        {{ $p->part_no }}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span><br>
-                        <!-- 🔥 WOS ASLI MUNCUL DI SINI 🔥 -->
-                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->no_produksi) }}{!! $revLabel !!}</span>
+                        {{ $p->display_part_no }}<br>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->display_part_name, 50) }}</span><br>
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
@@ -187,16 +232,20 @@
                     
                     <td class="text-bold">{{ $p->line_code }}</td>
                     
-                    <!-- 🔥 INJEKSI AKTUAL WAKTU 🔥 -->
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
                     
-                    <!-- 🔥 INJEKSI HASIL PRODUKSI 🔥 -->
                     <td class="text-bold text-green" style="font-size: 11px;">{{ $p->actual_ok > 0 ? number_format($p->actual_ok) : '' }}</td>
                     <td class="text-bold text-danger" style="font-size: 11px;">{{ $p->actual_ng > 0 ? number_format($p->actual_ng) : '' }}</td>
                     <td></td>
                     
-                    <td class="text-left" style="font-size: 8px;">{{ Str::limit($p->keterangan ?? 'AUTO-DEPLOY', 40) }}</td>
+                    <td class="text-left" style="font-size: 8px;">
+                        @if(strpos($p->keterangan, 'PAIR_MAIN:') === 0)
+                            AUTO-DEPLOY (MERGED)
+                        @else
+                            {{ Str::limit($p->keterangan ?? 'AUTO-DEPLOY', 40) }}
+                        @endif
+                    </td>
                 </tr>
                 @php $startTime = $endTime; @endphp
             @empty
@@ -239,10 +288,9 @@
                 <tr>
                     <td>{{ $no++ }}</td>
                     <td class="text-left text-bold">
-                        {{ $p->part_no }}<br>
-                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->part_name ?? 'WOS PART', 35) }}</span><br>
-                        <!-- 🔥 WOS ASLI MUNCUL DI SINI 🔥 -->
-                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->no_produksi) }}{!! $revLabel !!}</span>
+                        {{ $p->display_part_no }}<br>
+                        <span style="font-size: 8px; font-weight: normal; color: #475569;">{{ Str::limit($p->display_part_name, 50) }}</span><br>
+                        <span style="color: #dc2626; font-family: monospace; font-size: 10px;">{{ strtoupper($p->display_no_produksi) }}{!! $revLabel !!}</span>
                     </td>
                     <td class="text-bold">{{ $p->customer_code ?? 'AMA' }}</td>
                     <td>{{ $p->manpower ?? 1 }}</td>
@@ -258,16 +306,20 @@
                     
                     <td class="text-bold">{{ $p->line_code }}</td>
                     
-                    <!-- 🔥 INJEKSI AKTUAL WAKTU 🔥 -->
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_start ?: '' }}</td>
                     <td class="text-bold" style="color: #2563eb;">{{ $p->actual_end ?: '' }}</td>
                     
-                    <!-- 🔥 INJEKSI HASIL PRODUKSI 🔥 -->
                     <td class="text-bold text-green" style="font-size: 11px;">{{ $p->actual_ok > 0 ? number_format($p->actual_ok) : '' }}</td>
                     <td class="text-bold text-danger" style="font-size: 11px;">{{ $p->actual_ng > 0 ? number_format($p->actual_ng) : '' }}</td>
                     <td></td>
                     
-                    <td class="text-left" style="font-size: 8px;">{{ Str::limit($p->keterangan ?? 'AUTO-DEPLOY', 40) }}</td>
+                    <td class="text-left" style="font-size: 8px;">
+                        @if(strpos($p->keterangan, 'PAIR_MAIN:') === 0)
+                            AUTO-DEPLOY (MERGED)
+                        @else
+                            {{ Str::limit($p->keterangan ?? 'AUTO-DEPLOY', 40) }}
+                        @endif
+                    </td>
                 </tr>
                 @php $startTime = $endTime; @endphp
             @endforeach
