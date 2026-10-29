@@ -12,37 +12,6 @@
         $periodString = date('d M Y', strtotime($startD)) . ' - ' . date('d M Y', strtotime($endD));
     }
 
-    // Kalkulasi Data untuk KPI Box
-    $totalTake = 0; 
-    $totalOk = 0; 
-    $totalNg = 0; 
-    $totalRet = 0;
-    
-    if(isset($histories) && count($histories) > 0) {
-        foreach($histories as $h) {
-            $totalTake += $h->qty_ambil_pcs;
-            $totalRet += $h->qty_return_warehouse;
-            $totalOk += $h->qty_hasil_ok;
-            $totalNg += $h->qty_hasil_ng;
-
-            if ($h->is_separating) {
-                $totalOk += ($h->paired_ok ?? 0);
-                $totalNg += ($h->paired_ng ?? 0);
-            }
-        }
-    }
-
-    // ✨ FIX LOGIKA GLOBAL PERFORMANCE (MURNI YIELD OK VS NG) ✨
-    $totalProduksi = $totalOk + $totalNg;
-    if ($totalProduksi > 0) {
-        $performance = ($totalOk / $totalProduksi) * 100;
-        if ($performance > 99.9 && $totalNg > 0) {
-            $performance = 99.9;
-        }
-    } else {
-        $performance = 0;
-    }
-
     // AMBIL DATA UNTUK DROPDOWN FILTER
     $filterCustomers = \DB::table('customers')->select('code', 'name')->orderBy('code', 'asc')->get();
     $filterParts = \DB::table('parts')->select('part_no', 'customer_code')->orderBy('part_no', 'asc')->get();
@@ -131,12 +100,13 @@
             </div>
         </div>
 
+        <!-- ✨ DATA MENGGUNAKAN VARIABEL GLOBAL DARI CONTROLLER ✨ -->
         <div class="print-recap-grid">
-            <div class="summary-box"><div class="summary-title">Total Material Take</div><div class="summary-value">{{ number_format($totalTake) }}</div></div>
-            <div class="summary-box"><div class="summary-title">Verified OK</div><div class="summary-value">{{ number_format($totalOk) }}</div></div>
-            <div class="summary-box"><div class="summary-title">Total Reject NG</div><div class="summary-value">{{ number_format($totalNg) }}</div></div>
-            <div class="summary-box"><div class="summary-title">Returned RM</div><div class="summary-value">{{ number_format($totalRet) }}</div></div>
-            <div class="summary-box"><div class="summary-title">Global Performance</div><div class="summary-value">{{ number_format($performance, 1) }}%</div></div>
+            <div class="summary-box"><div class="summary-title">Total Material Take</div><div class="summary-value">{{ number_format($globalTakePcs ?? 0) }} Pcs</div></div>
+            <div class="summary-box"><div class="summary-title">Verified OK</div><div class="summary-value">{{ number_format($globalOk ?? 0) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Total Reject NG</div><div class="summary-value">{{ number_format($globalNg ?? 0) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Returned RM</div><div class="summary-value">{{ number_format($globalRet ?? 0) }} Pcs</div></div>
+            <div class="summary-box"><div class="summary-title">Global Performance</div><div class="summary-value">{{ number_format($globalPerf ?? 0, 1) }}%</div></div>
         </div>
 
         <table class="print-table">
@@ -155,6 +125,11 @@
             </thead>
             <tbody>
                 @forelse($histories as $h)
+                @php 
+                    // ✨ MENGHITUNG SEBAGAI 1 PART UTUH ✨
+                    $totalBatchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
+                    $totalBatchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                @endphp
                 <tr>
                     <td>
                         <b>{{ date('d/m/Y', strtotime($h->plan_date ?? $h->created_at)) }}</b><br>
@@ -190,15 +165,15 @@
                         {{ number_format($h->qty_ambil_pcs) }}
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #15803d;">
-                        {{ number_format($h->qty_hasil_ok) }}
+                        {{ number_format($totalBatchOk) }}
                         @if($h->is_separating)
-                            <br><span style="color: #6b21a8;">+{{ number_format($h->paired_ok) }}</span>
+                            <br><span style="font-size: 6.5px; color: #64748b; font-weight: normal;">(Merged L/R)</span>
                         @endif
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #b91c1c;">
-                        {{ number_format($h->qty_hasil_ng) }}
+                        {{ number_format($totalBatchNg) }}
                         @if($h->is_separating)
-                            <br><span style="color: #6b21a8;">+{{ number_format($h->paired_ng) }}</span>
+                            <br><span style="font-size: 6.5px; color: #64748b; font-weight: normal;">(Merged L/R)</span>
                         @endif
                     </td>
                     <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #d97706;">
@@ -252,12 +227,14 @@
             </div>
             
             <div class="d-flex flex-column gap-2">
+                {{-- Form Filter Periode, Customer, dan Part --}}
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
                     <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     <span class="text-muted font-weight-bold small">to</span>
                     <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     
                     <div class="border-left pl-2 d-flex gap-1">
+                        {{-- DROPDOWN CUSTOMER --}}
                         <select name="customer" id="filter_customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Cust</option>
                             @foreach($filterCustomers as $c)
@@ -267,6 +244,7 @@
                             @endforeach
                         </select>
 
+                        {{-- DROPDOWN PART NO (Akan difilter oleh JS) --}}
                         <select name="part_no" id="filter_part" class="form-control form-control-sm font-weight-bold text-dark" style="width: 160px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
                             <option value="">All Part</option>
                             @foreach($filterParts as $p)
@@ -285,11 +263,11 @@
 
         {{-- KPI STAT BOXES --}}
         <div class="row mb-4">
-            <div class="col-md-3 mb-3"><div class="stat-card"><div class="card-strip bg-primary"></div><div class="stat-label">Total Material Take</div><div class="stat-value text-primary">{{ number_format($totalTake) }} <span style="font-size:12px;">lbr</span></div></div></div>
-            <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-success"></div><div class="stat-label">Verified OK</div><div class="stat-value text-success">{{ number_format($totalOk) }}</div></div></div>
-            <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-danger"></div><div class="stat-label">Total Reject</div><div class="stat-value text-danger">{{ number_format($totalNg) }}</div></div></div>
-            <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-warning"></div><div class="stat-label">Returned RM</div><div class="stat-value text-warning">{{ number_format($totalRet) }}</div></div></div>
-            <div class="col-md-3 mb-3"><div class="stat-card bg-dark text-white"><div class="stat-label text-white-50">Global Performance</div><div class="stat-value text-white">{{ number_format($performance, 1) }}%</div></div></div>
+            <div class="col-md-3 mb-3"><div class="stat-card"><div class="card-strip bg-primary"></div><div class="stat-label">Total Material Take</div><div class="stat-value text-primary">{{ number_format($globalTakePcs ?? 0) }} <span style="font-size:12px;">pcs</span></div></div></div>
+            <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-success"></div><div class="stat-label">Verified OK</div><div class="stat-value text-success">{{ number_format($globalOk ?? 0) }}</div></div></div>
+            <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-danger"></div><div class="stat-label">Total Reject</div><div class="stat-value text-danger">{{ number_format($globalNg ?? 0) }}</div></div></div>
+            <div class="col-md-2 mb-3"><div class="stat-card"><div class="card-strip bg-warning"></div><div class="stat-label">Returned RM</div><div class="stat-value text-warning">{{ number_format($globalRet ?? 0) }} <span style="font-size:12px;">pcs</span></div></div></div>
+            <div class="col-md-3 mb-3"><div class="stat-card bg-dark text-white"><div class="stat-label text-white-50">Global Performance</div><div class="stat-value text-white">{{ number_format($globalPerf ?? 0, 1) }}%</div></div></div>
         </div>
 
         {{-- 📉 GRAFIK TREND PRODUKSI HARIAN --}}
@@ -319,12 +297,18 @@
                     <tbody>
                         @forelse($histories as $h)
                         @php 
-                            $batchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
-                            $batchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
-                            // Murni Yield OK per Baris Batch
-                            $yld = ($batchOk + $batchNg) > 0 ? ($batchOk / ($batchOk +$batchNg)) * 100 : 0;
+                            // ✨ YIELD DI TABEL MURNI MENGGUNAKAN (OK / TOTAL OUTPUT)
+                            // Jika separating, otomatis ditambahkan karena kita menghitungnya sebagai SATU PART UTUH
+                            $totalBatchOk = (float)$h->qty_hasil_ok + ($h->is_separating ? ($h->paired_ok ?? 0) : 0);
+                            $totalBatchNg = (float)$h->qty_hasil_ng + ($h->is_separating ? ($h->paired_ng ?? 0) : 0);
+                            
+                            $totalOutput = $totalBatchOk + $totalBatchNg;
+                            
+                            $yld = $totalOutput > 0 ? ($totalBatchOk / $totalOutput) * 100 : 0;
+                            // Tahan pembulatan jika ada cacat/NG
+                            if ($yld > 99.9 && $totalBatchNg > 0) $yld = 99.9;
                         @endphp
-                        <tr class="row-clickable" onclick='showDeepDive(@json($h))'>
+                        <tr class="row-clickable" onclick='showDeepDive(@json($h), {{ $totalBatchOk }}, {{ $totalBatchNg }}, {{ $yld }})'>
                             <td class="pl-4">
                                 <div class="font-weight-bold text-dark"><i class="far fa-calendar-check text-success mr-1"></i> {{ date('d M Y', strtotime($h->plan_date ?? $h->created_at)) }}</div>
                                 <div class="small text-muted font-weight-bold"><i class="fas fa-clock text-primary mr-1"></i> Input: {{ date('H:i', strtotime($h->updated_at)) }}</div>
@@ -340,7 +324,7 @@
                                 </div>
                                 <div class="small text-muted">{{ $h->part_name ?? '-' }}</div>
 
-                                @if($h->is_separating &&$h->paired_part)
+                                @if($h->is_separating && $h->paired_part)
                                     <div class="mt-1 pt-1 border-top">
                                         <span class="pair-badge">PAIR</span> 
                                         <span class="font-weight-bold text-dark">{{ $h->paired_part }}</span>
@@ -365,15 +349,15 @@
                                 {{ number_format($h->qty_ambil_pcs) }}
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-success">
-                                <div>{{ number_format($h->qty_hasil_ok) }}</div>
+                                <span style="font-size: 14px;">{{ number_format($totalBatchOk) }}</span>
                                 @if($h->is_separating)
-                                    <div class="small text-purple" style="color: #9333ea;">+{{ number_format($h->paired_ok) }}</div>
+                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Merged L/R)</div>
                                 @endif
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-danger">
-                                <div>{{ number_format($h->qty_hasil_ng) }}</div>
+                                <span style="font-size: 14px;">{{ number_format($totalBatchNg) }}</span>
                                 @if($h->is_separating)
-                                    <div class="small text-purple" style="color: #9333ea;">+{{ number_format($h->paired_ng) }}</div>
+                                    <div class="small text-muted font-weight-normal" style="font-size: 9px;">(Merged L/R)</div>
                                 @endif
                             </td>
                             <td class="text-right font-weight-bold font-family-jetbrains text-warning">
@@ -388,7 +372,7 @@
                                     </div>
                                 @endif
 
-                                @if($h->is_separating && !empty($h->paired_ng_remark) &&$h->paired_ng_remark !== '-')
+                                @if($h->is_separating && !empty($h->paired_ng_remark) && $h->paired_ng_remark !== '-')
                                     <div class="small font-weight-bold" style="color: #9333ea;">
                                         <i class="fas fa-link mr-1"></i> Pair Defect: {{ $h->paired_ng_remark }}
                                     </div>
@@ -461,19 +445,16 @@
                             </div>
                         </div>
 
+                        {{-- Box Separating disembunyikan karena sudah di-merge --}}
                         <div id="det-separating-box" class="p-2 bg-light rounded border mt-2" style="display: none;">
                             <small class="stat-label text-primary d-block font-weight-bold">🔗 Separating Pair Connected</small>
                             <span class="font-weight-bold small" id="det-pair-part">-</span>
-                            <div class="d-flex gap-2 mt-1 small font-weight-bold">
-                                <span class="text-success mr-3">OK: <span id="det-pair-ok">0</span></span>
-                                <span class="text-danger">NG: <span id="det-pair-ng">0</span></span>
-                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="row mb-3">
-                    <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label">Take</small><div class="h5 font-weight-bold m-0" id="det-take">0</div></div></div>
+                    <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label">Take Pcs</small><div class="h5 font-weight-bold m-0" id="det-take">0</div></div></div>
                     <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label text-success">OK Total</small><div class="h5 font-weight-bold text-success m-0" id="det-ok">0</div></div></div>
                     <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label text-danger">NG Total</small><div class="h5 font-weight-bold text-danger m-0" id="det-ng">0</div></div></div>
                     <div class="col-3"><div class="kamar-ng text-center p-2"><small class="stat-label text-info">Return</small><div class="h5 font-weight-bold text-info m-0" id="det-ret">0</div></div></div>
@@ -573,34 +554,23 @@
     let donut = null;
     let tempDonutData = { ok: 0, ng: 0 };
 
-    function showDeepDive(h) {
-        // ✨ Hitung Murni Yield OK per Modal ✨
-        const ok = (parseInt(h.qty_hasil_ok) || 0) + (h.is_separating ? (parseInt(h.paired_ok) || 0) : 0);
-        const ng = (parseInt(h.qty_hasil_ng) || 0) + (h.is_separating ? (parseInt(h.paired_ng) || 0) : 0);
-        const total = ok + ng;
-        let yld = total > 0 ? (ok / total) * 100 : 0;
-        
-        // Tahan desimal di 99.9% agar tidak membulat sempurna jika ada cacat/NG
-        if (yld > 99.9 && ng > 0) {
-            yld = 99.9;
-        } else {
-            yld = Math.round(yld * 10) / 10; 
-        }
-        
-        tempDonutData = { ok: ok, ng: ng };
+    function showDeepDive(h, trueOk, trueNg, yieldPercent) {
+        tempDonutData = { ok: trueOk, ng: trueNg };
 
         document.getElementById('det-batch').innerText = h.no_produksi;
         document.getElementById('det-part').innerText = h.material_code + (h.part_name ? ' (' + h.part_name + ')' : '');
         document.getElementById('det-line').innerText = (h.kode_Line || 'LINE A') + ' - Shift ' + (h.shift || '1');
         document.getElementById('det-cavity').innerText = h.cavity || 1;
         document.getElementById('det-time').innerText = h.updated_at;
+        
+        // Memakai parameter yang sudah digabung akurat dari blade
         document.getElementById('det-take').innerText = Number(h.qty_ambil_pcs).toLocaleString();
-        document.getElementById('det-ok').innerText = Number(ok).toLocaleString();
-        document.getElementById('det-ng').innerText = Number(ng).toLocaleString();
+        document.getElementById('det-ok').innerText = Number(trueOk).toLocaleString();
+        document.getElementById('det-ng').innerText = Number(trueNg).toLocaleString();
         document.getElementById('det-ret').innerText = Number(h.qty_return_warehouse || 0).toLocaleString();
         
-        document.getElementById('det-yield-val').innerText = yld + "%";
-        document.getElementById('det-yield-val').style.color = yld >= 90 ? '#10b981' : '#ef4444';
+        document.getElementById('det-yield-val').innerText = yieldPercent.toFixed(1) + "%";
+        document.getElementById('det-yield-val').style.color = yieldPercent >= 90 ? '#10b981' : '#ef4444';
         
         document.getElementById('det-remark').innerText = h.keterangan ? h.keterangan : 'Tidak ada catatan remark khusus.';
 
@@ -608,8 +578,6 @@
         if (h.is_separating && h.paired_part) {
             pairBox.style.display = 'block';
             document.getElementById('det-pair-part').innerText = h.paired_part + (h.paired_part_name ? ' - ' + h.paired_part_name : '');
-            document.getElementById('det-pair-ok').innerText = Number(h.paired_ok || 0).toLocaleString();
-            document.getElementById('det-pair-ng').innerText = Number(h.paired_ng || 0).toLocaleString();
         } else {
             pairBox.style.display = 'none';
         }
