@@ -495,7 +495,6 @@ class ProduksiController extends Controller
         $customerFilter = $request->customer;
         $partFilter = $request->part_no;
 
-        // 1. QUERY UNTUK TABEL: Tetap ambil base prod (-M) agar layout tidak berantakan
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
@@ -520,7 +519,6 @@ class ProduksiController extends Controller
             $query->where('rm_stocks.customer', trim($customerFilter));
         }
         
-        // PENTING: Jika filter mencari Part 36 (-S), harus tetap ditarik lewat Keterangan-nya
         if (!empty($partFilter)) {
             $query->where(function($q) use ($partFilter) {
                 $q->where('produksi_batches.material_code', trim($partFilter))
@@ -619,8 +617,7 @@ class ProduksiController extends Controller
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
-        // 2. QUERY UNTUK STATS & CHART (AMBIL SEMUA, TERMASUK -S)
-        // Kita cabut larangan `NOT LIKE '%-S'` agar kalau Part 36 (LH) di filter, datanya tetap masuk chart!
+        // 2. QUERY UNTUK STATS & CHART 
         $statsQuery = DB::table('produksi_batches')
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
@@ -646,7 +643,6 @@ class ProduksiController extends Controller
         
         $statsRaw = $statsQuery->get();
 
-        // Cari base takes (Target Material) untuk mengamankan data lembar dari part utama (-M)
         $baseTakesQuery = DB::table('produksi_batches')
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->where('produksi_batches.status', 'COMPLETED')
@@ -658,7 +654,14 @@ class ProduksiController extends Controller
                            ->where('rm_stocks.customer', trim($customerFilter));
         }
         
-        $allMains = $baseTakesQuery->select('no_produksi', 'qty_ambil_pcs', 'qty_return_warehouse', 'cavity')->get();
+        // ✨ PERBAIKAN: Menambahkan nama tabel secara eksplisit agar kolom 'cavity' tidak *ambiguous* ✨
+        $allMains = $baseTakesQuery->select(
+            'produksi_batches.no_produksi', 
+            'produksi_batches.qty_ambil_pcs', 
+            'produksi_batches.qty_return_warehouse', 
+            'produksi_batches.cavity'
+        )->get();
+
         $mainTakes = [];
         foreach ($allMains as $m) {
             $baseProd = preg_replace('/-[MS]$/', '', $m->no_produksi);
@@ -691,11 +694,9 @@ class ProduksiController extends Controller
             $baseProd = preg_replace('/-[MS]$/', '', $row->no_produksi);
             $effTake = $mainTakes[$baseProd] ?? 0;
             
-            // JIKA FILLTER ALL PART: Jangan Hitung Take Dobel untuk 1 Lembar yang sama.
-            // JIKA FILTER 1 PART SPESIFIK: Tiap baris akan menyumbang 1 Target Take Pcs.
             if (empty($partFilter)) {
                 if (!isset($processedTakesGlobal[$baseProd])) {
-                    $globalTakePcs += ($effTake * 2); // 1 Lembar jadi Kiri Kanan
+                    $globalTakePcs += ($effTake * 2); 
                     $processedTakesGlobal[$baseProd] = true;
                 }
                 if (!isset($dailyAgg[$tgl]['processed_take'][$baseProd])) {
