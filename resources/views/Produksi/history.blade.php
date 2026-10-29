@@ -34,6 +34,10 @@
 
     $penyebut = $totalTake - $totalRet;
     $performance = $penyebut > 0 ? ($totalOk / $penyebut) * 100 : 0;
+
+    // ✨ AMBIL DATA UNTUK DROPDOWN FILTER ✨
+    $filterCustomers = \DB::table('customers')->select('code', 'name')->orderBy('code', 'asc')->get();
+    $filterParts = \DB::table('parts')->select('part_no')->orderBy('part_no', 'asc')->get();
 @endphp
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -231,15 +235,32 @@
             </div>
             
             <div class="d-flex flex-column gap-2">
-                {{-- Form Filter Periode, Customer, dan Part --}}
+                {{-- Form Filter Periode, Customer, dan Part (SEKARANG DROPDOWN) --}}
                 <form action="{{ route('produksi.history') }}" method="GET" class="d-flex flex-wrap align-items-center bg-white shadow-sm border p-1" style="border-radius: 12px; gap: 4px;">
                     <input type="date" name="start_date" value="{{ $startD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     <span class="text-muted font-weight-bold small">to</span>
                     <input type="date" name="end_date" value="{{ $endD }}" class="form-control form-control-sm border-0 bg-transparent font-weight-bold" style="width: 125px; outline: none; box-shadow: none;">
                     
                     <div class="border-left pl-2 d-flex gap-1">
-                        <input type="text" name="customer" value="{{ request('customer') }}" class="form-control form-control-sm font-weight-bold" placeholder="Customer" style="width: 90px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
-                        <input type="text" name="part_no" value="{{ request('part_no') }}" class="form-control form-control-sm font-weight-bold" placeholder="Part No" style="width: 120px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                        {{-- ✨ DROPDOWN CUSTOMER ✨ --}}
+                        <select name="customer" class="form-control form-control-sm font-weight-bold text-dark" style="width: 110px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                            <option value="">All Cust</option>
+                            @foreach($filterCustomers as $c)
+                                <option value="{{ trim($c->code) }}" {{ request('customer') == trim($c->code) ? 'selected' : '' }}>
+                                    {{ strtoupper($c->code) }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        {{-- ✨ DROPDOWN PART NO ✨ --}}
+                        <select name="part_no" class="form-control form-control-sm font-weight-bold text-dark" style="width: 150px; background: var(--ios-bg); border-radius: 6px; border: 1px solid var(--ios-border);">
+                            <option value="">All Part</option>
+                            @foreach($filterParts as $p)
+                                <option value="{{ $p->part_no }}" {{ request('part_no') == $p->part_no ? 'selected' : '' }}>
+                                    {{ $p->part_no }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
                     
                     <button type="submit" class="btn btn-primary btn-sm px-3 ml-1 font-weight-bold" style="border-radius: 8px;"><i class="fas fa-filter mr-1"></i> Filter</button>
