@@ -485,7 +485,7 @@ class ProduksiController extends Controller
     public function getBatchDeepDive($no_produksi) { /* Tetap */ }
     
     /**
-     * ✨ HISTORY & CHART FILTER - KINI MEMISAHKAN DATA KALAU SPESIFIK PART DIPILIH ✨
+     * ✨ HISTORY & CHART FILTER: AKURAT MENARIK PASANGAN PART KETIKA DIFILTER ✨
      */
     public function history(Request $request) 
     { 
@@ -495,6 +495,8 @@ class ProduksiController extends Controller
         $customerFilter = $request->customer;
         $partFilter = $request->part_no;
 
+        // 1. QUERY UNTUK TABEL: Selalu ambil Batch Utama (-M) untuk format UI, 
+        // tapi injeksi pengecekan cross-reference agar Part -S tetap terdeteksi.
         $query = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
@@ -519,10 +521,28 @@ class ProduksiController extends Controller
             $query->where('rm_stocks.customer', trim($customerFilter));
         }
         
+        // ✨ LOGIKA PENYELAMAT FILTER: 
+        // Jika filter mencari part LH (-S), sistem akan otomatis menarik Batch RH (-M) pasangannya.
         if (!empty($partFilter)) {
             $query->where(function($q) use ($partFilter) {
+                // Cari di Part Utama
                 $q->where('produksi_batches.material_code', trim($partFilter))
-                  ->orWhere('produksi_batches.keterangan', 'LIKE', '%' . trim($partFilter) . '%');
+                  // Cari di Keterangan
+                  ->orWhere('produksi_batches.keterangan', 'LIKE', '%' . trim($partFilter) . '%')
+                  // Cari secara paksa di tabel batch lain jika dia punya ID berakhiran -S
+                  ->orWhereExists(function($sq) use ($partFilter) {
+                      $sq->select(DB::raw(1))
+                         ->from('produksi_batches as pb_sub')
+                         ->whereRaw("pb_sub.no_produksi = REPLACE(produksi_batches.no_produksi, '-M', '-S')")
+                         ->where('pb_sub.material_code', trim($partFilter));
+                  })
+                  // Cari di relasi part campuran (Kusen Murahhati logic)
+                  ->orWhereExists(function($sq) use ($partFilter) {
+                      $sq->select(DB::raw(1))
+                         ->from('produksi_batch_parts')
+                         ->whereColumn('produksi_batch_parts.batch_id', 'produksi_batches.id')
+                         ->where('produksi_batch_parts.part_no', trim($partFilter));
+                  });
             });
         }
 
@@ -568,6 +588,15 @@ class ProduksiController extends Controller
                     $item->paired_ng_remark = $subNgLogs->isNotEmpty()
                         ? $subNgLogs->map(fn($n) => "{$n->ng_type}: {$n->qty}")->implode(', ')
                         : ($pairedBatch->qty_hasil_ng > 0 ? "Defect: {$pairedBatch->qty_hasil_ng} pcs" : '-');
+                } else {
+                    // Fallback jika paired part disimpan di tabel relasi multi-part
+                    $subPart = DB::table('produksi_batch_parts')->where('batch_id', $item->id)->where('part_no', '!=', $item->material_code)->first();
+                    if ($subPart) {
+                        $item->paired_part = $subPart->part_no;
+                        $item->paired_part_name = DB::table('parts')->where('part_no', $subPart->part_no)->value('part_name') ?? $subPart->part_no;
+                        $item->paired_ok = (int)$subPart->qty_hasil_ok;
+                        $item->paired_ng = (int)$subPart->qty_ng;
+                    }
                 }
             }
 
@@ -617,11 +646,12 @@ class ProduksiController extends Controller
         $histories = $historiesRaw;
         $activeProductions = $historiesRaw;
 
-        // 2. QUERY UNTUK STATS & CHART 
+        // 2. QUERY UNTUK STATS & CHART (HANYA MENARIK BASE BATCH SAMA SEPERTI TABEL)
         $statsQuery = DB::table('produksi_batches')
             ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
             ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
             ->select(
+                'produksi_batches.id',
                 'produksi_batches.no_produksi',
                 'produksi_batches.qty_ambil_pcs',
                 'produksi_batches.qty_return_warehouse',
@@ -629,94 +659,125 @@ class ProduksiController extends Controller
                 'produksi_batches.qty_hasil_ok',
                 'produksi_batches.qty_hasil_ng',
                 'produksi_batches.material_code',
+                'produksi_batches.keterangan',
                 DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at)) as tgl')
             )
             ->where('produksi_batches.status', 'COMPLETED')
+            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S') // Pastikan HANYA Batch Utama yang ditarik
             ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate]);
 
         if (!empty($customerFilter)) {
             $statsQuery->where('rm_stocks.customer', trim($customerFilter));
         }
+
+        // Terapkan Filter Penyelamat yang persis sama ke Statistik Chart
         if (!empty($partFilter)) {
-            $statsQuery->where('produksi_batches.material_code', trim($partFilter));
+            $statsQuery->where(function($q) use ($partFilter) {
+                $q->where('produksi_batches.material_code', trim($partFilter))
+                  ->orWhere('produksi_batches.keterangan', 'LIKE', '%' . trim($partFilter) . '%')
+                  ->orWhereExists(function($sq) use ($partFilter) {
+                      $sq->select(DB::raw(1))
+                         ->from('produksi_batches as pb_sub')
+                         ->whereRaw("pb_sub.no_produksi = REPLACE(produksi_batches.no_produksi, '-M', '-S')")
+                         ->where('pb_sub.material_code', trim($partFilter));
+                  })
+                  ->orWhereExists(function($sq) use ($partFilter) {
+                      $sq->select(DB::raw(1))
+                         ->from('produksi_batch_parts')
+                         ->whereColumn('produksi_batch_parts.batch_id', 'produksi_batches.id')
+                         ->where('produksi_batch_parts.part_no', trim($partFilter));
+                  });
+            });
         }
         
         $statsRaw = $statsQuery->get();
-
-        $baseTakesQuery = DB::table('produksi_batches')
-            ->leftJoin('production_plans', 'produksi_batches.plan_id', '=', 'production_plans.id')
-            ->where('produksi_batches.status', 'COMPLETED')
-            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
-            ->whereBetween(DB::raw('COALESCE(production_plans.plan_date, DATE(produksi_batches.created_at))'), [$startDate, $endDate]);
-        
-        if (!empty($customerFilter)) {
-            $baseTakesQuery->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
-                           ->where('rm_stocks.customer', trim($customerFilter));
-        }
-        
-        // ✨ PERBAIKAN: Menambahkan nama tabel secara eksplisit agar kolom 'cavity' tidak *ambiguous* ✨
-        $allMains = $baseTakesQuery->select(
-            'produksi_batches.no_produksi', 
-            'produksi_batches.qty_ambil_pcs', 
-            'produksi_batches.qty_return_warehouse', 
-            'produksi_batches.cavity'
-        )->get();
-
-        $mainTakes = [];
-        foreach ($allMains as $m) {
-            $baseProd = preg_replace('/-[MS]$/', '', $m->no_produksi);
-            $take = $m->qty_ambil_pcs * ($m->cavity ?? 1);
-            $ret = ($m->qty_return_warehouse ?? 0) * ($m->cavity ?? 1);
-            $mainTakes[$baseProd] = max(0, $take - $ret);
-        }
 
         $dailyAgg = [];
         $globalTakePcs = 0;
         $globalOk = 0;
         $globalNg = 0;
         $globalRet = 0;
-        $processedTakesGlobal = [];
 
         foreach ($statsRaw as $row) {
             $tgl = $row->tgl;
             if (!isset($dailyAgg[$tgl])) {
-                $dailyAgg[$tgl] = ['ok' => 0, 'ng' => 0, 'take_pcs' => 0, 'processed_take' => []];
-            }
-            
-            $ok = (int)$row->qty_hasil_ok;
-            $ng = (int)$row->qty_hasil_ng;
-            
-            $dailyAgg[$tgl]['ok'] += $ok;
-            $dailyAgg[$tgl]['ng'] += $ng;
-            $globalOk += $ok;
-            $globalNg += $ng;
-            
-            $baseProd = preg_replace('/-[MS]$/', '', $row->no_produksi);
-            $effTake = $mainTakes[$baseProd] ?? 0;
-            
-            if (empty($partFilter)) {
-                if (!isset($processedTakesGlobal[$baseProd])) {
-                    $globalTakePcs += ($effTake * 2); 
-                    $processedTakesGlobal[$baseProd] = true;
-                }
-                if (!isset($dailyAgg[$tgl]['processed_take'][$baseProd])) {
-                    $dailyAgg[$tgl]['take_pcs'] += ($effTake * 2);
-                    $dailyAgg[$tgl]['processed_take'][$baseProd] = true;
-                }
-            } else {
-                $globalTakePcs += $effTake;
-                $dailyAgg[$tgl]['take_pcs'] += $effTake;
+                $dailyAgg[$tgl] = ['ok' => 0, 'ng' => 0, 'take_pcs' => 0];
             }
 
-            if (!str_ends_with($row->no_produksi, '-S')) {
-                $globalRet += ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
+            // Cari Identitas Paired Part secara mandiri untuk perhitungan Chart
+            $isMainPair = (strpos($row->keterangan, 'PAIR_MAIN:') === 0) || str_ends_with($row->no_produksi, '-M');
+            $paired_part = null;
+            $paired_ok = 0;
+            $paired_ng = 0;
+
+            if ($isMainPair) {
+                $lastDash = strrpos($row->no_produksi, '-');
+                $timePrefix = $lastDash !== false ? substr($row->no_produksi, 0, $lastDash) : $row->no_produksi;
+                
+                $pairedBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
+                
+                if (!$pairedBatch && strpos($row->keterangan, 'PAIR_MAIN:') === 0) {
+                    $subPartCode = str_replace('PAIR_MAIN:', '', $row->keterangan);
+                    $pairedBatch = DB::table('produksi_batches')->where('material_code', $subPartCode)->where('no_produksi', 'LIKE', $timePrefix.'%')->first();
+                }
+
+                if ($pairedBatch) {
+                    $paired_part = $pairedBatch->material_code;
+                    $paired_ok = (int)$pairedBatch->qty_hasil_ok;
+                    $paired_ng = (int)$pairedBatch->qty_hasil_ng;
+                } else {
+                    $subPart = DB::table('produksi_batch_parts')->where('batch_id', $row->id)->where('part_no', '!=', $row->material_code)->first();
+                    if ($subPart) {
+                        $paired_part = $subPart->part_no;
+                        $paired_ok = (int)$subPart->qty_hasil_ok;
+                        $paired_ng = (int)$subPart->qty_ng;
+                    }
+                }
             }
+
+            // Logika Penyaringan Matematika: Apakah kita menampilkan Kiri, Kanan, atau Keduanya?
+            $isFilteredToMain = (!empty($partFilter) && $partFilter == $row->material_code);
+            $isFilteredToSub = (!empty($partFilter) && $partFilter == $paired_part);
+
+            $batchTake = $row->qty_ambil_pcs * ($row->cavity ?? 1);
+            $batchRet = ($row->qty_return_warehouse ?? 0) * ($row->cavity ?? 1);
+            $batchEffTake = max(0, $batchTake - $batchRet);
+
+            $okToAdd = 0;
+            $ngToAdd = 0;
+            $takeToAdd = 0;
+
+            if ($isFilteredToMain) {
+                $okToAdd = $row->qty_hasil_ok;
+                $ngToAdd = $row->qty_hasil_ng;
+                $takeToAdd = $batchEffTake;
+            } elseif ($isFilteredToSub) {
+                $okToAdd = $paired_ok;
+                $ngToAdd = $paired_ng;
+                $takeToAdd = $batchEffTake;
+            } else {
+                // Tampilkan Keduanya (All Parts)
+                $okToAdd = $row->qty_hasil_ok + $paired_ok;
+                $ngToAdd = $row->qty_hasil_ng + $paired_ng;
+                $takeToAdd = $batchEffTake * ($isMainPair && $paired_part ? 2 : 1);
+            }
+
+            $dailyAgg[$tgl]['ok'] += $okToAdd;
+            $dailyAgg[$tgl]['ng'] += $ngToAdd;
+            $dailyAgg[$tgl]['take_pcs'] += $takeToAdd;
+
+            $globalOk += $okToAdd;
+            $globalNg += $ngToAdd;
+            $globalTakePcs += $takeToAdd;
+            
+            // Return hanya dihitung sekali per siklus mesin/lembar plat
+            $globalRet += $batchRet; 
         }
 
         $globalPerf = $globalTakePcs > 0 ? ($globalOk / $globalTakePcs) * 100 : 0;
         if ($globalPerf > 99.9 && $globalNg > 0) $globalPerf = 99.9;
 
-        // 3. Masukkan ke Grafik (Chart)
+        // 3. Masukkan Hasil Olahan ke Format Grafik (Chart)
         $chartLabels = []; 
         $chartOk = []; 
         $chartNg = []; 
