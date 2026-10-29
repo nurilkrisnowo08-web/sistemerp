@@ -33,11 +33,9 @@
     }
 
     // ✨ FIX LOGIKA GLOBAL PERFORMANCE (MURNI YIELD OK VS NG) ✨
-    // Dijamin tidak akan pernah melebihi 100%
     $totalProduksi = $totalOk + $totalNg;
     if ($totalProduksi > 0) {
         $performance = ($totalOk / $totalProduksi) * 100;
-        // Jika ada NG tapi persentase membulat ke 100%, tahan di 99.9%
         if ($performance > 99.9 && $totalNg > 0) {
             $performance = 99.9;
         }
@@ -120,6 +118,7 @@
     <div class="print-template">
         <div class="print-header-container">
             <div class="print-logo-section">
+                <!-- Gunakan Asset Logo Perusahaan -->
                 <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
                 <div class="print-company-info">
                     <h2>PT ASALTA MANDIRI AGUNG</h2>
@@ -144,13 +143,14 @@
             <thead>
                 <tr>
                     <th width="11%">Plan Date / Shift</th>
-                    <th width="14%">Batch ID / Machine</th>
-                    <th width="18%">Part Information</th>
-                    <th width="18%">Coil / Material Terpakai</th>
-                    <th width="6%">Take</th>
-                    <th width="6%">OK</th>
-                    <th width="6%">NG</th>
-                    <th width="21%">Reject Detail & Remarks</th>
+                    <th width="13%">Batch ID / Machine</th>
+                    <th width="17%">Part Information</th>
+                    <th width="17%">Coil / Material Terpakai</th>
+                    <th width="5%">Take</th>
+                    <th width="5%">OK</th>
+                    <th width="5%">NG</th>
+                    <th width="5%">RET</th>
+                    <th width="22%">Reject Detail & Remarks</th>
                 </tr>
             </thead>
             <tbody>
@@ -201,6 +201,9 @@
                             <br><span style="color: #6b21a8;">+{{ number_format($h->paired_ng) }}</span>
                         @endif
                     </td>
+                    <td style="text-align: right; font-family:'JetBrains Mono'; font-weight:700; color: #d97706;">
+                        {{ number_format($h->qty_return_warehouse) }}
+                    </td>
                     <td>
                         @if(isset($h->ng_details) && count($h->ng_details) > 0)
                             <div style="font-family:'JetBrains Mono'; font-size:7.5px; color: #b91c1c; margin-bottom: 2px;">
@@ -221,7 +224,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 20px;">Belum ada riwayat produksi pada periode ini</td>
+                    <td colspan="9" style="text-align: center; padding: 20px;">Belum ada riwayat produksi pada periode ini</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -311,6 +314,7 @@
                             <th class="text-right">Take</th>
                             <th class="text-right text-success">OK</th>
                             <th class="text-right text-danger">NG</th>
+                            <th class="text-right text-warning">Return</th>
                             <th>Defect Breakdown & Remark</th>
                             <th class="text-center">Yield</th>
                         </tr>
@@ -374,6 +378,9 @@
                                     <div class="small text-purple" style="color: #9333ea;">+{{ number_format($h->paired_ng) }}</div>
                                 @endif
                             </td>
+                            <td class="text-right font-weight-bold font-family-jetbrains text-warning">
+                                {{ number_format($h->qty_return_warehouse) }}
+                            </td>
                             <td>
                                 @if(isset($h->ng_details) && count($h->ng_details) > 0)
                                     <div class="d-flex flex-wrap mb-1">
@@ -403,7 +410,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="9" class="py-5 text-center text-muted font-italic">Belum ada riwayat produksi yang tercatat pada periode ini.</td>
+                            <td colspan="10" class="py-5 text-center text-muted font-italic">Belum ada riwayat produksi yang tercatat pada periode ini.</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -505,17 +512,14 @@
         const $custSelect = $('#filter_customer');
         const $partSelect = $('#filter_part');
         
-        // Simpan semua opsi Part No di dalam memori saat web pertama diload
         const allParts = $partSelect.find('option').clone();
 
         function updatePartDropdown() {
             const selectedCust = $custSelect.val().trim();
             const currentPart = $partSelect.val();
             
-            // Kosongkan dropdown Part No
             $partSelect.empty();
             
-            // Isi kembali berdasarkan Customer yang dipilih
             allParts.each(function() {
                 const partCust = $(this).data('customer') ? $(this).data('customer').trim() : "";
                 const isAllOption = $(this).val() === "";
