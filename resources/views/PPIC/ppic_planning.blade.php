@@ -66,130 +66,229 @@
     .wos-stat-item h5 { margin: 0; font-size: 20px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
 
     @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(5, 205, 153, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(5, 205, 153, 0); } 100% { box-shadow: 0 0 0 0 rgba(5, 205, 153, 0); } }
+
+    /* 🖨️ PROFESSIONAL PRINT TEMPLATE */
+    .print-template { display: none; }
+    @media print {
+        @page { size: A4 portrait; margin: 10mm; }
+        .screen-only, .no-print, .main-sidebar, .main-header, .btn, .filter-card, .modal, #sidebarToggle, .navbar, .eff-badge, .kpi-wrapper, .alert-ticker { display: none !important; }
+        body { background: white !important; margin: 0; padding: 0; font-size: 10px; color: #000; }
+        .print-template { display: block !important; width: 100% !important; color: #000 !important; }
+        
+        .print-header-container { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 15px; }
+        .print-logo-section { display: flex; align-items: center; gap: 15px; }
+        .print-logo-section img { height: 45px; }
+        .print-company-info h2 { margin: 0; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px; }
+        .print-company-info p { margin: 2px 0 0; font-size: 11px; font-weight: 700; color: #475569; }
+        
+        .print-meta { text-align: right; line-height: 1.4; }
+        
+        .print-recap-grid { display: flex; justify-content: space-between; margin-bottom: 15px; gap: 10px; }
+        .summary-box { flex: 1; border: 1px solid #000; border-radius: 4px; overflow: hidden; text-align: center; }
+        .summary-title { background: #f1f5f9; padding: 6px; font-size: 9px; font-weight: 800; border-bottom: 1px solid #000; text-transform: uppercase; }
+        .summary-value { padding: 8px; font-size: 16px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+        
+        .print-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        .print-table th { background: #f8fafc !important; border: 1px solid #000; padding: 8px 6px; font-size: 10px; text-transform: uppercase; font-weight: 800; text-align: center; }
+        .print-table td { border: 1px solid #000; padding: 8px 6px; font-size: 10px; vertical-align: middle; }
+    }
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
     
-    {{-- 1. HEADER & FILTERS --}}
-    <div class="dashboard-header">
-        <div class="title-area">
-            <h1>CORE_PRODUCTION_AI</h1>
-            <p><span class="status-pulse"></span> SYSTEM STATUS: ONLINE & OPTIMAL // LAST SYNC: {{ date('H:i:s') }}</p>
+    {{-- 🖨️ LEMBAR CETAK PROFESIONAL (A4 PORTRAIT) --}}
+    <div class="print-template">
+        <div class="print-header-container">
+            <div class="print-logo-section">
+                <!-- Gunakan Asset Logo Perusahaan -->
+                <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" onerror="this.style.display='none'">
+                <div class="print-company-info">
+                    <h2>PT ASALTA MANDIRI AGUNG</h2>
+                    <p>DAILY PRODUCTION PLAN & ACTUAL RECAP ({{ strtoupper($areaFilter ?? 'ALL MACHINES') }})</p>
+                </div>
+            </div>
+            <div class="print-meta">
+                <p style="margin: 0; font-size: 12px;"><b>PLAN DATE:</b> {{ date('d M Y', strtotime($date)) }}</p>
+                <p style="margin: 2px 0 0; font-size: 9px;">Printed on: {{ date('d/m/Y H:i') }}</p>
+            </div>
         </div>
+
+        <div class="print-recap-grid">
+            <div class="summary-box"><div class="summary-title">Total Target Plan</div><div class="summary-value">{{ number_format($totalPlan) }}</div></div>
+            <div class="summary-box"><div class="summary-title">Total Actual OK</div><div class="summary-value">{{ number_format($totalActual) }}</div></div>
+            <div class="summary-box"><div class="summary-title">WOS Created</div><div class="summary-value">{{ $totalWos }}</div></div>
+            <div class="summary-box"><div class="summary-title">Achievement Rate</div><div class="summary-value">{{ number_format($achievementRate, 1) }}%</div></div>
+        </div>
+
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th width="5%">No</th>
+                    <th width="25%">Part Number / Name</th>
+                    <th width="15%">Line</th>
+                    <th width="12%">Target (Pcs)</th>
+                    <th width="12%">Actual (Pcs)</th>
+                    <th width="13%">Balance</th>
+                    <th width="18%">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($plans as $idx => $p)
+                @php
+                    $balance = $p->plan_qty - $p->actual_qty;
+                    $statusStr = $balance <= 0 ? 'ACHIEVED' : 'SHORTAGE / RUNNING';
+                    $statusColor = $balance <= 0 ? '#15803d' : '#b91c1c';
+                @endphp
+                <tr>
+                    <td style="text-align: center;">{{ $idx + 1 }}</td>
+                    <td><b>{{ $p->part_no }}</b></td>
+                    <td style="text-align: center;">{{ $p->line_code ?? '-' }}</td>
+                    <td style="text-align: right; font-family:'JetBrains Mono';">{{ number_format($p->plan_qty) }}</td>
+                    <td style="text-align: right; color: #15803d; font-weight: bold; font-family:'JetBrains Mono';">{{ number_format($p->actual_qty) }}</td>
+                    <td style="text-align: right; color: {{ $balance > 0 ? '#b91c1c' : '#15803d' }}; font-weight:bold; font-family:'JetBrains Mono';">{{ number_format($balance) }}</td>
+                    <td style="text-align: center; color: {{ $statusColor }}; font-weight: bold; font-size:9px;">{{ $statusStr }}</td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 20px; font-style: italic;">Belum ada plan produksi pada area dan tanggal ini.</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
         
-        <div class="header-controls">
-            {{-- 🔥 FILTER AREA & DATE 🔥 --}}
-            <form id="ppicFilter" action="{{ route('ppic.dashboard') }}" method="GET" class="filter-card">
-                <i class="fas fa-layer-group text-primary ml-1"></i>
-                <select name="area" onchange="document.getElementById('ppicFilter').submit();">
-                    <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL MACHINES</option>
-                    <option value="big" {{ ($areaFilter ?? 'all') == 'big' ? 'selected' : '' }}>BIG PRESS ONLY</option>
-                    <option value="small" {{ ($areaFilter ?? 'all') == 'small' ? 'selected' : '' }}>SMALL PRESS ONLY</option>
-                </select>
-                
-                <i class="far fa-calendar-alt text-primary ml-1"></i>
-                <input type="date" name="date" value="{{ $date }}" onchange="document.getElementById('ppicFilter').submit();">
-            </form>
+        <div style="margin-top: 40px; display: flex; justify-content: space-around; text-align: center;">
+            <div style="width: 200px; border-top: 1px solid #000; padding-top: 5px; font-weight: 800; font-size: 11px;">Production Manager</div>
+            <div style="width: 200px; border-top: 1px solid #000; padding-top: 5px; font-weight: 800; font-size: 11px;">PPIC Manager</div>
+        </div>
+    </div>
+
+
+    {{-- 🖥️ TAMPILAN SCREEN KHUSUS --}}
+    <div class="screen-only">
+        {{-- 1. HEADER & FILTERS --}}
+        <div class="dashboard-header">
+            <div class="title-area">
+                <h1>CORE_PRODUCTION_AI</h1>
+                <p><span class="status-pulse"></span> SYSTEM STATUS: ONLINE & OPTIMAL // LAST SYNC: {{ date('H:i:s') }}</p>
+            </div>
             
-            <div class="eff-badge">
-                <span>Achievement Rate</span>
-                <h3>{{ number_format($achievementRate, 1) }}%</h3>
-            </div>
-        </div>
-    </div>
-
-    {{-- 2. ALERT TICKER --}}
-    @if(isset($alerts) && count($alerts) > 0)
-    <div class="alert-ticker">
-        <div class="alert-badge"><i class="fas fa-exclamation-triangle mr-1"></i> ALERT</div>
-        <div class="ticker-content">
-            <marquee behavior="scroll" direction="left" scrollamount="6">
-                @foreach($alerts as $al)
-                    <span style="margin-right: 40px;">
-                        [M/C: {{ $al->kode_Line }}] Part {{ $al->material_code }} melaporkan problem: {{ $al->keterangan }} ({{ date('H:i', strtotime($al->updated_at)) }})
-                    </span>
-                @endforeach
-            </marquee>
-        </div>
-    </div>
-    @endif
-
-    {{-- 3. KPI CARDS --}}
-    <div class="kpi-wrapper">
-        <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #39B8FF, #0084F4);"><i class="fas fa-bullseye"></i></div>
-            <div class="kpi-info"><h4>Total Target (Pcs)</h4><h2>{{ number_format($totalPlan) }}</h2></div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #05CD99, #02A87B);"><i class="fas fa-check-circle"></i></div>
-            <div class="kpi-info"><h4>Verified Actual OK</h4><h2>{{ number_format($totalActual) }}</h2></div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #868CFF, #4318FF);"><i class="fas fa-clipboard-list"></i></div>
-            <div class="kpi-info"><h4>Total WOS Created</h4><h2>{{ $totalWos }} <span style="font-size:14px; color:#a3aed1;">Doc</span></h2></div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #FFCE20, #FF9B00);"><i class="fas fa-flag-checkered"></i></div>
-            <div class="kpi-info"><h4>WOS Completion</h4><h2>{{ number_format($wosCompletionRate, 1) }}%</h2></div>
-        </div>
-    </div>
-
-    {{-- 4. MIDDLE ROW: TARGET VS ACTUAL & JOB EXECUTION --}}
-    <div class="row mb-4">
-        <div class="col-xl-8 mb-4 mb-xl-0">
-            <div class="b-panel">
-                <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-chart-bar text-primary"></i> Target vs Actual Progress</h3>
-                    <div class="b-panel-badge">LIVE FEED: {{ strtoupper($areaFilter ?? 'ALL') }}</div>
-                </div>
-                <div id="targetActualChart" style="flex: 1; min-height: 350px;"></div>
-            </div>
-        </div>
-        <div class="col-xl-4">
-            <div class="b-panel">
-                <div class="b-panel-header justify-content-center">
-                    <h3 class="b-panel-title">WOS Execution Status</h3>
-                </div>
-                <div id="wosStatusChart" class="d-flex justify-content-center mt-2"></div>
+            <div class="header-controls">
+                {{-- 🔥 FILTER AREA & DATE & PRINT BUTTON 🔥 --}}
+                <form id="ppicFilter" action="{{ route('ppic.dashboard') }}" method="GET" class="filter-card">
+                    <i class="fas fa-layer-group text-primary ml-1"></i>
+                    <select name="area" onchange="document.getElementById('ppicFilter').submit();">
+                        <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL MACHINES</option>
+                        <option value="big" {{ ($areaFilter ?? 'all') == 'big' ? 'selected' : '' }}>BIG PRESS ONLY</option>
+                        <option value="small" {{ ($areaFilter ?? 'all') == 'small' ? 'selected' : '' }}>SMALL PRESS ONLY</option>
+                    </select>
+                    
+                    <i class="far fa-calendar-alt text-primary ml-1"></i>
+                    <input type="date" name="date" value="{{ $date }}" onchange="document.getElementById('ppicFilter').submit();">
+                    
+                    <button type="button" onclick="window.print()" class="btn btn-dark btn-sm ml-2 font-weight-bold" style="border-radius: 8px; padding: 4px 12px; font-size:12px;">
+                        <i class="fas fa-print mr-1"></i> Print Recap
+                    </button>
+                </form>
                 
-                <div class="wos-stats">
-                    <div class="wos-stat-item" style="color: #94a3b8;">
-                        <span>Wait</span><h5>{{ $statusCount['waiting'] ?? 0 }}</h5>
+                <div class="eff-badge">
+                    <span>Achievement Rate</span>
+                    <h3>{{ number_format($achievementRate, 1) }}%</h3>
+                </div>
+            </div>
+        </div>
+
+        {{-- 2. ALERT TICKER --}}
+        @if(isset($alerts) && count($alerts) > 0)
+        <div class="alert-ticker">
+            <div class="alert-badge"><i class="fas fa-exclamation-triangle mr-1"></i> ALERT</div>
+            <div class="ticker-content">
+                <marquee behavior="scroll" direction="left" scrollamount="6">
+                    @foreach($alerts as $al)
+                        <span style="margin-right: 40px;">
+                            [M/C: {{ $al->kode_Line }}] Part {{ $al->material_code }} melaporkan problem: {{ $al->keterangan }} ({{ date('H:i', strtotime($al->updated_at)) }})
+                        </span>
+                    @endforeach
+                </marquee>
+            </div>
+        </div>
+        @endif
+
+        {{-- 3. KPI CARDS --}}
+        <div class="kpi-wrapper">
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, #39B8FF, #0084F4);"><i class="fas fa-bullseye"></i></div>
+                <div class="kpi-info"><h4>Total Target (Pcs)</h4><h2>{{ number_format($totalPlan) }}</h2></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, #05CD99, #02A87B);"><i class="fas fa-check-circle"></i></div>
+                <div class="kpi-info"><h4>Verified Actual OK</h4><h2>{{ number_format($totalActual) }}</h2></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, #868CFF, #4318FF);"><i class="fas fa-clipboard-list"></i></div>
+                <div class="kpi-info"><h4>Total WOS Created</h4><h2>{{ $totalWos }} <span style="font-size:14px; color:#a3aed1;">Doc</span></h2></div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon" style="background: linear-gradient(135deg, #FFCE20, #FF9B00);"><i class="fas fa-flag-checkered"></i></div>
+                <div class="kpi-info"><h4>WOS Completion</h4><h2>{{ number_format($wosCompletionRate, 1) }}%</h2></div>
+            </div>
+        </div>
+
+        {{-- 4. MIDDLE ROW: TARGET VS ACTUAL & JOB EXECUTION --}}
+        <div class="row mb-4">
+            <div class="col-xl-8 mb-4 mb-xl-0">
+                <div class="b-panel">
+                    <div class="b-panel-header">
+                        <h3 class="b-panel-title"><i class="fas fa-chart-bar text-primary"></i> Target vs Actual Progress</h3>
+                        <div class="b-panel-badge">LIVE FEED: {{ strtoupper($areaFilter ?? 'ALL') }}</div>
                     </div>
-                    <div class="wos-stat-item" style="color: #39B8FF;">
-                        <span>Run</span><h5>{{ $statusCount['running'] ?? 0 }}</h5>
+                    <div id="targetActualChart" style="flex: 1; min-height: 350px;"></div>
+                </div>
+            </div>
+            <div class="col-xl-4">
+                <div class="b-panel">
+                    <div class="b-panel-header justify-content-center">
+                        <h3 class="b-panel-title">WOS Execution Status</h3>
                     </div>
-                    <div class="wos-stat-item" style="color: #05CD99;">
-                        <span>Done</span><h5>{{ $statusCount['completed'] ?? 0 }}</h5>
+                    <div id="wosStatusChart" class="d-flex justify-content-center mt-2"></div>
+                    
+                    <div class="wos-stats">
+                        <div class="wos-stat-item" style="color: #94a3b8;">
+                            <span>Wait</span><h5>{{ $statusCount['waiting'] ?? 0 }}</h5>
+                        </div>
+                        <div class="wos-stat-item" style="color: #39B8FF;">
+                            <span>Run</span><h5>{{ $statusCount['running'] ?? 0 }}</h5>
+                        </div>
+                        <div class="wos-stat-item" style="color: #05CD99;">
+                            <span>Done</span><h5>{{ $statusCount['completed'] ?? 0 }}</h5>
+                        </div>
+                        <div class="wos-stat-item" style="color: #EE5D50;">
+                            <span>Short</span><h5>{{ $statusCount['shortage'] ?? 0 }}</h5>
+                        </div>
                     </div>
-                    <div class="wos-stat-item" style="color: #EE5D50;">
-                        <span>Short</span><h5>{{ $statusCount['shortage'] ?? 0 }}</h5>
+                </div>
+            </div>
+        </div>
+
+        {{-- 5. BOTTOM ROW: DAILY & MONTHLY TRENDS --}}
+        <div class="row">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="b-panel">
+                    <div class="b-panel-header">
+                        <h3 class="b-panel-title"><i class="fas fa-wave-square text-success"></i> 7-Days Quality Stability</h3>
                     </div>
+                    <div id="dailyStabilityChart" style="min-height: 280px;"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="b-panel">
+                    <div class="b-panel-header">
+                        <h3 class="b-panel-title"><i class="fas fa-chart-area text-info"></i> 6-Months Quality Trend</h3>
+                    </div>
+                    <div id="monthlyStabilityChart" style="min-height: 280px;"></div>
                 </div>
             </div>
         </div>
     </div>
-
-    {{-- 5. BOTTOM ROW: DAILY & MONTHLY TRENDS --}}
-    <div class="row">
-        <div class="col-md-6 mb-4 mb-md-0">
-            <div class="b-panel">
-                <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-wave-square text-success"></i> 7-Days Quality Stability</h3>
-                </div>
-                <div id="dailyStabilityChart" style="min-height: 280px;"></div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="b-panel">
-                <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-chart-area text-info"></i> 6-Months Quality Trend</h3>
-                </div>
-                <div id="monthlyStabilityChart" style="min-height: 280px;"></div>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <script>
@@ -216,7 +315,8 @@
                     dataLabels: { position: 'top' }
                 }
             },
-            colors: ['#4318FF', '#e2e8f0'], 
+            // ✨ WARNA TELAH DIUBAH: Biru untuk Actual, Merah Danger (#EE5D50) untuk Target ✨
+            colors: ['#4318FF', '#EE5D50'], 
             dataLabels: { enabled: false },
             stroke: { show: true, width: 2, colors: ['transparent'] },
             xaxis: { 
