@@ -78,7 +78,7 @@
         </form>
     </div>
 
-    {{-- 2. SMART ALERT TICKER (SHORTAGE FG & RM) --}}
+    {{-- 2. SMART ALERT TICKER --}}
     @if(isset($shortageParts) && $shortageParts->count() > 0 || isset($shortageRm) && $shortageRm->count() > 0)
     <div class="alert-ticker">
         <div class="alert-badge"><i class="fas fa-exclamation-circle mr-1"></i> STOK KRITIS</div>
@@ -119,7 +119,6 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-icon" style="background: linear-gradient(135deg, #FFCE20, #FF9B00);"><i class="fas fa-truck-loading"></i></div>
-            {{-- ✨ FIX: Tanda minus (-) pada pengiriman dihilangkan ✨ --}}
             <div class="kpi-info"><h4>Pengiriman Hari Ini</h4><h2 style="color: #d97706;">{{ number_format($todayDelv ?? 0) }}</h2></div>
         </div>
     </div>
@@ -212,7 +211,7 @@
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
-        document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG.</div>";
+        document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG untuk ditampilkan.</div>";
     }
 
     // 2. CHART RM: COMBO BAR (AKTUAL) & LINE (MINIMUM = 100)
@@ -265,31 +264,37 @@
         document.querySelector("#wipChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok WIP.</div>";
     }
 
-    // 4. CHART DELIVERY TREND: AREA CHART DENGAN GARIS RATA-RATA
+    // 4. CHART DELIVERY TREND: COMBO (AREA ACTUAL VS LINE PO TARGET)
     const delvTrend = @json($deliveryTrend ?? []);
     
     if (delvTrend.length > 0) {
-        // Format data untuk Chart
-        const formattedData = delvTrend.map(item => {
-            return { x: item.date, y: item.total };
-        });
+        const delvLabels = delvTrend.map(item => item.date);
+        const delvActual = delvTrend.map(item => item.actual);
+        const delvTarget = delvTrend.map(item => item.target);
 
-        // Hitung nilai rata-rata pengiriman 30 hari untuk garis anotasi
-        const totalDelv = formattedData.reduce((acc, curr) => acc + curr.y, 0);
-        const avgDelv = (totalDelv / formattedData.length).toFixed(0);
+        const totalDelv = delvActual.reduce((acc, curr) => acc + curr, 0);
+        const avgDelv = (totalDelv / delvActual.length).toFixed(0);
 
         new ApexCharts(document.querySelector("#deliveryChart"), {
-            series: [{ name: "Total Pengiriman Aktual", data: formattedData }],
-            chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
-            stroke: { curve: 'smooth', width: 3 },
-            colors: ['#05CD99'],
-            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
+            series: [
+                { name: "Pengiriman Aktual", type: 'area', data: delvActual },
+                { name: "Order Masuk (Target PO)", type: 'line', data: delvTarget }
+            ],
+            chart: { height: 300, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            stroke: { curve: 'smooth', width: [3, 3], dashArray: [0, 5] },
+            colors: ['#05CD99', '#4318FF'],
+            fill: { 
+                type: ['gradient', 'solid'], 
+                gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] }
+            },
             xaxis: { 
+                categories: delvLabels,
                 type: 'datetime',
                 labels: { style: { fontWeight: 700, fontSize: '10px' }, format: 'dd MMM' } 
             },
             yaxis: { labels: { style: { fontWeight: 700, fontFamily: 'JetBrains Mono' } } },
             dataLabels: { enabled: false },
+            legend: { position: 'top', fontWeight: 700 },
             annotations: {
                 yaxis: [{
                     y: avgDelv,
@@ -298,7 +303,7 @@
                     label: {
                         borderColor: '#4318FF',
                         style: { color: '#fff', background: '#4318FF', fontWeight: 700, fontSize: '10px' },
-                        text: 'Rata-rata: ' + avgDelv + ' Pcs'
+                        text: 'Rata-rata Pengiriman: ' + avgDelv + ' Pcs'
                     }
                 }]
             },

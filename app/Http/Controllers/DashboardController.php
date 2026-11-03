@@ -25,7 +25,6 @@ class DashboardController extends Controller
             ->get();
         $critCount = $shortageParts->count(); 
         
-        // RM Threshold disetel 100 lembar sebagai batas kritis default
         $shortageRm = DB::table('rm_stocks')
             ->where('stock_pcs', '<=', 100) 
             ->select('coil_id', 'material_code', 'stock_pcs')
@@ -52,10 +51,31 @@ class DashboardController extends Controller
                 $totalSent = DB::table('deliveries')->sum('qty_delivery') ?: 0;
                 $deliveryPerformance = round(($totalSent / $totalOrdered) * 100, 1);
 
-                $deliveryTrend = DB::table('deliveries')
+                // ✨ PERBAIKAN: Menyatukan Data Aktual Delivery & Order PO 30 Hari Terakhir ✨
+                $thirtyDaysAgo = now()->subDays(30)->format('Y-m-d');
+                
+                $delvData = DB::table('deliveries')
                     ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_delivery) as total'))
-                    ->where('created_at', '>=', now()->subDays(30))
-                    ->groupBy('date')->orderBy('date', 'asc')->get();
+                    ->where('created_at', '>=', $thirtyDaysAgo)
+                    ->groupBy('date')->pluck('total', 'date')->toArray();
+
+                $poData = DB::table('purchase_orders')
+                    ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(quantity) as total'))
+                    ->where('created_at', '>=', $thirtyDaysAgo)
+                    ->groupBy('date')->pluck('total', 'date')->toArray();
+
+                $currentDate = strtotime($thirtyDaysAgo);
+                $endDate = strtotime(date('Y-m-d'));
+                
+                while ($currentDate <= $endDate) {
+                    $dateStr = date('Y-m-d', $currentDate);
+                    $deliveryTrend->push([
+                        'date' => $dateStr,
+                        'actual' => $delvData[$dateStr] ?? 0,
+                        'target' => $poData[$dateStr] ?? 0,
+                    ]);
+                    $currentDate = strtotime('+1 day', $currentDate);
+                }
 
                 $poSisaQuery = DB::table('purchase_orders')
                     ->select(
@@ -117,7 +137,6 @@ class DashboardController extends Controller
             $rmChart = $queryRm->groupBy('material_code')->get();
             $rmLabels = $rmChart->pluck('material_code')->toArray();
             $rmStockData = $rmChart->pluck('total_stock')->toArray();
-            // ✨ Buat array data batas minimum RM (Asumsi batas aman 100 lembar)
             $rmMinData = array_fill(0, count($rmLabels), 100);
 
             // C. GRAFIK WORK IN PROGRESS (WIP WELDING)
@@ -134,7 +153,6 @@ class DashboardController extends Controller
             $wipChart = $queryWip->get();
             $wipLabels = $wipChart->pluck('part_no')->toArray();
             $wipData = $wipChart->pluck('welding_stock')->toArray();
-            // ✨ Buat array data batas minimum WIP (Asumsi buffer aman 50 pcs)
             $wipMinData = array_fill(0, count($wipLabels), 50);
         }
 
