@@ -190,6 +190,7 @@ Route::put('/planning/mps/update-wos/{id}', [PPICController::class, 'updateWos']
 Route::put('/planning/mps/update-wos/{id}', [PPICController::class, 'updateWos'])->name('ppic.wos.update');
 // Rute untuk Print WOS Small Press
 Route::get('/planning/mps/print-wos-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosSmall']);
+Route::get('/ppic/dashboard', [PPICController::class, 'index'])->name('ppic.dashboard');
 
 // Rute untuk Print BPRM / Serah Terima Small Press
 Route::get('/planning/mps/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall']);
