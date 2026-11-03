@@ -16,29 +16,66 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        $alerts = DB::table('produksi_batches')
+        // ✨ TANGKAP FILTER AREA (ALL, BIG, SMALL) ✨
+        $areaFilter = $request->area ?? 'all';
+        
+        // --- 1. FILTER UNTUK ALERTS ---
+        $alertsQuery = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
-            ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at')
-            ->get();
+            ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at');
 
-        $plans = DB::table('production_plans')->where('plan_date', $date)->get();
+        if ($areaFilter === 'small') {
+            $alertsQuery->where(function($q) {
+                $q->where('line.kode_Line', 'LIKE', '%C%')->orWhere('line.kode_Line', 'LIKE', '%SMALL%')->orWhere('line.nama_Line', 'LIKE', '%SMALL%');
+            });
+        } elseif ($areaFilter === 'big') {
+            $alertsQuery->where(function($q) {
+                $q->where('line.kode_Line', 'NOT LIKE', '%C%')->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
+            });
+        }
+        $alerts = $alertsQuery->get();
+
+        // --- 2. FILTER UNTUK TARGET VS ACTUAL PLAN ---
+        $plansQuery = DB::table('production_plans')->where('plan_date', $date);
+        
+        if ($areaFilter === 'small') {
+            $plansQuery->where(function($q) {
+                $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%');
+            });
+        } elseif ($areaFilter === 'big') {
+            $plansQuery->where(function($q) {
+                $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%');
+            });
+        }
+        $plans = $plansQuery->get();
+
         $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
         $chartLabels = []; $chartTargets = []; $chartActuals = [];
 
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            $actualPerPart = DB::table('production_actuals')
+            
+            // Note: Data production_actuals disatukan berdasarkan line_code saat input
+            $actualsQuery = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
-                ->where('line_code', '!=', 'WELDING AREA')
-                ->sum('qty_ok');
+                ->where('line_code', '!=', 'WELDING AREA');
+                
+            $actualPerPart = $actualsQuery->sum('qty_ok');
             
             $p->actual_qty = (int)$actualPerPart;
             $p->plan_qty = (int)$targetPerPart;
-            $chartLabels[] = $p->part_no;
-            $chartTargets[] = (int)$targetPerPart;
-            $chartActuals[] = (int)$actualPerPart;
+            
+            // Hindari data duplikat label part (karena 1 part bisa 2 shift/mesin)
+            $idx = array_search($p->part_no, $chartLabels);
+            if ($idx === false) {
+                $chartLabels[] = $p->part_no;
+                $chartTargets[] = (int)$targetPerPart;
+                $chartActuals[] = (int)$actualPerPart;
+            } else {
+                $chartTargets[$idx] += (int)$targetPerPart;
+            }
 
             $batchStatuses = DB::table('produksi_batches')->where('plan_id', $p->id)->pluck('status');
             $isAllBatchCompleted = $batchStatuses->isNotEmpty() && $batchStatuses->every(fn($st) => $st === 'COMPLETED');
@@ -61,27 +98,53 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
+        // --- 3. FILTER UNTUK GRAFIK HARIAN (DAILY OK VS NG) ---
         $dailyLabels = []; $dailyOk = []; $dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
             $dailyLabels[] = date('d M', strtotime($d));
-            $dailyOk[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
-            $dailyNg[] = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
+            
+            $qOk = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
+            $qNg = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
+            
+            if ($areaFilter === 'small') {
+                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qNg->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+            } elseif ($areaFilter === 'big') {
+                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qNg->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+            }
+
+            $dailyOk[] = $qOk->sum('qty_ok');
+            $dailyNg[] = $qNg->sum('qty_ng');
         }
 
+        // --- 4. FILTER UNTUK GRAFIK BULANAN (MONTHLY OK VS NG) ---
         $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
             $monthlyLabels[] = date('M', strtotime("-$i months"));
-            $monthlyOk[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
-            $monthlyNg[] = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
+            
+            $qOkM = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA');
+            $qNgM = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA');
+            
+            if ($areaFilter === 'small') {
+                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qNgM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+            } elseif ($areaFilter === 'big') {
+                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qNgM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+            }
+
+            $monthlyOk[] = $qOkM->sum('qty_ok');
+            $monthlyNg[] = $qNgM->sum('qty_ng');
         }
 
         return view('PPIC.ppic_planning', compact(
             'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
             'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
             'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg',
-            'alerts'
+            'alerts', 'areaFilter' // ✨ Lempar Filter Ke Blade
         ));
     }
 
@@ -292,6 +355,7 @@ class PPICController extends Controller
         }
 
         $groupedPlans = $processedPlans->groupBy('line_code');
+        $availableLines = DB::table('line')->get();
         $availableCustomers = DB::table('customers')->get();
         $availableParts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
 
@@ -1395,135 +1459,6 @@ class PPICController extends Controller
         $batches = $allBatches;
 
         return view('PPIC.print_serahterima_small', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
-    }
-    
-    /**
-     * ✨ DASHBOARD UTAMA PPIC (CORE_PRODUCTION_AI) ✨
-     */
-    public function monthly_matrix(Request $request)
-    {
-        // 1. Setup Tanggal (Default: Hari Ini)
-        $date = $request->date ?? date('Y-m-d');
-        
-        // 2. Ambil parameter filter Area dari request
-        // Pilihan: 'all', 'big', 'small' (Default 'all')
-        $areaFilter = $request->area ?? 'all';
-
-        // 3. QUERY GRAFIK TARGET VS ACTUAL
-        // Menggabungkan Plan (Target) dan Actual Produksi pada tanggal terpilih
-        $performanceQuery = DB::table('production_plans')
-            ->select(
-                'production_plans.part_no',
-                'production_plans.line_code', // Ambil line code untuk filter
-                DB::raw('SUM(production_plans.s1_plan_reg + production_plans.s1_plan_ot + production_plans.s2_plan_reg + production_plans.s2_plan_ot) as total_target'),
-                DB::raw('(SELECT SUM(qty_ok) FROM production_actuals WHERE production_actuals.part_no = production_plans.part_no AND DATE(production_actuals.created_at) = "'.$date.'") as total_actual')
-            )
-            ->where('production_plans.plan_date', $date);
-
-        // Aplikasikan Filter Area ke Query Chart
-        if ($areaFilter === 'small') {
-            $performanceQuery->where(function($q) {
-                $q->where('line_code', 'LIKE', '%C%')
-                  ->orWhere('line_code', 'LIKE', '%SMALL%');
-            });
-        } elseif ($areaFilter === 'big') {
-            $performanceQuery->where(function($q) {
-                $q->where('line_code', 'NOT LIKE', '%C%')
-                  ->where('line_code', 'NOT LIKE', '%SMALL%');
-            });
-        }
-
-        $performanceData = $performanceQuery
-            ->groupBy('production_plans.part_no', 'production_plans.line_code')
-            ->orderBy('production_plans.part_no', 'ASC')
-            ->get();
-
-        // 4. Persiapkan Array untuk Chart.js / ApexCharts
-        $chartLabels = [];
-        $chartTarget = [];
-        $chartActual = [];
-        $alerts = [];
-        $totalTargetGlobal = 0;
-        $totalActualGlobal = 0;
-
-        foreach ($performanceData as $data) {
-            $partName = $data->part_no;
-            $target = (int) $data->total_target;
-            $actual = (int) $data->total_actual; 
-
-            if (!str_ends_with($partName, '-S')) {
-                // Hindari duplikat label part jika 1 part di-plan di 2 mesin yg berbeda
-                $index = array_search($partName, $chartLabels);
-                if ($index === false) {
-                    $chartLabels[] = $partName;
-                    $chartTarget[] = $target;
-                    $chartActual[] = $actual;
-                } else {
-                    $chartTarget[$index] += $target;
-                }
-
-                $totalTargetGlobal += $target;
-                $totalActualGlobal += $actual;
-
-                if ($actual < $target && $target > 0) {
-                    $selisih = $target - $actual;
-                    $alerts[] = "ATTENTION: Part [{$partName}] is UNDER TARGET by {$selisih} Pcs";
-                }
-            } else {
-                 $mainPart = str_replace('-S', '-M', $partName);
-                 $index = array_search($mainPart, $chartLabels);
-                 if($index !== false) {
-                     $chartLabels[] = $partName;
-                     $chartTarget[] = $target; 
-                     $chartActual[] = $actual;
-                     
-                     if ($actual < $target && $target > 0) {
-                        $selisih = $target - $actual;
-                        $alerts[] = "ATTENTION: Part [{$partName}] is UNDER TARGET by {$selisih} Pcs";
-                    }
-                 }
-            }
-        }
-
-        // 5. Hitung Global Efficiency
-        $globalEfficiency = $totalTargetGlobal > 0 ? round(($totalActualGlobal / $totalTargetGlobal) * 100, 1) : 0;
-        if($globalEfficiency > 100) $globalEfficiency = 100;
-
-        // 6. Hitung Job Execution Distribution (Status Batch)
-        $batchStatsQuery = DB::table('produksi_batches')
-            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
-            ->select('produksi_batches.status', DB::raw('count(*) as total'))
-            ->whereDate('produksi_batches.created_at', $date);
-
-        // Aplikasikan Filter Area ke Query Status Batch
-        if ($areaFilter === 'small') {
-            $batchStatsQuery->where(function($q) {
-                $q->where('line.kode_Line', 'LIKE', '%C%')
-                  ->orWhere('line.kode_Line', 'LIKE', '%SMALL%')
-                  ->orWhere('line.nama_Line', 'LIKE', '%SMALL%');
-            });
-        } elseif ($areaFilter === 'big') {
-            $batchStatsQuery->where(function($q) {
-                $q->where('line.kode_Line', 'NOT LIKE', '%C%')
-                  ->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
-            });
-        }
-
-        $batchStats = $batchStatsQuery
-            ->groupBy('produksi_batches.status')
-            ->pluck('total', 'status')->toArray();
-
-        $jobWait = $batchStats['WAITING'] ?? ($batchStats['PENDING'] ?? 0);
-        $jobRunning = $batchStats['PROSES'] ?? 0;
-        $jobDone = $batchStats['COMPLETED'] ?? 0;
-
-        $dailyStability = []; 
-        $monthlyStability = [];
-
-        return view('PPIC.monthly_matrix', compact(
-            'date', 'areaFilter', 'chartLabels', 'chartTarget', 'chartActual', 'alerts',
-            'globalEfficiency', 'jobWait', 'jobRunning', 'jobDone'
-        ));
     }
     
     /**
