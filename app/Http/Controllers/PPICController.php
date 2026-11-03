@@ -1398,6 +1398,135 @@ class PPICController extends Controller
     }
     
     /**
+     * ✨ DASHBOARD UTAMA PPIC (CORE_PRODUCTION_AI) ✨
+     */
+    public function monthly_matrix(Request $request)
+    {
+        // 1. Setup Tanggal (Default: Hari Ini)
+        $date = $request->date ?? date('Y-m-d');
+        
+        // 2. Ambil parameter filter Area dari request
+        // Pilihan: 'all', 'big', 'small' (Default 'all')
+        $areaFilter = $request->area ?? 'all';
+
+        // 3. QUERY GRAFIK TARGET VS ACTUAL
+        // Menggabungkan Plan (Target) dan Actual Produksi pada tanggal terpilih
+        $performanceQuery = DB::table('production_plans')
+            ->select(
+                'production_plans.part_no',
+                'production_plans.line_code', // Ambil line code untuk filter
+                DB::raw('SUM(production_plans.s1_plan_reg + production_plans.s1_plan_ot + production_plans.s2_plan_reg + production_plans.s2_plan_ot) as total_target'),
+                DB::raw('(SELECT SUM(qty_ok) FROM production_actuals WHERE production_actuals.part_no = production_plans.part_no AND DATE(production_actuals.created_at) = "'.$date.'") as total_actual')
+            )
+            ->where('production_plans.plan_date', $date);
+
+        // Aplikasikan Filter Area ke Query Chart
+        if ($areaFilter === 'small') {
+            $performanceQuery->where(function($q) {
+                $q->where('line_code', 'LIKE', '%C%')
+                  ->orWhere('line_code', 'LIKE', '%SMALL%');
+            });
+        } elseif ($areaFilter === 'big') {
+            $performanceQuery->where(function($q) {
+                $q->where('line_code', 'NOT LIKE', '%C%')
+                  ->where('line_code', 'NOT LIKE', '%SMALL%');
+            });
+        }
+
+        $performanceData = $performanceQuery
+            ->groupBy('production_plans.part_no', 'production_plans.line_code')
+            ->orderBy('production_plans.part_no', 'ASC')
+            ->get();
+
+        // 4. Persiapkan Array untuk Chart.js / ApexCharts
+        $chartLabels = [];
+        $chartTarget = [];
+        $chartActual = [];
+        $alerts = [];
+        $totalTargetGlobal = 0;
+        $totalActualGlobal = 0;
+
+        foreach ($performanceData as $data) {
+            $partName = $data->part_no;
+            $target = (int) $data->total_target;
+            $actual = (int) $data->total_actual; 
+
+            if (!str_ends_with($partName, '-S')) {
+                // Hindari duplikat label part jika 1 part di-plan di 2 mesin yg berbeda
+                $index = array_search($partName, $chartLabels);
+                if ($index === false) {
+                    $chartLabels[] = $partName;
+                    $chartTarget[] = $target;
+                    $chartActual[] = $actual;
+                } else {
+                    $chartTarget[$index] += $target;
+                }
+
+                $totalTargetGlobal += $target;
+                $totalActualGlobal += $actual;
+
+                if ($actual < $target && $target > 0) {
+                    $selisih = $target - $actual;
+                    $alerts[] = "ATTENTION: Part [{$partName}] is UNDER TARGET by {$selisih} Pcs";
+                }
+            } else {
+                 $mainPart = str_replace('-S', '-M', $partName);
+                 $index = array_search($mainPart, $chartLabels);
+                 if($index !== false) {
+                     $chartLabels[] = $partName;
+                     $chartTarget[] = $target; 
+                     $chartActual[] = $actual;
+                     
+                     if ($actual < $target && $target > 0) {
+                        $selisih = $target - $actual;
+                        $alerts[] = "ATTENTION: Part [{$partName}] is UNDER TARGET by {$selisih} Pcs";
+                    }
+                 }
+            }
+        }
+
+        // 5. Hitung Global Efficiency
+        $globalEfficiency = $totalTargetGlobal > 0 ? round(($totalActualGlobal / $totalTargetGlobal) * 100, 1) : 0;
+        if($globalEfficiency > 100) $globalEfficiency = 100;
+
+        // 6. Hitung Job Execution Distribution (Status Batch)
+        $batchStatsQuery = DB::table('produksi_batches')
+            ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
+            ->select('produksi_batches.status', DB::raw('count(*) as total'))
+            ->whereDate('produksi_batches.created_at', $date);
+
+        // Aplikasikan Filter Area ke Query Status Batch
+        if ($areaFilter === 'small') {
+            $batchStatsQuery->where(function($q) {
+                $q->where('line.kode_Line', 'LIKE', '%C%')
+                  ->orWhere('line.kode_Line', 'LIKE', '%SMALL%')
+                  ->orWhere('line.nama_Line', 'LIKE', '%SMALL%');
+            });
+        } elseif ($areaFilter === 'big') {
+            $batchStatsQuery->where(function($q) {
+                $q->where('line.kode_Line', 'NOT LIKE', '%C%')
+                  ->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
+            });
+        }
+
+        $batchStats = $batchStatsQuery
+            ->groupBy('produksi_batches.status')
+            ->pluck('total', 'status')->toArray();
+
+        $jobWait = $batchStats['WAITING'] ?? ($batchStats['PENDING'] ?? 0);
+        $jobRunning = $batchStats['PROSES'] ?? 0;
+        $jobDone = $batchStats['COMPLETED'] ?? 0;
+
+        $dailyStability = []; 
+        $monthlyStability = [];
+
+        return view('PPIC.monthly_matrix', compact(
+            'date', 'areaFilter', 'chartLabels', 'chartTarget', 'chartActual', 'alerts',
+            'globalEfficiency', 'jobWait', 'jobRunning', 'jobDone'
+        ));
+    }
+    
+    /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER PLAN)
      */
     public function checkRmStockAjax(Request $request, $part_no = null)

@@ -1,230 +1,228 @@
 @extends('layout.admin')
 
 @section('content')
-{{-- ✨ FIX 2: Definisikan default shift agar PHP tidak bingung --}}
-@php $activeShift = 's1'; @endphp
-
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans..." rel="stylesheet">
-...
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <style>
-    :root {
-        --p-primary: #4361ee; --p-dark: #0f172a; --p-slate: #64748b;
-        --p-emerald: #10b981; --p-rose: #ef4444; --p-amber: #f59e0b;
-        --p-bg: #f8fafc;
-    }
-
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: var(--p-bg); }
-
-    /* 🌊 Viewport Licin & Responsif */
-    .matrix-container { 
-        background: white; border-radius: 24px; border: 1px solid #e2e8f0; 
-        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.05); overflow: hidden; 
-    }
+    body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; background-color: #f8fafc; color: #1e293b; }
     
-    .matrix-scroll-wrapper { 
-        overflow: auto; max-height: 75vh; 
-        -webkit-overflow-scrolling: touch; 
-    }
+    .dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+    .title-area h1 { font-weight: 900; letter-spacing: -0.5px; color: #475569; margin: 0; font-size: 28px; text-transform: uppercase; }
+    .title-area p { font-size: 11px; font-weight: 700; color: #94a3b8; margin: 5px 0 0 0; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; margin-right: 5px; }
 
-    /* 📊 Tabel Modern */
-    .table-matrix { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; }
-
-    /* 📌 Sticky Column (Part No) */
-    .sticky-col { 
-        position: sticky; left: 0; background: white !important; z-index: 45; 
-        width: 200px; padding: 12px 20px !important; border-right: 3px solid #f1f5f9 !important;
-        box-shadow: 10px 0 20px -10px rgba(0,0,0,0.1);
-    }
+    .header-controls { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
     
-    /* 📌 Sticky Header */
-    thead tr:nth-child(1) th { position: sticky; top: 0; z-index: 50; background: var(--p-dark); color: white; height: 45px; }
-    thead tr:nth-child(2) th { position: sticky; top: 45px; z-index: 50; background: #f8fafc; color: var(--p-slate); font-size: 10px; height: 35px; }
-
-    /* 📦 Cell Box (Plan vs Actual) */
-    .cell-box { display: flex; flex-direction: column; height: 60px; min-width: 55px; justify-content: space-between; padding: 4px 0; }
+    /* STYLE FILTER BOX BARU */
+    .filter-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px 10px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .filter-box select, .filter-box input { border: none; outline: none; font-weight: 700; color: #475569; background: transparent; cursor: pointer; font-size: 12px; }
+    .filter-box select { padding-right: 10px; border-right: 1px solid #e2e8f0; }
     
-    /* Atas: Input Plan */
-    .input-grid { 
-        width: 100%; border: none; background: transparent; text-align: center; 
-        font-weight: 700; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--p-primary);
-    }
-    .input-grid:focus { background: white; box-shadow: 0 0 0 2px var(--p-primary); border-radius: 6px; outline: none; }
+    .eff-badge { background: linear-gradient(135deg, #3b82f6, #4f46e5); color: #fff; padding: 10px 25px; border-radius: 16px; text-align: center; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
+    .eff-badge span { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; }
+    .eff-badge h3 { margin: 0; font-size: 22px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
 
-    /* Bawah: Actual Display */
-    .act-display { 
-        font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 800; text-align: center;
-        background: rgba(16, 185, 129, 0.05); color: var(--p-emerald);
-        border-top: 1px dashed #e2e8f0; padding-top: 2px;
-    }
-    .act-shortage { color: var(--p-rose); background: rgba(239, 68, 68, 0.05); } /* Merah jika < Plan */
+    /* ALERT TICKER */
+    .alert-ticker { background: #0f172a; border-radius: 12px; padding: 10px 15px; display: flex; align-items: center; gap: 15px; margin-bottom: 25px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    .alert-badge { background: #ef4444; color: #fff; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; }
+    .ticker-content { color: #f8fafc; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; width: 100%; position: relative; }
+    .ticker-content marquee { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; }
+    
+    /* PANELS */
+    .panel { background: #fff; border-radius: 20px; padding: 25px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); height: 100%; }
+    .panel-title { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .live-feed-badge { font-size: 9px; background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 6px; letter-spacing: 1px; }
 
-    /* Row Summary */
-    .row-summary { background: #fcfcfd; font-family: 'Orbitron'; font-weight: 800; font-size: 10px; }
-    .col-total { width: 100px; background: #f8fafc !important; text-align: center !important; }
-
-    /* Highlights */
-    .bg-today { background-color: #eff6ff !important; box-shadow: inset 0 0 0 1px var(--p-primary); }
-    .bg-weekend { background-color: #fff1f2 !important; }
-
-    /* 🍬 Custom Scrollbar */
-    .matrix-scroll-wrapper::-webkit-scrollbar { height: 12px; width: 8px; }
-    .matrix-scroll-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid white; }
+    /* DONUT STATS */
+    .donut-stats-container { display: flex; justify-content: space-around; margin-top: 20px; text-align: center; }
+    .stat-item { flex: 1; }
+    .stat-item span { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
+    .stat-item h4 { margin: 0; font-size: 24px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
 </style>
 
-<div class="container-fluid mt-4 mb-5">
-    {{-- Header Section --}}
-    <div class="d-flex justify-content-between align-items-end mb-4 px-2">
-        <div>
-            <h2 class="font-weight-black m-0" style="letter-spacing: -1px; font-family: 'Orbitron';">MASTER_MATRIX <span class="text-primary">v4.5</span></h2>
-            <div class="d-flex gap-3 mt-2">
-                <small class="badge badge-outline-primary border px-3 py-1"><i class="fas fa-edit mr-1"></i> TOP: PLAN (BLUE)</small>
-                <small class="badge badge-outline-success border px-3 py-1"><i class="fas fa-check-circle mr-1"></i> BTM: ACTUAL (GREEN)</small>
-            </div>
+<div class="container-fluid py-4">
+    
+    {{-- HEADER --}}
+    <div class="dashboard-header">
+        <div class="title-area">
+            <h1>CORE_PRODUCTION_AI</h1>
+            <p><span class="status-dot"></span> System Status: Optimal / Last Sync: {{ date('H:i:s') }}</p>
         </div>
-
-        <div class="d-flex align-items-center gap-3">
-            <div class="shift-master-pill mr-3" style="background: #f1f5f9; padding: 4px; border-radius: 12px;">
-                <button type="button" id="btn-s1" class="shift-btn active-s1" onclick="switchShift('s1')">SHIFT_1</button>
-                <button type="button" id="btn-s2" class="shift-btn" onclick="switchShift('s2')">SHIFT_2</button>
-            </div>
-
-            <form action="" method="GET" class="d-flex">
-                <select name="month" class="form-control form-control-sm rounded-lg border-dark font-weight-bold px-3 mr-2" onchange="this.form.submit()">
-                    @foreach(range(1, 12) as $m) <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>{{ date('F', mktime(0,0,0,$m,1)) }}</option> @endforeach
+        
+        <div class="header-controls">
+            {{-- 🔥 FILTER BOX BARU: TANGGAL & AREA 🔥 --}}
+            <form id="filterForm" action="{{ route('ppic.dashboard') }}" method="GET" class="filter-box">
+                <select name="area" onchange="document.getElementById('filterForm').submit();">
+                    <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL LINE</option>
+                    <option value="big" {{ ($areaFilter ?? 'all') == 'big' ? 'selected' : '' }}>BIG PRESS</option>
+                    <option value="small" {{ ($areaFilter ?? 'all') == 'small' ? 'selected' : '' }}>SMALL PRESS</option>
                 </select>
+                <div class="d-flex align-items-center gap-2 pl-2">
+                    <input type="date" name="date" value="{{ $date }}" onchange="document.getElementById('filterForm').submit();">
+                    <i class="far fa-calendar-alt text-primary"></i>
+                </div>
             </form>
-            <a href="{{ route('ppic.mps.index') }}" class="btn btn-primary shadow-sm font-weight-bold rounded-lg px-4">OPEN_DAILY_MPS</a>
+            
+            <div class="eff-badge">
+                <span>Global Efficiency</span>
+                <h3>{{ number_format($globalEfficiency, 1) }}%</h3>
+            </div>
         </div>
     </div>
 
-    <div id="status-notif" class="toast-sync" style="position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--p-dark); color: white; padding: 12px 30px; border-radius: 50px; z-index: 1000; display: none; font-weight: 700;">
-        <i class="fas fa-sync fa-spin mr-2 text-primary"></i> STREAMING_DATA...
-    </div>
-
-    <div class="matrix-container">
-        <div class="matrix-scroll-wrapper">
-            <table class="table-matrix">
-                <thead>
-                    <tr>
-                        <th rowspan="2" class="sticky-col">PART_NAME_SPEC</th>
-                        <th rowspan="2" style="width: 60px;">CUST</th>
-                        <th rowspan="2" style="width: 70px;">CAP/H</th>
-                        @for($d=1; $d<=$daysInMonth; $d++)
-                            @php 
-                                $dateStr = "$year-$month-$d";
-                                $isToday = (date('Y-m-d', strtotime($dateStr)) == date('Y-m-d'));
-                                $isWknd = (date('N', strtotime($dateStr)) >= 6);
-                            @endphp
-                            <th class="header-day {{ $isToday ? 'bg-primary' : '' }} {{ $isWknd ? 'text-danger' : '' }}">
-                                {{ str_pad($d, 2, '0', STR_PAD_LEFT) }}
-                            </th>
-                        @endfor
-                        <th rowspan="2" class="col-total bg-warning text-dark">ACHV_%</th>
-                    </tr>
-                    <tr>
-                        @for($d=1; $d<=$daysInMonth; $d++)
-                            <th class="sub-header-day text-center">{{ date('D', strtotime("$year-$month-$d")) }}</th>
-                        @endfor
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($parts as $part)
-                    @php $rowPlanTotal = 0; $rowActTotal = 0; @endphp
-                    <tr>
-                        <td class="sticky-col">
-                            <div class="text-primary font-weight-bold"># {{ $part->part_no }}</div>
-                            <div class="text-muted" style="font-size: 8px;">{{ $part->part_name }}</div>
-                        </td>
-                        <td class="text-center font-weight-bold text-muted">{{ $part->customer_code }}</td>
-                        <td class="text-center bg-light font-weight-bold">{{ $part->cap_per_hour ?? 320 }}</td>
-                        
-                        @for($d=1; $d<=$daysInMonth; $d++)
-                            @php
-                                $dStr = "$year-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-" . str_pad($d, 2, '0', STR_PAD_LEFT);
-                                $plan = $planData->get($part->part_no)?->firstWhere('plan_date', $dStr);
-                                $s1_val = $plan ? $plan->s1_plan_reg : 0;
-                                $s2_val = $plan ? $plan->s2_plan_reg : 0;
-                                $target = ($activeShift == 's1') ? $s1_val : $s2_val;
-                                
-                                // ✨ Data Actual Live dari Controller
-                                $actQty = $actualData->get($part->part_no)?->firstWhere('day', $d)->total_ok ?? 0;
-                                
-                                $rowPlanTotal += ($s1_val + $s2_val);
-                                $rowActTotal += $actQty;
-                                
-                                $isToday = ($dStr == date('Y-m-d'));
-                                $isWknd = (date('N', strtotime($dStr)) >= 6);
-                            @endphp
-                            <td class="{{ $isToday ? 'bg-today' : '' }} {{ $isWknd ? 'bg-weekend' : '' }}">
-                                <div class="cell-box">
-                                    <input type="number" class="input-grid qty-input" 
-                                           value="{{ $target ?: '' }}" 
-                                           data-s1="{{ $s1_val }}" data-s2="{{ $s2_val }}"
-                                           data-part="{{ $part->part_no }}" data-day="{{ $d }}"
-                                           data-cap="{{ $part->cap_per_hour ?? 320 }}"
-                                           onchange="autoSave(this)">
-                                    
-                                    <div class="act-display {{ ($actQty < $target && $actQty > 0) ? 'act-shortage' : '' }}">
-                                        {{ $actQty > 0 ? number_format($actQty) : '-' }}
-                                    </div>
-                                </div>
-                            </td>
-                        @endfor
-                        <td class="col-total">
-                            <div class="text-primary" style="font-size: 9px;">P: {{ number_format($rowPlanTotal) }}</div>
-                            <div class="{{ $rowActTotal < $rowPlanTotal ? 'text-danger' : 'text-success' }} font-weight-bold">
-                                {{ $rowPlanTotal > 0 ? round(($rowActTotal / $rowPlanTotal) * 100) : 0 }}%
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+    {{-- ALERT TICKER --}}
+    @if(count($alerts) > 0)
+    <div class="alert-ticker">
+        <div class="alert-badge">ALERT</div>
+        <div class="ticker-content">
+            <marquee behavior="scroll" direction="left" scrollamount="5">
+                @foreach($alerts as $alert)
+                    <span style="margin-right: 50px;">• {{ $alert }}</span>
+                @endforeach
+            </marquee>
         </div>
     </div>
+    @endif
+
+    {{-- TOP ROW PANELS --}}
+    <div class="row mb-4">
+        {{-- TARGET VS ACTUAL CHART --}}
+        <div class="col-md-8 mb-4 mb-md-0">
+            <div class="panel">
+                <div class="panel-title">
+                    <div><i class="fas fa-chart-bar mr-2 text-primary"></i> Production Performance (Target Vs Actual)</div>
+                    <div class="live-feed-badge">LIVE_FEED ({{ strtoupper($areaFilter ?? 'ALL') }})</div>
+                </div>
+                <div id="targetActualChart" style="min-height: 300px;"></div>
+            </div>
+        </div>
+
+        {{-- DONUT CHART --}}
+        <div class="col-md-4">
+            <div class="panel d-flex flex-column justify-content-between">
+                <div class="panel-title justify-content-center text-center w-100">
+                    Job Execution Distribution
+                </div>
+                
+                <div id="jobDistributionChart" class="d-flex justify-content-center"></div>
+
+                <div class="donut-stats-container">
+                    <div class="stat-item text-secondary">
+                        <span>Wait</span>
+                        <h4>{{ $jobWait }}</h4>
+                    </div>
+                    <div class="stat-item text-primary">
+                        <span>Running</span>
+                        <h4>{{ $jobRunning }}</h4>
+                    </div>
+                    <div class="stat-item text-success">
+                        <span>Done</span>
+                        <h4>{{ $jobDone }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {{-- BOTTOM ROW PANELS (STABILITY) --}}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="panel">
+                <div class="panel-title text-danger"><i class="fas fa-shield-alt mr-2"></i> Daily Quality Stability (OK vs NG)</div>
+                <div id="dailyStabilityChart" style="min-height: 250px;"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="panel">
+                <div class="panel-title text-warning"><i class="fas fa-chart-line mr-2"></i> Monthly Quality Stability (OK vs NG)</div>
+                <div id="monthlyStabilityChart" style="min-height: 250px;"></div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
-    let activeShift = 's1';
+    // 1. CHART TARGET VS ACTUAL (HORIZONTAL BAR)
+    const targetData = @json($chartTarget);
+    const actualData = @json($chartActual);
+    const partLabels = @json($chartLabels);
 
-    // ✨ Biar licin, kita auto-scroll ke hari ini pas buka halaman
-    document.addEventListener("DOMContentLoaded", () => {
-        const todayCol = document.querySelector('.bg-today');
-        if (todayCol) {
-            todayCol.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
-    });
-
-    function switchShift(shift) {
-        activeShift = shift;
-        document.getElementById('btn-s1').className = shift === 's1' ? 'shift-btn active-s1' : 'shift-btn';
-        document.getElementById('btn-s2').className = shift === 's2' ? 'shift-btn active-s2' : 'shift-btn';
-        document.querySelectorAll('.qty-input').forEach(inp => {
-            inp.value = inp.getAttribute(`data-${shift}`) || '';
-        });
+    const targetActualOptions = {
+        series: [
+            { name: 'ACTUAL', data: actualData },
+            { name: 'TARGET', data: targetData }
+        ],
+        chart: { type: 'bar', height: 320, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+        plotOptions: {
+            bar: { 
+                horizontal: true, 
+                barHeight: '35%',
+                borderRadius: 4,
+                dataLabels: { position: 'top' }
+            }
+        },
+        colors: ['#38bdf8', '#f1f5f9'], 
+        dataLabels: { enabled: false },
+        stroke: { show: true, width: 2, colors: ['transparent'] },
+        xaxis: { 
+            categories: partLabels,
+            labels: { style: { fontWeight: 700, fontSize: '10px', colors: '#64748b' } }
+        },
+        yaxis: {
+            labels: { style: { fontWeight: 700, fontSize: '11px', fontFamily: 'JetBrains Mono' } }
+        },
+        legend: { position: 'top', horizontalAlign: 'right', fontWeight: 800, markers: { radius: 12 } },
+        grid: { strokeDashArray: 4, borderColor: '#f1f5f9' }
+    };
+    
+    if (partLabels.length > 0) {
+        new ApexCharts(document.querySelector("#targetActualChart"), targetActualOptions).render();
+    } else {
+        document.querySelector("#targetActualChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>No data available for selected area & date.</div>";
     }
 
-    function autoSave(input) {
-        const statusBox = document.getElementById('status-notif');
-        statusBox.style.display = "block";
-        input.setAttribute(`data-${activeShift}`, input.value);
+    // 2. CHART JOB DISTRIBUTION (DONUT)
+    const jobWait = {{ $jobWait }};
+    const jobRunning = {{ $jobRunning }};
+    const jobDone = {{ $jobDone }};
+    const totalJobs = jobWait + jobRunning + jobDone;
 
-        fetch('{{ route("ppic.monthly.ajax_save") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({
-                shift: activeShift,
-                part_no: input.dataset.part,
-                day: input.dataset.day,
-                month: '{{ $month }}',
-                year: '{{ $year }}',
-                qty: input.value,
-                cap_per_hour: input.dataset.cap
-            })
-        }).then(() => {
-            setTimeout(() => { statusBox.style.display = "none"; }, 800);
-        });
+    const donutOptions = {
+        series: [jobDone, jobRunning, jobWait],
+        chart: { type: 'donut', height: 260, fontFamily: 'Plus Jakarta Sans' },
+        labels: ['Done', 'Running', 'Wait'],
+        colors: ['#10b981', '#3b82f6', '#94a3b8'],
+        plotOptions: {
+            pie: {
+                donut: { 
+                    size: '80%',
+                    labels: { show: false }
+                }
+            }
+        },
+        dataLabels: { enabled: false },
+        legend: { show: false },
+        stroke: { show: true, width: 5, colors: ['#fff'] }
+    };
+    
+    if (totalJobs > 0) {
+        new ApexCharts(document.querySelector("#jobDistributionChart"), donutOptions).render();
+    } else {
+        document.querySelector("#jobDistributionChart").innerHTML = "<div class='text-center text-muted font-italic mt-5'>No jobs scheduled.</div>";
     }
+
+    // 3. CHART DUMMY UNTUK STABILITY
+    const lineOptions = {
+        series: [{ name: "OK", data: [1600, 0, 0, 1500, 0] }], 
+        chart: { type: 'line', height: 250, toolbar: { show: false } },
+        stroke: { curve: 'smooth', width: 3 },
+        colors: ['#10b981'],
+        xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] },
+        grid: { strokeDashArray: 4 }
+    };
+    new ApexCharts(document.querySelector("#dailyStabilityChart"), lineOptions).render();
+    new ApexCharts(document.querySelector("#monthlyStabilityChart"), { ...lineOptions, colors: ['#3b82f6'] }).render();
 </script>
 @endsection
