@@ -123,7 +123,7 @@
         </div>
     </div>
 
-    {{-- 4. CHART AREA --}}
+    {{-- 4. ROW GRAFIK 1 (FG & PO SISA) --}}
     <div class="row mb-4">
         <div class="col-xl-8 mb-4 mb-xl-0">
             <div class="b-panel">
@@ -155,32 +155,32 @@
         </div>
     </div>
 
-    {{-- 5. BOTTOM ROW --}}
-    <div class="row">
+    {{-- 5. ROW GRAFIK 2 (RM & WIP) --}}
+    <div class="row mb-4">
         <div class="col-md-6 mb-4 mb-md-0">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-fire text-danger"></i> Stok WIP (Belum Di-Welding)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-pallet text-warning"></i> Grafik Raw Material (Stok Sisa Lembar)</h3>
                 </div>
-                <ul class="data-list">
-                    @forelse($wipStock ?? [] as $wip)
-                    <li class="data-item">
-                        <div class="data-part">
-                            <h6>{{ $wip->part_no }}</h6>
-                            <small>Stok Area Welding</small>
-                        </div>
-                        <div class="data-val text-danger">{{ number_format($wip->welding_stock) }} <span style="font-size: 10px; color: #94a3b8;">Pcs</span></div>
-                    </li>
-                    @empty
-                    <li class="text-center text-muted font-italic mt-4 pt-4" style="font-size: 12px;">Tidak ada stok WIP yang menumpuk.</li>
-                    @endforelse
-                </ul>
+                <div id="rmChart" style="min-height: 280px;"></div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-chart-line text-info"></i> Delivery Trend (30 Hari Terakhir)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-fire text-danger"></i> Grafik Work In Progress (Stok Welding)</h3>
+                </div>
+                <div id="wipChart" style="min-height: 280px;"></div>
+            </div>
+        </div>
+    </div>
+
+    {{-- 6. ROW GRAFIK 3 (DELIVERY TREND) --}}
+    <div class="row">
+        <div class="col-12">
+            <div class="b-panel">
+                <div class="b-panel-header">
+                    <h3 class="b-panel-title"><i class="fas fa-chart-line text-success"></i> Delivery Trend (30 Hari Terakhir)</h3>
                 </div>
                 <div id="deliveryChart" style="min-height: 280px;"></div>
             </div>
@@ -189,7 +189,7 @@
 </div>
 
 <script>
-    // 1. CHART ACTUAL VS MINIMUM STOCK (BAR CHART)
+    // 1. CHART ACTUAL VS MINIMUM STOCK (FG BAR CHART)
     const lblParts = @json($labels ?? []);
     const dataActual = @json($actStockData ?? []);
     const dataMin = @json($minStockData ?? []);
@@ -217,14 +217,58 @@
         document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG untuk ditampilkan.</div>";
     }
 
-    // 2. CHART DELIVERY TREND (AREA CHART)
+    // 2. CHART RAW MATERIAL (RM BAR CHART)
+    const rmLabels = @json($rmLabels ?? []);
+    const rmData = @json($rmStockData ?? []);
+
+    if (rmLabels.length > 0) {
+        new ApexCharts(document.querySelector("#rmChart"), {
+            series: [{ name: 'Sisa Stok RM (Lbr)', data: rmData }],
+            chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '50%' } },
+            colors: ['#FFCE20'],
+            dataLabels: { enabled: false },
+            xaxis: { 
+                categories: rmLabels,
+                labels: { style: { fontWeight: 700, fontSize: '9px' } }
+            },
+            yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },
+            grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
+        }).render();
+    } else {
+        document.querySelector("#rmChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok RM.</div>";
+    }
+
+    // 3. CHART WORK IN PROGRESS (WIP BAR CHART)
+    const wipLabels = @json($wipLabels ?? []);
+    const wipData = @json($wipData ?? []);
+
+    if (wipLabels.length > 0) {
+        new ApexCharts(document.querySelector("#wipChart"), {
+            series: [{ name: 'Stok WIP (Pcs)', data: wipData }],
+            chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '50%' } },
+            colors: ['#EE5D50'],
+            dataLabels: { enabled: false },
+            xaxis: { 
+                categories: wipLabels,
+                labels: { style: { fontWeight: 700, fontSize: '9px' } }
+            },
+            yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },
+            grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
+        }).render();
+    } else {
+        document.querySelector("#wipChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok WIP.</div>";
+    }
+
+    // 4. CHART DELIVERY TREND (AREA CHART)
     const delvTrend = @json($deliveryTrend ?? []);
     const delvLabels = delvTrend.map(item => item.date);
-    const delvData = delvTrend.map(item => item.total);
+    const delvDataChart = delvTrend.map(item => item.total);
 
     if (delvLabels.length > 0) {
         new ApexCharts(document.querySelector("#deliveryChart"), {
-            series: [{ name: "Total Pengiriman", data: delvData }],
+            series: [{ name: "Total Pengiriman", data: delvDataChart }],
             chart: { type: 'area', height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
             stroke: { curve: 'smooth', width: 3 },
             colors: ['#05CD99'],
