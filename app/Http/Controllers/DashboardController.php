@@ -25,6 +25,7 @@ class DashboardController extends Controller
             ->get();
         $critCount = $shortageParts->count(); 
         
+        // RM Threshold disetel 100 lembar sebagai batas kritis default
         $shortageRm = DB::table('rm_stocks')
             ->where('stock_pcs', '<=', 100) 
             ->select('coil_id', 'material_code', 'stock_pcs')
@@ -47,7 +48,6 @@ class DashboardController extends Controller
         
         if ($mode == 'delivery' || $mode == 'summary') {
             try {
-                // ✨ MENGGUNAKAN TABEL purchase_orders SESUAI DATABASEMU ✨
                 $totalOrdered = DB::table('purchase_orders')->sum('quantity') ?: 1;
                 $totalSent = DB::table('deliveries')->sum('qty_delivery') ?: 0;
                 $deliveryPerformance = round(($totalSent / $totalOrdered) * 100, 1);
@@ -57,7 +57,6 @@ class DashboardController extends Controller
                     ->where('created_at', '>=', now()->subDays(30))
                     ->groupBy('date')->orderBy('date', 'asc')->get();
 
-                // Tarik sisa PO yang belum selesai (quantity > total_sent) dan belum CLOSED
                 $poSisaQuery = DB::table('purchase_orders')
                     ->select(
                         'po_number',
@@ -76,7 +75,6 @@ class DashboardController extends Controller
                 $poSisa = $poSisaQuery->get();
                 
             } catch (\Exception $e) {
-                // Mencegah error blank jika ada masalah relasi
                 $poSisa = collect(); 
             }
         }
@@ -85,8 +83,8 @@ class DashboardController extends Controller
         // 3. LOGIC MODE: SUMMARY (INVENTORY MONITORING)
         // ==========================================
         $labels = []; $actStockData = []; $minStockData = []; 
-        $rmLabels = []; $rmStockData = [];
-        $wipLabels = []; $wipData = [];
+        $rmLabels = []; $rmStockData = []; $rmMinData = [];
+        $wipLabels = []; $wipData = []; $wipMinData = [];
         
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
         
@@ -119,6 +117,8 @@ class DashboardController extends Controller
             $rmChart = $queryRm->groupBy('material_code')->get();
             $rmLabels = $rmChart->pluck('material_code')->toArray();
             $rmStockData = $rmChart->pluck('total_stock')->toArray();
+            // ✨ Buat array data batas minimum RM (Asumsi batas aman 100 lembar)
+            $rmMinData = array_fill(0, count($rmLabels), 100);
 
             // C. GRAFIK WORK IN PROGRESS (WIP WELDING)
             $queryWip = DB::table('finished_goods')
@@ -134,6 +134,8 @@ class DashboardController extends Controller
             $wipChart = $queryWip->get();
             $wipLabels = $wipChart->pluck('part_no')->toArray();
             $wipData = $wipChart->pluck('welding_stock')->toArray();
+            // ✨ Buat array data batas minimum WIP (Asumsi buffer aman 50 pcs)
+            $wipMinData = array_fill(0, count($wipLabels), 50);
         }
 
         // ==========================================
@@ -143,8 +145,8 @@ class DashboardController extends Controller
             'totalParts', 'critCount', 'todayProd', 'todayDelv', 'mode', 
             'deliveryPerformance', 'deliveryTrend', 
             'labels', 'actStockData', 'minStockData', 
-            'rmLabels', 'rmStockData', 
-            'wipLabels', 'wipData', 
+            'rmLabels', 'rmStockData', 'rmMinData', 
+            'wipLabels', 'wipData', 'wipMinData', 
             'customersList', 'selectedCustomer',
             'shortageParts', 'shortageRm', 'wipStockList', 'poSisa'
         ));

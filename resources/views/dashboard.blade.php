@@ -119,7 +119,8 @@
         </div>
         <div class="kpi-card">
             <div class="kpi-icon" style="background: linear-gradient(135deg, #FFCE20, #FF9B00);"><i class="fas fa-truck-loading"></i></div>
-            <div class="kpi-info"><h4>Pengiriman Hari Ini</h4><h2 style="color: #d97706;">-{{ number_format($todayDelv ?? 0) }}</h2></div>
+            {{-- ✨ FIX: Tanda minus (-) pada pengiriman dihilangkan ✨ --}}
+            <div class="kpi-info"><h4>Pengiriman Hari Ini</h4><h2 style="color: #d97706;">{{ number_format($todayDelv ?? 0) }}</h2></div>
         </div>
     </div>
 
@@ -128,7 +129,7 @@
         <div class="col-xl-8 mb-4 mb-xl-0">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-chart-column text-primary"></i> Grafik Monitoring Stok FG (Actual vs Minimum)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-chart-column text-primary"></i> Grafik Monitoring Stok FG</h3>
                 </div>
                 <div id="stockChart" style="flex: 1; min-height: 320px;"></div>
             </div>
@@ -160,7 +161,7 @@
         <div class="col-md-6 mb-4 mb-md-0">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-pallet text-warning"></i> Grafik Raw Material (Stok Sisa Lembar)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-pallet text-warning"></i> Grafik Raw Material (Lembar)</h3>
                 </div>
                 <div id="rmChart" style="min-height: 280px;"></div>
             </div>
@@ -168,7 +169,7 @@
         <div class="col-md-6">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-fire text-danger"></i> Grafik Work In Progress (Stok Welding)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-fire text-danger"></i> Grafik WIP Welding (Pcs)</h3>
                 </div>
                 <div id="wipChart" style="min-height: 280px;"></div>
             </div>
@@ -180,16 +181,16 @@
         <div class="col-12">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-chart-line text-success"></i> Delivery Trend (30 Hari Terakhir)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-truck-fast text-success"></i> Delivery Target & Execution (30 Hari)</h3>
                 </div>
-                <div id="deliveryChart" style="min-height: 280px;"></div>
+                <div id="deliveryChart" style="min-height: 300px;"></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-    // 1. CHART ACTUAL VS MINIMUM STOCK (FG BAR CHART)
+    // 1. CHART FG: COMBO BAR (AKTUAL) & LINE (MINIMUM)
     const lblParts = @json($labels ?? []);
     const dataActual = @json($actStockData ?? []);
     const dataMin = @json($minStockData ?? []);
@@ -197,86 +198,110 @@
     if (lblParts.length > 0) {
         new ApexCharts(document.querySelector("#stockChart"), {
             series: [
-                { name: 'Stok Aktual', data: dataActual },
-                { name: 'Batas Minimum', data: dataMin }
+                { name: 'Stok Aktual', type: 'column', data: dataActual },
+                { name: 'Batas Minimum', type: 'line', data: dataMin }
             ],
-            chart: { type: 'bar', height: 350, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
-            plotOptions: { bar: { columnWidth: '60%', borderRadius: 4 } },
+            chart: { height: 350, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            stroke: { width: [0, 4], curve: 'smooth' },
+            plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
             colors: ['#4318FF', '#EE5D50'],
             dataLabels: { enabled: false },
-            stroke: { show: true, width: 2, colors: ['transparent'] },
-            xaxis: { 
-                categories: lblParts,
-                labels: { style: { fontWeight: 700, fontSize: '10px' } }
-            },
+            xaxis: { categories: lblParts, labels: { style: { fontWeight: 700, fontSize: '10px' } } },
             yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },
             legend: { position: 'top', fontWeight: 700 },
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
-        document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG untuk ditampilkan.</div>";
+        document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG.</div>";
     }
 
-    // 2. CHART RAW MATERIAL (RM BAR CHART)
+    // 2. CHART RM: COMBO BAR (AKTUAL) & LINE (MINIMUM = 100)
     const rmLabels = @json($rmLabels ?? []);
     const rmData = @json($rmStockData ?? []);
+    const rmMin = @json($rmMinData ?? []);
 
     if (rmLabels.length > 0) {
         new ApexCharts(document.querySelector("#rmChart"), {
-            series: [{ name: 'Sisa Stok RM (Lbr)', data: rmData }],
-            chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
-            plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '50%' } },
-            colors: ['#FFCE20'],
+            series: [
+                { name: 'Sisa RM', type: 'column', data: rmData },
+                { name: 'Batas Kritis', type: 'line', data: rmMin }
+            ],
+            chart: { height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            stroke: { width: [0, 3], curve: 'straight', dashArray: [0, 5] },
+            plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+            colors: ['#FFCE20', '#EE5D50'],
             dataLabels: { enabled: false },
-            xaxis: { 
-                categories: rmLabels,
-                labels: { style: { fontWeight: 700, fontSize: '9px' } }
-            },
+            xaxis: { categories: rmLabels, labels: { style: { fontWeight: 700, fontSize: '9px' } } },
             yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },
+            legend: { position: 'top', fontWeight: 700 },
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
         document.querySelector("#rmChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok RM.</div>";
     }
 
-    // 3. CHART WORK IN PROGRESS (WIP BAR CHART)
+    // 3. CHART WIP: COMBO BAR (AKTUAL) & LINE (MINIMUM = 50)
     const wipLabels = @json($wipLabels ?? []);
     const wipData = @json($wipData ?? []);
+    const wipMin = @json($wipMinData ?? []);
 
     if (wipLabels.length > 0) {
         new ApexCharts(document.querySelector("#wipChart"), {
-            series: [{ name: 'Stok WIP (Pcs)', data: wipData }],
-            chart: { type: 'bar', height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
-            plotOptions: { bar: { borderRadius: 4, horizontal: false, columnWidth: '50%' } },
-            colors: ['#EE5D50'],
+            series: [
+                { name: 'Stok WIP', type: 'column', data: wipData },
+                { name: 'Buffer Min', type: 'line', data: wipMin }
+            ],
+            chart: { height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            stroke: { width: [0, 3], curve: 'straight', dashArray: [0, 5] },
+            plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
+            colors: ['#EE5D50', '#a3aed1'],
             dataLabels: { enabled: false },
-            xaxis: { 
-                categories: wipLabels,
-                labels: { style: { fontWeight: 700, fontSize: '9px' } }
-            },
+            xaxis: { categories: wipLabels, labels: { style: { fontWeight: 700, fontSize: '9px' } } },
             yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },
+            legend: { position: 'top', fontWeight: 700 },
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
         document.querySelector("#wipChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok WIP.</div>";
     }
 
-    // 4. CHART DELIVERY TREND (AREA CHART)
+    // 4. CHART DELIVERY TREND: AREA CHART DENGAN GARIS RATA-RATA
     const delvTrend = @json($deliveryTrend ?? []);
-    const delvLabels = delvTrend.map(item => item.date);
-    const delvDataChart = delvTrend.map(item => item.total);
+    
+    if (delvTrend.length > 0) {
+        // Format data untuk Chart
+        const formattedData = delvTrend.map(item => {
+            return { x: item.date, y: item.total };
+        });
 
-    if (delvLabels.length > 0) {
+        // Hitung nilai rata-rata pengiriman 30 hari untuk garis anotasi
+        const totalDelv = formattedData.reduce((acc, curr) => acc + curr.y, 0);
+        const avgDelv = (totalDelv / formattedData.length).toFixed(0);
+
         new ApexCharts(document.querySelector("#deliveryChart"), {
-            series: [{ name: "Total Pengiriman", data: delvDataChart }],
-            chart: { type: 'area', height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            series: [{ name: "Total Pengiriman Aktual", data: formattedData }],
+            chart: { type: 'area', height: 300, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
             stroke: { curve: 'smooth', width: 3 },
             colors: ['#05CD99'],
             fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
-            xaxis: { categories: delvLabels, labels: { style: { fontWeight: 700, fontSize: '10px' } } },
+            xaxis: { 
+                type: 'datetime',
+                labels: { style: { fontWeight: 700, fontSize: '10px' }, format: 'dd MMM' } 
+            },
             yaxis: { labels: { style: { fontWeight: 700, fontFamily: 'JetBrains Mono' } } },
             dataLabels: { enabled: false },
-            legend: { show: false },
+            annotations: {
+                yaxis: [{
+                    y: avgDelv,
+                    borderColor: '#4318FF',
+                    strokeDashArray: 5,
+                    label: {
+                        borderColor: '#4318FF',
+                        style: { color: '#fff', background: '#4318FF', fontWeight: 700, fontSize: '10px' },
+                        text: 'Rata-rata: ' + avgDelv + ' Pcs'
+                    }
+                }]
+            },
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
