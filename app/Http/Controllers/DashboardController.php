@@ -46,31 +46,39 @@ class DashboardController extends Controller
         $poSisa = collect(); 
         
         if ($mode == 'delivery' || $mode == 'summary') {
-            $totalOrdered = DB::table('purchase_order_items')->sum('qty') ?: 1;
-            $totalSent = DB::table('deliveries')->sum('qty_delivery') ?: 0;
-            $deliveryPerformance = round(($totalSent / $totalOrdered) * 100, 1);
+            try {
+                // ✨ MENGGUNAKAN TABEL purchase_orders SESUAI DATABASEMU ✨
+                $totalOrdered = DB::table('purchase_orders')->sum('quantity') ?: 1;
+                $totalSent = DB::table('deliveries')->sum('qty_delivery') ?: 0;
+                $deliveryPerformance = round(($totalSent / $totalOrdered) * 100, 1);
 
-            $deliveryTrend = DB::table('deliveries')
-                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_delivery) as total'))
-                ->where('created_at', '>=', now()->subDays(30))
-                ->groupBy('date')->orderBy('date', 'asc')->get();
+                $deliveryTrend = DB::table('deliveries')
+                    ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_delivery) as total'))
+                    ->where('created_at', '>=', now()->subDays(30))
+                    ->groupBy('date')->orderBy('date', 'asc')->get();
 
-            $poSisaQuery = DB::table('purchase_order_items')
-                ->leftJoin('purchase_orders', 'purchase_order_items.po_id', '=', 'purchase_orders.id')
-                ->select(
-                    'purchase_orders.po_number',
-                    'purchase_orders.customer_code',
-                    'purchase_order_items.part_no',
-                    'purchase_order_items.qty as target_qty',
-                    'purchase_order_items.sent_qty',
-                    DB::raw('(purchase_order_items.qty - purchase_order_items.sent_qty) as sisa_qty')
-                )
-                ->whereRaw('purchase_order_items.qty > purchase_order_items.sent_qty');
+                // Tarik sisa PO yang belum selesai (quantity > total_sent) dan belum CLOSED
+                $poSisaQuery = DB::table('purchase_orders')
+                    ->select(
+                        'po_number',
+                        'customer_code',
+                        'part_no',
+                        'quantity as target_qty',
+                        'total_sent as sent_qty',
+                        DB::raw('(quantity - total_sent) as sisa_qty')
+                    )
+                    ->whereRaw('quantity > total_sent')
+                    ->where('status', '!=', 'CLOSED');
+                    
+                if ($selectedCustomer) {
+                    $poSisaQuery->where('customer_code', $selectedCustomer);
+                }
+                $poSisa = $poSisaQuery->get();
                 
-            if ($selectedCustomer) {
-                $poSisaQuery->where('purchase_orders.customer_code', $selectedCustomer);
+            } catch (\Exception $e) {
+                // Mencegah error blank jika ada masalah relasi
+                $poSisa = collect(); 
             }
-            $poSisa = $poSisaQuery->get();
         }
 
         // ==========================================
@@ -83,7 +91,7 @@ class DashboardController extends Controller
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
         
         if ($mode == 'summary') {
-            // ✨ A. GRAFIK FINISHED GOODS (FG)
+            // A. GRAFIK FINISHED GOODS (FG)
             $queryChart = DB::table('finished_goods')
                 ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
                 ->select('finished_goods.part_no', 'finished_goods.actual_stock', 'finished_goods.min_stock_pcs');
@@ -98,7 +106,7 @@ class DashboardController extends Controller
             $actStockData = $chartData->pluck('actual_stock')->toArray();
             $minStockData = $chartData->pluck('min_stock_pcs')->toArray();
 
-            // ✨ B. GRAFIK RAW MATERIAL (RM)
+            // B. GRAFIK RAW MATERIAL (RM)
             $queryRm = DB::table('rm_stocks')
                 ->select('material_code', DB::raw('SUM(stock_pcs) as total_stock'))
                 ->where('stock_pcs', '>', 0);
@@ -112,7 +120,7 @@ class DashboardController extends Controller
             $rmLabels = $rmChart->pluck('material_code')->toArray();
             $rmStockData = $rmChart->pluck('total_stock')->toArray();
 
-            // ✨ C. GRAFIK WORK IN PROGRESS (WIP WELDING)
+            // C. GRAFIK WORK IN PROGRESS (WIP WELDING)
             $queryWip = DB::table('finished_goods')
                 ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
                 ->select('finished_goods.part_no', 'finished_goods.welding_stock')
@@ -134,9 +142,9 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'totalParts', 'critCount', 'todayProd', 'todayDelv', 'mode', 
             'deliveryPerformance', 'deliveryTrend', 
-            'labels', 'actStockData', 'minStockData', // FG Chart
-            'rmLabels', 'rmStockData', // RM Chart
-            'wipLabels', 'wipData', // WIP Chart
+            'labels', 'actStockData', 'minStockData', 
+            'rmLabels', 'rmStockData', 
+            'wipLabels', 'wipData', 
             'customersList', 'selectedCustomer',
             'shortageParts', 'shortageRm', 'wipStockList', 'poSisa'
         ));
