@@ -15,7 +15,7 @@
     <style>
         /* 🎨 THEME VARIABLES */
         :root { 
-            --corp-blue: #2563eb; /* Biru modern cerah */
+            --corp-blue: #2563eb; 
             
             /* Light Theme Dashboard */
             --bg-body: #f4f7fe;
@@ -24,30 +24,30 @@
             --text-muted: #64748b;
             --border-color: #e2e8f0;
             
-            /* ✨ CUSTOM SIDEBAR LIGHT (PUTIH TULANG / ABU MUDA) ✨ */
+            /* ✨ CUSTOM SIDEBAR LIGHT ✨ */
             --sidebar-bg: #f8fafc; 
             --sidebar-border: #e2e8f0;
-            --sidebar-text: #1e293b; /* Font Hitam/Gelap */
-            --sidebar-icon: #64748b; /* Ikon abu-abu */
-            --sidebar-hover-bg: #e2e8f0; /* Efek hover abu-abu */
-            --sidebar-hover-text: #2563eb; /* Tulisan menyala biru saat kursor mendekat */
+            --sidebar-text: #1e293b; /* Font Hitam Gelap */
+            --sidebar-icon: #64748b; 
+            --sidebar-hover-bg: #e2e8f0; 
+            --sidebar-hover-text: #2563eb; 
         }
 
         /* 🌙 DARK MODE OVERRIDES */
         body.dark-mode {
             --bg-body: #0f172a;
             --bg-surface: #1e293b;
-            --text-main: #f8fafc;
+            --text-main: #f8fafc; /* Font Otomatis Putih Terang */
             --text-muted: #94a3b8;
             --border-color: #334155;
             
             /* ✨ CUSTOM SIDEBAR DARK ✨ */
             --sidebar-bg: #020617;
             --sidebar-border: #1e293b;
-            --sidebar-text: #cbd5e1;
-            --sidebar-icon: #94a3b8;
-            --sidebar-hover-bg: rgba(255, 255, 255, 0.08);
-            --sidebar-hover-text: #ffffff;
+            --sidebar-text: #ffffff; /* Teks menu murni putih */
+            --sidebar-icon: #cbd5e1;
+            --sidebar-hover-bg: rgba(56, 189, 248, 0.1); /* Background neon cyan transparan */
+            --sidebar-hover-text: #38bdf8; /* Teks menyala Cyan / Neon Blue */
         }
 
         body { 
@@ -58,11 +58,12 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* 🔄 BOOTSTRAP OVERRIDES UNTUK DARK MODE */
+        /* 🔄 FIX BOOTSTRAP OVERRIDES AGAR TEKS TIDAK HITAM DI DARK MODE */
         body.dark-mode .bg-white { background-color: var(--bg-surface) !important; }
-        body.dark-mode .text-dark { color: var(--text-main) !important; }
+        body.dark-mode .text-dark { color: var(--text-main) !important; } /* Paksa text-dark jadi putih */
+        body.dark-mode .text-muted { color: var(--text-muted) !important; }
         body.dark-mode .border-bottom, body.dark-mode .border-top { border-color: var(--border-color) !important; }
-        body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--bg-surface); border-color: var(--border-color); }
+        body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--bg-surface); border-color: var(--border-color); color: var(--text-main); }
         
         /* 🏛️ CLEAN INDUSTRIAL SIDEBAR */
         #accordionSidebar { 
@@ -78,16 +79,16 @@
         /* ✨ LOGO & BRAND BUBBLE STYLE ✨ */
         .sidebar-brand { padding: 1.5rem 1rem !important; margin-bottom: 0.5rem; height: auto !important; }
         .sidebar-brand-icon {
-            background: rgba(37, 99, 235, 0.15); /* Efek bubble transparan di belakang logo */
-            padding: 10px;
-            border-radius: 16px; /* Bentuk Bubble / Squircle */
+            background: rgba(37, 99, 235, 0.15); 
+            padding: 8px 12px;
+            border-radius: 16px; 
             display: flex; align-items: center; justify-content: center;
         }
         .sidebar-brand-text { 
             font-weight: 900; 
             letter-spacing: 1px; 
             font-size: 1.05rem; 
-            color: var(--sidebar-text); /* Font Hitam */
+            color: var(--sidebar-text); 
         }
         
         /* ✨ BUBBLE MENU STYLE (PILL SHAPE) ✨ */
@@ -95,10 +96,10 @@
             position: relative;
             padding: 0.85rem 1.25rem !important; 
             margin: 4px 16px; 
-            border-radius: 50rem; /* Bentuk Pill / Bubble sempurna */
+            border-radius: 50rem; 
             font-size: 0.85rem; 
             font-weight: 800; 
-            color: var(--sidebar-text) !important; /* Font Hitam */
+            color: var(--sidebar-text) !important; 
             display: flex; 
             align-items: center; 
             overflow: hidden;
@@ -109,42 +110,58 @@
         .nav-item .nav-link i { 
             font-size: 1.05rem; margin-right: 14px; width: 22px; 
             text-align: center; z-index: 2; 
-            color: var(--sidebar-icon); /* Ikon abu-abu */
-            transition: color 0.3s ease; 
+            color: var(--sidebar-icon); 
+            transition: all 0.3s ease; 
         }
         
         .nav-item .nav-link span { z-index: 2; }
 
-        /* ✨ EFEK KURSOR MENDEKAT (HOVER AUTO BERUBAH) ✨ */
+        /* ✨ EFEK KURSOR MENDEKAT (HOVER LIGHT MODE) ✨ */
         .nav-item .nav-link:hover { 
             color: var(--sidebar-hover-text) !important; 
             background: var(--sidebar-hover-bg); 
-            transform: translateX(6px); /* Geser smooth ke kanan */
+            transform: translateX(6px); 
         }
         .nav-item .nav-link:hover i { color: var(--sidebar-hover-text) !important; }
         
+        /* ✨ EFEK KURSOR MENDEKAT KHUSUS DARK MODE (NEON GLOW) ✨ */
+        body.dark-mode .nav-item .nav-link:hover {
+            color: var(--sidebar-hover-text) !important;
+            background: var(--sidebar-hover-bg);
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6); /* Efek teks menyala */
+            box-shadow: inset 4px 0 0 var(--sidebar-hover-text); /* Garis neon di kiri */
+        }
+        body.dark-mode .nav-item .nav-link:hover i { 
+            color: var(--sidebar-hover-text) !important;
+            filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8)); /* Ikon menyala */
+        }
+
         /* Active Bubble / Pill */
         .nav-item.active .nav-link { 
             background: var(--corp-blue) !important; 
             color: #ffffff !important; 
-            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25); /* Glow biru */
+            box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25); 
             transform: translateX(0px);
+            text-shadow: none !important;
         }
-        .nav-item.active .nav-link i { color: #ffffff !important; }
+        body.dark-mode .nav-item.active .nav-link {
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 6px 15px rgba(37, 99, 235, 0.5);
+        }
+        .nav-item.active .nav-link i { color: #ffffff !important; filter: none !important; }
 
         .sidebar-heading { 
-            color: #94a3b8 !important; font-size: 0.7rem !important; font-weight: 900; 
+            color: var(--text-muted) !important; font-size: 0.7rem !important; font-weight: 900; 
             letter-spacing: 1.5px; margin: 1.5rem 0 0.5rem 24px;
         }
 
         /* ✨ ANIMASI MICRO-BUBBLE DI SUBMENU ✨ */
         .collapse-inner {
-            background: var(--bg-surface) !important; /* Warna daleman dropdown Putih */
+            background: var(--bg-surface) !important; 
             border-radius: 16px !important; margin: 0px 16px 10px 16px; padding: 8px !important;
             border: 1px solid var(--sidebar-border);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
-        body.dark-mode .collapse-inner { background: rgba(0,0,0,0.2) !important; border-color: rgba(255,255,255,0.03); }
+        body.dark-mode .collapse-inner { background: rgba(0,0,0,0.25) !important; border-color: rgba(255,255,255,0.05); }
         
         .collapse-item {
             position: relative; border-radius: 50rem !important; padding: 8px 16px !important;
@@ -159,7 +176,7 @@
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* Hover Submenu */
+        /* Hover Submenu Light Mode */
         .collapse-item:hover { 
             background: var(--sidebar-hover-bg) !important; 
             color: var(--sidebar-hover-text) !important; 
@@ -167,11 +184,22 @@
         }
         .collapse-item:hover::before { transform: translateY(-50%) scale(1); left: 10px; }
         
+        /* Hover Submenu Khusus Dark Mode (Neon) */
+        body.dark-mode .collapse-item:hover {
+            color: var(--sidebar-hover-text) !important;
+            text-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
+        }
+        body.dark-mode .collapse-item:hover::before {
+            background: var(--sidebar-hover-text);
+            box-shadow: 0 0 6px var(--sidebar-hover-text);
+        }
+
         .collapse-item.active { 
             background: rgba(37, 99, 235, 0.1) !important; 
             color: var(--corp-blue) !important; 
             font-weight: 900 !important;
         }
+        body.dark-mode .collapse-item.active { color: #60a5fa !important; }
 
         /* 🔝 TOPBAR */
         .topbar { 
@@ -183,7 +211,7 @@
         }
         .clock-badge {
             background: var(--corp-blue); color: #ffffff; font-family: 'JetBrains Mono', monospace; font-weight: 700;
-            padding: 8px 16px; border-radius: 50rem; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+            padding: 8px 16px; border-radius: 50rem; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
         }
         
         /* 🌓 THEME TOGGLE BUBBLE BUTTON */
@@ -209,8 +237,8 @@
         <ul class="navbar-nav sidebar sidebar-light accordion" id="accordionSidebar">
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('dashboard') }}">
                 <div class="sidebar-brand-icon">
-                    {{-- 🖼️ LOGO ASALTA BERBENTUK BUBBLE --}}
-                    <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo" style="height: 28px; object-fit: contain;" onerror="this.outerHTML='<i class=\'fas fa-industry text-primary\' style=\'font-size: 1.5rem;\'></i>'">
+                    {{-- 🖼️ LOGO ASALTA DIPERBESAR SEDIKIT BIAR PAS PROPORSINYA --}}
+                    <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo" style="height: 38px; object-fit: contain;" onerror="this.outerHTML='<i class=\'fas fa-industry text-primary\' style=\'font-size: 1.5rem;\'></i>'">
                 </div>
                 <div class="sidebar-brand-text mx-3">ASALTA <span style="color:#2563eb;">MRP</span></div>
             </a>
@@ -389,7 +417,7 @@
                 </div>
             </div>
 
-            <footer class="bg-white py-3 border-top mt-auto" style="transition: background 0.3s ease;">
+            <footer class="bg-white py-3 border-top mt-auto" style="transition: background 0.3s ease, border-color 0.3s ease;">
                 <div class="container my-auto text-center font-weight-bold text-muted small">
                     &copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem Engine.
                 </div>
