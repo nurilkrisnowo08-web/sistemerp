@@ -78,36 +78,45 @@ class DashboardController extends Controller
         // ==========================================
         $wosDeliveryData = [];
         if (Schema::hasTable('delivery_plans')) {
-            $delvPlansQuery = DB::table('delivery_plans')
-                ->leftJoin('parts', 'delivery_plans.part_no', '=', 'parts.part_no')
-                ->leftJoin('finished_goods', 'delivery_plans.part_no', '=', 'finished_goods.part_no')
-                ->select(
-                    'delivery_plans.*', 'parts.part_name', 'parts.customer_code',
-                    'finished_goods.actual_stock as fg_rak'
-                )
-                ->where('delivery_plans.plan_date', $today);
-            
-            if ($selectedCustomer) $delvPlansQuery->where('parts.customer_code', $selectedCustomer);
-            $rawWosDelv = $delvPlansQuery->orderBy('delivery_plans.delivery_time', 'asc')->get();
-
-            foreach ($rawWosDelv as $wd) {
-                // Hitung aktual delivery MURNI dari data Surat Jalan (tabel deliveries) hari ini
-                $actShift1 = DB::table('deliveries')
-                    ->where('part_no', $wd->part_no)->whereDate('created_at', $today)
-                    ->whereTime('created_at', '<', '16:00:00')->sum('qty_delivery');
-                $actShift2 = DB::table('deliveries')
-                    ->where('part_no', $wd->part_no)->whereDate('created_at', $today)
-                    ->whereTime('created_at', '>=', '16:00:00')->sum('qty_delivery');
-
-                $totalActual = $actShift1 + $actShift2;
-                $totalTarget = $wd->outstanding_qty + $wd->plan_qty; // Total yang harus dikirim
+            try {
+                $delvPlansQuery = DB::table('delivery_plans')
+                    ->leftJoin('parts', 'delivery_plans.part_no', '=', 'parts.part_no')
+                    ->leftJoin('finished_goods', 'delivery_plans.part_no', '=', 'finished_goods.part_no')
+                    ->select(
+                        'delivery_plans.*', 'parts.part_name', 'parts.customer_code',
+                        'finished_goods.actual_stock as fg_rak'
+                    )
+                    ->where('delivery_plans.plan_date', $today);
                 
-                $wd->actual_s1 = (int)$actShift1;
-                $wd->actual_s2 = (int)$actShift2;
-                $wd->total_target = (int)$totalTarget;
-                $wd->status_judge = ($totalActual >= $totalTarget) ? 'OK' : 'SHORT';
+                if ($selectedCustomer) $delvPlansQuery->where('parts.customer_code', $selectedCustomer);
                 
-                $wosDeliveryData[] = $wd;
+                // ✨ FIX: Menggunakan kolom delv_time sesuai database aslimu
+                $rawWosDelv = $delvPlansQuery->orderBy('delivery_plans.delv_time', 'asc')->get();
+
+                foreach ($rawWosDelv as $wd) {
+                    $actShift1 = DB::table('deliveries')
+                        ->where('part_no', $wd->part_no)->whereDate('created_at', $today)
+                        ->whereTime('created_at', '<', '16:00:00')->sum('qty_delivery');
+                    $actShift2 = DB::table('deliveries')
+                        ->where('part_no', $wd->part_no)->whereDate('created_at', $today)
+                        ->whereTime('created_at', '>=', '16:00:00')->sum('qty_delivery');
+
+                    $totalActual = $actShift1 + $actShift2;
+                    // ✨ FIX: Menggunakan kolom blnc_delv dan plan_delv sesuai database aslimu
+                    $targetQty = ($wd->blnc_delv ?? 0) + ($wd->plan_delv ?? 0); 
+                    
+                    $wd->actual_s1 = (int)$actShift1;
+                    $wd->actual_s2 = (int)$actShift2;
+                    $wd->total_target = (int)$targetQty;
+                    
+                    // Judge OK jika total yang dikirim hari ini >= Target (Balance + Plan)
+                    $wd->status_judge = ($totalActual >= $targetQty && $targetQty > 0) ? 'OK' : 'SHORT';
+                    
+                    $wosDeliveryData[] = $wd;
+                }
+            } catch (\Exception $e) {
+                // Menangkap error jika masih ada struktur yang kurang pas
+                $wosDeliveryData = [];
             }
         }
 
@@ -118,6 +127,7 @@ class DashboardController extends Controller
         try {
             $thirtyDaysAgo = date('Y-m-d', strtotime('-30 days', strtotime($today)));
             
+            // Tarik Total Pengiriman Aktual dari Surat Jalan
             $delvData = DB::table('deliveries')
                 ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_delivery) as total'))
                 ->where('created_at', '>=', $thirtyDaysAgo)
@@ -126,14 +136,19 @@ class DashboardController extends Controller
 
             $targetDelvData = [];
             if (Schema::hasTable('delivery_plans')) { 
-                $targetDelvData = DB::table('delivery_plans')
-                    ->select('plan_date as date', DB::raw('SUM(plan_qty + outstanding_qty) as total'))
-                    ->where('plan_date', '>=', $thirtyDaysAgo)
-                    ->where('plan_date', '<=', $today)
-                    ->groupBy('plan_date')->pluck('total', 'date')->toArray();
+                try {
+                    // ✨ FIX: Menjumlahkan kolom total_delv sesuai database aslimu
+                    $targetDelvData = DB::table('delivery_plans')
+                        ->select('plan_date as date', DB::raw('SUM(total_delv) as total'))
+                        ->where('plan_date', '>=', $thirtyDaysAgo)
+                        ->where('plan_date', '<=', $today)
+                        ->groupBy('plan_date')->pluck('total', 'date')->toArray();
+                } catch (\Exception $e) { 
+                    $targetDelvData = [];
+                }
             }
             
-            // Fallback: Jika tabel delivery_plans kosong/belum ada historis, pakai PO due_date agar grafik target tidak kosong
+            // Fallback: Jika target dari delivery_plans kosong, pakai purchase_orders (due_date)
             if (empty($targetDelvData)) {
                 $targetDelvData = DB::table('purchase_orders')
                     ->select(DB::raw('DATE(due_date) as date'), DB::raw('SUM(quantity) as total'))
@@ -157,7 +172,7 @@ class DashboardController extends Controller
         } catch (\Exception $e) { }
 
         // ==========================================
-        // 6. CHART INVENTORY (FG, RM, WIP) (DIPINDAH KE BAWAH)
+        // 6. CHART INVENTORY (FG, RM, WIP)
         // ==========================================
         $labels = []; $actStockData = []; $minStockData = []; 
         $rmLabels = []; $rmStockData = []; $rmMinData = [];
