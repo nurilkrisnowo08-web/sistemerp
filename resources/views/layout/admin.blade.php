@@ -15,15 +15,15 @@
     <style>
         /* 🎨 THEME VARIABLES */
         :root { 
-            --corp-blue: #1d4ed8; 
+            --corp-blue: #2563eb; /* Biru modern cerah */
             
             /* Light Theme */
-            --bg-body: #f1f5f9;
+            --bg-body: #f8fafc;
             --bg-surface: #ffffff;
             --text-main: #0f172a;
             --text-muted: #64748b;
             --border-color: #e2e8f0;
-            --sidebar-start: #0f172a;
+            --sidebar-start: #0f172a; /* Dark Navy ala referensi */
             --sidebar-end: #172554;
         }
 
@@ -56,73 +56,77 @@
         #accordionSidebar { 
             background: linear-gradient(180deg, var(--sidebar-start) 0%, var(--sidebar-end) 100%) !important; 
             z-index: 1050;
-            width: 250px !important;
+            width: 260px !important;
             position: relative;
             overflow-x: hidden;
             transition: background 0.3s ease;
         }
 
+        /* ✨ LOGO & BRAND BUBBLE STYLE ✨ */
+        .sidebar-brand { padding: 1.5rem 1rem !important; margin-bottom: 0.5rem; height: auto !important; }
+        .sidebar-brand-icon {
+            background: rgba(255, 255, 255, 0.05); /* Efek bubble transparan di belakang logo */
+            padding: 10px;
+            border-radius: 16px; /* Bentuk Bubble / Squircle */
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.05);
+        }
         .sidebar-brand-text { 
             font-weight: 800; 
-            letter-spacing: 1.5px; 
-            font-size: 0.95rem; 
+            letter-spacing: 1px; 
+            font-size: 1.05rem; 
             color: #ffffff; 
         }
         
-        /* ✨ ANIMASI GELEMBUNG (BUBBLE RIPPLE) */
+        /* ✨ BUBBLE MENU STYLE (PILL SHAPE) ✨ */
         .nav-item .nav-link { 
             position: relative;
-            padding: 0.75rem 1.25rem !important; 
-            margin: 4px 12px; 
-            border-radius: 10px; 
-            font-size: 0.8rem; 
+            padding: 0.85rem 1.25rem !important; 
+            margin: 4px 16px; 
+            border-radius: 50rem; /* Bentuk Pill / Bubble sempurna */
+            font-size: 0.85rem; 
             font-weight: 700; 
             color: #94a3b8 !important; 
             display: flex; 
             align-items: center; 
             overflow: hidden;
             z-index: 1;
-            transition: color 0.3s ease, transform 0.2s ease;
+            transition: all 0.3s ease;
         }
 
-        .nav-item .nav-link i { font-size: 1rem; margin-right: 14px; width: 20px; text-align: center; z-index: 2; }
+        .nav-item .nav-link i { font-size: 1.05rem; margin-right: 14px; width: 22px; text-align: center; z-index: 2; transition: color 0.3s ease; }
         .nav-item .nav-link span { z-index: 2; }
 
-        .nav-item .nav-link::before {
-            content: '';
-            position: absolute; top: 50%; left: 20px; width: 0px; height: 0px;
-            background: rgba(96, 165, 250, 0.15); 
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.5s ease;
-            opacity: 0; z-index: 0;
+        /* Hover Bubble Highlight */
+        .nav-item .nav-link:hover { 
+            color: #ffffff !important; 
+            background: rgba(255, 255, 255, 0.08); 
+            transform: translateX(4px); 
         }
-
-        .nav-item .nav-link:hover { color: #ffffff !important; transform: translateX(4px); }
-        .nav-item .nav-link:hover::before { width: 350px; height: 350px; opacity: 1; }
         
+        /* Active Bubble / Pill */
         .nav-item.active .nav-link { 
             background: var(--corp-blue) !important; 
             color: #ffffff !important; 
-            box-shadow: 0 4px 15px rgba(29, 78, 216, 0.4);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35); /* Glow biru */
         }
-        .nav-item.active .nav-link::before { display: none; }
+        .nav-item.active .nav-link i { color: #ffffff !important; }
 
         .sidebar-heading { 
-            color: #64748b !important; font-size: 0.65rem !important; font-weight: 800; 
-            letter-spacing: 1.8px; margin: 1.5rem 0 0.4rem 20px;
+            color: #64748b !important; font-size: 0.7rem !important; font-weight: 800; 
+            letter-spacing: 2px; margin: 1.5rem 0 0.5rem 24px;
         }
 
-        /* ✨ ANIMASI MICRO-BUBBLE DI SUBMENU */
+        /* ✨ ANIMASI MICRO-BUBBLE DI SUBMENU ✨ */
         .collapse-inner {
-            background: rgba(0, 0, 0, 0.2) !important;
-            border-radius: 12px !important; margin: 0px 12px 10px 12px; padding: 8px !important;
-            border: 1px solid rgba(255,255,255,0.05);
+            background: rgba(0, 0, 0, 0.25) !important;
+            border-radius: 16px !important; margin: 0px 16px 10px 16px; padding: 8px !important;
+            border: 1px solid rgba(255,255,255,0.03);
         }
         
         .collapse-item {
-            position: relative; border-radius: 8px !important; padding: 8px 14px !important;
-            font-size: 0.75rem !important; font-weight: 700 !important; color: #94a3b8 !important;
+            position: relative; border-radius: 50rem !important; padding: 8px 16px !important;
+            font-size: 0.8rem !important; font-weight: 700 !important; color: #94a3b8 !important;
             display: flex !important; align-items: center; justify-content: space-between;
             transition: all 0.3s ease; overflow: hidden;
         }
@@ -133,11 +137,9 @@
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        .collapse-item:hover {
-            background: rgba(255, 255, 255, 0.05) !important; color: #ffffff !important; padding-left: 20px !important; 
-        }
-        .collapse-item:hover::before { transform: translateY(-50%) scale(1); left: 8px; }
-        .collapse-item.active { background: rgba(29, 78, 216, 0.2) !important; color: #60a5fa !important; }
+        .collapse-item:hover { background: rgba(255, 255, 255, 0.08) !important; color: #ffffff !important; padding-left: 22px !important; }
+        .collapse-item:hover::before { transform: translateY(-50%) scale(1); left: 10px; }
+        .collapse-item.active { background: rgba(37, 99, 235, 0.2) !important; color: #60a5fa !important; }
 
         /* 🔝 TOPBAR */
         .topbar { 
@@ -148,29 +150,21 @@
             transition: background 0.3s ease, border-color 0.3s ease;
         }
         .clock-badge {
-            background: var(--corp-blue);
-            color: #ffffff;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            letter-spacing: 0.5px;
-            box-shadow: 0 4px 10px rgba(29, 78, 216, 0.3);
+            background: var(--corp-blue); color: #ffffff; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+            padding: 8px 16px; border-radius: 50rem; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
         }
         
-        /* 🌓 THEME TOGGLE BUTTON */
+        /* 🌓 THEME TOGGLE BUBBLE BUTTON */
         .theme-btn {
-            width: 40px; height: 40px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 12px; border: 1px solid var(--border-color);
+            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; border: 1px solid var(--border-color);
             background: var(--bg-body); color: var(--text-muted);
-            transition: all 0.2s ease; cursor: pointer;
+            transition: all 0.2s ease; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
-        .theme-btn:hover { background: var(--border-color); color: var(--text-main); }
+        .theme-btn:hover { background: var(--border-color); color: var(--text-main); transform: scale(1.05); }
 
         @media (max-width: 768px) {
-            #accordionSidebar { position: fixed; height: 100vh; left: -250px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            #accordionSidebar { position: fixed; height: 100vh; left: -260px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
             #accordionSidebar.mobile-active { left: 0; }
         }
     </style>
@@ -181,9 +175,12 @@
 
         {{-- SIDEBAR --}}
         <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
-            <a class="sidebar-brand d-flex align-items-center justify-content-center my-4" href="{{ route('dashboard') }}">
-                <div class="sidebar-brand-icon"><i class="fas fa-industry text-primary" style="font-size: 1.5rem;"></i></div>
-                <div class="sidebar-brand-text mx-2">ASALTA <span style="color:#60a5fa;">MRP</span></div>
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('dashboard') }}">
+                <div class="sidebar-brand-icon">
+                    {{-- 🖼️ LOGO ASALTA BERBENTUK BUBBLE --}}
+                    <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo" style="height: 28px; object-fit: contain;" onerror="this.outerHTML='<i class=\'fas fa-industry text-primary\' style=\'font-size: 1.5rem;\'></i>'">
+                </div>
+                <div class="sidebar-brand-text mx-3">ASALTA <span style="color:#60a5fa;">MRP</span></div>
             </a>
 
             @php $role = strtolower(Auth::user()->role ?? 'admin'); @endphp
@@ -240,10 +237,10 @@
                             <span>Intelligence Hub</span>
                         </a>
                         <a class="collapse-item {{ Request::routeIs('ppic.mps.index') ? 'active' : '' }}" href="{{ route('ppic.mps.index') }}">
-                            <span>MPS Big Press</span><span class="badge badge-primary px-1">BIG</span>
+                            <span>MPS Big Press</span><span class="badge badge-primary px-1 badge-pill">BIG</span>
                         </a>
                         <a class="collapse-item {{ Request::is('*mps-small*') ? 'active' : '' }}" href="{{ url('/planning/ppic/mps-small') }}">
-                            <span>MPS Small Press</span><span class="badge badge-warning px-1 text-dark">SMALL</span>
+                            <span>MPS Small Press</span><span class="badge badge-warning px-1 text-dark badge-pill">SMALL</span>
                         </a>
                         <a class="collapse-item {{ Request::routeIs('ppic.quality.hub') ? 'active' : '' }}" href="{{ route('ppic.quality.hub') }}">
                             <span>Quality Hub</span>
@@ -297,7 +294,6 @@
             @if(in_array($role, ['kepala_ppic', 'staff_ppic', 'admin']))
             <div class="sidebar-heading">LOGISTICS</div>
             
-            {{-- ✨ KAMAR DELIVERY WOS & DISPATCH --}}
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseDelivery">
                     <i class="fas fa-fw fa-truck-loading"></i><span>Delivery Hub</span>
@@ -335,7 +331,7 @@
 
                     <ul class="navbar-nav ml-auto align-items-center">
                         
-                        {{-- 🌓 TOMBOL TOGGLE DARK/LIGHT MODE --}}
+                        {{-- 🌓 TOMBOL TOGGLE DARK/LIGHT MODE (BUBBLE) --}}
                         <li class="nav-item mr-3">
                             <button id="themeToggleBtn" class="theme-btn" title="Toggle Dark/Light Mode">
                                 <i class="fas fa-moon" id="themeIcon"></i>
@@ -348,7 +344,7 @@
                         <li class="nav-item">
                             <form action="{{ route('logout') }}" method="POST">
                                 @csrf
-                                <button type="submit" class="btn btn-danger btn-sm px-3 font-weight-bold rounded-pill shadow-sm" title="Log Out">
+                                <button type="submit" class="btn btn-danger btn-sm px-4 font-weight-bold rounded-pill shadow-sm" title="Log Out">
                                     <i class="fas fa-power-off mr-1"></i> LOGOUT
                                 </button>
                             </form>
@@ -392,7 +388,6 @@
         const themeIcon = document.getElementById('themeIcon');
         const body = document.body;
 
-        // Cek memory lokal untuk preferensi tema
         if (localStorage.getItem('mrp_theme') === 'dark') {
             body.classList.add('dark-mode');
             themeIcon.classList.replace('fa-moon', 'fa-sun');
