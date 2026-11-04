@@ -33,11 +33,11 @@
             --sidebar-hover-text: #2563eb; 
         }
 
-        /* 🌙 DARK MODE OVERRIDES */
+        /* 🌙 DARK MODE OVERRIDES (LEBIH AMAN, TIDAK MERUSAK LAYOUT HALAMAN LAIN) */
         body.dark-mode {
             --bg-body: #0f172a;
             --bg-surface: #1e293b;
-            --text-main: #f8fafc; 
+            --text-main: #f8fafc; /* Otomatis Font Putih Terang */
             --text-muted: #94a3b8;
             --border-color: #334155;
             
@@ -47,7 +47,7 @@
             --sidebar-text: #ffffff; 
             --sidebar-icon: #cbd5e1;
             --sidebar-hover-bg: rgba(56, 189, 248, 0.1); 
-            --sidebar-hover-text: #38bdf8; 
+            --sidebar-hover-text: #38bdf8; /* Teks Neon Cyan */
         }
 
         body { 
@@ -58,20 +58,12 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* 🔄 FIX BOOTSTRAP OVERRIDES AGAR SEMUA HALAMAN AMAN DI DARK MODE */
+        /* 🔄 BASIC BOOTSTRAP OVERRIDES UNTUK DARK MODE (SAFE MODE) */
         body.dark-mode .bg-white { background-color: var(--bg-surface) !important; }
-        body.dark-mode .bg-light { background-color: rgba(0, 0, 0, 0.2) !important; color: var(--text-main) !important; }
         body.dark-mode .text-dark { color: var(--text-main) !important; } 
         body.dark-mode .text-muted { color: var(--text-muted) !important; }
-        body.dark-mode .border-bottom, body.dark-mode .border-top, body.dark-mode .border, body.dark-mode .border-right, body.dark-mode .border-left { border-color: var(--border-color) !important; }
         body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--bg-surface); border-color: var(--border-color); color: var(--text-main); }
-        
-        /* ✨ FIX TABEL GLOBAL UNTUK DARK MODE (ANTI ZEBRA CROSS) ✨ */
-        body.dark-mode table { color: var(--text-main) !important; }
-        body.dark-mode th, body.dark-mode thead th { background-color: rgba(0,0,0,0.25) !important; border-color: var(--border-color) !important; color: #cbd5e1 !important; }
-        body.dark-mode td { border-color: var(--border-color) !important; }
-        body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background-color: rgba(255,255,255,0.02) !important; }
-        body.dark-mode .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.05) !important; color: #fff !important; }
+        /* Dihapus: CSS global table dan border yang terlalu agresif merusak layar WOS Delivery */
         
         /* 🏛️ CLEAN INDUSTRIAL SIDEBAR */
         #accordionSidebar { 
@@ -230,15 +222,6 @@
             transition: all 0.2s ease; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
         }
         .theme-btn:hover { background: var(--border-color); color: var(--text-main); transform: scale(1.05); }
-        
-        /* 🎨 STYLE FILTER TOPBAR */
-        .topbar-filter-card {
-            background: var(--bg-body); border-radius: 50rem; padding: 4px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color);
-        }
-        .topbar-filter-card select, .topbar-filter-card input {
-            border: none; outline: none; font-weight: 700; color: var(--text-main); background: transparent; cursor: pointer; font-size: 12px; font-family: 'Plus Jakarta Sans';
-        }
-        .topbar-filter-card select { padding-right: 10px; border-right: 2px solid var(--border-color); }
 
         @media (max-width: 768px) {
             #accordionSidebar { position: fixed; height: 100vh; left: -260px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -406,33 +389,6 @@
                     </div>
 
                     <ul class="navbar-nav ml-auto align-items-center">
-                        
-                        {{-- ✨ PELINDUNG ANTI ERROR: DASHBOARD FILTER DI TOPBAR ✨ --}}
-                        @if(Request::is('dashboard*'))
-                        <li class="nav-item mr-3 d-none d-lg-block">
-                            <form id="dashFilter" action="{{ route('dashboard') }}" method="GET" class="topbar-filter-card">
-                                <i class="fas fa-layer-group text-primary ml-1"></i>
-                                <select name="area" onchange="document.getElementById('dashFilter').submit();">
-                                    <option value="all" {{ (($areaFilter ?? 'all') == 'all') ? 'selected' : '' }}>ALL MACHINES</option>
-                                    <option value="big" {{ (($areaFilter ?? 'all') == 'big') ? 'selected' : '' }}>BIG PRESS</option>
-                                    <option value="small" {{ (($areaFilter ?? 'all') == 'small') ? 'selected' : '' }}>SMALL PRESS</option>
-                                </select>
-
-                                <i class="fas fa-user-tie text-primary ml-1"></i>
-                                <select name="customer" onchange="document.getElementById('dashFilter').submit();">
-                                    <option value="">ALL CUSTOMER</option>
-                                    @if(isset($customersList))
-                                        @foreach($customersList as $cust)
-                                            <option value="{{ $cust }}" {{ (($selectedCustomer ?? '') == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
-                                        @endforeach
-                                    @endif
-                                </select>
-                                
-                                <i class="far fa-calendar-alt text-primary ml-1"></i>
-                                <input type="date" name="date" value="{{ $today ?? date('Y-m-d') }}" onchange="document.getElementById('dashFilter').submit();">
-                            </form>
-                        </li>
-                        @endif
                         
                         {{-- 🌓 TOMBOL TOGGLE DARK/LIGHT MODE (BUBBLE) --}}
                         <li class="nav-item mr-3">
