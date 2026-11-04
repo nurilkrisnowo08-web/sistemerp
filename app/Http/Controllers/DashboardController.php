@@ -27,22 +27,16 @@ class DashboardController extends Controller
             ->get();
         $critCount = $shortageParts->count(); 
         
-        // RM Threshold disetel 100 lembar sebagai batas kritis default
         $shortageRm = DB::table('rm_stocks')
             ->where('stock_pcs', '<=', 100) 
             ->select('coil_id', 'material_code', 'stock_pcs')
             ->get();
 
-        $wipStockList = DB::table('finished_goods')
-            ->where('welding_stock', '>', 0)
-            ->select('part_no', 'welding_stock')
-            ->get();
-        
         $todayProd = DB::table('production_logs')->whereDate('created_at', $today)->where('qty', '>', 0)->sum('qty') ?? 0;
         $todayDelv = DB::table('deliveries')->whereDate('created_at', $today)->sum('qty_delivery') ?? 0;
 
         // ==========================================
-        // 3. GRAFIK PRODUKSI WOS VS ACTUAL PER PART
+        // 3. GRAFIK PRODUKSI: WOS PLAN VS ACTUAL PER PART
         // ==========================================
         $prodPlansQuery = DB::table('production_plans')->where('plan_date', $today);
         if ($areaFilter === 'small') {
@@ -54,44 +48,71 @@ class DashboardController extends Controller
                 $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%');
             });
         }
-        if ($selectedCustomer) {
-            $prodPlansQuery->where('customer_code', $selectedCustomer);
-        }
+        if ($selectedCustomer) $prodPlansQuery->where('customer_code', $selectedCustomer);
         $dailyPlans = $prodPlansQuery->get();
         
-        // Gabungkan Target WOS berdasarkan Part (Mencegah Double Count Jika 1 Part Jalan di 2 Mesin)
         $groupedProd = [];
         foreach ($dailyPlans as $p) {
             $target = $p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot;
-            if(!isset($groupedProd[$p->part_no])) {
-                $groupedProd[$p->part_no] = 0;
-            }
+            if(!isset($groupedProd[$p->part_no])) $groupedProd[$p->part_no] = 0;
             $groupedProd[$p->part_no] += $target;
         }
 
         $prodLabels = []; $prodTargets = []; $prodActuals = []; $prodNgs = [];
         foreach ($groupedProd as $part => $tgt) {
             $actOk = DB::table('production_actuals')
-                        ->where('part_no', $part)
-                        ->whereDate('created_at', $today)
-                        ->where('line_code', '!=', 'WELDING AREA')
-                        ->sum('qty_ok');
-            
-            // ✨ TAMBAHAN: Tarik Data Aktual NG per Part
+                        ->where('part_no', $part)->whereDate('created_at', $today)
+                        ->where('line_code', '!=', 'WELDING AREA')->sum('qty_ok');
             $actNg = DB::table('production_actuals')
-                        ->where('part_no', $part)
-                        ->whereDate('created_at', $today)
-                        ->where('line_code', '!=', 'WELDING AREA')
-                        ->sum('qty_ng');
+                        ->where('part_no', $part)->whereDate('created_at', $today)
+                        ->where('line_code', '!=', 'WELDING AREA')->sum('qty_ng');
 
             $prodLabels[] = $part;
             $prodTargets[] = (int)$tgt;
             $prodActuals[] = (int)$actOk;
-            $prodNgs[] = (int)$actNg; // ✨ Simpan NG ke array untuk diagram
+            $prodNgs[] = (int)$actNg; 
         }
 
         // ==========================================
-        // 4. DELIVERY: WOS DELIVERY (TARGET) VS ACTUAL PENGIRIMAN
+        // 4. WOS DELIVERY LOGISTICS (JADWAL PENGIRIMAN)
+        // ==========================================
+        $wosDeliveryData = [];
+        if (Schema::hasTable('delivery_plans')) {
+            $delvPlansQuery = DB::table('delivery_plans')
+                ->leftJoin('parts', 'delivery_plans.part_no', '=', 'parts.part_no')
+                ->leftJoin('finished_goods', 'delivery_plans.part_no', '=', 'finished_goods.part_no')
+                ->select(
+                    'delivery_plans.*', 'parts.part_name', 'parts.customer_code',
+                    'finished_goods.actual_stock as fg_rak'
+                )
+                ->where('delivery_plans.plan_date', $today);
+            
+            if ($selectedCustomer) $delvPlansQuery->where('parts.customer_code', $selectedCustomer);
+            $rawWosDelv = $delvPlansQuery->orderBy('delivery_plans.delivery_time', 'asc')->get();
+
+            foreach ($rawWosDelv as $wd) {
+                // Hitung aktual delivery MURNI dari data Surat Jalan (tabel deliveries) hari ini
+                $actShift1 = DB::table('deliveries')
+                    ->where('part_no', $wd->part_no)->whereDate('created_at', $today)
+                    ->whereTime('created_at', '<', '16:00:00')->sum('qty_delivery');
+                $actShift2 = DB::table('deliveries')
+                    ->where('part_no', $wd->part_no)->whereDate('created_at', $today)
+                    ->whereTime('created_at', '>=', '16:00:00')->sum('qty_delivery');
+
+                $totalActual = $actShift1 + $actShift2;
+                $totalTarget = $wd->outstanding_qty + $wd->plan_qty; // Total yang harus dikirim
+                
+                $wd->actual_s1 = (int)$actShift1;
+                $wd->actual_s2 = (int)$actShift2;
+                $wd->total_target = (int)$totalTarget;
+                $wd->status_judge = ($totalActual >= $totalTarget) ? 'OK' : 'SHORT';
+                
+                $wosDeliveryData[] = $wd;
+            }
+        }
+
+        // ==========================================
+        // 5. CHART DELIVERY TREND (WOS TARGET VS ACTUAL SURAT JALAN)
         // ==========================================
         $deliveryTrend = collect();
         try {
@@ -106,11 +127,14 @@ class DashboardController extends Controller
             $targetDelvData = [];
             if (Schema::hasTable('delivery_plans')) { 
                 $targetDelvData = DB::table('delivery_plans')
-                    ->select('plan_date as date', DB::raw('SUM(target_qty) as total'))
+                    ->select('plan_date as date', DB::raw('SUM(plan_qty + outstanding_qty) as total'))
                     ->where('plan_date', '>=', $thirtyDaysAgo)
                     ->where('plan_date', '<=', $today)
                     ->groupBy('plan_date')->pluck('total', 'date')->toArray();
-            } else { 
+            }
+            
+            // Fallback: Jika tabel delivery_plans kosong/belum ada historis, pakai PO due_date agar grafik target tidak kosong
+            if (empty($targetDelvData)) {
                 $targetDelvData = DB::table('purchase_orders')
                     ->select(DB::raw('DATE(due_date) as date'), DB::raw('SUM(quantity) as total'))
                     ->where('due_date', '>=', $thirtyDaysAgo)
@@ -133,14 +157,13 @@ class DashboardController extends Controller
         } catch (\Exception $e) { }
 
         // ==========================================
-        // 5. CHART INVENTORY (FG, RM, WIP)
+        // 6. CHART INVENTORY (FG, RM, WIP) (DIPINDAH KE BAWAH)
         // ==========================================
         $labels = []; $actStockData = []; $minStockData = []; 
         $rmLabels = []; $rmStockData = []; $rmMinData = [];
         $wipLabels = []; $wipData = []; $wipMinData = [];
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
         
-        // A. Chart FG
         $queryChart = DB::table('finished_goods')
             ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
             ->select('finished_goods.part_no', 'finished_goods.actual_stock', 'finished_goods.min_stock_pcs');
@@ -151,7 +174,6 @@ class DashboardController extends Controller
         $actStockData = $chartData->pluck('actual_stock')->toArray();
         $minStockData = $chartData->pluck('min_stock_pcs')->toArray();
 
-        // B. Chart RM
         $queryRm = DB::table('rm_stocks')->select('material_code', DB::raw('SUM(stock_pcs) as total_stock'))->where('stock_pcs', '>', 0);
         if ($selectedCustomer) $queryRm->where('customer', $selectedCustomer);
         else $queryRm->limit(10);
@@ -160,7 +182,6 @@ class DashboardController extends Controller
         $rmStockData = $rmChart->pluck('total_stock')->toArray();
         $rmMinData = array_fill(0, count($rmLabels), 100);
 
-        // C. Chart WIP Welding
         $queryWip = DB::table('finished_goods')
             ->leftJoin('parts', 'finished_goods.part_no', '=', 'parts.part_no')
             ->select('finished_goods.part_no', 'finished_goods.welding_stock')
@@ -175,13 +196,13 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'today', 'areaFilter',
             'totalParts', 'critCount', 'todayProd', 'todayDelv',
-            'deliveryTrend', 
-            'prodLabels', 'prodTargets', 'prodActuals', 'prodNgs', // ✨ Lempar array NG ke View
+            'prodLabels', 'prodTargets', 'prodActuals', 'prodNgs', 
+            'wosDeliveryData', 'deliveryTrend',
             'labels', 'actStockData', 'minStockData', 
             'rmLabels', 'rmStockData', 'rmMinData', 
             'wipLabels', 'wipData', 'wipMinData', 
             'customersList', 'selectedCustomer',
-            'shortageParts', 'shortageRm', 'wipStockList'
+            'shortageParts', 'shortageRm'
         ));
     }
 }
