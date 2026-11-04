@@ -27,7 +27,7 @@
             /* ✨ CUSTOM SIDEBAR LIGHT ✨ */
             --sidebar-bg: #f8fafc; 
             --sidebar-border: #e2e8f0;
-            --sidebar-text: #1e293b; /* Font Hitam Gelap */
+            --sidebar-text: #1e293b; 
             --sidebar-icon: #64748b; 
             --sidebar-hover-bg: #e2e8f0; 
             --sidebar-hover-text: #2563eb; 
@@ -37,17 +37,17 @@
         body.dark-mode {
             --bg-body: #0f172a;
             --bg-surface: #1e293b;
-            --text-main: #f8fafc; /* Font Otomatis Putih Terang */
+            --text-main: #f8fafc; 
             --text-muted: #94a3b8;
             --border-color: #334155;
             
             /* ✨ CUSTOM SIDEBAR DARK ✨ */
             --sidebar-bg: #020617;
             --sidebar-border: #1e293b;
-            --sidebar-text: #ffffff; /* Teks menu murni putih */
+            --sidebar-text: #ffffff; 
             --sidebar-icon: #cbd5e1;
-            --sidebar-hover-bg: rgba(56, 189, 248, 0.1); /* Background neon cyan transparan */
-            --sidebar-hover-text: #38bdf8; /* Teks menyala Cyan / Neon Blue */
+            --sidebar-hover-bg: rgba(56, 189, 248, 0.1); 
+            --sidebar-hover-text: #38bdf8; 
         }
 
         body { 
@@ -58,12 +58,20 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* 🔄 FIX BOOTSTRAP OVERRIDES AGAR TEKS TIDAK HITAM DI DARK MODE */
+        /* 🔄 FIX BOOTSTRAP OVERRIDES AGAR SEMUA HALAMAN AMAN DI DARK MODE */
         body.dark-mode .bg-white { background-color: var(--bg-surface) !important; }
-        body.dark-mode .text-dark { color: var(--text-main) !important; } /* Paksa text-dark jadi putih */
+        body.dark-mode .bg-light { background-color: rgba(0, 0, 0, 0.2) !important; color: var(--text-main) !important; }
+        body.dark-mode .text-dark { color: var(--text-main) !important; } 
         body.dark-mode .text-muted { color: var(--text-muted) !important; }
-        body.dark-mode .border-bottom, body.dark-mode .border-top { border-color: var(--border-color) !important; }
+        body.dark-mode .border-bottom, body.dark-mode .border-top, body.dark-mode .border, body.dark-mode .border-right, body.dark-mode .border-left { border-color: var(--border-color) !important; }
         body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--bg-surface); border-color: var(--border-color); color: var(--text-main); }
+        
+        /* ✨ FIX TABEL GLOBAL UNTUK DARK MODE (ANTI ZEBRA CROSS) ✨ */
+        body.dark-mode table { color: var(--text-main) !important; }
+        body.dark-mode th, body.dark-mode thead th { background-color: rgba(0,0,0,0.25) !important; border-color: var(--border-color) !important; color: #cbd5e1 !important; }
+        body.dark-mode td { border-color: var(--border-color) !important; }
+        body.dark-mode .table-striped tbody tr:nth-of-type(odd) { background-color: rgba(255,255,255,0.02) !important; }
+        body.dark-mode .table-hover tbody tr:hover { background-color: rgba(255,255,255,0.05) !important; color: #fff !important; }
         
         /* 🏛️ CLEAN INDUSTRIAL SIDEBAR */
         #accordionSidebar { 
@@ -128,12 +136,12 @@
         body.dark-mode .nav-item .nav-link:hover {
             color: var(--sidebar-hover-text) !important;
             background: var(--sidebar-hover-bg);
-            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6); /* Efek teks menyala */
-            box-shadow: inset 4px 0 0 var(--sidebar-hover-text); /* Garis neon di kiri */
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6); 
+            box-shadow: inset 4px 0 0 var(--sidebar-hover-text); 
         }
         body.dark-mode .nav-item .nav-link:hover i { 
             color: var(--sidebar-hover-text) !important;
-            filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8)); /* Ikon menyala */
+            filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8)); 
         }
 
         /* Active Bubble / Pill */
@@ -237,7 +245,6 @@
         <ul class="navbar-nav sidebar sidebar-light accordion" id="accordionSidebar">
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ route('dashboard') }}">
                 <div class="sidebar-brand-icon">
-                    {{-- 🖼️ LOGO ASALTA DIPERBESAR SEDIKIT BIAR PAS PROPORSINYA --}}
                     <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo" style="height: 38px; object-fit: contain;" onerror="this.outerHTML='<i class=\'fas fa-industry text-primary\' style=\'font-size: 1.5rem;\'></i>'">
                 </div>
                 <div class="sidebar-brand-text mx-3">ASALTA <span style="color:#2563eb;">MRP</span></div>
