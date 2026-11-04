@@ -45,14 +45,6 @@
     .b-panel { background: var(--card-bg); border-radius: 20px; padding: 25px; box-shadow: 0 5px 14px rgba(0,0,0,0.02); height: 100%; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
     .b-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; }
     .b-panel-title { font-size: 14px; font-weight: 900; color: #2b3674; margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
-
-    /* DATA LISTS */
-    .data-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; max-height: 280px; }
-    .data-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; }
-    .data-item:last-child { border-bottom: none; }
-    .data-part h6 { margin: 0; font-size: 13px; font-weight: 800; color: #1e293b; }
-    .data-part small { font-size: 10px; font-weight: 700; color: #94a3b8; }
-    .data-val { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 800; }
 </style>
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
@@ -65,20 +57,28 @@
         </div>
         
         <form id="dashFilter" action="{{ route('dashboard') }}" method="GET" class="filter-card">
-            <i class="fas fa-filter text-primary ml-1"></i>
+            {{-- TAMBAHAN: Filter Dropdown Area Mesin --}}
+            <i class="fas fa-layer-group text-primary ml-1"></i>
+            <select name="area" onchange="document.getElementById('dashFilter').submit();">
+                <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL MACHINES</option>
+                <option value="big" {{ ($areaFilter ?? 'all') == 'big' ? 'selected' : '' }}>BIG PRESS</option>
+                <option value="small" {{ ($areaFilter ?? 'all') == 'small' ? 'selected' : '' }}>SMALL PRESS</option>
+            </select>
+
+            <i class="fas fa-user-tie text-primary ml-1"></i>
             <select name="customer" onchange="document.getElementById('dashFilter').submit();">
-                <option value="">-- SEMUA CUSTOMER --</option>
+                <option value="">ALL CUSTOMER</option>
                 @foreach($customersList as $cust)
                     <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
                 @endforeach
             </select>
             
             <i class="far fa-calendar-alt text-primary ml-1"></i>
-            <input type="date" name="date" value="{{ request('date', date('Y-m-d')) }}" onchange="document.getElementById('dashFilter').submit();">
+            <input type="date" name="date" value="{{ $today }}" onchange="document.getElementById('dashFilter').submit();">
         </form>
     </div>
 
-    {{-- 2. SMART ALERT TICKER --}}
+    {{-- 2. SMART ALERT TICKER (SHORTAGE FG & RM) --}}
     @if(isset($shortageParts) && $shortageParts->count() > 0 || isset($shortageRm) && $shortageRm->count() > 0)
     <div class="alert-ticker">
         <div class="alert-badge"><i class="fas fa-exclamation-circle mr-1"></i> STOK KRITIS</div>
@@ -123,34 +123,25 @@
         </div>
     </div>
 
-    {{-- 4. ROW GRAFIK 1 (FG & PO SISA) --}}
+    {{-- 4. ROW GRAFIK 1 (FG & PRODUKSI WOS) --}}
     <div class="row mb-4">
-        <div class="col-xl-8 mb-4 mb-xl-0">
+        <div class="col-xl-6 mb-4 mb-xl-0">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-chart-column text-primary"></i> Grafik Monitoring Stok FG</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-chart-column text-primary"></i> Monitoring Stok FG</h3>
                 </div>
-                <div id="stockChart" style="flex: 1; min-height: 320px;"></div>
+                <div id="stockChart" style="flex: 1; min-height: 300px;"></div>
             </div>
         </div>
-        <div class="col-xl-4">
+        
+        {{-- MENGGANTIKAN SISA PO -> MENJADI CHART AKTUAL VS WOS PLAN --}}
+        <div class="col-xl-6">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-truck text-warning"></i> Sisa Order PO Customer</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-bullseye text-success"></i> Aktual vs WOS Plan Produksi</h3>
+                    <span style="font-size:10px; font-weight:bold; background:#e2e8f0; padding:4px 8px; border-radius:6px; color:#475569;">{{ strtoupper($areaFilter) }}</span>
                 </div>
-                <ul class="data-list">
-                    @forelse($poSisa ?? [] as $po)
-                    <li class="data-item">
-                        <div class="data-part">
-                            <h6>{{ $po->part_no }}</h6>
-                            <small>PO: {{ $po->po_number }} ({{ $po->customer_code }})</small>
-                        </div>
-                        <div class="data-val text-warning">{{ number_format($po->sisa_qty) }} <span style="font-size: 10px; color: #94a3b8;">Pcs</span></div>
-                    </li>
-                    @empty
-                    <li class="text-center text-muted font-italic mt-4 pt-4" style="font-size: 12px;">Semua PO telah terkirim / Belum ada PO masuk.</li>
-                    @endforelse
-                </ul>
+                <div id="prodChart" style="flex: 1; min-height: 300px;"></div>
             </div>
         </div>
     </div>
@@ -175,12 +166,12 @@
         </div>
     </div>
 
-    {{-- 6. ROW GRAFIK 3 (DELIVERY TREND) --}}
+    {{-- 6. ROW GRAFIK 3 (DELIVERY TREND WOS VS ACTUAL) --}}
     <div class="row">
         <div class="col-12">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-truck-fast text-success"></i> Delivery Target & Execution (30 Hari)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-truck-fast text-success"></i> Pengiriman Aktual vs Target WOS (30 Hari)</h3>
                 </div>
                 <div id="deliveryChart" style="min-height: 300px;"></div>
             </div>
@@ -189,6 +180,8 @@
 </div>
 
 <script>
+    const commonFont = 'Plus Jakarta Sans';
+
     // 1. CHART FG: COMBO BAR (AKTUAL) & LINE (MINIMUM)
     const lblParts = @json($labels ?? []);
     const dataActual = @json($actStockData ?? []);
@@ -200,7 +193,7 @@
                 { name: 'Stok Aktual', type: 'column', data: dataActual },
                 { name: 'Batas Minimum', type: 'line', data: dataMin }
             ],
-            chart: { height: 350, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            chart: { height: 320, toolbar: { show: false }, fontFamily: commonFont },
             stroke: { width: [0, 4], curve: 'smooth' },
             plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
             colors: ['#4318FF', '#EE5D50'],
@@ -211,10 +204,35 @@
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
-        document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG untuk ditampilkan.</div>";
+        document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG.</div>";
     }
 
-    // 2. CHART RM: COMBO BAR (AKTUAL) & LINE (MINIMUM = 100)
+    // 2. CHART PRODUKSI (WOS PLAN VS ACTUAL PENGGANTI SISA PO)
+    const prodLbl = @json($prodLabels ?? []);
+    const prodAct = @json($prodActuals ?? []);
+    const prodTar = @json($prodTargets ?? []);
+
+    if (prodLbl.length > 0) {
+        new ApexCharts(document.querySelector("#prodChart"), {
+            series: [
+                { name: 'Actual Produksi', type: 'column', data: prodAct },
+                { name: 'Target WOS', type: 'line', data: prodTar }
+            ],
+            chart: { height: 320, toolbar: { show: false }, fontFamily: commonFont },
+            stroke: { width: [0, 4], curve: 'smooth' },
+            plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
+            colors: ['#05CD99', '#EE5D50'],
+            dataLabels: { enabled: false },
+            xaxis: { categories: prodLbl, labels: { style: { fontWeight: 700, fontSize: '10px' } } },
+            yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },
+            legend: { position: 'top', fontWeight: 700 },
+            grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
+        }).render();
+    } else {
+        document.querySelector("#prodChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Belum ada Plan WOS di area ini untuk tanggal terpilih.</div>";
+    }
+
+    // 3. CHART RM: COMBO BAR (AKTUAL) & LINE (MINIMUM)
     const rmLabels = @json($rmLabels ?? []);
     const rmData = @json($rmStockData ?? []);
     const rmMin = @json($rmMinData ?? []);
@@ -225,7 +243,7 @@
                 { name: 'Sisa RM', type: 'column', data: rmData },
                 { name: 'Batas Kritis', type: 'line', data: rmMin }
             ],
-            chart: { height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            chart: { height: 280, toolbar: { show: false }, fontFamily: commonFont },
             stroke: { width: [0, 3], curve: 'straight', dashArray: [0, 5] },
             plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
             colors: ['#FFCE20', '#EE5D50'],
@@ -239,7 +257,7 @@
         document.querySelector("#rmChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok RM.</div>";
     }
 
-    // 3. CHART WIP: COMBO BAR (AKTUAL) & LINE (MINIMUM = 50)
+    // 4. CHART WIP: COMBO BAR (AKTUAL) & LINE (MINIMUM)
     const wipLabels = @json($wipLabels ?? []);
     const wipData = @json($wipData ?? []);
     const wipMin = @json($wipMinData ?? []);
@@ -250,7 +268,7 @@
                 { name: 'Stok WIP', type: 'column', data: wipData },
                 { name: 'Buffer Min', type: 'line', data: wipMin }
             ],
-            chart: { height: 280, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            chart: { height: 280, toolbar: { show: false }, fontFamily: commonFont },
             stroke: { width: [0, 3], curve: 'straight', dashArray: [0, 5] },
             plotOptions: { bar: { borderRadius: 4, columnWidth: '50%' } },
             colors: ['#EE5D50', '#a3aed1'],
@@ -264,7 +282,7 @@
         document.querySelector("#wipChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-4'>Tidak ada data stok WIP.</div>";
     }
 
-    // 4. CHART DELIVERY TREND: COMBO (AREA ACTUAL VS LINE PO TARGET)
+    // 5. CHART DELIVERY TREND: COMBO (AREA ACTUAL VS LINE WOS DELIVERY TARGET)
     const delvTrend = @json($deliveryTrend ?? []);
     
     if (delvTrend.length > 0) {
@@ -272,15 +290,12 @@
         const delvActual = delvTrend.map(item => item.actual);
         const delvTarget = delvTrend.map(item => item.target);
 
-        const totalDelv = delvActual.reduce((acc, curr) => acc + curr, 0);
-        const avgDelv = (totalDelv / delvActual.length).toFixed(0);
-
         new ApexCharts(document.querySelector("#deliveryChart"), {
             series: [
-                { name: "Pengiriman Aktual", type: 'area', data: delvActual },
-                { name: "Order Masuk (Target PO)", type: 'line', data: delvTarget }
+                { name: "Aktual Pengiriman", type: 'area', data: delvActual },
+                { name: "Target WOS Delivery", type: 'line', data: delvTarget }
             ],
-            chart: { height: 300, toolbar: { show: false }, fontFamily: 'Plus Jakarta Sans' },
+            chart: { height: 320, toolbar: { show: false }, fontFamily: commonFont },
             stroke: { curve: 'smooth', width: [3, 3], dashArray: [0, 5] },
             colors: ['#05CD99', '#4318FF'],
             fill: { 
@@ -295,18 +310,6 @@
             yaxis: { labels: { style: { fontWeight: 700, fontFamily: 'JetBrains Mono' } } },
             dataLabels: { enabled: false },
             legend: { position: 'top', fontWeight: 700 },
-            annotations: {
-                yaxis: [{
-                    y: avgDelv,
-                    borderColor: '#4318FF',
-                    strokeDashArray: 5,
-                    label: {
-                        borderColor: '#4318FF',
-                        style: { color: '#fff', background: '#4318FF', fontWeight: 700, fontSize: '10px' },
-                        text: 'Rata-rata Pengiriman: ' + avgDelv + ' Pcs'
-                    }
-                }]
-            },
             grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
         }).render();
     } else {
