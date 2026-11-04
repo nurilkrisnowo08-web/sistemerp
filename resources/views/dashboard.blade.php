@@ -57,7 +57,6 @@
         </div>
         
         <form id="dashFilter" action="{{ route('dashboard') }}" method="GET" class="filter-card">
-            {{-- TAMBAHAN: Filter Dropdown Area Mesin --}}
             <i class="fas fa-layer-group text-primary ml-1"></i>
             <select name="area" onchange="document.getElementById('dashFilter').submit();">
                 <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL MACHINES</option>
@@ -78,7 +77,7 @@
         </form>
     </div>
 
-    {{-- 2. SMART ALERT TICKER (SHORTAGE FG & RM) --}}
+    {{-- 2. SMART ALERT TICKER --}}
     @if(isset($shortageParts) && $shortageParts->count() > 0 || isset($shortageRm) && $shortageRm->count() > 0)
     <div class="alert-ticker">
         <div class="alert-badge"><i class="fas fa-exclamation-circle mr-1"></i> STOK KRITIS</div>
@@ -134,7 +133,6 @@
             </div>
         </div>
         
-        {{-- MENGGANTIKAN SISA PO -> MENJADI CHART AKTUAL VS WOS PLAN --}}
         <div class="col-xl-6">
             <div class="b-panel">
                 <div class="b-panel-header">
@@ -207,21 +205,24 @@
         document.querySelector("#stockChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Tidak ada data stok FG.</div>";
     }
 
-    // 2. CHART PRODUKSI (WOS PLAN VS ACTUAL PENGGANTI SISA PO)
+    // 2. CHART PRODUKSI (WOS PLAN VS ACTUAL OK & NG) ✨
     const prodLbl = @json($prodLabels ?? []);
     const prodAct = @json($prodActuals ?? []);
+    const prodNg  = @json($prodNgs ?? []);
     const prodTar = @json($prodTargets ?? []);
 
     if (prodLbl.length > 0) {
         new ApexCharts(document.querySelector("#prodChart"), {
             series: [
-                { name: 'Actual Produksi', type: 'column', data: prodAct },
+                { name: 'Actual OK', type: 'column', data: prodAct },
+                { name: 'Actual NG', type: 'column', data: prodNg },
                 { name: 'Target WOS', type: 'line', data: prodTar }
             ],
             chart: { height: 320, toolbar: { show: false }, fontFamily: commonFont },
-            stroke: { width: [0, 4], curve: 'smooth' },
-            plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
-            colors: ['#05CD99', '#EE5D50'],
+            stroke: { width: [0, 0, 4], curve: 'smooth' },
+            plotOptions: { bar: { columnWidth: '60%', borderRadius: 4 } },
+            // Hijau (OK), Merah (NG), Biru (Target)
+            colors: ['#05CD99', '#EE5D50', '#4318FF'], 
             dataLabels: { enabled: false },
             xaxis: { categories: prodLbl, labels: { style: { fontWeight: 700, fontSize: '10px' } } },
             yaxis: { labels: { style: { fontWeight: 800, fontFamily: 'JetBrains Mono' } } },

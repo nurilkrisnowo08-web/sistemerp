@@ -42,7 +42,7 @@ class DashboardController extends Controller
         $todayDelv = DB::table('deliveries')->whereDate('created_at', $today)->sum('qty_delivery') ?? 0;
 
         // ==========================================
-        // 3. MENGGANTIKAN SISA PO -> GRAFIK PRODUKSI WOS VS ACTUAL
+        // 3. GRAFIK PRODUKSI WOS VS ACTUAL PER PART
         // ==========================================
         $prodPlansQuery = DB::table('production_plans')->where('plan_date', $today);
         if ($areaFilter === 'small') {
@@ -59,23 +59,35 @@ class DashboardController extends Controller
         }
         $dailyPlans = $prodPlansQuery->get();
         
-        $prodLabels = []; $prodTargets = []; $prodActuals = [];
+        // Gabungkan Target WOS berdasarkan Part (Mencegah Double Count Jika 1 Part Jalan di 2 Mesin)
+        $groupedProd = [];
         foreach ($dailyPlans as $p) {
             $target = $p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot;
-            $actual = DB::table('production_actuals')
-                        ->where('part_no', $p->part_no)
+            if(!isset($groupedProd[$p->part_no])) {
+                $groupedProd[$p->part_no] = 0;
+            }
+            $groupedProd[$p->part_no] += $target;
+        }
+
+        $prodLabels = []; $prodTargets = []; $prodActuals = []; $prodNgs = [];
+        foreach ($groupedProd as $part => $tgt) {
+            $actOk = DB::table('production_actuals')
+                        ->where('part_no', $part)
                         ->whereDate('created_at', $today)
                         ->where('line_code', '!=', 'WELDING AREA')
                         ->sum('qty_ok');
             
-            $idx = array_search($p->part_no, $prodLabels);
-            if ($idx === false) {
-                $prodLabels[] = $p->part_no;
-                $prodTargets[] = (int)$target;
-                $prodActuals[] = (int)$actual;
-            } else {
-                $prodTargets[$idx] += (int)$target;
-            }
+            // ✨ TAMBAHAN: Tarik Data Aktual NG per Part
+            $actNg = DB::table('production_actuals')
+                        ->where('part_no', $part)
+                        ->whereDate('created_at', $today)
+                        ->where('line_code', '!=', 'WELDING AREA')
+                        ->sum('qty_ng');
+
+            $prodLabels[] = $part;
+            $prodTargets[] = (int)$tgt;
+            $prodActuals[] = (int)$actOk;
+            $prodNgs[] = (int)$actNg; // ✨ Simpan NG ke array untuk diagram
         }
 
         // ==========================================
@@ -85,22 +97,20 @@ class DashboardController extends Controller
         try {
             $thirtyDaysAgo = date('Y-m-d', strtotime('-30 days', strtotime($today)));
             
-            // Tarik Actual Pengiriman
             $delvData = DB::table('deliveries')
                 ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(qty_delivery) as total'))
                 ->where('created_at', '>=', $thirtyDaysAgo)
                 ->where('created_at', '<=', $today . ' 23:59:59')
                 ->groupBy('date')->pluck('total', 'date')->toArray();
 
-            // Tarik WOS Delivery (Target Plan)
             $targetDelvData = [];
-            if (Schema::hasTable('delivery_plans')) { // Cek jika punya tabel khusus delivery_plans
+            if (Schema::hasTable('delivery_plans')) { 
                 $targetDelvData = DB::table('delivery_plans')
                     ->select('plan_date as date', DB::raw('SUM(target_qty) as total'))
                     ->where('plan_date', '>=', $thirtyDaysAgo)
                     ->where('plan_date', '<=', $today)
                     ->groupBy('plan_date')->pluck('total', 'date')->toArray();
-            } else { // Jika tidak ada, pakai fallback due_date dari purchase_orders
+            } else { 
                 $targetDelvData = DB::table('purchase_orders')
                     ->select(DB::raw('DATE(due_date) as date'), DB::raw('SUM(quantity) as total'))
                     ->where('due_date', '>=', $thirtyDaysAgo)
@@ -166,7 +176,7 @@ class DashboardController extends Controller
             'today', 'areaFilter',
             'totalParts', 'critCount', 'todayProd', 'todayDelv',
             'deliveryTrend', 
-            'prodLabels', 'prodTargets', 'prodActuals', // Data Produksi WOS Harian
+            'prodLabels', 'prodTargets', 'prodActuals', 'prodNgs', // ✨ Lempar array NG ke View
             'labels', 'actStockData', 'minStockData', 
             'rmLabels', 'rmStockData', 'rmMinData', 
             'wipLabels', 'wipData', 'wipMinData', 
