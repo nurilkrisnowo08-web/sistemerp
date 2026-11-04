@@ -35,29 +35,14 @@
     .b-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; }
     .b-panel-title { font-size: 14px; font-weight: 900; color: #2b3674; margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
 
-    /* ✨ STYLE TABEL WOS DELIVERY (SCROLLABLE & STICKY HEADER) ✨ */
     .wos-table-wrapper { max-height: 420px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
-    
-    /* Custom Scrollbar untuk Table */
     .wos-table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
     .wos-table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
     .wos-table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
     .wos-table-wrapper::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
     .table-wos-delv { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 800px; }
-    .table-wos-delv th { 
-        background: #f8fafc; 
-        font-size: 10px; 
-        font-weight: 800; 
-        color: #64748b; 
-        text-transform: uppercase; 
-        padding: 14px 15px; 
-        border-bottom: 2px solid #e2e8f0; 
-        position: sticky; /* Membuat header nempel saat discroll */
-        top: 0; 
-        z-index: 10;
-        box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1);
-    }
+    .table-wos-delv th { background: #f8fafc; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 14px 15px; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px -2px rgba(0,0,0,0.1); }
     .table-wos-delv td { padding: 14px 15px; font-size: 12px; font-weight: 700; color: #1e293b; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     .badge-cust { background: #e2e8f0; color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; white-space: nowrap; }
     .judge-ok { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 900; letter-spacing: 0.5px; white-space: nowrap; }
@@ -141,7 +126,6 @@
 
     {{-- 4. ROW WOS PRODUKSI & WOS DELIVERY --}}
     <div class="row mb-4">
-        {{-- TABEL WOS DELIVERY DENGAN SCROLL --}}
         <div class="col-xl-6 mb-4 mb-xl-0">
             <div class="b-panel" style="background: #0f172a; color: #fff; border-radius: 12px; border:none; padding: 20px;">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -149,12 +133,11 @@
                         <div style="background:#fff; border-radius:8px; padding:8px;"><i class="fas fa-boxes text-primary" style="font-size:24px;"></i></div>
                         <div>
                             <h3 class="m-0" style="color:#fff; font-size:20px; font-weight:900;">WOS DELIVERY LOGISTICS</h3>
-                            <p class="m-0" style="color:#94a3b8; font-size:11px;">Target Pengiriman vs Surat Jalan Aktual</p>
+                            <p class="m-0" style="color:#94a3b8; font-size:11px;">Target Pengiriman vs Surat Jalan Aktual (Hari Ini)</p>
                         </div>
                     </div>
                 </div>
                 
-                {{-- ✨ WADAH TABEL DENGAN SCROLL ATAS-BAWAH DAN KANAN-KIRI ✨ --}}
                 <div class="wos-table-wrapper bg-white">
                     <table class="table-wos-delv">
                         <thead>
@@ -190,7 +173,6 @@
             </div>
         </div>
 
-        {{-- GRAFIK WOS PRODUKSI --}}
         <div class="col-xl-6">
             <div class="b-panel">
                 <div class="b-panel-header">
@@ -202,7 +184,7 @@
         </div>
     </div>
 
-    {{-- 5. ROW GRAFIK INVENTORY (FG & DELIVERY TREND) --}}
+    {{-- 5. ROW GRAFIK INVENTORY (FG & DELIVERY TREND HARI INI) --}}
     <div class="row mb-4">
         <div class="col-xl-6 mb-4 mb-xl-0">
             <div class="b-panel">
@@ -216,7 +198,7 @@
         <div class="col-xl-6">
             <div class="b-panel">
                 <div class="b-panel-header">
-                    <h3 class="b-panel-title"><i class="fas fa-truck-fast text-success"></i> Pengiriman Aktual vs Target WOS (30 Hari)</h3>
+                    <h3 class="b-panel-title"><i class="fas fa-truck-fast text-success"></i> Pengiriman Aktual vs Target WOS (Hari Ini)</h3>
                 </div>
                 <div id="deliveryChart" style="flex: 1; min-height: 300px;"></div>
             </div>
@@ -275,37 +257,29 @@
         document.querySelector("#prodChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Belum ada Plan WOS di area ini.</div>";
     }
 
-    // 2. CHART DELIVERY TREND: COMBO (AREA ACTUAL VS LINE WOS DELIVERY TARGET)
-    const delvTrend = @json($deliveryTrend ?? []);
-    
-    if (delvTrend.length > 0) {
-        const delvLabels = delvTrend.map(item => item.date);
-        const delvActual = delvTrend.map(item => item.actual);
-        const delvTarget = delvTrend.map(item => item.target);
-        
-        const totalTransaksi = delvActual.reduce((acc, val) => acc + val, 0) + delvTarget.reduce((acc, val) => acc + val, 0);
+    // 2. CHART DELIVERY HARI INI (BAR CHART) ✨
+    const delvLbl = @json($deliveryChartLabels ?? []);
+    const delvAct = @json($deliveryChartActual ?? []);
+    const delvTar = @json($deliveryChartTarget ?? []);
 
-        if (totalTransaksi > 0) {
-            new ApexCharts(document.querySelector("#deliveryChart"), {
-                series: [
-                    { name: "Aktual Pengiriman", type: 'area', data: delvActual },
-                    { name: "Target WOS Delivery", type: 'line', data: delvTarget }
-                ],
-                chart: { height: 300, toolbar: { show: false }, fontFamily: commonFont },
-                stroke: { curve: 'smooth', width: [3, 3], dashArray: [0, 5] },
-                colors: ['#05CD99', '#4318FF'],
-                fill: { type: ['gradient', 'solid'], gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, stops: [0, 90, 100] } },
-                xaxis: { categories: delvLabels, type: 'datetime', labels: { style: { fontWeight: 700, fontSize: '10px' }, format: 'dd MMM' } },
-                yaxis: { labels: { style: { fontWeight: 700, fontFamily: 'JetBrains Mono' } } },
-                dataLabels: { enabled: false },
-                legend: { position: 'top', fontWeight: 700 },
-                grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
-            }).render();
-        } else {
-            document.querySelector("#deliveryChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Belum ada data pengiriman 30 hari terakhir.</div>";
-        }
+    if (delvLbl.length > 0) {
+        new ApexCharts(document.querySelector("#deliveryChart"), {
+            series: [
+                { name: "Aktual Pengiriman (SJ)", type: 'column', data: delvAct },
+                { name: "Target WOS Delivery", type: 'column', data: delvTar }
+            ],
+            chart: { height: 320, toolbar: { show: false }, fontFamily: commonFont },
+            plotOptions: { bar: { columnWidth: '50%', borderRadius: 4 } },
+            stroke: { show: true, width: 2, colors: ['transparent'] },
+            colors: ['#05CD99', '#4318FF'],
+            dataLabels: { enabled: false },
+            xaxis: { categories: delvLbl, labels: { style: { fontWeight: 700, fontSize: '10px' } } },
+            yaxis: { labels: { style: { fontWeight: 700, fontFamily: 'JetBrains Mono' } } },
+            legend: { position: 'top', fontWeight: 700 },
+            grid: { strokeDashArray: 4, borderColor: '#e2e8f0' }
+        }).render();
     } else {
-        document.querySelector("#deliveryChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Belum ada data pengiriman 30 hari terakhir.</div>";
+        document.querySelector("#deliveryChart").innerHTML = "<div class='text-center text-muted font-italic mt-5 pt-5'>Belum ada data WOS Delivery atau pengiriman hari ini.</div>";
     }
 
     // 3. CHART FG: COMBO BAR (AKTUAL) & LINE (MINIMUM)
