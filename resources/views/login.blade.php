@@ -1,275 +1,232 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <title>Terminal Access - MRP SYSTEM v2.0</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Login - ASALTA MRP SYSTEM</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-
+    {{-- Font & Icons --}}
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
     <style>
-        :root {
-            --primary: #4361ee;
-            --primary-glow: rgba(67, 97, 238, 0.3);
-            --dark-deep: #020617;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.08);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            height: 100vh;
+        body, html {
+            height: 100%;
+            margin: 0;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--dark-deep);
-            color: white;
-            overflow: hidden;
-            display: flex;
+            background-color: #f4f7fe;
         }
-
-        /* 🖼️ DYNAMIC BACKGROUND rill */
-        .bg-scene {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to right, rgba(2, 6, 23, 0.9), rgba(2, 6, 23, 0.4)), 
-                        url("{{ asset('admin/img/pt.jpg') }}") no-repeat center center;
+        
+        .login-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+        
+        /* ✨ KIRI: BACKGROUND GAMBAR INDUSTRIAL ✨ */
+        .login-sidebar {
+            flex: 1.2; /* Lebar porsi gambar */
+            /* Menggunakan gambar mesin/pabrik dari Unsplash dengan overlay gradien biru gelap */
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(37, 99, 235, 0.7)), 
+                        url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
             background-size: cover;
-            z-index: -1;
-            transform: scale(1.1);
-            animation: bgZoom 20s infinite alternate ease-in-out;
-        }
-
-        @keyframes bgZoom { from { transform: scale(1); } to { transform: scale(1.1); } }
-
-        .main-container {
-            display: flex;
-            width: 100%;
-            height: 100vh;
-        }
-
-        /* --- LEFT SIDE: THE POWERHOUSE rill --- */
-        .intro-side {
-            flex: 1.3;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 0 10%;
-            z-index: 1;
-        }
-
-        .system-tag {
-            display: inline-flex;
-            align-items: center;
-            background: rgba(67, 97, 238, 0.15);
-            color: var(--primary);
-            padding: 8px 16px;
-            border-radius: 50px;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 2px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(67, 97, 238, 0.3);
-            text-transform: uppercase;
-        }
-
-        .intro-side h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 52px;
-            font-weight: 900;
-            line-height: 1.1;
-            margin-bottom: 25px;
-            letter-spacing: -2px;
-            background: linear-gradient(to bottom right, #fff 50%, #64748b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .company-desc {
-            max-width: 580px;
-            font-size: 15px;
-            line-height: 1.8;
-            color: #94a3b8;
-            margin-bottom: 40px;
-            text-align: justify;
-        }
-
-        .iso-pills { display: flex; gap: 15px; }
-        .iso-pill {
-            background: var(--glass);
-            border: 1px solid var(--border);
-            padding: 10px 20px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            font-size: 11px;
-            font-weight: 700;
-            backdrop-filter: blur(10px);
-            transition: 0.3s;
-        }
-        .iso-pill:hover { border-color: var(--primary); transform: translateY(-3px); }
-        .iso-pill i { color: #fbbf24; margin-right: 10px; font-size: 14px; }
-
-        /* --- RIGHT SIDE: SECURE TERMINAL rill --- */
-        .terminal-side {
-            flex: 0.7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 40px;
+            padding: 5rem;
+            color: white;
             position: relative;
         }
-
-        .glass-terminal {
-            width: 100%;
-            max-width: 420px;
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border-radius: 32px;
-            padding: 50px 40px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .glass-terminal::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 4px;
-            background: linear-gradient(90deg, transparent, var(--primary), transparent);
-        }
-
-        .terminal-header { text-align: center; margin-bottom: 45px; }
-        .terminal-header img { width: 70px; filter: drop-shadow(0 0 15px var(--primary-glow)); margin-bottom: 20px; }
-        .terminal-header h2 { font-family: 'Orbitron', sans-serif; font-size: 18px; letter-spacing: 5px; color: #fff; margin-bottom: 5px; }
-        .terminal-header p { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-
-        .input-box { margin-bottom: 25px; position: relative; }
-        .input-box i { position: absolute; left: 18px; top: 50%; transform: translateY(-5px); color: #475569; font-size: 16px; transition: 0.3s; }
         
-        .input-box input {
-            width: 100%;
-            background: rgba(2, 6, 23, 0.5);
-            border: 1px solid #1e293b;
-            padding: 18px 18px 18px 50px;
-            border-radius: 16px;
-            color: white;
-            font-size: 14px;
+        .login-sidebar h1 {
+            font-weight: 900;
+            font-size: 3.5rem;
+            letter-spacing: -1px;
+            margin-bottom: 1.5rem;
+            line-height: 1.1;
+        }
+        
+        .login-sidebar p {
+            font-size: 1.15rem;
             font-weight: 500;
-            outline: none;
-            transition: 0.3s;
+            color: #e2e8f0;
+            line-height: 1.6;
+            max-width: 550px;
         }
 
-        .input-box input:focus {
-            border-color: var(--primary);
-            background: rgba(67, 97, 238, 0.05);
-            box-shadow: 0 0 20px var(--primary-glow);
-        }
-        .input-box input:focus + i { color: var(--primary); }
-
-        .btn-unlock {
-            width: 100%;
-            padding: 18px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 14px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: pointer;
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 20px -5px var(--primary-glow);
+        /* ✨ KANAN: FORM LOGIN BERSIH ✨ */
+        .login-main {
+            flex: 1; /* Lebar porsi form */
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
+            background: #ffffff;
+            max-width: 550px;
+            padding: 3rem;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+        
+        .form-container {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 3rem;
+        }
+        
+        .brand-logo img {
+            height: 45px;
+        }
+        
+        .brand-logo h2 {
+            font-weight: 900;
+            margin: 0;
+            font-size: 1.8rem;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+        }
+        
+        .form-group label {
+            font-weight: 800;
+            color: #475569;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Desain Input ala Bubble/Pill */
+        .form-control {
+            border-radius: 12px;
+            padding: 14px 18px;
+            height: auto;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            color: #1e293b;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+            background: #ffffff;
         }
 
-        .btn-unlock:hover {
-            background: #3756bd;
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 15px 30px var(--primary-glow);
+        .form-control::placeholder {
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        
+        /* Tombol Login */
+        .btn-login {
+            background: #2563eb;
+            color: white;
+            font-weight: 800;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            border: none;
+            font-size: 1.05rem;
+            margin-top: 1rem;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+        }
+        
+        .btn-login:hover {
+            background: #1d4ed8;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
         }
 
-        .terminal-footer {
-            margin-top: 35px;
-            text-align: center;
-            font-size: 12px;
-            color: #64748b;
+        .custom-control-label::before, 
+        .custom-control-label::after {
+            top: .15rem;
         }
 
-        .terminal-footer a { color: #fff; text-decoration: none; font-weight: 700; transition: 0.3s; }
-        .terminal-footer a:hover { color: var(--primary); }
-
-        /* MOBILE OPTIMIZATION rill */
-        @media (max-width: 1100px) {
-            .intro-side { display: none; }
-            .terminal-side { flex: 1; }
+        /* ✨ RESPONSIVE UNTUK HP ✨ */
+        @media (max-width: 992px) {
+            .login-sidebar { display: none; } /* Hilangkan gambar di layar HP */
+            .login-main { max-width: 100%; }
         }
     </style>
 </head>
 <body>
-
-    <div class="bg-scene"></div>
-
-    <div class="main-container">
-        <div class="intro-side animate__animated animate__fadeInLeft">
-            <div class="system-tag">Intelligence Analytics v2.0</div>
-            <h1>PT ASALTA<br>MANDIRI AGUNG</h1>
-            <p class="company-desc">
-                Pilar utama manufaktur Indonesia dengan dedikasi tinggi pada presisi. Memasok komponen otomotif berkualitas tinggi untuk Toyota, Honda, dan Daihatsu dengan teknologi Stamping, Machining, dan Welding mutakhir.
-            </p>
+    <div class="login-wrapper animate__animated animate__fadeIn">
+        
+        {{-- KIRI: BAGIAN GAMBAR DAN TEKS SISTEM --}}
+        <div class="login-sidebar">
+            <div class="mb-4">
+                <span class="badge badge-light px-3 py-2 text-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; letter-spacing: 1px;">VERSION 2.0.26</span>
+            </div>
+            <h1>INDUSTRIAL<br>ECOSYSTEM<br>ENGINE.</h1>
+            <p>Sistem Perencanaan Kebutuhan Material (MRP) Terpadu untuk menunjang produktivitas, pemantauan inventaris, dan efisiensi lantai produksi PT Asalta Mandiri Agung.</p>
             
-            <div class="iso-pills">
-                <div class="iso-pill"><i class="fas fa-shield-halved"></i> ISO 9001:2015</div>
-                <div class="iso-pill"><i class="fas fa-leaf"></i> ISO 14001:2015</div>
+            <div style="position: absolute; bottom: 40px; left: 5rem; opacity: 0.5;">
+                <i class="fas fa-shield-alt mr-2"></i> <span style="font-weight:600; font-size:14px;">Secure Intranet Connection</span>
             </div>
         </div>
 
-        <div class="terminal-side">
-            <div class="glass-terminal animate__animated animate__zoomIn">
-                <div class="terminal-header">
-                    <h2>MRP ACCESS</h2>
-                    <p>Secure Terminal Entry</p>
+        {{-- KANAN: BAGIAN FORM LOGIN --}}
+        <div class="login-main">
+            <div class="form-container">
+                <div class="brand-logo">
+                    {{-- Logo Asalta (Bisa pakai logo aslimu) --}}
+                    <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo" onerror="this.outerHTML='<i class=\'fas fa-industry text-primary\' style=\'font-size: 2.5rem;\'></i>'">
+                    <h2>ASALTA <span style="color:#2563eb;">MRP</span></h2>
                 </div>
 
-                @if(session('error'))
-                    <div class="animate__animated animate__shakeX" style="background:rgba(244,63,94,0.1); color:#fb7185; padding:15px; border-radius:12px; font-size:12px; margin-bottom:25px; text-align:center; border:1px solid rgba(244,63,94,0.2); font-weight: 700;">
-                        <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
-                    </div>
-                @endif
+                <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 5px;">Welcome Back!</h4>
+                <p style="color: #64748b; font-weight: 600; font-size: 0.95rem; margin-bottom: 35px;">Silakan otentikasi identitas Anda.</p>
 
+                {{-- FORM LOGIN (Action disesuaikan dengan route login laravel) --}}
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
-                    <div class="input-box">
-                        <i class="fas fa-id-card"></i>
-                        <input type="email" name="email" placeholder="IDENTITY EMAIL" required autofocus>
+                    
+                    <div class="form-group mb-4">
+                        <label>Username / Email</label>
+                        <input type="text" class="form-control" name="email" value="{{ old('email') }}" required autofocus placeholder="Masukkan email atau NIK...">
+                        @error('email')
+                            <small class="text-danger font-weight-bold mt-2 d-block"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</small>
+                        @enderror
                     </div>
 
-                    <div class="input-box">
-                        <i class="fas fa-key"></i>
-                        <input type="password" name="password" placeholder="ACCESS KEY" required>
+                    <div class="form-group mb-4">
+                        <label>Password</label>
+                        <input type="password" class="form-control" name="password" required placeholder="Masukkan kata sandi...">
+                        @error('password')
+                            <small class="text-danger font-weight-bold mt-2 d-block"><i class="fas fa-exclamation-circle mr-1"></i>{{ $message }}</small>
+                        @enderror
                     </div>
 
-                    <button type="submit" class="btn-unlock">
-                        Unlock System <i class="fas fa-shield-check"></i>
+                    {{-- Remember Me --}}
+                    <div class="form-group d-flex align-items-center mb-4">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="customCheck" name="remember">
+                            <label class="custom-control-label" for="customCheck" style="text-transform: none; font-weight: 600; font-size: 0.9rem; letter-spacing: 0; color: #64748b; cursor: pointer;">
+                                Ingat sesi login saya
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-login">
+                        LOGIN KE SISTEM <i class="fas fa-arrow-right ml-2"></i>
                     </button>
                 </form>
 
-                <div class="terminal-footer">
-                    <a href="{{ route('register') }}">Create Account</a> 
-                    <span style="margin: 0 10px; opacity: 0.3;">|</span> 
-                    <a href="{{ route('forgot') }}">System Recovery</a>
-                    <p style="margin-top: 25px; opacity: 0.5;">&copy; 2026 ASALTA. All Rights Reserved.</p>
+                <div class="text-center mt-5 pt-3 border-top">
+                    <small style="color: #94a3b8; font-weight: 600; font-size: 12px;">
+                        &copy; 2026 PT Asalta Mandiri Agung.<br>Strictly restricted access.
+                    </small>
                 </div>
             </div>
         </div>
     </div>
-
 </body>
 </html>
