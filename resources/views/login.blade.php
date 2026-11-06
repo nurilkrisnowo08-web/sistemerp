@@ -23,12 +23,12 @@
             min-height: 100vh;
         }
         
-        /* ✨ KIRI: BACKGROUND GAMBAR INDUSTRIAL ✨ */
+        /* ✨ KIRI: BACKGROUND GAMBAR PT ASALTA ✨ */
         .login-sidebar {
-            flex: 1.2; /* Lebar porsi gambar */
-            /* Menggunakan gambar mesin/pabrik dari Unsplash dengan overlay gradien biru gelap */
+            flex: 1.2; 
+            /* ✨ FIX: Menggunakan file pt.jpg dari folder lokal aslimu ✨ */
             background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(37, 99, 235, 0.7)), 
-                        url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070&auto=format&fit=crop') no-repeat center center;
+                        url('{{ asset("public/admin/img/pt.jpg") }}') no-repeat center center;
             background-size: cover;
             display: flex;
             flex-direction: column;
@@ -56,7 +56,7 @@
 
         /* ✨ KANAN: FORM LOGIN BERSIH ✨ */
         .login-main {
-            flex: 1; /* Lebar porsi form */
+            flex: 1; 
             display: flex;
             align-items: center;
             justify-content: center;
@@ -152,7 +152,7 @@
 
         /* ✨ RESPONSIVE UNTUK HP ✨ */
         @media (max-width: 992px) {
-            .login-sidebar { display: none; } /* Hilangkan gambar di layar HP */
+            .login-sidebar { display: none; } 
             .login-main { max-width: 100%; }
         }
     </style>
@@ -177,7 +177,7 @@
         <div class="login-main">
             <div class="form-container">
                 <div class="brand-logo">
-                    {{-- Logo Asalta (Bisa pakai logo aslimu) --}}
+                    {{-- Logo Asalta --}}
                     <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo" onerror="this.outerHTML='<i class=\'fas fa-industry text-primary\' style=\'font-size: 2.5rem;\'></i>'">
                     <h2>ASALTA <span style="color:#2563eb;">MRP</span></h2>
                 </div>
@@ -185,7 +185,7 @@
                 <h4 style="font-weight: 800; color: #1e293b; margin-bottom: 5px;">Welcome Back!</h4>
                 <p style="color: #64748b; font-weight: 600; font-size: 0.95rem; margin-bottom: 35px;">Silakan otentikasi identitas Anda.</p>
 
-                {{-- FORM LOGIN (Action disesuaikan dengan route login laravel) --}}
+                {{-- FORM LOGIN --}}
                 <form method="POST" action="{{ route('login') }}">
                     @csrf
                     
@@ -208,7 +208,8 @@
                     {{-- Remember Me --}}
                     <div class="form-group d-flex align-items-center mb-4">
                         <div class="custom-control custom-checkbox">
-                            <input type="checkbox" class="custom-control-input" id="customCheck" name="remember">
+                            {{-- ✨ name="remember" adalah kunci utama agar Laravel otomatis menyimpan sesi ✨ --}}
+                            <input type="checkbox" class="custom-control-input" id="customCheck" name="remember" {{ old('remember') ? 'checked' : '' }}>
                             <label class="custom-control-label" for="customCheck" style="text-transform: none; font-weight: 600; font-size: 0.9rem; letter-spacing: 0; color: #64748b; cursor: pointer;">
                                 Ingat sesi login saya
                             </label>
