@@ -5,52 +5,49 @@
 <style>
     /* ✨ THEME WARNA & ANIMASI ✨ */
     .b-panel { 
-        background: var(--bg-surface); 
+        background: var(--bg-surface, #ffffff); 
         border-radius: 16px; 
         padding: 25px; 
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--border-color, #e2e8f0);
         box-shadow: 0 4px 15px rgba(0,0,0,0.02);
     }
     
-    .page-title h1 { font-weight: 900; font-size: 26px; margin: 0; color: var(--text-main); letter-spacing: -0.5px; }
-    .page-title p { font-size: 12px; font-weight: 700; color: var(--text-muted); margin: 4px 0 0 0; }
+    .page-title h1 { font-weight: 900; font-size: 26px; margin: 0; color: var(--text-main, #1e293b); letter-spacing: -0.5px; }
+    .page-title p { font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); margin: 4px 0 0 0; }
 
+    /* ✨ FILTER BOX ✨ */
     .search-box {
-        background: var(--bg-body);
+        background: var(--bg-body, #f4f7fe);
         border-radius: 50rem;
         padding: 8px 16px;
         display: flex; align-items: center; gap: 10px;
-        border: 1px solid var(--border-color);
-        width: 100%; max-width: 350px;
+        border: 1px solid var(--border-color, #e2e8f0);
     }
-    .search-box input, .search-box select { border: none; outline: none; background: transparent; color: var(--text-main); font-weight: 600; width: 100%; font-size: 13px;}
+    .search-box input, .search-box select { 
+        border: none; outline: none; background: transparent; 
+        color: var(--text-main, #1e293b); font-weight: 700; width: 100%; font-size: 13px;
+        cursor: pointer;
+    }
 
     /* ✨ TABEL UTAMA ✨ */
-    .trace-table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color); }
-    .trace-table { width: 100%; min-width: 900px; border-collapse: collapse; }
-    .trace-table th { background: rgba(37, 99, 235, 0.05); padding: 16px; font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color); }
-    .trace-table td { padding: 16px; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border-color); color: var(--text-main); vertical-align: middle; }
+    .trace-table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0); }
+    .trace-table { width: 100%; min-width: 1000px; border-collapse: collapse; }
+    .trace-table th { background: rgba(37, 99, 235, 0.05); padding: 16px; font-size: 11px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color, #e2e8f0); }
+    .trace-table td { padding: 16px; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border-color, #e2e8f0); color: var(--text-main, #1e293b); vertical-align: middle; }
     
-    body.dark-mode .trace-table th { background: rgba(0,0,0,0.3); color: #94a3b8; }
-    body.dark-mode .trace-table td { border-color: rgba(255,255,255,0.05); }
-
     /* Pill/Badges untuk angka stok Aktual */
     .stock-pill { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; display: inline-block; font-family: 'JetBrains Mono', monospace;}
     .pill-rm { background: rgba(245, 158, 11, 0.15); color: #d97706; }
     .pill-wip { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
     .pill-fg { background: rgba(16, 185, 129, 0.15); color: #059669; }
     
-    body.dark-mode .pill-rm { color: #fcd34d; }
-    body.dark-mode .pill-wip { color: #fca5a5; }
-    body.dark-mode .pill-fg { color: #6ee7b7; }
-
     /* ✨ BARIS HISTORI (YANG TERSEMBUNYI) ✨ */
     .history-row { display: none; }
-    .history-box { padding: 16px; border-radius: 12px; border: 1px dashed var(--border-color); background: var(--bg-surface); height: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+    .history-box { padding: 16px; border-radius: 12px; border: 1px dashed var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); height: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
     
     .history-table { width: 100%; font-size: 11px; }
-    .history-table th { color: var(--text-muted); padding: 8px 4px; border-bottom: 1px solid var(--border-color); font-weight: 800; }
-    .history-table td { color: var(--text-main); padding: 8px 4px; border-bottom: 1px solid var(--border-color); }
+    .history-table th { color: var(--text-muted, #64748b); padding: 8px 4px; border-bottom: 1px solid var(--border-color, #e2e8f0); font-weight: 800; }
+    .history-table td { color: var(--text-main, #1e293b); padding: 8px 4px; border-bottom: 1px solid var(--border-color, #e2e8f0); }
     
     .btn-toggle-history { border-radius: 50rem; padding: 6px 18px; font-size: 11px; font-weight: 800; transition: all 0.3s ease; }
     
@@ -67,20 +64,22 @@
             <p>Ruang Pelacakan Stok Aktual (FG, WIP, RM) & Rincian Log Masuk-Keluar Barang per Part Number.</p>
         </div>
         
-        <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="d-flex gap-2">
+        <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="d-flex flex-wrap gap-2">
             {{-- ✨ FILTER CUSTOMER ✨ --}}
-            <div class="search-box shadow-sm mr-2" style="max-width: 200px;">
+            <div class="search-box shadow-sm mr-2" style="min-width: 200px;">
                 <i class="fas fa-users text-primary"></i>
                 <select name="customer" onchange="this.form.submit()">
                     <option value="">ALL CUSTOMER</option>
-                    @foreach($customersList as $cust)
-                        <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
-                    @endforeach
+                    @if(isset($customersList))
+                        @foreach($customersList as $cust)
+                            <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
+                        @endforeach
+                    @endif
                 </select>
             </div>
             
             {{-- FILTER TEKS --}}
-            <div class="search-box shadow-sm">
+            <div class="search-box shadow-sm" style="min-width: 280px;">
                 <i class="fas fa-search text-muted"></i>
                 <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Part Number atau Nama Part..." onchange="this.form.submit()">
             </div>
@@ -106,8 +105,8 @@
                     <tr>
                         <td class="text-center">{{ $idx + 1 }}</td>
                         <td class="text-left">
-                            <b style="font-size:14px;">{{ $p->part_name }}</b><br>
-                            <span style="font-size:10px; color: var(--text-muted);">{{ $p->part_no }}</span>
+                            <b style="font-size:14px; color:#1e293b;">{{ $p->part_name }}</b><br>
+                            <span style="font-size:10px; color:#64748b;">{{ $p->part_no }}</span>
                         </td>
                         <td><span class="badge badge-secondary px-2 py-1">{{ $p->customer_code }}</span></td>
                         
@@ -127,7 +126,7 @@
                     {{-- ✨ BARIS RINCIAN (DISEMBUNYIKAN DEFAULT) ✨ --}}
                     <tr class="history-row" id="history-{{ $idx }}">
                         <td colspan="7" class="p-0">
-                            <div class="p-4" style="background: var(--bg-body); border-top: 1px dashed var(--border-color);">
+                            <div class="p-4" style="background: #f8fafc; border-top: 1px dashed #cbd5e1; border-bottom: 2px solid #2563eb;">
                                 <div class="row">
                                     
                                     {{-- 1. RINCIAN RAW MATERIAL (RM) --}}
@@ -142,23 +141,23 @@
                                             </div>
 
                                             <table class="history-table">
-                                                <tr><th class="text-left">Tanggal</th><th>Tipe / Sumber</th><th class="text-right">Qty</th></tr>
+                                                <tr><th class="text-left">Tanggal</th><th>Sumber / Tipe</th><th class="text-right">Qty</th></tr>
                                                 @foreach($p->history_rm_in as $in)
                                                 <tr>
-                                                    <td class="text-left">{{ date('d M, H:i', strtotime($in->created_at)) }}</td>
+                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($in->created_at)) }}</td>
                                                     <td>IN ({{ $in->source }})</td>
-                                                    <td class="text-right text-success">+{{ $in->pcs_in }}</td>
+                                                    <td class="text-right text-success">+{{ number_format($in->pcs_in) }}</td>
                                                 </tr>
                                                 @endforeach
                                                 @foreach($p->history_rm_out as $out)
                                                 <tr>
-                                                    <td class="text-left">{{ date('d M, H:i', strtotime($out->created_at)) }}</td>
+                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($out->created_at)) }}</td>
                                                     <td>OUT (Prod)</td>
-                                                    <td class="text-right text-danger">-{{ $out->pcs_used }}</td>
+                                                    <td class="text-right text-danger">-{{ number_format($out->pcs_used) }}</td>
                                                 </tr>
                                                 @endforeach
                                                 @if(count($p->history_rm_in) == 0 && count($p->history_rm_out) == 0)
-                                                    <tr><td colspan="3" class="text-center text-muted font-italic py-2">Belum ada riwayat aktivitas.</td></tr>
+                                                    <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat masuk/keluar RM.</td></tr>
                                                 @endif
                                             </table>
                                         </div>
@@ -175,10 +174,10 @@
                                             </div>
                                             
                                             <div class="text-center mt-4">
-                                                <i class="fas fa-exchange-alt text-muted mb-2" style="font-size:24px; opacity:0.3;"></i>
-                                                <p class="text-muted" style="font-size:10px; font-weight:600; line-height:1.5;">
-                                                    *WIP In berasal dari Output Produksi Stamping.<br>
-                                                    *WIP Out adalah part yang ditarik untuk diproses Las (Welding).
+                                                <i class="fas fa-exchange-alt text-muted mb-3 mt-2" style="font-size:30px; opacity:0.2;"></i>
+                                                <p class="text-muted" style="font-size:10px; font-weight:700; line-height:1.6;">
+                                                    * <b>WIP In</b> berasal dari Produksi Stamping.<br>
+                                                    * <b>WIP Out</b> adalah part yang telah ditarik<br>untuk diproses Las (Welding).
                                                 </p>
                                             </div>
                                         </div>
@@ -195,23 +194,23 @@
                                             </div>
 
                                             <table class="history-table">
-                                                <tr><th class="text-left">Tanggal</th><th>Tipe / Sumber</th><th class="text-right">Qty</th></tr>
+                                                <tr><th class="text-left">Tanggal</th><th>Sumber / Tipe</th><th class="text-right">Qty</th></tr>
                                                 @foreach($p->history_fg_in as $fgin)
                                                 <tr>
-                                                    <td class="text-left">{{ date('d M, H:i', strtotime($fgin->created_at)) }}</td>
+                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($fgin->created_at)) }}</td>
                                                     <td>IN (Prod)</td>
-                                                    <td class="text-right text-success">+{{ $fgin->qty_ok }}</td>
+                                                    <td class="text-right text-success">+{{ number_format($fgin->qty_ok) }}</td>
                                                 </tr>
                                                 @endforeach
                                                 @foreach($p->history_delv as $delv)
                                                 <tr>
-                                                    <td class="text-left">{{ date('d M, H:i', strtotime($delv->created_at)) }}</td>
+                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($delv->created_at)) }}</td>
                                                     <td>OUT (SJ)</td>
-                                                    <td class="text-right text-danger">-{{ $delv->qty_delivery }}</td>
+                                                    <td class="text-right text-danger">-{{ number_format($delv->qty_delivery) }}</td>
                                                 </tr>
                                                 @endforeach
                                                 @if(count($p->history_fg_in) == 0 && count($p->history_delv) == 0)
-                                                    <tr><td colspan="3" class="text-center text-muted font-italic py-2">Belum ada riwayat aktivitas.</td></tr>
+                                                    <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat masuk/keluar FG.</td></tr>
                                                 @endif
                                             </table>
                                         </div>
@@ -224,8 +223,8 @@
                     @empty
                     <tr>
                         <td colspan="7" class="text-center py-5">
-                            <i class="fas fa-box-open text-muted" style="font-size: 30px; opacity:0.5;"></i><br>
-                            <span class="text-muted font-weight-bold mt-2 d-block">Data Part tidak ditemukan.</span>
+                            <i class="fas fa-box-open text-muted" style="font-size: 40px; opacity:0.3; margin-bottom:10px;"></i><br>
+                            <span class="text-muted font-weight-bold d-block">Data Part tidak ditemukan atau pilih Customer yang tepat.</span>
                         </td>
                     </tr>
                     @endforelse
