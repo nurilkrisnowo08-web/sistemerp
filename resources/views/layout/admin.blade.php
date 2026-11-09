@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        /* 🎨 THEME VARIABLES */
+        /* 🎨 THEME VARIABLES (PURE LIGHT MODE) */
         :root { 
             --corp-blue: #2563eb; 
             
@@ -33,37 +33,12 @@
             --sidebar-hover-text: #2563eb; 
         }
 
-        /* 🌙 DARK MODE OVERRIDES (LEBIH AMAN, TIDAK MERUSAK LAYOUT HALAMAN LAIN) */
-        body.dark-mode {
-            --bg-body: #0f172a;
-            --bg-surface: #1e293b;
-            --text-main: #f8fafc; /* Otomatis Font Putih Terang */
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-            
-            /* ✨ CUSTOM SIDEBAR DARK ✨ */
-            --sidebar-bg: #020617;
-            --sidebar-border: #1e293b;
-            --sidebar-text: #ffffff; 
-            --sidebar-icon: #cbd5e1;
-            --sidebar-hover-bg: rgba(56, 189, 248, 0.1); 
-            --sidebar-hover-text: #38bdf8; /* Teks Neon Cyan */
-        }
-
         body { 
             font-family: 'Plus Jakarta Sans', Arial, sans-serif; 
             background-color: var(--bg-body); 
             color: var(--text-main); 
             font-size: 13px;
-            transition: background-color 0.3s ease, color 0.3s ease;
         }
-
-        /* 🔄 BASIC BOOTSTRAP OVERRIDES UNTUK DARK MODE (SAFE MODE) */
-        body.dark-mode .bg-white { background-color: var(--bg-surface) !important; }
-        body.dark-mode .text-dark { color: var(--text-main) !important; } 
-        body.dark-mode .text-muted { color: var(--text-muted) !important; }
-        body.dark-mode .card, body.dark-mode .modal-content { background-color: var(--bg-surface); border-color: var(--border-color); color: var(--text-main); }
-        /* Dihapus: CSS global table dan border yang terlalu agresif merusak layar WOS Delivery */
         
         /* 🏛️ CLEAN INDUSTRIAL SIDEBAR */
         #accordionSidebar { 
@@ -73,7 +48,6 @@
             width: 260px !important;
             position: relative;
             overflow-x: hidden;
-            transition: background 0.3s ease, border-color 0.3s ease;
         }
 
         /* ✨ LOGO & BRAND BUBBLE STYLE ✨ */
@@ -124,30 +98,14 @@
         }
         .nav-item .nav-link:hover i { color: var(--sidebar-hover-text) !important; }
         
-        /* ✨ EFEK KURSOR MENDEKAT KHUSUS DARK MODE (NEON GLOW) ✨ */
-        body.dark-mode .nav-item .nav-link:hover {
-            color: var(--sidebar-hover-text) !important;
-            background: var(--sidebar-hover-bg);
-            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6); 
-            box-shadow: inset 4px 0 0 var(--sidebar-hover-text); 
-        }
-        body.dark-mode .nav-item .nav-link:hover i { 
-            color: var(--sidebar-hover-text) !important;
-            filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8)); 
-        }
-
         /* Active Bubble / Pill */
         .nav-item.active .nav-link { 
             background: var(--corp-blue) !important; 
             color: #ffffff !important; 
             box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25); 
             transform: translateX(0px);
-            text-shadow: none !important;
         }
-        body.dark-mode .nav-item.active .nav-link {
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 6px 15px rgba(37, 99, 235, 0.5);
-        }
-        .nav-item.active .nav-link i { color: #ffffff !important; filter: none !important; }
+        .nav-item.active .nav-link i { color: #ffffff !important; }
 
         .sidebar-heading { 
             color: var(--text-muted) !important; font-size: 0.7rem !important; font-weight: 900; 
@@ -161,7 +119,6 @@
             border: 1px solid var(--sidebar-border);
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
-        body.dark-mode .collapse-inner { background: rgba(0,0,0,0.25) !important; border-color: rgba(255,255,255,0.05); }
         
         .collapse-item {
             position: relative; border-radius: 50rem !important; padding: 8px 16px !important;
@@ -184,22 +141,11 @@
         }
         .collapse-item:hover::before { transform: translateY(-50%) scale(1); left: 10px; }
         
-        /* Hover Submenu Khusus Dark Mode (Neon) */
-        body.dark-mode .collapse-item:hover {
-            color: var(--sidebar-hover-text) !important;
-            text-shadow: 0 0 5px rgba(56, 189, 248, 0.4);
-        }
-        body.dark-mode .collapse-item:hover::before {
-            background: var(--sidebar-hover-text);
-            box-shadow: 0 0 6px var(--sidebar-hover-text);
-        }
-
         .collapse-item.active { 
             background: rgba(37, 99, 235, 0.1) !important; 
             color: var(--corp-blue) !important; 
             font-weight: 900 !important;
         }
-        body.dark-mode .collapse-item.active { color: #60a5fa !important; }
 
         /* 🔝 TOPBAR */
         .topbar { 
@@ -207,21 +153,20 @@
             border-bottom: 1px solid var(--border-color); 
             height: 4.5rem; 
             box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-            transition: background 0.3s ease, border-color 0.3s ease;
         }
         .clock-badge {
             background: var(--corp-blue); color: #ffffff; font-family: 'JetBrains Mono', monospace; font-weight: 700;
             padding: 8px 16px; border-radius: 50rem; font-size: 0.85rem; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
         }
         
-        /* 🌓 THEME TOGGLE BUBBLE BUTTON */
-        .theme-btn {
-            width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-            border-radius: 50%; border: 1px solid var(--border-color);
-            background: var(--bg-body); color: var(--text-muted);
-            transition: all 0.2s ease; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        /* 🎨 STYLE FILTER TOPBAR */
+        .topbar-filter-card {
+            background: var(--bg-body); border-radius: 50rem; padding: 4px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--border-color);
         }
-        .theme-btn:hover { background: var(--border-color); color: var(--text-main); transform: scale(1.05); }
+        .topbar-filter-card select, .topbar-filter-card input {
+            border: none; outline: none; font-weight: 700; color: var(--text-main); background: transparent; cursor: pointer; font-size: 12px; font-family: 'Plus Jakarta Sans';
+        }
+        .topbar-filter-card select { padding-right: 10px; border-right: 2px solid var(--border-color); }
 
         @media (max-width: 768px) {
             #accordionSidebar { position: fixed; height: 100vh; left: -260px; transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -283,6 +228,13 @@
                     </div>
                 </div>
             </li>
+            
+            {{-- ✨ MENU BARU KITA: INVENTORY TRACE (DI BAWAH PO) ✨ --}}
+            <li class="nav-item {{ Request::routeIs('ppic.inventory.trace') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('ppic.inventory.trace') ?? '#' }}">
+                    <i class="fas fa-fw fa-search-location"></i><span>Inventory Trace</span>
+                </a>
+            </li>
             @endif
 
             <div class="sidebar-heading">MANUFACTURING PLAN</div>
@@ -290,7 +242,7 @@
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStamping">
                     <i class="fas fa-fw fa-calendar-alt"></i><span>Stamping Control</span>
                 </a>
-                <div id="collapseStamping" class="collapse {{ Request::is('ppic*') && !Request::is('ppic-welding*') || Request::is('*mps*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div id="collapseStamping" class="collapse {{ Request::is('ppic*') && !Request::is('ppic-welding*') && !Request::routeIs('ppic.inventory.trace') || Request::is('*mps*') ? 'show' : '' }}" data-parent="#accordionSidebar">
                     <div class="collapse-inner">
                         <a class="collapse-item {{ Request::routeIs('ppic.index') ? 'active' : '' }}" href="{{ route('ppic.index') }}">
                             <span>Intelligence Hub</span>
@@ -390,13 +342,33 @@
 
                     <ul class="navbar-nav ml-auto align-items-center">
                         
-                        {{-- 🌓 TOMBOL TOGGLE DARK/LIGHT MODE (BUBBLE) --}}
-                        <li class="nav-item mr-3">
-                            <button id="themeToggleBtn" class="theme-btn" title="Toggle Dark/Light Mode">
-                                <i class="fas fa-moon" id="themeIcon"></i>
-                            </button>
-                        </li>
+                        {{-- ✨ PELINDUNG ANTI ERROR: DASHBOARD FILTER DI TOPBAR ✨ --}}
+                        @if(Request::is('dashboard*'))
+                        <li class="nav-item mr-3 d-none d-lg-block">
+                            <form id="dashFilter" action="{{ route('dashboard') }}" method="GET" class="topbar-filter-card">
+                                <i class="fas fa-layer-group text-primary ml-1"></i>
+                                <select name="area" onchange="document.getElementById('dashFilter').submit();">
+                                    <option value="all" {{ (($areaFilter ?? 'all') == 'all') ? 'selected' : '' }}>ALL MACHINES</option>
+                                    <option value="big" {{ (($areaFilter ?? 'all') == 'big') ? 'selected' : '' }}>BIG PRESS</option>
+                                    <option value="small" {{ (($areaFilter ?? 'all') == 'small') ? 'selected' : '' }}>SMALL PRESS</option>
+                                </select>
 
+                                <i class="fas fa-user-tie text-primary ml-1"></i>
+                                <select name="customer" onchange="document.getElementById('dashFilter').submit();">
+                                    <option value="">ALL CUSTOMER</option>
+                                    @if(isset($customersList))
+                                        @foreach($customersList as $cust)
+                                            <option value="{{ $cust }}" {{ (($selectedCustomer ?? '') == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                
+                                <i class="far fa-calendar-alt text-primary ml-1"></i>
+                                <input type="date" name="date" value="{{ $today ?? date('Y-m-d') }}" onchange="document.getElementById('dashFilter').submit();">
+                            </form>
+                        </li>
+                        @endif
+                        
                         <li class="nav-item mr-3">
                             <div class="clock-badge" id="clock">00:00:00</div>
                         </li>
@@ -416,7 +388,7 @@
                 </div>
             </div>
 
-            <footer class="bg-white py-3 border-top mt-auto" style="transition: background 0.3s ease, border-color 0.3s ease;">
+            <footer class="bg-white py-3 border-top mt-auto">
                 <div class="container my-auto text-center font-weight-bold text-muted small">
                     &copy; 2026 PT. ASALTA MANDIRI AGUNG // Industrial Ecosystem Engine.
                 </div>
@@ -440,31 +412,6 @@
         // 📱 Mobile Toggle
         $("#sidebarToggleTop").click(function() { 
             $("#accordionSidebar").toggleClass("mobile-active");
-        });
-
-        // 🌓 LOGIKA DARK MODE
-        const themeBtn = document.getElementById('themeToggleBtn');
-        const themeIcon = document.getElementById('themeIcon');
-        const body = document.body;
-
-        if (localStorage.getItem('mrp_theme') === 'dark') {
-            body.classList.add('dark-mode');
-            themeIcon.classList.replace('fa-moon', 'fa-sun');
-            themeIcon.classList.add('text-warning');
-        }
-
-        themeBtn.addEventListener('click', () => {
-            body.classList.toggle('dark-mode');
-            
-            if (body.classList.contains('dark-mode')) {
-                localStorage.setItem('mrp_theme', 'dark');
-                themeIcon.classList.replace('fa-moon', 'fa-sun');
-                themeIcon.classList.add('text-warning');
-            } else {
-                localStorage.setItem('mrp_theme', 'light');
-                themeIcon.classList.replace('fa-sun', 'fa-moon');
-                themeIcon.classList.remove('text-warning');
-            }
         });
 
         // 🔔 SweetAlert Notif
