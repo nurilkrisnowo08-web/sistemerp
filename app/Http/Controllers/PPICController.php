@@ -16,7 +16,6 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        // ✨ TANGKAP FILTER AREA (ALL, BIG, SMALL) ✨
         $areaFilter = $request->area ?? 'all';
         
         // --- 1. FILTER UNTUK ALERTS ---
@@ -45,7 +44,7 @@ class PPICController extends Controller
             });
         } elseif ($areaFilter === 'big') {
             $plansQuery->where(function($q) {
-                $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%');
+                $q->where('line_code', 'NOT LIKE', '%C%')->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
             });
         }
         $plans = $plansQuery->get();
@@ -56,7 +55,6 @@ class PPICController extends Controller
         foreach($plans as $p) {
             $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
             
-            // Note: Data production_actuals disatukan berdasarkan line_code saat input
             $actualsQuery = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
@@ -67,7 +65,6 @@ class PPICController extends Controller
             $p->actual_qty = (int)$actualPerPart;
             $p->plan_qty = (int)$targetPerPart;
             
-            // Hindari data duplikat label part (karena 1 part bisa 2 shift/mesin)
             $idx = array_search($p->part_no, $chartLabels);
             if ($idx === false) {
                 $chartLabels[] = $p->part_no;
@@ -144,7 +141,7 @@ class PPICController extends Controller
             'plans', 'statusCount', 'achievementRate', 'date', 'totalPlan', 
             'totalActual', 'chartLabels', 'chartTargets', 'chartActuals', 
             'monthlyLabels', 'monthlyOk', 'monthlyNg', 'dailyLabels', 'dailyOk', 'dailyNg',
-            'alerts', 'areaFilter' // ✨ Lempar Filter Ke Blade
+            'alerts', 'areaFilter'
         ));
     }
 
@@ -355,7 +352,13 @@ class PPICController extends Controller
         }
 
         $groupedPlans = $processedPlans->groupBy('line_code');
-        $availableLines = DB::table('line')->get();
+        $availableLines = DB::table('line')
+            ->where(function($q) {
+                $q->where('kode_Line', 'LIKE', '%C%')
+                  ->orWhere('kode_Line', 'LIKE', '%SMALL%')
+                  ->orWhere('nama_Line', 'LIKE', '%SMALL%');
+            })
+            ->get();
         $availableCustomers = DB::table('customers')->get();
         $availableParts = DB::table('parts')->select('part_no', 'part_name', 'customer_code')->orderBy('part_no', 'asc')->get();
 
@@ -1539,5 +1542,67 @@ class PPICController extends Controller
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * =======================================================
+     * 13. INVENTORY TRACEABILITY HUB (KAMAR BARU PELACAKAN)
+     * =======================================================
+     */
+    public function inventoryTrace(Request $request)
+    {
+        $search = $request->search;
+        
+        // 1. Tarik Data Utama (Part, Stock FG, Stock WIP)
+        $query = DB::table('parts')
+            ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
+            ->select(
+                'parts.part_no', 
+                'parts.part_name', 
+                'parts.customer_code',
+                'finished_goods.actual_stock as fg_stock', 
+                'finished_goods.welding_stock as wip_stock'
+            );
+            
+        if ($search) {
+            $query->where('parts.part_no', 'LIKE', "%{$search}%")
+                  ->orWhere('parts.part_name', 'LIKE', "%{$search}%");
+        }
+        
+        $parts = $query->orderBy('parts.part_no', 'asc')->get();
+
+        // 2. Tarik Data Total RM (Raw Material)
+        $rmStocks = DB::table('rm_stocks')
+            ->select('material_code', DB::raw('SUM(stock_pcs) as rm_stock'))
+            ->groupBy('material_code')
+            ->pluck('rm_stock', 'material_code');
+
+        // 3. Tarik Riwayat (Tanggal & Bulan Masuk)
+        $partNos = $parts->pluck('part_no')->toArray();
+        
+        // Riwayat Produksi (Barang Masuk ke WIP / FG)
+        $fgLogsRaw = DB::table('production_actuals')
+            ->whereIn('part_no', $partNos)
+            ->select('part_no', 'created_at', 'qty_ok', 'shift', 'line_code')
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        // Riwayat Kedatangan Material (RM Masuk dari Supplier/Gudang)
+        $rmLogsRaw = DB::table('rm_incoming_logs')
+            ->whereIn('material_code', $partNos)
+            ->select('material_code', 'created_at', 'pcs_in', 'source', 'no_produksi')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 4. Gabungkan (Mapping) Data ke masing-masing Part
+        foreach ($parts as $p) {
+            $p->rm_stock = $rmStocks[$p->part_no] ?? 0;
+            
+            // Ambil 5 riwayat kedatangan/produksi terbaru untuk ditampilkan di tabel rincian
+            $p->history_prod = $fgLogsRaw->where('part_no', $p->part_no)->take(5)->values();
+            $p->history_rm = $rmLogsRaw->where('material_code', $p->part_no)->take(5)->values();
+        }
+
+        return view('PPIC.inventory_trace', compact('parts', 'search'));
     }
 }
