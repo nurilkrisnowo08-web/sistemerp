@@ -1555,6 +1555,8 @@ class PPICController extends Controller
     public function inventoryTrace(Request $request)
     {
         $search = $request->search;
+        // ✨ TANGKAP FILTER CUSTOMER DARI BLADE
+        $selectedCustomer = $request->customer; 
         
         // 1. Tarik Data Utama (Part, Stock FG, Stock WIP)
         $query = DB::table('parts')
@@ -1568,14 +1570,21 @@ class PPICController extends Controller
                 'finished_goods.welding_stock as wip_stock'
             );
             
+        // Filter Search Text
         if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('parts.part_no', 'LIKE', "%{$search}%")
                   ->orWhere('parts.part_name', 'LIKE', "%{$search}%");
             });
         }
+
+        // ✨ Filter Customer Dropdown
+        if ($selectedCustomer) {
+            $query->where('parts.customer_code', $selectedCustomer);
+        }
         
         $parts = $query->orderBy('parts.part_no', 'asc')->get();
+        $customersList = DB::table('parts')->distinct()->pluck('customer_code');
 
         // 2. Persiapkan Array Kosong untuk Agregat Log Cepat (Biar nggak berat/lemot)
         $rmProdOut = DB::table('rm_production_logs')->select('material_code', DB::raw('SUM(pcs_used) as total'))->groupBy('material_code')->pluck('total', 'material_code');
@@ -1635,6 +1644,6 @@ class PPICController extends Controller
             $p->history_delv = $allDelv->where('part_no', $p->part_no)->take(5)->values();
         }
 
-        return view('PPIC.inventory_trace', compact('parts', 'search'));
+        return view('PPIC.inventory_trace', compact('parts', 'search', 'customersList', 'selectedCustomer'));
     }
 }

@@ -23,7 +23,7 @@
         border: 1px solid var(--border-color);
         width: 100%; max-width: 350px;
     }
-    .search-box input { border: none; outline: none; background: transparent; color: var(--text-main); font-weight: 600; width: 100%; font-size: 13px;}
+    .search-box input, .search-box select { border: none; outline: none; background: transparent; color: var(--text-main); font-weight: 600; width: 100%; font-size: 13px;}
 
     /* ✨ TABEL UTAMA ✨ */
     .trace-table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color); }
@@ -67,9 +67,23 @@
             <p>Ruang Pelacakan Stok Aktual (FG, WIP, RM) & Rincian Log Masuk-Keluar Barang per Part Number.</p>
         </div>
         
-        <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="search-box shadow-sm">
-            <i class="fas fa-search text-muted"></i>
-            <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Part Number atau Nama Part..." onchange="this.form.submit()">
+        <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="d-flex gap-2">
+            {{-- ✨ FILTER CUSTOMER ✨ --}}
+            <div class="search-box shadow-sm mr-2" style="max-width: 200px;">
+                <i class="fas fa-users text-primary"></i>
+                <select name="customer" onchange="this.form.submit()">
+                    <option value="">ALL CUSTOMER</option>
+                    @foreach($customersList as $cust)
+                        <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            
+            {{-- FILTER TEKS --}}
+            <div class="search-box shadow-sm">
+                <i class="fas fa-search text-muted"></i>
+                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Part Number atau Nama Part..." onchange="this.form.submit()">
+            </div>
         </form>
     </div>
 
