@@ -163,13 +163,13 @@
         {{-- KIRI: BAGIAN GAMBAR DAN TEKS SISTEM --}}
         <div class="login-sidebar">
             <div class="mb-4">
-                <span class="badge badge-light px-3 py-2 text-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; letter-spacing: 1px;">VERSION 2.0.26</span>
+                <span class="badge badge-light px-3 py-2 text-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; letter-spacing: 1px;"></span>
             </div>
-            <h1>INDUSTRIAL<br>ECOSYSTEM<br>ENGINE.</h1>
+            <h1>INDUSTRIAL<br><br>.</h1>
             <p>Sistem Perencanaan Kebutuhan Material (MRP) Terpadu untuk menunjang produktivitas, pemantauan inventaris, dan efisiensi lantai produksi PT Asalta Mandiri Agung.</p>
             
             <div style="position: absolute; bottom: 40px; left: 5rem; opacity: 0.5;">
-                <i class="fas fa-shield-alt mr-2"></i> <span style="font-weight:600; font-size:14px;">Secure Intranet Connection</span>
+                <i class="fas fa-shield-alt mr-2"></i> <span style="font-weight:600; font-size:14px;">Secure INTERNET Connection</span>
             </div>
         </div>
 
