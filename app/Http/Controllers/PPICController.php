@@ -1572,8 +1572,8 @@ class PPICController extends Controller
 
         $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
 
-        // ✨ FIX: Tarik data & agregasi HANYA berdasarkan material_code, agar perhitungannya spesifik
-        $allRmStocks = DB::table('rm_stocks')->select('material_code', DB::raw('SUM(stock_pcs) as total_stock'))->groupBy('material_code')->pluck('total_stock', 'material_code');
+        // Tarik data mentah rm_stocks untuk bisa cek coil_id secara spesifik
+        $allRmStocksRaw = DB::table('rm_stocks')->get();
         
         $rmIncAgg = DB::table('rm_incoming_logs')->select('material_code', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('material_code', 'source')->get();
         $rmOutAgg = DB::table('rm_production_logs')->select('material_code', DB::raw('SUM(pcs_used) as total'))->groupBy('material_code')->pluck('total', 'material_code');
@@ -1585,47 +1585,48 @@ class PPICController extends Controller
 
         // Tarik Semua Log Riwayat
         $partNos = $parts->pluck('part_no')->toArray();
-        $allProdAct = DB::table('production_actuals')->whereIn('part_no', $partNos)->orderBy('id', 'desc')->get();
-        $allWeldAct = DB::table('welding_actuals')->whereIn('part_no', $partNos)->orderBy('id', 'desc')->get();
-        $allDelv = DB::table('deliveries')->whereIn('part_no', $partNos)->orderBy('id', 'desc')->get();
+        $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
+        $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
+        $allDelv = DB::table('deliveries')->orderBy('id', 'desc')->take(2000)->get();
         
-        $allRmIn = DB::table('rm_incoming_logs')->orderBy('id', 'desc')->get();
-        $allRmOut = DB::table('rm_production_logs')->orderBy('id', 'desc')->get();
+        $allRmIn = DB::table('rm_incoming_logs')->orderBy('id', 'desc')->take(2000)->get();
+        $allRmOut = DB::table('rm_production_logs')->orderBy('id', 'desc')->take(2000)->get();
 
         foreach ($parts as $p) {
             $cleanPart = $p->part_no;
             
-            // 1. Cari nama material yang nyambung dengan Part ini (lewat mapping atau dari part no itu sendiri)
-            $relatedMaterials = [];
+            // 1. Cari material code spesifik part ini
+            $relatedMaterials = [$cleanPart];
             if(isset($partMaterials[$cleanPart])) {
                 foreach($partMaterials[$cleanPart] as $mat) {
                     $relatedMaterials[] = $mat->material_code;
                 }
             }
-            if (empty($relatedMaterials)) {
-                $relatedMaterials[] = $cleanPart;
-            }
+            $relatedMaterials = array_unique($relatedMaterials);
 
-            // 2. Loop material_code yang terkait, dan hitung hanya stock & log milik dia sendiri
-            $mappedRm = 0;
-            $rm_in = 0;
-            $rm_ret = 0;
-            $rm_out = 0;
+            // 2. Cari stok RM & dapatkan coil_id
+            // STOK RM HANYA akan menjumlahkan stock_pcs milik part ini sendiri (tidak campur part lain)
+            $myRmStocks = $allRmStocksRaw->whereIn('material_code', $relatedMaterials);
+            $p->rm_stock = $myRmStocks->sum('stock_pcs'); 
 
+            // 3. Ambil coil_id (ex: SAI RN26) untuk menarik riwayat IN Supplier Gabungan
+            $myCoilIds = $myRmStocks->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique()->toArray();
+            
+            // Gabungkan material code spesifik dengan coil_id untuk nyari barang IN (Supplier)
+            $inCodes = array_unique(array_merge($relatedMaterials, $myCoilIds));
+
+            // 4. Hitung RM IN dan RET (Berdasarkan inCodes / Keluarga)
+            // Jadi kalau masuk 600 di 'SAI RN26', akan kebaca di 20P, 30P, 40P, dll.
+            $p->rm_in = $rmIncAgg->whereIn('material_code', $inCodes)->where('source', 'supplier')->sum('total');
+            $p->rm_ret = $rmIncAgg->whereIn('material_code', $inCodes)->where('source', 'return')->sum('total');
+            
+            // 5. Hitung RM OUT (Berdasarkan Part Spesifik)
+            $p->rm_out = 0;
             foreach ($relatedMaterials as $rmCode) {
-                $mappedRm += $allRmStocks[$rmCode] ?? 0;
-                $rm_out += $rmOutAgg[$rmCode] ?? 0;
-                
-                $rm_in += $rmIncAgg->where('material_code', $rmCode)->where('source', 'supplier')->sum('total');
-                $rm_ret += $rmIncAgg->where('material_code', $rmCode)->where('source', 'return')->sum('total');
+                $p->rm_out += $rmOutAgg[$rmCode] ?? 0;
             }
 
-            $p->rm_stock = $mappedRm;
-            $p->rm_in = $rm_in;
-            $p->rm_out = $rm_out;
-            $p->rm_ret = $rm_ret;
-
-            // 3. Mapping Kalkulasi Logika Masuk-Keluar FG dan WIP
+            // 6. Mapping Kalkulasi Logika Masuk-Keluar FG dan WIP
             $isWelding = ($p->next_process === 'WELDING');
             if($isWelding) {
                 $p->wip_in = $prodAct[$p->part_no] ?? 0;
@@ -1639,11 +1640,11 @@ class PPICController extends Controller
                 $p->history_fg_in = $allProdAct->where('part_no', $p->part_no)->take(5)->values();
             }
             $p->fg_out = $delvOut[$p->part_no] ?? 0;
-
-            // Detail histori RM yang HANYA milik part ini
-            $p->history_rm_in = $allRmIn->whereIn('material_code', $relatedMaterials)->take(5)->values();
-            $p->history_rm_out = $allRmOut->whereIn('material_code', $relatedMaterials)->take(5)->values();
             $p->history_delv = $allDelv->where('part_no', $p->part_no)->take(5)->values();
+
+            // Detail histori RM
+            $p->history_rm_in = $allRmIn->whereIn('material_code', $inCodes)->take(5)->values();
+            $p->history_rm_out = $allRmOut->whereIn('material_code', $relatedMaterials)->take(5)->values();
         }
 
         return view('PPIC.inventory_trace', compact('parts', 'search', 'customersList', 'selectedCustomer'));
