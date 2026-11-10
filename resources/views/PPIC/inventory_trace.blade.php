@@ -141,13 +141,13 @@
                                             </div>
 
                                             <table class="history-table">
-                                                <tr><th class="text-left">Tanggal</th><th>Material In/Out</th><th class="text-right">Qty</th></tr>
+                                                <tr><th class="text-left">Tanggal</th><th>Material ID</th><th class="text-right">Qty</th></tr>
                                                 
-                                                {{-- ✨ FITUR BARU: Menampilkan nama material/coil_id aslinya ✨ --}}
+                                                {{-- ✨ FITUR BARU: Menampilkan nama material aslinya ✨ --}}
                                                 @foreach($p->history_rm_in as $in)
                                                 <tr>
                                                     <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($in->created_at)) }}</td>
-                                                    <td class="text-primary font-weight-bold" style="font-size:10px;">IN: {{ $in->stock_coil_id ?? $in->stock_mat_code ?? '-' }}</td>
+                                                    <td class="text-primary font-weight-bold" style="font-size:10px;" title="IN dari Supplier/Return">IN: {{ $in->material_code }}</td>
                                                     <td class="text-right text-success">+{{ number_format($in->pcs_in) }}</td>
                                                 </tr>
                                                 @endforeach
@@ -155,7 +155,7 @@
                                                 @foreach($p->history_rm_out as $out)
                                                 <tr>
                                                     <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($out->created_at)) }}</td>
-                                                    <td class="text-danger font-weight-bold" style="font-size:10px;">OUT: Prod ({{ $p->part_no }})</td>
+                                                    <td class="text-danger font-weight-bold" style="font-size:10px;" title="OUT ke Mesin Stamping">OUT: {{ $out->material_code }}</td>
                                                     <td class="text-right text-danger">-{{ number_format($out->pcs_used) }}</td>
                                                 </tr>
                                                 @endforeach
