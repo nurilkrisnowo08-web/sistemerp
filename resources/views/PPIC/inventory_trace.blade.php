@@ -147,7 +147,7 @@
                                                 @foreach($p->history_rm_in as $in)
                                                 <tr>
                                                     <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($in->created_at)) }}</td>
-                                                    <td class="text-primary font-weight-bold" style="font-size:10px;">IN: {{ $in->material_code }}</td>
+                                                    <td class="text-primary font-weight-bold" style="font-size:10px;">IN: {{ $in->stock_coil_id ?? $in->stock_mat_code ?? '-' }}</td>
                                                     <td class="text-right text-success">+{{ number_format($in->pcs_in) }}</td>
                                                 </tr>
                                                 @endforeach
