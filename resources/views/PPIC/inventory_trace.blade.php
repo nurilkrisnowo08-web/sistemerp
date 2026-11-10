@@ -3,51 +3,51 @@
 @section('content')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
-    /* ✨ THEME WARNA & ANIMASI ✨ */
+    /* ✨ THEME WARNA & ANIMASI (PURE LIGHT MODE) ✨ */
     .b-panel { 
-        background: var(--bg-surface, #ffffff); 
+        background: #ffffff; 
         border-radius: 16px; 
         padding: 25px; 
-        border: 1px solid var(--border-color, #e2e8f0);
+        border: 1px solid #e2e8f0;
         box-shadow: 0 4px 15px rgba(0,0,0,0.02);
     }
     
-    .page-title h1 { font-weight: 900; font-size: 26px; margin: 0; color: var(--text-main, #1e293b); letter-spacing: -0.5px; }
-    .page-title p { font-size: 12px; font-weight: 700; color: var(--text-muted, #64748b); margin: 4px 0 0 0; }
+    .page-title h1 { font-weight: 900; font-size: 26px; margin: 0; color: #1e293b; letter-spacing: -0.5px; }
+    .page-title p { font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0; }
 
     /* ✨ FILTER BOX ✨ */
     .search-box {
-        background: var(--bg-body, #f4f7fe);
+        background: #f4f7fe;
         border-radius: 50rem;
         padding: 8px 16px;
         display: flex; align-items: center; gap: 10px;
-        border: 1px solid var(--border-color, #e2e8f0);
+        border: 1px solid #e2e8f0;
     }
     .search-box input, .search-box select { 
         border: none; outline: none; background: transparent; 
-        color: var(--text-main, #1e293b); font-weight: 700; width: 100%; font-size: 13px;
+        color: #1e293b; font-weight: 700; width: 100%; font-size: 13px;
         cursor: pointer;
     }
 
     /* ✨ TABEL UTAMA ✨ */
-    .trace-table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0); }
+    .trace-table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; }
     .trace-table { width: 100%; min-width: 1000px; border-collapse: collapse; }
-    .trace-table th { background: rgba(37, 99, 235, 0.05); padding: 16px; font-size: 11px; font-weight: 800; color: var(--text-muted, #64748b); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color, #e2e8f0); }
-    .trace-table td { padding: 16px; font-size: 13px; font-weight: 700; border-bottom: 1px solid var(--border-color, #e2e8f0); color: var(--text-main, #1e293b); vertical-align: middle; }
+    .trace-table th { background: rgba(37, 99, 235, 0.05); padding: 16px; font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }
+    .trace-table td { padding: 16px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #e2e8f0; color: #1e293b; vertical-align: middle; }
     
     /* Pill/Badges untuk angka stok Aktual */
     .stock-pill { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; display: inline-block; font-family: 'JetBrains Mono', monospace;}
     .pill-rm { background: rgba(245, 158, 11, 0.15); color: #d97706; }
     .pill-wip { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
     .pill-fg { background: rgba(16, 185, 129, 0.15); color: #059669; }
-    
+
     /* ✨ BARIS HISTORI (YANG TERSEMBUNYI) ✨ */
     .history-row { display: none; }
-    .history-box { padding: 16px; border-radius: 12px; border: 1px dashed var(--border-color, #e2e8f0); background: var(--bg-surface, #ffffff); height: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+    .history-box { padding: 16px; border-radius: 12px; border: 1px dashed #e2e8f0; background: #ffffff; height: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
     
     .history-table { width: 100%; font-size: 11px; }
-    .history-table th { color: var(--text-muted, #64748b); padding: 8px 4px; border-bottom: 1px solid var(--border-color, #e2e8f0); font-weight: 800; }
-    .history-table td { color: var(--text-main, #1e293b); padding: 8px 4px; border-bottom: 1px solid var(--border-color, #e2e8f0); }
+    .history-table th { color: #64748b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-weight: 800; }
+    .history-table td { color: #1e293b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; }
     
     .btn-toggle-history { border-radius: 50rem; padding: 6px 18px; font-size: 11px; font-weight: 800; transition: all 0.3s ease; }
     
@@ -72,7 +72,7 @@
                     <option value="">ALL CUSTOMER</option>
                     @if(isset($customersList))
                         @foreach($customersList as $cust)
-                            <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
+                            <option value="{{ $cust }}" {{ (($selectedCustomer ?? '') == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
                         @endforeach
                     @endif
                 </select>
@@ -141,21 +141,25 @@
                                             </div>
 
                                             <table class="history-table">
-                                                <tr><th class="text-left">Tanggal</th><th>Sumber / Tipe</th><th class="text-right">Qty</th></tr>
+                                                <tr><th class="text-left">Tanggal</th><th>Material In/Out</th><th class="text-right">Qty</th></tr>
+                                                
+                                                {{-- ✨ FITUR BARU: Menampilkan nama material/coil_id aslinya ✨ --}}
                                                 @foreach($p->history_rm_in as $in)
                                                 <tr>
                                                     <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($in->created_at)) }}</td>
-                                                    <td>IN ({{ $in->source }})</td>
+                                                    <td class="text-primary font-weight-bold" style="font-size:10px;">IN: {{ $in->material_code }}</td>
                                                     <td class="text-right text-success">+{{ number_format($in->pcs_in) }}</td>
                                                 </tr>
                                                 @endforeach
+                                                
                                                 @foreach($p->history_rm_out as $out)
                                                 <tr>
                                                     <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($out->created_at)) }}</td>
-                                                    <td>OUT (Prod)</td>
+                                                    <td class="text-danger font-weight-bold" style="font-size:10px;">OUT: Prod ({{ $p->part_no }})</td>
                                                     <td class="text-right text-danger">-{{ number_format($out->pcs_used) }}</td>
                                                 </tr>
                                                 @endforeach
+                                                
                                                 @if(count($p->history_rm_in) == 0 && count($p->history_rm_out) == 0)
                                                     <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat masuk/keluar RM.</td></tr>
                                                 @endif
