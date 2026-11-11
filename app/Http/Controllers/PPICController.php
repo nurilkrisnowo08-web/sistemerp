@@ -1918,6 +1918,11 @@ class PPICController extends Controller
      * 16. STOCK OPNAME (STO) HUB
      * =======================================================
      */
+   /**
+     * =======================================================
+     * 16. STOCK OPNAME (STO) HUB
+     * =======================================================
+     */
     public function stockOpname(Request $request)
     {
         $search = $request->search;
@@ -1940,14 +1945,13 @@ class PPICController extends Controller
         $parts = $query->orderBy('parts.part_no', 'asc')->get();
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
 
-        // Mapping dari master_materials (Menghubungkan Part FG ke Material RM)
+        // Mapping dari master_materials
         $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
         $allRmStocksRaw = DB::table('rm_stocks')->get();
 
         foreach ($parts as $p) {
             $cleanPart = $p->part_no;
             
-            // Logika ngambil stok RM Sistem seperti di Inventory Trace
             $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
                 $code = trim($st->material_code);
                 $name = trim($st->material_name);
@@ -1969,7 +1973,6 @@ class PPICController extends Controller
                 });
             }
             
-            // Ambil Stok RM Sistem milik Part ini
             $myOwnStocks = $familyStocks->filter(function($st) use ($cleanPart, $partMaterials) {
                 $related = [$cleanPart];
                 if(isset($partMaterials[$cleanPart])) {
@@ -1981,7 +1984,13 @@ class PPICController extends Controller
             $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
         }
 
-        return view('PPIC.sto_index', compact('parts', 'search', 'customersList', 'selectedCustomer'));
+        // ✨ TARIK DATA REKAP STO (HISTORY) DARI DATABASE ✨
+        $historySto = [];
+        if (Schema::hasTable('sto_logs')) {
+            $historySto = DB::table('sto_logs')->orderBy('created_at', 'desc')->get();
+        }
+
+        return view('PPIC.sto_index', compact('parts', 'search', 'customersList', 'selectedCustomer', 'historySto'));
     }
 
     /**
@@ -2134,4 +2143,5 @@ class PPICController extends Controller
             return redirect()->back()->with('error', "Terjadi kesalahan: " . $e->getMessage());
         }
     }
+    
 }
