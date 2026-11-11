@@ -16,14 +16,13 @@
     .title-area h1 { font-weight: 900; letter-spacing: -1px; color: #2b3674; margin: 0; font-size: 28px; text-transform: uppercase; }
     .title-area p { font-size: 12px; font-weight: 700; color: #a3aed1; margin: 2px 0 0 0; }
     
-    .filter-card { background: var(--card-bg); border-radius: 14px; padding: 6px 12px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-    .filter-card select, .filter-card input { border: none; outline: none; font-weight: 700; color: #2b3674; background: transparent; cursor: pointer; font-size: 13px; font-family: 'Plus Jakarta Sans'; }
-    .filter-card select { padding-right: 15px; border-right: 2px solid #e9edf7; }
+    /* Tombol Refresh Baru Pengganti Filter Lama */
+    .btn-refresh { background: var(--primary); color: white; border: none; border-radius: 50rem; font-weight: 800; font-size: 12px; padding: 10px 20px; box-shadow: 0 4px 10px rgba(67, 24, 255, 0.2); transition: all 0.3s ease; }
+    .btn-refresh:hover { background: #2b12a8; transform: translateY(-2px); }
 
-    .alert-ticker { background: #fff1f2; border: 1px solid #ffe4e6; border-radius: 12px; padding: 12px 18px; display: flex; align-items: center; gap: 15px; margin-bottom: 25px; }
-    .alert-badge { background: var(--danger); color: #fff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 6px; letter-spacing: 1px; white-space: nowrap; }
-    .ticker-content { color: #be123c; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; width: 100%; }
-    .ticker-content marquee { display: flex; gap: 40px; }
+    .alert-ticker { background: #fff5f5; border: 1px solid #fecaca; border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 15px; margin-bottom: 25px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+    .alert-badge { background: #ef4444; color: #fff; font-size: 11px; font-weight: 900; padding: 6px 12px; border-radius: 6px; letter-spacing: 0.5px; white-space: nowrap; }
+    .ticker-content { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; width: 100%; margin-top: 2px; }
 
     .kpi-wrapper { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 25px; }
     .kpi-card { background: var(--card-bg); border-radius: 18px; padding: 22px; box-shadow: 0 5px 14px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 18px; border: 1px solid #e2e8f0; }
@@ -35,7 +34,7 @@
     .b-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; }
     .b-panel-title { font-size: 14px; font-weight: 900; color: #2b3674; margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; }
 
-    .wos-table-wrapper { max-height: 420px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .wos-table-wrapper { max-height: 420px; overflow-y: auto; overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; padding-bottom: 15px; }
     .wos-table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
     .wos-table-wrapper::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
     .wos-table-wrapper::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
@@ -51,35 +50,22 @@
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
     
-    {{-- 1. HEADER & FILTERS --}}
-    <div class="dashboard-header">
+    {{-- 1. HEADER & ACTIONS ✨ --}}
+    <div class="dashboard-header animate__animated animate__fadeInDown">
         <div class="title-area">
             <h1>OVERALL INVENTORY HUB</h1>
             <p>Sistem Pemantauan Gudang FG, RM, WIP & Delivery Terpadu</p>
         </div>
         
-        <form id="dashFilter" action="{{ route('dashboard') }}" method="GET" class="filter-card">
-            <i class="fas fa-layer-group text-primary ml-1"></i>
-            <select name="area" onchange="document.getElementById('dashFilter').submit();">
-                <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL MACHINES</option>
-                <option value="big" {{ ($areaFilter ?? 'all') == 'big' ? 'selected' : '' }}>BIG PRESS</option>
-                <option value="small" {{ ($areaFilter ?? 'all') == 'small' ? 'selected' : '' }}>SMALL PRESS</option>
-            </select>
-
-            <i class="fas fa-user-tie text-primary ml-1"></i>
-            <select name="customer" onchange="document.getElementById('dashFilter').submit();">
-                <option value="">ALL CUSTOMER</option>
-                @foreach($customersList as $cust)
-                    <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
-                @endforeach
-            </select>
-            
-            <i class="far fa-calendar-alt text-primary ml-1"></i>
-            <input type="date" name="date" value="{{ $today }}" onchange="document.getElementById('dashFilter').submit();">
-        </form>
+        {{-- FILTER LAMA DIHAPUS, DIGANTI TOMBOL REFRESH --}}
+        <div>
+            <button class="btn-refresh" onclick="location.reload()">
+                <i class="fas fa-sync-alt mr-1"></i> REFRESH DATA
+            </button>
+        </div>
     </div>
 
-    {{-- 2. SMART ALERT TICKER --}}
+    {{-- 2. SMART ALERT TICKER ✨ --}}
     @if(isset($shortageParts) && $shortageParts->count() > 0 || isset($shortageRm) && $shortageRm->count() > 0)
     <div class="alert-ticker">
         <div class="alert-badge"><i class="fas fa-exclamation-circle mr-1"></i> STOK KRITIS</div>
@@ -87,15 +73,15 @@
             <marquee behavior="scroll" direction="left" scrollamount="6">
                 @if(isset($shortageParts))
                     @foreach($shortageParts as $fg)
-                        <span style="margin-right: 50px; color: #be123c;">
-                            <b>[FG SHORTAGE]</b> Part {{ $fg->part_no }} ({{ $fg->customer_code }}). Aktual: {{ number_format($fg->actual_stock) }} | Min: {{ number_format($fg->min_stock_pcs) }}
+                        <span style="margin-right: 50px; color: #b91c1c;">
+                            ⚠️ <b>[FG SHORTAGE]</b> Part: {{ $fg->part_no }} ({{ $fg->customer_code }}). Aktual: {{ number_format($fg->actual_stock) }} | Min: {{ number_format($fg->min_stock_pcs) }}
                         </span>
                     @endforeach
                 @endif
                 @if(isset($shortageRm))
                     @foreach($shortageRm as $rm)
                         <span style="margin-right: 50px; color: #b45309;">
-                            <b>[RM CRITICAL]</b> Material {{ $rm->material_code }} (Coil: {{ $rm->coil_id }}). Sisa: {{ number_format($rm->stock_pcs) }} Lbr
+                            ⚠️ <b>[RM CRITICAL]</b> Material: {{ $rm->material_code }} (Coil: {{ $rm->coil_id }}). Sisa: {{ number_format($rm->stock_pcs) }} Lbr
                         </span>
                     @endforeach
                 @endif
@@ -177,7 +163,7 @@
             <div class="b-panel">
                 <div class="b-panel-header">
                     <h3 class="b-panel-title"><i class="fas fa-bullseye text-success"></i> Aktual vs WOS Plan Produksi</h3>
-                    <span style="font-size:10px; font-weight:bold; background:#e2e8f0; padding:4px 8px; border-radius:6px; color:#475569;">{{ strtoupper($areaFilter) }}</span>
+                    <span style="font-size:10px; font-weight:bold; background:#e2e8f0; padding:4px 8px; border-radius:6px; color:#475569;">{{ strtoupper($areaFilter ?? 'ALL') }}</span>
                 </div>
                 <div id="prodChart" style="flex: 1; min-height: 280px;"></div>
             </div>
