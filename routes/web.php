@@ -197,6 +197,7 @@ Route::get('/ppic/inventory-trace/print-summary', [App\Http\Controllers\PPICCont
 // STO (STOCK OPNAME)
 Route::get('/ppic/sto', [App\Http\Controllers\PPICController::class, 'stockOpname'])->name('ppic.sto.index');
 Route::post('/ppic/sto/store', [App\Http\Controllers\PPICController::class, 'storeStoMasal'])->name('ppic.sto.store');
+Route::get('/ppic/sto/print', [App\Http\Controllers\PPICController::class, 'printSto'])->name('ppic.sto.print');
 
 // Rute untuk Print BPRM / Serah Terima Small Press
 Route::get('/planning/mps/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall']);
