@@ -72,6 +72,30 @@
             <h1>MATERIAL & INVENTORY TRACEABILITY</h1>
             <p>Ruang Pelacakan Stok Aktual (FG, WIP, RM) & Timeline Aktivitas Material per Part Number.</p>
         </div>
+
+        <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="search-box shadow-sm mr-2" style="min-width: 200px;">
+                <i class="fas fa-users text-primary"></i>
+                <select name="customer" onchange="this.form.submit()">
+                    <option value="">ALL CUSTOMER</option>
+                    @if(isset($customersList))
+                        @foreach($customersList as $cust)
+                            <option value="{{ $cust }}" {{ (($selectedCustomer ?? '') == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
+            
+            <div class="search-box shadow-sm mr-2" style="min-width: 280px;">
+                <i class="fas fa-search text-muted"></i>
+                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Part Number atau Nama Part..." onchange="this.form.submit()">
+            </div>
+            
+            {{-- ✨ INI TOMBOL PRINTNYA ✨ --}}
+            <a href="{{ route('ppic.inventory.trace.print', ['customer' => $selectedCustomer, 'search' => $search]) }}" target="_blank" class="btn btn-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; padding: 8px 20px;">
+                <i class="fas fa-print mr-1"></i> PRINT
+            </a>
+        </form>       
         
         <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="d-flex flex-wrap gap-2">
             <div class="search-box shadow-sm mr-2" style="min-width: 200px;">

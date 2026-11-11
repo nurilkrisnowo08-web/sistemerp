@@ -192,6 +192,7 @@ Route::put('/planning/mps/update-wos/{id}', [PPICController::class, 'updateWos']
 Route::get('/planning/mps/print-wos-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosSmall']);
 Route::get('/ppic/dashboard', [PPICController::class, 'index'])->name('ppic.dashboard');
 Route::get('/ppic/inventory-trace', [App\Http\Controllers\PPICController::class, 'inventoryTrace'])->name('ppic.inventory.trace');
+Route::get('/ppic/inventory-trace/print', [App\Http\Controllers\PPICController::class, 'printInventoryTrace'])->name('ppic.inventory.trace.print');
 
 // Rute untuk Print BPRM / Serah Terima Small Press
 Route::get('/planning/mps/print-serahterima-small/{date}/{shift}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaSmall']);
