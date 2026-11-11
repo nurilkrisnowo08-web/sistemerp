@@ -175,17 +175,17 @@
                     <th class="col-rm">IN Sup</th>
                     <th class="col-rm">IN Ret</th>
                     <th class="col-rm">OUT Prod</th>
-                    <th class="col-rm">SALDO</th>
+                    <th class="col-rm">STOCK</th>
                     
                     <!-- WIP Sub -->
                     <th class="col-wip">IN (Prod)</th>
                     <th class="col-wip">OUT (Las)</th>
-                    <th class="col-wip">SALDO</th>
+                    <th class="col-wip">STOCK</th>
                     
                     <!-- FG Sub -->
                     <th class="col-fg">IN (Prod)</th>
                     <th class="col-fg">OUT (SJ)</th>
-                    <th class="col-fg">SALDO</th>
+                    <th class="col-fg">STOCK</th>
                 </tr>
             </thead>
             <tbody>
