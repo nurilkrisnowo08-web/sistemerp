@@ -55,7 +55,7 @@
     .history-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
     .history-table { width: 100%; font-size: 11px; }
-    .history-table th { color: #64748b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-weight: 800; position: sticky; top: 0; background: #fff; }
+    .history-table th { color: #64748b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-weight: 800; position: sticky; top: 0; background: #fff; z-index: 1;}
     .history-table td { color: #1e293b; padding: 8px 4px; border-bottom: 1px solid #f1f5f9; }
     
     .btn-toggle-history { border-radius: 50rem; padding: 6px 18px; font-size: 11px; font-weight: 800; transition: all 0.3s ease; }
@@ -171,16 +171,36 @@
                                         </div>
                                     </div>
 
-                                    {{-- 2. RINCIAN WIP (WELDING) --}}
+                                    {{-- 2. RINCIAN WIP (WELDING) TIMELINE ✨ --}}
                                     <div class="col-xl-4 mb-3">
                                         <div class="history-box">
-                                            <h6 style="color:#dc2626; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-fire mr-2"></i>WIP (WELDING)</h6>
+                                            <h6 style="color:#dc2626; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-fire mr-2"></i>TIMELINE WIP (WELDING)</h6>
                                             
                                             <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
                                                 <span class="badge-in"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->wip_in) }}</span>
                                                 <span class="badge-out"><i class="fas fa-arrow-up mr-1"></i>Out: {{ number_format($p->wip_out) }}</span>
                                             </div>
                                             
+                                            @if(count($p->history_wip) > 0)
+                                            <div class="history-scroll">
+                                                <table class="history-table">
+                                                    <tr><th class="text-left">Tanggal</th><th>Keterangan</th><th class="text-right">Qty</th></tr>
+                                                    
+                                                    @foreach($p->history_wip as $w)
+                                                        <tr>
+                                                            <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($w->created_at)) }}</td>
+                                                            @if($w->log_type == 'IN')
+                                                                <td class="text-primary font-weight-bold" style="font-size:10px;">IN (Stamping)</td>
+                                                                <td class="text-right text-success">+{{ number_format($w->qty_ok) }}</td>
+                                                            @else
+                                                                <td class="text-danger font-weight-bold" style="font-size:10px;">OUT (Di-Las)</td>
+                                                                <td class="text-right text-danger">-{{ number_format($w->qty_masuk) }}</td>
+                                                            @endif
+                                                        </tr>
+                                                    @endforeach
+                                                </table>
+                                            </div>
+                                            @else
                                             <div class="text-center mt-4">
                                                 <i class="fas fa-exchange-alt text-muted mb-3 mt-2" style="font-size:30px; opacity:0.2;"></i>
                                                 <p class="text-muted" style="font-size:10px; font-weight:700; line-height:1.6;">
@@ -188,6 +208,7 @@
                                                     * <b>WIP Out</b> adalah part yang ditarik untuk diproses Las (Welding).
                                                 </p>
                                             </div>
+                                            @endif
                                         </div>
                                     </div>
 

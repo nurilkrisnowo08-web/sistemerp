@@ -18,6 +18,7 @@ class PPICController extends Controller
         
         $areaFilter = $request->area ?? 'all';
         
+        // --- 1. FILTER UNTUK ALERTS ---
         $alertsQuery = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
@@ -34,6 +35,7 @@ class PPICController extends Controller
         }
         $alerts = $alertsQuery->get();
 
+        // --- 2. FILTER UNTUK TARGET VS ACTUAL PLAN ---
         $plansQuery = DB::table('production_plans')->where('plan_date', $date);
         
         if ($areaFilter === 'small') {
@@ -93,6 +95,7 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
+        // --- 3. FILTER UNTUK GRAFIK HARIAN (DAILY OK VS NG) ---
         $dailyLabels = []; $dailyOk = []; $dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
@@ -113,6 +116,7 @@ class PPICController extends Controller
             $dailyNg[] = $qNg->sum('qty_ng');
         }
 
+        // --- 4. FILTER UNTUK GRAFIK BULANAN (MONTHLY OK VS NG) ---
         $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
@@ -1599,6 +1603,9 @@ class PPICController extends Controller
             ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
             ->select('rm_production_logs.*', 'rm_stocks.coil_id as stock_coil_id', 'rm_stocks.material_code as stock_mat_code')
             ->orderBy('rm_production_logs.id', 'desc')->take(3000)->get();
+            
+        // ✨ TARIK HISTORI WELDING BATCHES
+        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
 
         // 3. MAPPING KELUARGA & TIMELINE RM
         foreach ($parts as $p) {
@@ -1646,8 +1653,8 @@ class PPICController extends Controller
                 $p->rm_ret = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'return')->sum('total');
                 
                 $outSum = 0;
-                foreach($familyStockIds as $fid) {
-                    $outSum += $rmOutAgg[$fid] ?? 0;
+                foreach($myOwnStocks->pluck('id')->toArray() as $myFid) {
+                    $outSum += $rmOutAgg[$myFid] ?? 0;
                 }
                 $p->rm_out = $outSum;
                 
@@ -1678,12 +1685,20 @@ class PPICController extends Controller
                 $p->wip_out = $weldBatches[$p->part_no] ?? 0;
                 $p->fg_in = $weldAct[$p->part_no] ?? 0;
                 $p->history_fg_in = $allWeldAct->where('part_no', $p->part_no)->take(15)->values();
+                
+                // ✨ HISTORY WIP (Welding In & Out)
+                $myWipIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->log_type = 'IN'; return $i; });
+                $myWipOut = $allWeldBatches->where('part_no', $p->part_no)->map(function($i) { $i->log_type = 'OUT'; return $i; });
+                $p->history_wip = $myWipIn->concat($myWipOut)->sortByDesc('created_at')->take(15)->values();
+                
             } else {
                 $p->wip_in = 0;
                 $p->wip_out = 0;
                 $p->fg_in = $prodAct[$p->part_no] ?? 0;
                 $p->history_fg_in = $allProdAct->where('part_no', $p->part_no)->take(15)->values();
+                $p->history_wip = collect();
             }
+            
             $p->fg_out = $delvOut[$p->part_no] ?? 0;
             $p->history_delv = $allDelv->where('part_no', $p->part_no)->take(15)->values();
         }
