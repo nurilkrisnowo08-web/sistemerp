@@ -118,11 +118,10 @@
         <div class="header-print">
             <table class="header-table">
                 <tr>
-                     <div class="header-container">
-        <!-- Logo & Nama PT -->
-        <div class="logo-section">
-            <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="Logo Asalta" style="height: 45px; margin-right: 15px;" onerror="this.style.display='none'">
-            <div class="company-info">
+                    <td width="15%" class="logo-container text-left">
+                        <!-- ✨ LOGO ASALTA (Pastikan file logo.png ada di folder public/assets/img/ atau ubah URL-nya) ✨ -->
+                        <img src="{{ asset('public/admin/img/Logo-asalta.png') }}" alt="ASALTA MANDIRI AGUNG" onerror="this.outerHTML='<h1 style=\'margin:0;color:#1e293b;font-weight:900;\'>ASALTA MANDIRI AGUNG</h1>'">
+                    </td>
                     <td width="70%" class="company-title" style="text-align: center;">
                         <h2>MATERIAL & INVENTORY TRACEABILITY REPORT</h2>
                         <p>PT ASALTA MANDIRI AGUNG // INDUSTRIAL </p>
