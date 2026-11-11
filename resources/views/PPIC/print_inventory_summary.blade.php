@@ -118,8 +118,8 @@
                     </td>
                     <td width="15%" style="text-align: right;">
                         <div style="border: 1px solid #1e293b; padding: 5px; display:inline-block; font-size:9px; font-weight:bold; text-align:left;">
-                            Doc No : FRM-PPIC-019<br>
-                            Rev : 01<br>
+                            Doc No : FRM-PPIC-0     <br>
+                            Rev : <br>
                             Date : {{ date('d/m/Y') }}
                         </div>
                     </td>

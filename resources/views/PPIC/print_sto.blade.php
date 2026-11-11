@@ -78,13 +78,13 @@
                         <img src="{{ asset('assets/img/logo.png') }}" alt="ASALTA LOGO" onerror="this.outerHTML='<h1 style=\'margin:0;color:#1e293b;font-weight:900;\'>ASALTA</h1>'">
                     </td>
                     <td width="70%" class="company-title" style="text-align: center;">
-                        <h2>FORM STOCK OPNAME (STO) BULANAN</h2>
-                        <p>PT ASALTA MANDIRI AGUNG // REKONSILIASI STOK GUDANG</p>
+                        <h2>MATERIAL & INVENTORY TRACEABILITY REPORT</h2>
+                        <p>PT ASALTA MANDIRI AGUNG // INDUSTRIAL</p>
                     </td>
                     <td width="15%" style="text-align: right;">
                         <div style="border: 1px solid #1e293b; padding: 5px; display:inline-block; font-size:9px; font-weight:bold; text-align:left;">
                             Doc No : FRM-PPIC-STO-001<br>
-                            Rev : 01<br>
+                            Rev : 0<br>
                             Date : {{ date('d/m/Y') }}
                         </div>
                     </td>
