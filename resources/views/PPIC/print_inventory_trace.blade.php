@@ -120,11 +120,11 @@
                 <tr>
                     <td width="15%" class="logo-container text-left">
                         <!-- ✨ LOGO ASALTA (Pastikan file logo.png ada di folder public/assets/img/ atau ubah URL-nya) ✨ -->
-                        <img src="{{ asset('assets/img/logo.png') }}" alt="ASALTA LOGO" onerror="this.outerHTML='<h1 style=\'margin:0;color:#1e293b;font-weight:900;\'>ASALTA</h1>'">
+                        <img src="{{ asset('public/img/Logo-asalta.png') }}" alt="ASALTA MANDIRI AGUNG" onerror="this.outerHTML='<h1 style=\'margin:0;color:#1e293b;font-weight:900;\'>ASALTA MANDIRI AGUNG</h1>'">
                     </td>
                     <td width="70%" class="company-title" style="text-align: center;">
                         <h2>MATERIAL & INVENTORY TRACEABILITY REPORT</h2>
-                        <p>PT ASALTA MANDIRI AGUNG // INDUSTRIAL ECOSYSTEM ENGINE</p>
+                        <p>PT ASALTA MANDIRI AGUNG // INDUSTRIAL </p>
                     </td>
                     <td width="15%" style="text-align: right;">
                         <div style="border: 1px solid #1e293b; padding: 5px; display:inline-block; font-size:9px; font-weight:bold; text-align:left;">
