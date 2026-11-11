@@ -3,7 +3,7 @@
 @section('content')
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 <style>
-    /* ✨ THEME WARNA & ANIMASI (PURE LIGHT MODE) ✨ */
+    /* ✨ THEME WARNA & ANIMASI ✨ */
     .b-panel { 
         background: #ffffff; 
         border-radius: 16px; 
@@ -15,7 +15,6 @@
     .page-title h1 { font-weight: 900; font-size: 26px; margin: 0; color: #1e293b; letter-spacing: -0.5px; }
     .page-title p { font-size: 12px; font-weight: 700; color: #64748b; margin: 4px 0 0 0; }
 
-    /* ✨ FILTER BOX ✨ */
     .search-box {
         background: #f4f7fe;
         border-radius: 50rem;
@@ -41,13 +40,23 @@
     .pill-wip { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
     .pill-fg { background: rgba(16, 185, 129, 0.15); color: #059669; }
 
-    /* ✨ BARIS HISTORI (YANG TERSEMBUNYI) ✨ */
+    /* ✨ BARIS HISTORI ✨ */
     .history-row { display: none; }
     .history-box { padding: 16px; border-radius: 12px; border: 1px dashed #e2e8f0; background: #ffffff; height: 100%; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
     
+    /* SCROLLABLE TABLE AREA UNTUK MAKSIMAL 15 DATA */
+    .history-scroll {
+        max-height: 220px;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+    .history-scroll::-webkit-scrollbar { width: 5px; }
+    .history-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    .history-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
     .history-table { width: 100%; font-size: 11px; }
-    .history-table th { color: #64748b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-weight: 800; }
-    .history-table td { color: #1e293b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; }
+    .history-table th { color: #64748b; padding: 8px 4px; border-bottom: 1px solid #e2e8f0; font-weight: 800; position: sticky; top: 0; background: #fff; }
+    .history-table td { color: #1e293b; padding: 8px 4px; border-bottom: 1px solid #f1f5f9; }
     
     .btn-toggle-history { border-radius: 50rem; padding: 6px 18px; font-size: 11px; font-weight: 800; transition: all 0.3s ease; }
     
@@ -61,11 +70,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div class="page-title">
             <h1>MATERIAL & INVENTORY TRACEABILITY</h1>
-            <p>Ruang Pelacakan Stok Aktual (FG, WIP, RM) & Rincian Log Masuk-Keluar Barang per Part Number.</p>
+            <p>Ruang Pelacakan Stok Aktual (FG, WIP, RM) & Timeline Aktivitas Material per Part Number.</p>
         </div>
         
         <form action="{{ route('ppic.inventory.trace') }}" method="GET" class="d-flex flex-wrap gap-2">
-            {{-- ✨ FILTER CUSTOMER ✨ --}}
             <div class="search-box shadow-sm mr-2" style="min-width: 200px;">
                 <i class="fas fa-users text-primary"></i>
                 <select name="customer" onchange="this.form.submit()">
@@ -78,7 +86,6 @@
                 </select>
             </div>
             
-            {{-- FILTER TEKS --}}
             <div class="search-box shadow-sm" style="min-width: 280px;">
                 <i class="fas fa-search text-muted"></i>
                 <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari Part Number atau Nama Part..." onchange="this.form.submit()">
@@ -110,12 +117,10 @@
                         </td>
                         <td><span class="badge badge-secondary px-2 py-1">{{ $p->customer_code }}</span></td>
                         
-                        {{-- ANGKA STOK AKTUAL --}}
                         <td><span class="stock-pill pill-rm">{{ number_format($p->rm_stock) }} Lbr</span></td>
                         <td><span class="stock-pill pill-wip">{{ number_format($p->wip_stock ?? 0) }} Pcs</span></td>
                         <td><span class="stock-pill pill-fg">{{ number_format($p->fg_stock ?? 0) }} Pcs</span></td>
                         
-                        {{-- TOMBOL BUKA TUTUP RINCIAN --}}
                         <td>
                             <button class="btn btn-outline-primary btn-toggle-history" onclick="toggleHistory('{{ $idx }}')">
                                 <i class="fas fa-eye mr-1"></i> Rincian
@@ -123,47 +128,46 @@
                         </td>
                     </tr>
 
-                    {{-- ✨ BARIS RINCIAN (DISEMBUNYIKAN DEFAULT) ✨ --}}
                     <tr class="history-row" id="history-{{ $idx }}">
                         <td colspan="7" class="p-0">
                             <div class="p-4" style="background: #f8fafc; border-top: 1px dashed #cbd5e1; border-bottom: 2px solid #2563eb;">
                                 <div class="row">
                                     
-                                    {{-- 1. RINCIAN RAW MATERIAL (RM) --}}
+                                    {{-- 1. RINCIAN RAW MATERIAL (RM) TIMELINE --}}
                                     <div class="col-xl-4 mb-3">
                                         <div class="history-box">
-                                            <h6 style="color:#d97706; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-layer-group mr-2"></i>RAW MATERIAL (RM)</h6>
+                                            <h6 style="color:#d97706; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-layer-group mr-2"></i>TIMELINE RM (Masuk & Keluar)</h6>
                                             
                                             <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                                                <span class="badge-in" title="Total RM Masuk dari Supplier"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->rm_in) }}</span>
-                                                <span class="badge-out" title="Total RM Dipakai ke Mesin"><i class="fas fa-arrow-up mr-1"></i>Out: {{ number_format($p->rm_out) }}</span>
-                                                <span class="badge-ret" title="Total RM Dikembalikan (Return)"><i class="fas fa-undo mr-1"></i>Ret: {{ number_format($p->rm_ret) }}</span>
+                                                <span class="badge-in"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->rm_in) }}</span>
+                                                <span class="badge-out"><i class="fas fa-arrow-up mr-1"></i>Out: {{ number_format($p->rm_out) }}</span>
+                                                <span class="badge-ret"><i class="fas fa-undo mr-1"></i>Ret: {{ number_format($p->rm_ret) }}</span>
                                             </div>
 
-                                            <table class="history-table">
-                                                <tr><th class="text-left">Tanggal</th><th>Material ID</th><th class="text-right">Qty</th></tr>
-                                                
-                                                {{-- ✨ FITUR BARU: Menampilkan nama material aslinya ✨ --}}
-                                                @foreach($p->history_rm_in as $in)
-                                                <tr>
-                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($in->created_at)) }}</td>
-                                                    <td class="text-primary font-weight-bold" style="font-size:10px;" title="IN dari Supplier/Return">IN: {{ $in->material_code }}</td>
-                                                    <td class="text-right text-success">+{{ number_format($in->pcs_in) }}</td>
-                                                </tr>
-                                                @endforeach
-                                                
-                                                @foreach($p->history_rm_out as $out)
-                                                <tr>
-                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($out->created_at)) }}</td>
-                                                    <td class="text-danger font-weight-bold" style="font-size:10px;" title="OUT ke Mesin Stamping">OUT: {{ $out->material_code }}</td>
-                                                    <td class="text-right text-danger">-{{ number_format($out->pcs_used) }}</td>
-                                                </tr>
-                                                @endforeach
-                                                
-                                                @if(count($p->history_rm_in) == 0 && count($p->history_rm_out) == 0)
-                                                    <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat masuk/keluar RM.</td></tr>
-                                                @endif
-                                            </table>
+                                            <div class="history-scroll">
+                                                <table class="history-table">
+                                                    <tr><th class="text-left">Tanggal</th><th>Keterangan</th><th class="text-right">Qty</th></tr>
+                                                    
+                                                    @forelse($p->history_rm as $rm)
+                                                        <tr>
+                                                            <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($rm->created_at)) }}</td>
+                                                            @if($rm->type_log == 'IN')
+                                                                @if($rm->source == 'supplier')
+                                                                    <td class="text-primary font-weight-bold" style="font-size:10px;">IN SUP ({{ $rm->stock_coil_id ?? $rm->stock_mat_code }})</td>
+                                                                @else
+                                                                    <td class="text-info font-weight-bold" style="font-size:10px;">IN RETUR (Part: {{ $rm->material_code }})</td>
+                                                                @endif
+                                                                <td class="text-right text-success">+{{ number_format($rm->pcs_in) }}</td>
+                                                            @else
+                                                                <td class="text-danger font-weight-bold" style="font-size:10px;">OUT (Part: {{ $rm->material_code }})</td>
+                                                                <td class="text-right text-danger">-{{ number_format($rm->pcs_used) }}</td>
+                                                            @endif
+                                                        </tr>
+                                                    @empty
+                                                        <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat RM.</td></tr>
+                                                    @endforelse
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -173,50 +177,57 @@
                                             <h6 style="color:#dc2626; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-fire mr-2"></i>WIP (WELDING)</h6>
                                             
                                             <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                                                <span class="badge-in" title="Hasil output dari mesin Stamping"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->wip_in) }}</span>
-                                                <span class="badge-out" title="Ditarik masuk ke mesin Welding"><i class="fas fa-arrow-up mr-1"></i>Out: {{ number_format($p->wip_out) }}</span>
+                                                <span class="badge-in"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->wip_in) }}</span>
+                                                <span class="badge-out"><i class="fas fa-arrow-up mr-1"></i>Out: {{ number_format($p->wip_out) }}</span>
                                             </div>
                                             
                                             <div class="text-center mt-4">
                                                 <i class="fas fa-exchange-alt text-muted mb-3 mt-2" style="font-size:30px; opacity:0.2;"></i>
                                                 <p class="text-muted" style="font-size:10px; font-weight:700; line-height:1.6;">
                                                     * <b>WIP In</b> berasal dari Produksi Stamping.<br>
-                                                    * <b>WIP Out</b> adalah part yang telah ditarik<br>untuk diproses Las (Welding).
+                                                    * <b>WIP Out</b> adalah part yang ditarik untuk diproses Las (Welding).
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {{-- 3. RINCIAN FINISH GOOD (FG) --}}
+                                    {{-- 3. RINCIAN FINISH GOOD (FG) TIMELINE --}}
                                     <div class="col-xl-4 mb-3">
                                         <div class="history-box">
-                                            <h6 style="color:#059669; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-box mr-2"></i>FINISH GOOD (FG)</h6>
+                                            <h6 style="color:#059669; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-box mr-2"></i>TIMELINE FINISH GOOD (FG)</h6>
                                             
                                             <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                                                <span class="badge-in" title="Total Barang Jadi Masuk ke RAK"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->fg_in) }}</span>
-                                                <span class="badge-out" title="Total Barang Keluar via Surat Jalan"><i class="fas fa-truck mr-1"></i>Delv: {{ number_format($p->fg_out) }}</span>
+                                                <span class="badge-in"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->fg_in) }}</span>
+                                                <span class="badge-out"><i class="fas fa-truck mr-1"></i>Delv: {{ number_format($p->fg_out) }}</span>
                                             </div>
 
-                                            <table class="history-table">
-                                                <tr><th class="text-left">Tanggal</th><th>Sumber / Tipe</th><th class="text-right">Qty</th></tr>
-                                                @foreach($p->history_fg_in as $fgin)
-                                                <tr>
-                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($fgin->created_at)) }}</td>
-                                                    <td>IN (Prod)</td>
-                                                    <td class="text-right text-success">+{{ number_format($fgin->qty_ok) }}</td>
-                                                </tr>
-                                                @endforeach
-                                                @foreach($p->history_delv as $delv)
-                                                <tr>
-                                                    <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($delv->created_at)) }}</td>
-                                                    <td>OUT (SJ)</td>
-                                                    <td class="text-right text-danger">-{{ number_format($delv->qty_delivery) }}</td>
-                                                </tr>
-                                                @endforeach
-                                                @if(count($p->history_fg_in) == 0 && count($p->history_delv) == 0)
-                                                    <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat masuk/keluar FG.</td></tr>
-                                                @endif
-                                            </table>
+                                            <div class="history-scroll">
+                                                <table class="history-table">
+                                                    <tr><th class="text-left">Tanggal</th><th>Tipe / Sumber</th><th class="text-right">Qty</th></tr>
+                                                    
+                                                    {{-- Kita gabung IN (Produksi) dan OUT (Delivery) untuk FG di array sementara --}}
+                                                    @php
+                                                        $myFgIn = collect($p->history_fg_in)->map(function($i) { $i->log_type = 'IN'; return $i; });
+                                                        $myDelv = collect($p->history_delv)->map(function($i) { $i->log_type = 'OUT'; return $i; });
+                                                        $fgTimeline = $myFgIn->concat($myDelv)->sortByDesc('created_at')->take(15)->values();
+                                                    @endphp
+
+                                                    @forelse($fgTimeline as $f)
+                                                        <tr>
+                                                            <td class="text-left font-weight-bold">{{ date('d M, H:i', strtotime($f->created_at)) }}</td>
+                                                            @if($f->log_type == 'IN')
+                                                                <td class="text-primary font-weight-bold" style="font-size:10px;">IN (Prod)</td>
+                                                                <td class="text-right text-success">+{{ number_format($f->qty_ok) }}</td>
+                                                            @else
+                                                                <td class="text-danger font-weight-bold" style="font-size:10px;">OUT (SJ)</td>
+                                                                <td class="text-right text-danger">-{{ number_format($f->qty_delivery) }}</td>
+                                                            @endif
+                                                        </tr>
+                                                    @empty
+                                                        <tr><td colspan="3" class="text-center text-muted font-italic py-3">Belum ada riwayat FG.</td></tr>
+                                                    @endforelse
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -239,19 +250,16 @@
 </div>
 
 <script>
-    // FUNGSI UNTUK BUKA-TUTUP TABEL RINCIAN 3 KOLOM
     function toggleHistory(id) {
         var row = document.getElementById('history-' + id);
         if (row.style.display === 'table-row') {
             row.classList.remove('animate__fadeIn');
             row.style.display = 'none';
         } else {
-            // Tutup rincian part lain biar layar nggak kepanjangan
             var allRows = document.getElementsByClassName('history-row');
             for(var i = 0; i < allRows.length; i++){
                 allRows[i].style.display = 'none';
             }
-            // Buka yang di-klik dengan animasi mulus
             row.style.display = 'table-row';
             row.classList.add('animate__fadeIn');
         }
