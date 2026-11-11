@@ -174,7 +174,7 @@
                                     {{-- 2. RINCIAN WIP (WELDING) TIMELINE ✨ --}}
                                     <div class="col-xl-4 mb-3">
                                         <div class="history-box">
-                                            <h6 style="color:#dc2626; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-fire mr-2"></i>TIMELINE WIP (WELDING)</h6>
+                                            <h6 style="color:#dc2626; font-weight:900; font-size:13px; margin-bottom:15px;"><i class="fas fa-fire mr-2"></i>WIP (WELDING)</h6>
                                             
                                             <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
                                                 <span class="badge-in"><i class="fas fa-arrow-down mr-1"></i>In: {{ number_format($p->wip_in) }}</span>
@@ -193,7 +193,8 @@
                                                                 <td class="text-primary font-weight-bold" style="font-size:10px;">IN (Stamping)</td>
                                                                 <td class="text-right text-success">+{{ number_format($w->qty_ok) }}</td>
                                                             @else
-                                                                <td class="text-danger font-weight-bold" style="font-size:10px;">OUT (Di-Las)</td>
+                                                                {{-- ✨ FIX: Ubah istilah Di-Las menjadi Spot / Robot ✨ --}}
+                                                                <td class="text-danger font-weight-bold" style="font-size:10px;">OUT (Spot / Robot)</td>
                                                                 <td class="text-right text-danger">-{{ number_format($w->qty_masuk) }}</td>
                                                             @endif
                                                         </tr>
@@ -205,7 +206,8 @@
                                                 <i class="fas fa-exchange-alt text-muted mb-3 mt-2" style="font-size:30px; opacity:0.2;"></i>
                                                 <p class="text-muted" style="font-size:10px; font-weight:700; line-height:1.6;">
                                                     * <b>WIP In</b> berasal dari Produksi Stamping.<br>
-                                                    * <b>WIP Out</b> adalah part yang ditarik untuk diproses Las (Welding).
+                                                    {{-- ✨ Keterangan bawah juga di-update ✨ --}}
+                                                    * <b>WIP Out</b> adalah part yang ditarik untuk diproses Spot / Robot (Welding).
                                                 </p>
                                             </div>
                                             @endif
