@@ -196,6 +196,13 @@ Route::get('/ppic/inventory-trace/print', [App\Http\Controllers\PPICController::
 Route::get('/ppic/inventory-trace/print-summary', [App\Http\Controllers\PPICController::class, 'printInventorySummary'])->name('ppic.inventory.trace.print_summary');
 // STO (STOCK OPNAME)
 Route::get('/ppic/sto', [App\Http\Controllers\PPICController::class, 'stockOpname'])->name('ppic.sto.index');
+Route::get('/ppic/sto/print', [App\Http\Controllers\PPICController::class, 'printSto'])->name('ppic.sto.print');
+Route::post('/ppic/sto/store', [App\Http\Controllers\PPICController::class, 'storeStoMasal'])->name('ppic.sto.store');
+
+// ✨ TAMBAHKAN ROUTE INI UNTUK MELIHAT DETAIL REKAPAN:
+Route::get('/ppic/sto/detail/{id}', [App\Http\Controllers\PPICController::class, 'stoDetail'])->name('ppic.sto.detail');
+// STO (STOCK OPNAME)
+Route::get('/ppic/sto', [App\Http\Controllers\PPICController::class, 'stockOpname'])->name('ppic.sto.index');
 Route::post('/ppic/sto/store', [App\Http\Controllers\PPICController::class, 'storeStoMasal'])->name('ppic.sto.store');
 Route::get('/ppic/sto/print', [App\Http\Controllers\PPICController::class, 'printSto'])->name('ppic.sto.print');
 

@@ -154,7 +154,7 @@
             </h3>
         </div>
         
-        <div class="table-responsive">
+       <div class="table-responsive">
             <table class="trace-table text-center" style="min-width: 800px;">
                 <thead>
                     <tr>
@@ -164,21 +164,28 @@
                         <th>TANGGAL EKSEKUSI</th>
                         <th>PETUGAS (PIC)</th>
                         <th>STATUS</th>
+                        <th>AKSI</th> {{-- ✨ KOLOM AKSI BARU ✨ --}}
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($historySto ?? [] as $idx => $h)
                     <tr>
                         <td>{{ $idx + 1 }}</td>
-                        <td class="text-left"><b style="color: #4318FF;">{{ $h->doc_no }}</b></td>
+                        <td class="text-left"><b style="color: #4318FF; font-size:13px;">{{ $h->doc_no }}</b></td>
                         <td><span class="badge badge-secondary px-2 py-1">{{ $h->period }}</span></td>
                         <td>{{ date('d M Y, H:i', strtotime($h->created_at)) }}</td>
                         <td class="font-weight-bold">{{ $h->created_by }}</td>
                         <td><span class="badge badge-success px-2 py-1"><i class="fas fa-check-circle mr-1"></i>{{ $h->status }}</span></td>
+                        <td>
+                            {{-- ✨ TOMBOL UNTUK BUKA DETAIL REKAPAN ✨ --}}
+                            <a href="{{ route('ppic.sto.detail', $h->id) }}" class="btn btn-outline-primary shadow-sm" style="border-radius: 6px; padding: 4px 12px; font-size: 11px; font-weight: 800;">
+                                <i class="fas fa-eye mr-1"></i> LIHAT DETAIL
+                            </a>
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center py-4" style="color: #64748b; font-style: italic;">
+                        <td colspan="7" class="text-center py-4" style="color: #64748b; font-style: italic;">
                             Belum ada rekap data STO yang tersimpan di sistem.
                         </td>
                     </tr>
@@ -186,7 +193,6 @@
                 </tbody>
             </table>
         </div>
-    </div>
 
 </div>
 
