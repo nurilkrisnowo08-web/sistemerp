@@ -75,7 +75,7 @@
             <table class="header-table">
                 <tr>
                     <td width="15%" class="logo-container text-left">
-                        <img src="{{ asset('assets/img/logo.png') }}" alt="ASALTA LOGO" onerror="this.outerHTML='<h1 style=\'margin:0;color:#1e293b;font-weight:900;\'>ASALTA</h1>'">
+                        <img src="{{ asset('assets/admin/img/Logo-asalta.png') }}" alt="ASALTA LOGO" onerror="this.outerHTML='<h1 style=\'margin:0;color:#1e293b;font-weight:900;\'>ASALTA MANDIRI</h1>'">
                     </td>
                     <td width="70%" class="company-title" style="text-align: center;">
                         <h2>MATERIAL & INVENTORY TRACEABILITY REPORT</h2>
