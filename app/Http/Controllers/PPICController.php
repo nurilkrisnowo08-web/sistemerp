@@ -95,7 +95,6 @@ class PPICController extends Controller
         $totalActual = $plans->sum('actual_qty') ?: 0;
         $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        // --- 3. FILTER UNTUK GRAFIK HARIAN (DAILY OK VS NG) ---
         $dailyLabels = []; $dailyOk = []; $dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
@@ -116,7 +115,6 @@ class PPICController extends Controller
             $dailyNg[] = $qNg->sum('qty_ng');
         }
 
-        // --- 4. FILTER UNTUK GRAFIK BULANAN (MONTHLY OK VS NG) ---
         $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
@@ -1546,13 +1544,14 @@ class PPICController extends Controller
 
     /**
      * =======================================================
-     * 13. INVENTORY TRACEABILITY HUB (KAMAR BARU PELACAKAN)
+     * 13. INVENTORY TRACEABILITY HUB
      * =======================================================
      */
     public function inventoryTrace(Request $request)
     {
         $search = $request->search;
         $selectedCustomer = $request->customer; 
+        $selectedPart = $request->part_no; 
         
         $query = DB::table('parts')
             ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
@@ -1566,33 +1565,34 @@ class PPICController extends Controller
         if ($selectedCustomer) {
             $query->where('parts.customer_code', $selectedCustomer);
         }
+        if ($selectedPart) {
+            $query->where('parts.part_no', $selectedPart);
+        }
         
         $parts = $query->orderBy('parts.part_no', 'asc')->get();
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
+        
+        $partsListQuery = DB::table('parts')->select('part_no', 'part_name')->orderBy('part_no', 'asc');
+        if ($selectedCustomer) {
+            $partsListQuery->where('customer_code', $selectedCustomer);
+        }
+        $partsList = $partsListQuery->get();
 
         $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
-
-        // ✨ 1. TARIK DATA STOK RM & AGREGASI
         $allRmStocksRaw = DB::table('rm_stocks')->get();
         
-        $rmIncAgg = DB::table('rm_incoming_logs')
-            ->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))
-            ->groupBy('rm_stock_id', 'source')->get();
-            
-        $rmOutAgg = DB::table('rm_production_logs')
-            ->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))
-            ->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
-        
+        $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
+        $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
         $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
 
-        // Tarik Histori Log
         $partNos = $parts->pluck('part_no')->toArray();
         $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allDelv = DB::table('deliveries')->orderBy('id', 'desc')->take(2000)->get();
+        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
         
         $allRmIn = DB::table('rm_incoming_logs')
             ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
@@ -1603,15 +1603,10 @@ class PPICController extends Controller
             ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
             ->select('rm_production_logs.*', 'rm_stocks.coil_id as stock_coil_id', 'rm_stocks.material_code as stock_mat_code')
             ->orderBy('rm_production_logs.id', 'desc')->take(3000)->get();
-            
-        // ✨ TARIK HISTORI WELDING BATCHES
-        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
 
-        // 3. MAPPING KELUARGA & TIMELINE RM
         foreach ($parts as $p) {
             $cleanPart = $p->part_no;
             
-            // a. Cari Coil ID yang terkait dengan part FG ini
             $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
                 $code = trim($st->material_code);
                 $name = trim($st->material_name);
@@ -1625,7 +1620,6 @@ class PPICController extends Controller
                     ->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
             }
 
-            // b. Kumpulkan RM Stocks (Satu Keluarga Coil) ATAU spesifik part
             if ($mappedCoils->isNotEmpty()) {
                 $familyStocks = $allRmStocksRaw->whereIn('coil_id', $mappedCoils);
             } else {
@@ -1634,7 +1628,6 @@ class PPICController extends Controller
                 });
             }
             
-            // ✨ STOK SPESIFIK HANYA MILIK PART INI SAJA (Bukan Gabungan Keluarga) ✨
             $myOwnStocks = $familyStocks->filter(function($st) use ($cleanPart, $partMaterials) {
                 $related = [$cleanPart];
                 if(isset($partMaterials[$cleanPart])) {
@@ -1644,10 +1637,8 @@ class PPICController extends Controller
             });
             $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
             
-            // Kumpulan ID Fisik di Database untuk KELUARGA IN/OUT
             $familyStockIds = $familyStocks->pluck('id')->toArray(); 
 
-            // c. Hitung RM IN, OUT, RETURN berdasarkan TIMELINE GABUNGAN KELUARGA
             if (!empty($familyStockIds)) {
                 $p->rm_in = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'supplier')->sum('total');
                 $p->rm_ret = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'return')->sum('total');
@@ -1658,60 +1649,50 @@ class PPICController extends Controller
                 }
                 $p->rm_out = $outSum;
                 
-                // ✨ GABUNGKAN RIWAYAT IN DAN OUT JADI SATU TIMELINE ✨
-                $myRmIn = $allRmIn->whereIn('rm_stock_id', $familyStockIds)->map(function($item) {
-                    $item->type_log = 'IN';
-                    return $item;
-                });
-                $myRmOut = $allRmOut->whereIn('rm_stock_id', $familyStockIds)->map(function($item) {
-                    $item->type_log = 'OUT';
-                    return $item;
-                });
-                
-                // Sortir gabungan berdasarkan tanggal, ambil maksimal 15 teratas
+                $myRmIn = $allRmIn->whereIn('rm_stock_id', $familyStockIds)->map(function($item) { $item->type_log = 'IN'; return $item; });
+                $myRmOut = $allRmOut->whereIn('rm_stock_id', $familyStockIds)->map(function($item) { $item->type_log = 'OUT'; return $item; });
                 $p->history_rm = $myRmIn->concat($myRmOut)->sortByDesc('created_at')->take(15)->values();
-                
             } else {
-                $p->rm_in = 0;
-                $p->rm_ret = 0;
-                $p->rm_out = 0;
+                $p->rm_in = 0; $p->rm_ret = 0; $p->rm_out = 0;
                 $p->history_rm = collect();
             }
 
-            // d. Mapping Kalkulasi Logika Masuk-Keluar FG dan WIP
             $isWelding = ($p->next_process === 'WELDING');
             if($isWelding) {
                 $p->wip_in = $prodAct[$p->part_no] ?? 0;
                 $p->wip_out = $weldBatches[$p->part_no] ?? 0;
                 $p->fg_in = $weldAct[$p->part_no] ?? 0;
-                $p->history_fg_in = $allWeldAct->where('part_no', $p->part_no)->take(15)->values();
                 
-                // ✨ HISTORY WIP (Welding In & Out)
-                $myWipIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->log_type = 'IN'; return $i; });
-                $myWipOut = $allWeldBatches->where('part_no', $p->part_no)->map(function($i) { $i->log_type = 'OUT'; return $i; });
+                $myWipIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
+                $myWipOut = $allWeldBatches->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
                 $p->history_wip = $myWipIn->concat($myWipOut)->sortByDesc('created_at')->take(15)->values();
-                
+
+                $myFgIn = $allWeldAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
             } else {
                 $p->wip_in = 0;
                 $p->wip_out = 0;
                 $p->fg_in = $prodAct[$p->part_no] ?? 0;
-                $p->history_fg_in = $allProdAct->where('part_no', $p->part_no)->take(15)->values();
+                
                 $p->history_wip = collect();
+                $myFgIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
             }
-            
             $p->fg_out = $delvOut[$p->part_no] ?? 0;
-            $p->history_delv = $allDelv->where('part_no', $p->part_no)->take(15)->values();
+
+            $myDelv = $allDelv->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
+            $p->history_fg = $myFgIn->concat($myDelv)->sortByDesc('created_at')->take(15)->values();
         }
 
-        return view('PPIC.inventory_trace', compact('parts', 'search', 'customersList', 'selectedCustomer'));
+        return view('PPIC.inventory_trace', compact('parts', 'search', 'customersList', 'selectedCustomer', 'partsList', 'selectedPart'));
     }
+
     /**
-     * 14. PRINT INVENTORY TRACEABILITY
+     * 14. PRINT INVENTORY TRACEABILITY HUB
      */
     public function printInventoryTrace(Request $request)
     {
         $search = $request->search;
         $selectedCustomer = $request->customer; 
+        $selectedPart = $request->part_no; 
         
         $query = DB::table('parts')
             ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
@@ -1725,23 +1706,41 @@ class PPICController extends Controller
         if ($selectedCustomer) {
             $query->where('parts.customer_code', $selectedCustomer);
         }
+        if ($selectedPart) {
+            $query->where('parts.part_no', $selectedPart);
+        }
         
         $parts = $query->orderBy('parts.part_no', 'asc')->get();
-        $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
 
-        // Tarik data persis seperti tampilan utama
+        $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
         $allRmStocksRaw = DB::table('rm_stocks')->get();
+        
         $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
         $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
-        
         $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
 
+        // Tarik Histori Log
+        $partNos = $parts->pluck('part_no')->toArray();
+        $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
+        $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
+        $allDelv = DB::table('deliveries')->orderBy('id', 'desc')->take(2000)->get();
+        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
+        
+        $allRmIn = DB::table('rm_incoming_logs')
+            ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
+            ->select('rm_incoming_logs.*', 'rm_stocks.coil_id as stock_coil_id', 'rm_stocks.material_code as stock_mat_code')
+            ->orderBy('rm_incoming_logs.id', 'desc')->take(3000)->get();
+
+        $allRmOut = DB::table('rm_production_logs')
+            ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
+            ->select('rm_production_logs.*', 'rm_stocks.coil_id as stock_coil_id', 'rm_stocks.material_code as stock_mat_code')
+            ->orderBy('rm_production_logs.id', 'desc')->take(3000)->get();
+
         foreach ($parts as $p) {
             $cleanPart = $p->part_no;
-            
             $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
                 $code = trim($st->material_code);
                 $name = trim($st->material_name);
@@ -1777,12 +1776,15 @@ class PPICController extends Controller
                 $p->rm_in = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'supplier')->sum('total');
                 $p->rm_ret = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'return')->sum('total');
                 $outSum = 0;
-                foreach($myOwnStocks->pluck('id')->toArray() as $myFid) {
-                    $outSum += $rmOutAgg[$myFid] ?? 0;
-                }
+                foreach($myOwnStocks->pluck('id')->toArray() as $myFid) { $outSum += $rmOutAgg[$myFid] ?? 0; }
                 $p->rm_out = $outSum;
+                
+                $myRmIn = $allRmIn->whereIn('rm_stock_id', $familyStockIds)->map(function($item) { $item->type_log = 'IN'; return $item; });
+                $myRmOut = $allRmOut->whereIn('rm_stock_id', $familyStockIds)->map(function($item) { $item->type_log = 'OUT'; return $item; });
+                $p->history_rm = $myRmIn->concat($myRmOut)->sortByDesc('created_at')->take(15)->values();
             } else {
                 $p->rm_in = 0; $p->rm_ret = 0; $p->rm_out = 0;
+                $p->history_rm = collect();
             }
 
             $isWelding = ($p->next_process === 'WELDING');
@@ -1790,14 +1792,24 @@ class PPICController extends Controller
                 $p->wip_in = $prodAct[$p->part_no] ?? 0;
                 $p->wip_out = $weldBatches[$p->part_no] ?? 0;
                 $p->fg_in = $weldAct[$p->part_no] ?? 0;
+                
+                $myWipIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
+                $myWipOut = $allWeldBatches->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
+                $p->history_wip = $myWipIn->concat($myWipOut)->sortByDesc('created_at')->take(15)->values();
+                $myFgIn = $allWeldAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
             } else {
                 $p->wip_in = 0;
                 $p->wip_out = 0;
                 $p->fg_in = $prodAct[$p->part_no] ?? 0;
+                
+                $p->history_wip = collect();
+                $myFgIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
             }
             $p->fg_out = $delvOut[$p->part_no] ?? 0;
+            $myDelv = $allDelv->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
+            $p->history_fg = $myFgIn->concat($myDelv)->sortByDesc('created_at')->take(15)->values();
         }
 
-        return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer'));
+        return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
 }
