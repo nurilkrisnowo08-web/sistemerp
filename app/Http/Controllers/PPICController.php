@@ -1912,4 +1912,75 @@ class PPICController extends Controller
 
         return view('PPIC.print_inventory_summary', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
+
+    /**
+     * =======================================================
+     * 16. STOCK OPNAME (STO) HUB
+     * =======================================================
+     */
+    public function stockOpname(Request $request)
+    {
+        $search = $request->search;
+        $selectedCustomer = $request->customer; 
+        
+        // Tarik data Parts & stok Finish Good / WIP saat ini
+        $query = DB::table('parts')
+            ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
+            ->select('parts.part_no', 'parts.part_name', 'parts.customer_code', 'finished_goods.actual_stock as fg_stock', 'finished_goods.welding_stock as wip_stock');
+            
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('parts.part_no', 'LIKE', "%{$search}%")->orWhere('parts.part_name', 'LIKE', "%{$search}%");
+            });
+        }
+        if ($selectedCustomer) {
+            $query->where('parts.customer_code', $selectedCustomer);
+        }
+        
+        $parts = $query->orderBy('parts.part_no', 'asc')->get();
+        $customersList = DB::table('parts')->distinct()->pluck('customer_code');
+
+        // Mapping dari master_materials (Menghubungkan Part FG ke Material RM)
+        $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
+        $allRmStocksRaw = DB::table('rm_stocks')->get();
+
+        foreach ($parts as $p) {
+            $cleanPart = $p->part_no;
+            
+            // Logika ngambil stok RM Sistem seperti di Inventory Trace
+            $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
+                $code = trim($st->material_code);
+                $name = trim($st->material_name);
+                $clean = str_replace(' ', '', $cleanPart);
+                return ($code === $cleanPart || $name === $cleanPart || str_replace(' ', '', $code) === $clean);
+            })->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
+
+            if ($mappedCoils->isEmpty() && isset($partMaterials[$cleanPart])) {
+                $relatedMatCodes = $partMaterials[$cleanPart]->pluck('material_code')->toArray();
+                $mappedCoils = $allRmStocksRaw->whereIn('material_code', $relatedMatCodes)
+                    ->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
+            }
+
+            if ($mappedCoils->isNotEmpty()) {
+                $familyStocks = $allRmStocksRaw->whereIn('coil_id', $mappedCoils);
+            } else {
+                $familyStocks = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
+                    return trim($st->material_code) === $cleanPart || trim($st->material_name) === $cleanPart;
+                });
+            }
+            
+            // Ambil Stok RM Sistem milik Part ini
+            $myOwnStocks = $familyStocks->filter(function($st) use ($cleanPart, $partMaterials) {
+                $related = [$cleanPart];
+                if(isset($partMaterials[$cleanPart])) {
+                    $related = array_merge($related, $partMaterials[$cleanPart]->pluck('material_code')->toArray());
+                }
+                return in_array(trim($st->material_code), $related);
+            });
+            
+            $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
+        }
+
+        return view('PPIC.sto_index', compact('parts', 'search', 'customersList', 'selectedCustomer'));
+    }
 }

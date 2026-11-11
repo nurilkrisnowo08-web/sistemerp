@@ -229,10 +229,17 @@
                 </div>
             </li>
             
-            {{-- ✨ MENU BARU KITA: INVENTORY TRACE (DI BAWAH PO) ✨ --}}
+           {{-- ✨ MENU LAMA KITA: INVENTORY TRACE ✨ --}}
             <li class="nav-item {{ Request::routeIs('ppic.inventory.trace') ? 'active' : '' }}">
                 <a class="nav-link" href="{{ route('ppic.inventory.trace') ?? '#' }}">
                     <i class="fas fa-fw fa-search-location"></i><span>Inventory Trace</span>
+                </a>
+            </li>
+
+            {{-- ✨ MENU BARU KITA: STO (STOCK OPNAME) ✨ --}}
+            <li class="nav-item {{ Request::routeIs('ppic.sto.index') ? 'active' : '' }}">
+                <a class="nav-link" href="{{ route('ppic.sto.index') ?? '#' }}">
+                    <i class="fas fa-fw fa-clipboard-check"></i><span>Stock Opname (STO)</span>
                 </a>
             </li>
             @endif
