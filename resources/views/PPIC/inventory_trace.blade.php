@@ -81,10 +81,18 @@
                 <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari by Text..." onchange="this.form.submit()">
             </div>
 
-            {{-- ✨ TOMBOL PRINT ✨ --}}
-            <a href="{{ route('ppic.inventory.trace.print', ['customer' => $selectedCustomer, 'part_no' => $selectedPart, 'search' => $search]) }}" target="_blank" class="btn btn-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; padding: 8px 20px;">
-                <i class="fas fa-print mr-1"></i> PRINT
-            </a>
+            {{-- ✨ DUA TOMBOL PRINT ✨ --}}
+            <div class="d-flex gap-2">
+                <!-- Tombol Print Summary (Ringkas) -->
+                <a href="{{ route('ppic.inventory.trace.print_summary', ['customer' => $selectedCustomer, 'part_no' => $selectedPart, 'search' => $search]) }}" target="_blank" class="btn btn-success shadow-sm" style="border-radius: 50rem; font-weight: 800; padding: 8px 16px;">
+                    <i class="fas fa-file-alt mr-1"></i> SUMMARY
+                </a>
+                
+                <!-- Tombol Print Detail (Lengkap dengan Timeline) -->
+                <a href="{{ route('ppic.inventory.trace.print', ['customer' => $selectedCustomer, 'part_no' => $selectedPart, 'search' => $search]) }}" target="_blank" class="btn btn-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; padding: 8px 16px;">
+                    <i class="fas fa-list mr-1"></i> DETAIL
+                </a>
+            </div>
         </form>
     </div>
 

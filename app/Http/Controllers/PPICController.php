@@ -1812,4 +1812,104 @@ class PPICController extends Controller
 
         return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
+    /**
+     * 15. PRINT INVENTORY TRACEABILITY (SUMMARY ONLY)
+     */
+    public function printInventorySummary(Request $request)
+    {
+        $search = $request->search;
+        $selectedCustomer = $request->customer; 
+        $selectedPart = $request->part_no; 
+        
+        $query = DB::table('parts')
+            ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
+            ->select('parts.part_no', 'parts.part_name', 'parts.customer_code', 'parts.next_process', 'finished_goods.actual_stock as fg_stock', 'finished_goods.welding_stock as wip_stock');
+            
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('parts.part_no', 'LIKE', "%{$search}%")->orWhere('parts.part_name', 'LIKE', "%{$search}%");
+            });
+        }
+        if ($selectedCustomer) {
+            $query->where('parts.customer_code', $selectedCustomer);
+        }
+        if ($selectedPart) {
+            $query->where('parts.part_no', $selectedPart);
+        }
+        
+        $parts = $query->orderBy('parts.part_no', 'asc')->get();
+
+        $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
+        $allRmStocksRaw = DB::table('rm_stocks')->get();
+        
+        $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
+        $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
+        $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+        $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+        $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+        $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+
+        foreach ($parts as $p) {
+            $cleanPart = $p->part_no;
+            
+            $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
+                $code = trim($st->material_code);
+                $name = trim($st->material_name);
+                $clean = str_replace(' ', '', $cleanPart);
+                return ($code === $cleanPart || $name === $cleanPart || str_replace(' ', '', $code) === $clean);
+            })->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
+
+            if ($mappedCoils->isEmpty() && isset($partMaterials[$cleanPart])) {
+                $relatedMatCodes = $partMaterials[$cleanPart]->pluck('material_code')->toArray();
+                $mappedCoils = $allRmStocksRaw->whereIn('material_code', $relatedMatCodes)
+                    ->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
+            }
+
+            if ($mappedCoils->isNotEmpty()) {
+                $familyStocks = $allRmStocksRaw->whereIn('coil_id', $mappedCoils);
+            } else {
+                $familyStocks = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
+                    return trim($st->material_code) === $cleanPart || trim($st->material_name) === $cleanPart;
+                });
+            }
+            
+            $myOwnStocks = $familyStocks->filter(function($st) use ($cleanPart, $partMaterials) {
+                $related = [$cleanPart];
+                if(isset($partMaterials[$cleanPart])) {
+                    $related = array_merge($related, $partMaterials[$cleanPart]->pluck('material_code')->toArray());
+                }
+                return in_array(trim($st->material_code), $related);
+            });
+            $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
+            
+            $familyStockIds = $familyStocks->pluck('id')->toArray(); 
+
+            if (!empty($familyStockIds)) {
+                $p->rm_in = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'supplier')->sum('total');
+                $p->rm_ret = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'return')->sum('total');
+                
+                $outSum = 0;
+                foreach($myOwnStocks->pluck('id')->toArray() as $myFid) {
+                    $outSum += $rmOutAgg[$myFid] ?? 0;
+                }
+                $p->rm_out = $outSum;
+            } else {
+                $p->rm_in = 0; $p->rm_ret = 0; $p->rm_out = 0;
+            }
+
+            $isWelding = ($p->next_process === 'WELDING');
+            if($isWelding) {
+                $p->wip_in = $prodAct[$p->part_no] ?? 0;
+                $p->wip_out = $weldBatches[$p->part_no] ?? 0;
+                $p->fg_in = $weldAct[$p->part_no] ?? 0;
+            } else {
+                $p->wip_in = 0;
+                $p->wip_out = 0;
+                $p->fg_in = $prodAct[$p->part_no] ?? 0;
+            }
+            $p->fg_out = $delvOut[$p->part_no] ?? 0;
+        }
+
+        return view('PPIC.print_inventory_summary', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
+    }
 }
