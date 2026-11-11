@@ -52,7 +52,8 @@
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
     
     {{-- 1. HEADER & FILTERS --}}
-    <div class="d-flex justify-content-between align-items-center mb-4 animate__animated animate__fadeInDown">
+    <div class="dashboard-header">
+       <div class="d-flex justify-content-between align-items-center mb-4 animate__animated animate__fadeInDown">
     <div class="page-title">
         <h1 style="font-weight: 900; font-size: 28px; color: #1e293b; letter-spacing: -0.5px; margin-bottom: 5px;">
             OVERALL INVENTORY HUB
@@ -71,17 +72,27 @@
     </div>
 </div>
 
-{{-- PERBAIKAN KOTAK MERAH STOK KRITIS (Agar Teks Berjalan dan Tidak Menabrak) --}}
-@if(isset($alerts) && count($alerts) > 0)
-<div class="alert alert-danger shadow-sm d-flex align-items-center mb-4" style="border-radius: 12px; padding: 12px 20px; overflow: hidden; border: 1px solid #fecaca; background: #fff5f5;">
-    <span class="badge badge-danger mr-3" style="padding: 6px 12px; font-weight: 900; font-size: 11px; letter-spacing: 0.5px;">STOK KRITIS</span>
-    <marquee behavior="scroll" direction="left" scrollamount="6" style="font-weight: 700; font-size: 13px; color: #b91c1c; margin-top: 2px;">
-        @foreach($alerts as $alert)
-            ⚠️ [CRITICAL] Part/Material: {{ $alert->material_code }} (Kosong/Problem) &nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;
-        @endforeach
-    </marquee>
-</div>
-@endif
+    {{-- 2. SMART ALERT TICKER --}}
+    @if(isset($shortageParts) && $shortageParts->count() > 0 || isset($shortageRm) && $shortageRm->count() > 0)
+    <div class="alert-ticker">
+        <div class="alert-badge"><i class="fas fa-exclamation-circle mr-1"></i> STOK KRITIS</div>
+        <div class="ticker-content">
+            <marquee behavior="scroll" direction="left" scrollamount="6">
+                @if(isset($shortageParts))
+                    @foreach($shortageParts as $fg)
+                        <span style="margin-right: 50px; color: #be123c;">
+                            <b>[FG SHORTAGE]</b> Part {{ $fg->part_no }} ({{ $fg->customer_code }}). Aktual: {{ number_format($fg->actual_stock) }} | Min: {{ number_format($fg->min_stock_pcs) }}
+                        </span>
+                    @endforeach
+                @endif
+                @if(isset($shortageRm))
+                    @foreach($shortageRm as $rm)
+                        <span style="margin-right: 50px; color: #b45309;">
+                            <b>[RM CRITICAL]</b> Material {{ $rm->material_code }} (Coil: {{ $rm->coil_id }}). Sisa: {{ number_format($rm->stock_pcs) }} Lbr
+                        </span>
+                    @endforeach
+                @endif
+            </marquee>
         </div>
     </div>
     @endif
