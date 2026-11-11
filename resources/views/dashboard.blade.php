@@ -82,8 +82,6 @@
     </marquee>
 </div>
 @endif
-    </div>
-            </marquee>
         </div>
     </div>
     @endif
