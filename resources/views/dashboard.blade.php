@@ -53,24 +53,31 @@
     
     {{-- 1. HEADER & FILTERS --}}
     <div class="dashboard-header">
-       <div class="d-flex justify-content-between align-items-center mb-4 animate__animated animate__fadeInDown">
-    <div class="page-title">
-        <h1 style="font-weight: 900; font-size: 28px; color: #1e293b; letter-spacing: -0.5px; margin-bottom: 5px;">
-            OVERALL INVENTORY HUB
-        </h1>
-        <p style="font-size: 13px; font-weight: 700; color: #64748b; margin: 0;">
-            Sistem Pemantauan Gudang FG, RM, WIP & Delivery Terpadu
-        </p>
+        <div class="title-area">
+            <h1>OVERALL INVENTORY HUB</h1>
+            <p>Sistem Pemantauan Gudang FG, RM, WIP & Delivery Terpadu</p>
+        </div>
+        
+        <form id="dashFilter" action="{{ route('dashboard') }}" method="GET" class="filter-card">
+            <i class="fas fa-layer-group text-primary ml-1"></i>
+            <select name="area" onchange="document.getElementById('dashFilter').submit();">
+                <option value="all" {{ ($areaFilter ?? 'all') == 'all' ? 'selected' : '' }}>ALL MACHINES</option>
+                <option value="big" {{ ($areaFilter ?? 'all') == 'big' ? 'selected' : '' }}>BIG PRESS</option>
+                <option value="small" {{ ($areaFilter ?? 'all') == 'small' ? 'selected' : '' }}>SMALL PRESS</option>
+            </select>
+
+            <i class="fas fa-user-tie text-primary ml-1"></i>
+            <select name="customer" onchange="document.getElementById('dashFilter').submit();">
+                <option value="">ALL CUSTOMER</option>
+                @foreach($customersList as $cust)
+                    <option value="{{ $cust }}" {{ ($selectedCustomer == $cust) ? 'selected' : '' }}>{{ strtoupper($cust) }}</option>
+                @endforeach
+            </select>
+            
+            <i class="far fa-calendar-alt text-primary ml-1"></i>
+            <input type="date" name="date" value="{{ $today }}" onchange="document.getElementById('dashFilter').submit();">
+        </form>
     </div>
-    
-    {{-- FILTER LAMA SUDAH DIHAPUS KARENA SUDAH ADA DI TOPBAR BAWAAN ADMIN.BLADE.PHP --}}
-    
-    <div>
-        <button class="btn btn-primary shadow-sm" onclick="location.reload()" style="border-radius: 50rem; font-weight: 800; font-size: 12px; padding: 8px 16px;">
-            <i class="fas fa-sync-alt mr-1"></i> REFRESH DATA
-        </button>
-    </div>
-</div>
 
     {{-- 2. SMART ALERT TICKER --}}
     @if(isset($shortageParts) && $shortageParts->count() > 0 || isset($shortageRm) && $shortageRm->count() > 0)
