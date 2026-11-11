@@ -29,14 +29,19 @@
 
 <div class="container-fluid py-4 animate__animated animate__fadeIn">
     
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+   <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div class="page-title">
             <h1><i class="fas fa-file-alt text-primary mr-2"></i>DETAIL REKAPAN STO</h1>
             <p>Melihat kembali data fisik aktual dan selisih (diff) pada riwayat opname.</p>
         </div>
-        <div>
+        <div class="d-flex gap-2">
             <a href="{{ route('ppic.sto.index') }}" class="btn btn-secondary shadow-sm" style="border-radius: 50rem; font-weight: 800; padding: 8px 20px;">
-                <i class="fas fa-arrow-left mr-1"></i> KEMBALI KE FORM STO
+                <i class="fas fa-arrow-left mr-1"></i> KEMBALI
+            </a>
+            
+            {{-- ✨ INI TOMBOL PRINT REKAPANNYA ✨ --}}
+            <a href="{{ route('ppic.sto.print_detail', $sto->id) }}" target="_blank" class="btn btn-primary shadow-sm" style="border-radius: 50rem; font-weight: 800; padding: 8px 20px;">
+                <i class="fas fa-print mr-1"></i> PRINT REKAPAN INI
             </a>
         </div>
     </div>

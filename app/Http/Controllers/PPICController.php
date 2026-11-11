@@ -2164,5 +2164,26 @@ class PPICController extends Controller
 
         return view('PPIC.sto_detail', compact('sto', 'details'));
     }
+    /**
+     * 20. PRINT DETAIL REKAPAN STO (YANG SUDAH DISIMPAN)
+     */
+    public function printStoDetail($id)
+    {
+        // Cari Header STO
+        $sto = DB::table('sto_logs')->where('id', $id)->first();
+        if (!$sto) {
+            return redirect()->route('ppic.sto.index')->with('error', 'Dokumen STO tidak ditemukan.');
+        }
+
+        // Tarik Detail Part beserta nama part-nya
+        $details = DB::table('sto_log_details')
+            ->leftJoin('parts', 'sto_log_details.part_no', '=', 'parts.part_no')
+            ->select('sto_log_details.*', 'parts.part_name', 'parts.customer_code')
+            ->where('sto_id', $id)
+            ->orderBy('parts.part_no', 'asc')
+            ->get();
+
+        return view('PPIC.print_sto_detail', compact('sto', 'details'));
+    }
     
 }
