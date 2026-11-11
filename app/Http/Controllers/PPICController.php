@@ -1983,4 +1983,155 @@ class PPICController extends Controller
 
         return view('PPIC.sto_index', compact('parts', 'search', 'customersList', 'selectedCustomer'));
     }
+
+    /**
+     * 17. PRINT STO (STOCK OPNAME)
+     */
+    public function printSto(Request $request)
+    {
+        $search = $request->search;
+        $selectedCustomer = $request->customer; 
+        
+        $query = DB::table('parts')
+            ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
+            ->select('parts.part_no', 'parts.part_name', 'parts.customer_code', 'finished_goods.actual_stock as fg_stock', 'finished_goods.welding_stock as wip_stock');
+            
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('parts.part_no', 'LIKE', "%{$search}%")->orWhere('parts.part_name', 'LIKE', "%{$search}%");
+            });
+        }
+        if ($selectedCustomer) {
+            $query->where('parts.customer_code', $selectedCustomer);
+        }
+        
+        $parts = $query->orderBy('parts.part_no', 'asc')->get();
+
+        $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
+        $allRmStocksRaw = DB::table('rm_stocks')->get();
+
+        foreach ($parts as $p) {
+            $cleanPart = $p->part_no;
+            
+            $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
+                $code = trim($st->material_code);
+                $name = trim($st->material_name);
+                $clean = str_replace(' ', '', $cleanPart);
+                return ($code === $cleanPart || $name === $cleanPart || str_replace(' ', '', $code) === $clean);
+            })->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
+
+            if ($mappedCoils->isEmpty() && isset($partMaterials[$cleanPart])) {
+                $relatedMatCodes = $partMaterials[$cleanPart]->pluck('material_code')->toArray();
+                $mappedCoils = $allRmStocksRaw->whereIn('material_code', $relatedMatCodes)
+                    ->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
+            }
+
+            if ($mappedCoils->isNotEmpty()) {
+                $familyStocks = $allRmStocksRaw->whereIn('coil_id', $mappedCoils);
+            } else {
+                $familyStocks = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
+                    return trim($st->material_code) === $cleanPart || trim($st->material_name) === $cleanPart;
+                });
+            }
+            
+            $myOwnStocks = $familyStocks->filter(function($st) use ($cleanPart, $partMaterials) {
+                $related = [$cleanPart];
+                if(isset($partMaterials[$cleanPart])) {
+                    $related = array_merge($related, $partMaterials[$cleanPart]->pluck('material_code')->toArray());
+                }
+                return in_array(trim($st->material_code), $related);
+            });
+            
+            $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
+        }
+        
+        // Dummy Riwayat STO Bulan Ini untuk ditampilkan di bawah kertas
+        $historySto = [
+            ['tanggal' => date('Y-m-01 10:00'), 'doc_no' => 'STO-'.date('ym').'-001', 'petugas' => 'Admin Gudang', 'status' => 'APPROVED (Masal)'],
+            ['tanggal' => date('Y-m-15 14:30'), 'doc_no' => 'STO-'.date('ym').'-002', 'petugas' => 'PPIC Staff', 'status' => 'APPROVED (Adjust)'],
+        ];
+
+        return view('PPIC.print_sto', compact('parts', 'search', 'selectedCustomer', 'historySto'));
+    }
+
+    /**
+     * =======================================================
+     * 18. SIMPAN STO MASAL (HANYA MENCATAT RIWAYAT BULANAN)
+     * =======================================================
+     */
+    public function storeStoMasal(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $parts = $request->input('part_no');
+            if (!$parts || count($parts) == 0) {
+                throw new \Exception("Tidak ada data part yang diinput.");
+            }
+
+            // Buat Nomor Dokumen STO (Format: STO-YYMM-XXX)
+            $prefix = 'STO-' . date('ym') . '-';
+            
+            // Cek tabel sto_logs (hanya jalankan pencarian jika tabel sudah di-migrate)
+            $nextNum = 1;
+            if (Schema::hasTable('sto_logs')) {
+                $lastSto = DB::table('sto_logs')->where('doc_no', 'LIKE', $prefix . '%')->orderBy('id', 'desc')->first();
+                $nextNum = $lastSto ? intval(substr($lastSto->doc_no, -3)) + 1 : 1;
+            }
+            $docNo = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
+
+            // 1. Simpan Header STO
+            // Kalau tabelnya belum ada, sistem akan otomatis melempar Exception dan kita tangkap dengan sopan di Catch
+            $stoId = DB::table('sto_logs')->insertGetId([
+                'doc_no' => $docNo,
+                'period' => date('Y-m'),
+                'created_by' => auth()->user()->name ?? 'Administrator',
+                'status' => 'RECORDED', // Hanya dicatat, tidak mengubah stok live
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 2. Simpan Detail STO
+            $rm_sys = $request->input('rm_sys');
+            $wip_sys = $request->input('wip_sys');
+            $fg_sys = $request->input('fg_sys');
+            
+            $rm_act = $request->input('rm_act');
+            $wip_act = $request->input('wip_act');
+            $fg_act = $request->input('fg_act');
+
+            $details = [];
+            foreach ($parts as $idx => $partNo) {
+                $details[] = [
+                    'sto_id' => $stoId,
+                    'part_no' => $partNo,
+                    
+                    'rm_sys' => $rm_sys[$idx] ?? 0,
+                    'rm_act' => $rm_act[$idx] ?? 0,
+                    'rm_diff' => ($rm_act[$idx] ?? 0) - ($rm_sys[$idx] ?? 0),
+                    
+                    'wip_sys' => $wip_sys[$idx] ?? 0,
+                    'wip_act' => $wip_act[$idx] ?? 0,
+                    'wip_diff' => ($wip_act[$idx] ?? 0) - ($wip_sys[$idx] ?? 0),
+                    
+                    'fg_sys' => $fg_sys[$idx] ?? 0,
+                    'fg_act' => $fg_act[$idx] ?? 0,
+                    'fg_diff' => ($fg_act[$idx] ?? 0) - ($fg_sys[$idx] ?? 0),
+                    
+                    'created_at' => now()
+                ];
+            }
+
+            DB::table('sto_log_details')->insert($details);
+
+            DB::commit();
+            return redirect()->back()->with('success', "✅ Laporan STO Berhasil Disimpan! Dokumen {$docNo} tercatat sebagai riwayat bulanan tanpa merubah stok di database.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Pesan kalau tabel STO belum dibuat di database
+            if (str_contains($e->getMessage(), 'Base table or view not found')) {
+                return redirect()->back()->with('error', "Fitur Simpan STO Backend sudah aktif, tapi tabel 'sto_logs' & 'sto_log_details' belum dibuat di database MySQL Anda. Silakan hubungi IT/Programmer untuk jalankan migration.");
+            }
+            return redirect()->back()->with('error', "Terjadi kesalahan: " . $e->getMessage());
+        }
+    }
 }
