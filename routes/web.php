@@ -199,7 +199,7 @@ Route::get('/ppic/sto/print-detail/{id}', [App\Http\Controllers\PPICController::
 Route::get('/ppic/sto', [App\Http\Controllers\PPICController::class, 'stockOpname'])->name('ppic.sto.index');
 Route::get('/ppic/sto/print', [App\Http\Controllers\PPICController::class, 'printSto'])->name('ppic.sto.print');
 Route::post('/ppic/sto/store', [App\Http\Controllers\PPICController::class, 'storeStoMasal'])->name('ppic.sto.store');
-
+Route::get('/ppic/welding/report/print', [App\Http\Controllers\PPICController::class, 'printWeldingReport'])->name('ppic.welding.print_report');
 // ✨ TAMBAHKAN ROUTE INI UNTUK MELIHAT DETAIL REKAPAN:
 Route::get('/ppic/sto/detail/{id}', [App\Http\Controllers\PPICController::class, 'stoDetail'])->name('ppic.sto.detail');
 // STO (STOCK OPNAME)
