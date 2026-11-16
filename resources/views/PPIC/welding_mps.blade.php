@@ -83,10 +83,12 @@
             </p>
         </div>
         
-       <form action="{{ route('ppic.welding.mps') }}" method="GET" class="filter-group">
-    <div class="shift-toggle">
-        <a href="{{ route('ppic.welding.mps', ['date' => $date, 'shift' => 'S1']) }}" class="shift-btn {{ $shift == 'S1' ? 'active' : '' }}">SHIFT_01</a>
-        <a href="{{ route('ppic.welding.mps', ['date' => $date, 'shift' => 'S2']) }}" class="shift-btn {{ $shift == 'S2' ? 'active' : '' }}">SHIFT_02</a>
+        <form action="{{ route('ppic.welding.mps') }}" method="GET" class="filter-group">
+            <div class="shift-toggle">
+                <a href="{{ route('ppic.welding.mps', ['date' => $date, 'shift' => 'S1']) }}" class="shift-btn {{ $shift == 'S1' ? 'active' : '' }}">SHIFT_01</a>
+                <a href="{{ route('ppic.welding.mps', ['date' => $date, 'shift' => 'S2']) }}" class="shift-btn {{ $shift == 'S2' ? 'active' : '' }}">SHIFT_02</a>
+                <input type="hidden" name="shift" value="{{ $shift }}">
+            </div>
             
             <div class="date-picker-box">
                 <input type="date" name="date" value="{{ $date }}" onchange="this.form.submit()">
@@ -189,7 +191,7 @@
                                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                                 </div>
                                 
-                                {{-- ⚠️ PERHATIKAN ROUTE ACTION-NYA (update_wos) DAN METHOD (PUT) ⚠️ --}}
+                                {{-- ⚠️ ACTION REVISI SUDAH MENGARAH KE update_wos WELDING --}}
                                 <form action="{{ route('ppic.welding.update_wos', $p->id) }}" method="POST">
                                     @csrf
                                     @method('PUT')
@@ -259,7 +261,6 @@
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
             </div>
             
-            {{-- ⚠️ ROUTE STORE NEW PLAN ⚠️ --}}
             <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4" style="background:#f8fafc;">
@@ -366,7 +367,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    $(document.ready(function() {
+    $(document).ready(function() {
         // Init Select2 untuk Part Number
         $('.select2-part').select2({
             dropdownParent: $('#newPlanModal'),
