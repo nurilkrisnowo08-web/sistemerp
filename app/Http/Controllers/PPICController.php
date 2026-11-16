@@ -18,7 +18,6 @@ class PPICController extends Controller
         
         $areaFilter = $request->area ?? 'all';
         
-        // --- 1. FILTER UNTUK ALERTS ---
         $alertsQuery = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
@@ -35,7 +34,6 @@ class PPICController extends Controller
         }
         $alerts = $alertsQuery->get();
 
-        // --- 2. FILTER UNTUK TARGET VS ACTUAL PLAN ---
         $plansQuery = DB::table('production_plans')->where('plan_date', $date);
         
         if ($areaFilter === 'small') {
@@ -93,27 +91,29 @@ class PPICController extends Controller
 
         $totalPlan = $plans->sum('plan_qty') ?: 0;
         $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate =$totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        $dailyLabels = []; $dailyOk = [];$dailyNg = [];
+        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
             $dailyLabels[] = date('d M', strtotime($d));
             
-            $qOk = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA');
-            $qNg = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA');
+            $qOk = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
+            $qNg = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
             
             if ($areaFilter === 'small') {
-                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });$qNg->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qNg->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
             } elseif ($areaFilter === 'big') {
-                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });$qNg->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qNg->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
             }
 
-            $dailyOk[] =$qOk->sum('qty_ok');
-            $dailyNg[] =$qNg->sum('qty_ng');
+            $dailyOk[] = $qOk->sum('qty_ok');
+            $dailyNg[] = $qNg->sum('qty_ng');
         }
 
-        $monthlyLabels = []; $monthlyOk = [];$monthlyNg = [];
+        $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
             $monthlyLabels[] = date('M', strtotime("-$i months"));
@@ -122,13 +122,15 @@ class PPICController extends Controller
             $qNgM = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA');
             
             if ($areaFilter === 'small') {
-                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });$qNgM->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qNgM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
             } elseif ($areaFilter === 'big') {
-                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });$qNgM->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qNgM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
             }
 
-            $monthlyOk[] =$qOkM->sum('qty_ok');
-            $monthlyNg[] =$qNgM->sum('qty_ng');
+            $monthlyOk[] = $qOkM->sum('qty_ok');
+            $monthlyNg[] = $qNgM->sum('qty_ng');
         }
 
         return view('PPIC.ppic_planning', compact(
@@ -1515,6 +1517,29 @@ class PPICController extends Controller
         $batches = $allBatches;
 
         return view('PPIC.print_serah_terima_welding', compact('batches', 'batchesS1', 'batchesS2', 'date', 'line_code'));
+    }
+
+    /**
+     * 21. PRINT REPORT WELDING HARIAN
+     */
+    public function printWeldingReport(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+        
+        $batches = DB::table('welding_batches')
+            ->leftJoin('parts', 'welding_batches.part_no', '=', 'parts.part_no')
+            ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
+            ->whereDate('welding_batches.created_at', $date)
+            ->select('welding_batches.*', 'parts.part_name', 'parts.customer_code', 'line_welding.kode_line', 'line_welding.nama_line')
+            ->orderBy('line_welding.kode_line', 'asc')
+            ->orderBy('welding_batches.shift', 'asc')
+            ->get();
+            
+        $total_masuk = $batches->sum('qty_masuk');
+        $total_ok = $batches->sum('qty_ok');
+        $total_ng = $batches->sum('qty_ng');
+            
+        return view('PPIC.print_welding_report', compact('batches', 'date', 'total_masuk', 'total_ok', 'total_ng'));
     }
 
     /**
