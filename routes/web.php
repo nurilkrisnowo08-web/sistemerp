@@ -195,6 +195,9 @@ Route::get('/ppic/inventory-trace', [App\Http\Controllers\PPICController::class,
 Route::get('/ppic/inventory-trace/print', [App\Http\Controllers\PPICController::class, 'printInventoryTrace'])->name('ppic.inventory.trace.print');
 Route::get('/ppic/inventory-trace/print-summary', [App\Http\Controllers\PPICController::class, 'printInventorySummary'])->name('ppic.inventory.trace.print_summary');
 Route::get('/ppic/sto/print-detail/{id}', [App\Http\Controllers\PPICController::class, 'printStoDetail'])->name('ppic.sto.print_detail');
+// PRINT WOS WELDING & BPRM WELDING
+Route::get('/ppic/welding/wos/print/{date}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosWelding'])->name('ppic.welding.print_wos');
+Route::get('/ppic/welding/bprm/print/{date}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaWelding'])->name('ppic.welding.print_bprm');
 // STO (STOCK OPNAME)
 Route::get('/ppic/sto', [App\Http\Controllers\PPICController::class, 'stockOpname'])->name('ppic.sto.index');
 Route::get('/ppic/sto/print', [App\Http\Controllers\PPICController::class, 'printSto'])->name('ppic.sto.print');
