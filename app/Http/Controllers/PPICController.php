@@ -2389,8 +2389,3 @@ class PPICController extends Controller
         return view('PPIC.print_sto_detail', compact('sto', 'details'));
     }
 }
-
-
-bikin fungsi buatin report buat di welddingnya 
-
-There is a file you can reference named "image_4d8d1e.png". Refer to this file by its name verbatim.
