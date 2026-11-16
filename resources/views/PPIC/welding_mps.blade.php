@@ -14,11 +14,11 @@
     .b-panel { background: var(--card-bg); border-radius: 16px; padding: 25px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 20px; }
     
     /* Header & Filter Controls */
-    .mps-header-box { background: #fdfaf6; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+    .mps-header-box { background: #fdfaf6; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); flex-wrap: wrap; gap: 15px; }
     .mps-title h2 { font-weight: 900; font-size: 24px; color: #1e293b; margin: 0; letter-spacing: -0.5px; }
     .mps-title p { font-size: 11px; font-weight: 700; color: #64748b; margin: 5px 0 0 0; display: flex; align-items: center; gap: 10px; }
     
-    .filter-group { display: flex; align-items: center; gap: 12px; }
+    .filter-group { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .shift-toggle { background: #e2e8f0; border-radius: 50rem; display: flex; overflow: hidden; padding: 3px; }
     .shift-btn { padding: 6px 16px; font-size: 11px; font-weight: 800; color: #64748b; border-radius: 50rem; cursor: pointer; text-decoration: none; transition: 0.3s; }
     .shift-btn.active { background: #1e293b; color: #fff; }
@@ -27,7 +27,7 @@
     .date-picker-box input { border: none; outline: none; background: transparent; font-weight: 700; color: #1e293b; cursor: pointer; }
 
     /* Summary Cards */
-    .summary-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
+    .summary-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 15px 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; min-width: 150px; }
     .summary-card h6 { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin: 0 0 5px 0; letter-spacing: 0.5px; }
     .summary-card h3 { font-size: 24px; font-weight: 900; color: #4318FF; margin: 0; }
     .summary-card.bg-dark-slate { background: #475569; border-color: #475569; }
@@ -36,7 +36,7 @@
 
     /* Table Station */
     .station-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
-    .station-header { background: #475569; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; color: white; }
+    .station-header { background: #475569; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; color: white; flex-wrap: wrap; gap: 10px; }
     .station-title { font-weight: 800; font-size: 14px; margin: 0; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px; }
     
     .trace-table { width: 100%; border-collapse: collapse; text-align: center; }
@@ -48,12 +48,13 @@
     .btn-new-plan { background: #5c67f2; color: white; border-radius: 50rem; padding: 8px 20px; font-weight: 800; font-size: 12px; border: none; box-shadow: 0 4px 10px rgba(92, 103, 242, 0.3); transition: 0.3s; text-decoration: none; }
     .btn-new-plan:hover { background: #434ce6; color: white; transform: translateY(-2px); }
     
-    .btn-print-wos { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 50rem; padding: 4px 12px; font-size: 10px; font-weight: 800; transition: 0.2s; }
-    .btn-print-wos:hover { background: rgba(255,255,255,0.1); color: white; }
+    .btn-print-wos { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 50rem; padding: 4px 12px; font-size: 10px; font-weight: 800; transition: 0.2s; text-decoration: none; }
+    .btn-print-wos:hover { background: rgba(255,255,255,0.1); color: white; text-decoration: none; }
     
-    .btn-print-bprm { background: #5c67f2; color: white; border: none; border-radius: 50rem; padding: 4px 12px; font-size: 10px; font-weight: 800; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+    .btn-print-bprm { background: #5c67f2; color: white; border: none; border-radius: 50rem; padding: 4px 12px; font-size: 10px; font-weight: 800; box-shadow: 0 2px 5px rgba(0,0,0,0.2); text-decoration: none; }
+    .btn-print-bprm:hover { background: #434ce6; color: white; text-decoration: none; }
     
-    .btn-revisi { background: #f59e0b; color: white; border: none; border-radius: 50rem; padding: 6px 14px; font-size: 10px; font-weight: 800; box-shadow: 0 2px 5px rgba(245, 158, 11, 0.2); }
+    .btn-revisi { background: #f59e0b; color: white; border: none; border-radius: 50rem; padding: 6px 14px; font-size: 10px; font-weight: 800; box-shadow: 0 2px 5px rgba(245, 158, 11, 0.2); cursor: pointer; }
     
     .val-plus { color: #059669; }
     .val-minus { color: #dc2626; }
@@ -92,7 +93,6 @@
             
             <div class="date-picker-box">
                 <input type="date" name="date" value="{{ $date }}" onchange="this.form.submit()">
-                <i class="far fa-calendar-alt text-muted"></i>
             </div>
             
             {{-- TOMBOL CREATE NEW PLAN --}}
@@ -100,15 +100,15 @@
                 <i class="fas fa-plus mr-1"></i> NEW_PLAN
             </button>
             
-            {{-- ✨ TOMBOL PRINT REPORT HARIAN WELDING ✨ --}}
-            <a href="{{ route('ppic.welding.print_report', ['date' => $date]) }}" target="_blank" class="btn btn-success shadow-sm ml-2" style="border-radius: 50rem; font-weight: 800; font-size: 12px; padding: 8px 20px;">
+            {{-- TOMBOL PRINT REPORT HARIAN WELDING --}}
+            <a href="{{ route('ppic.welding.print_report', ['date' => $date]) }}" target="_blank" class="btn btn-success shadow-sm" style="border-radius: 50rem; font-weight: 800; font-size: 12px; padding: 8px 20px;">
                 <i class="fas fa-print mr-1"></i> PRINT REPORT
             </a>
         </form>
     </div>
 
     {{-- SUMMARY CARDS --}}
-    <div class="d-flex gap-3 mb-4">
+    <div class="d-flex flex-wrap gap-3 mb-4">
         <div class="summary-card shadow-sm">
             <h6>VOLUME TARGET ({{ $shift }})</h6>
             <h3><span class="text-num">{{ number_format($totalPlanQty) }}</span> <span style="font-size:12px; color:#64748b;">PCS</span></h3>
@@ -181,67 +181,69 @@
                             </button>
                         </td>
                     </tr>
-                    
-                    {{-- ✨ MODAL REVISI UNTUK PLAN INI ✨ --}}
-                    <div class="modal fade" id="revisiModal-{{ $p->id }}" tabindex="-1" role="dialog" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                            <div class="modal-content" style="border-radius: 16px; border:none;">
-                                <div class="modal-header" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius: 16px 16px 0 0;">
-                                    <h5 class="modal-title" style="font-weight:900; font-size:16px; color:#1e293b;"><i class="fas fa-edit text-warning mr-2"></i>REVISI TARGET WELDING</h5>
-                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                                </div>
-                                
-                                {{-- ⚠️ ACTION REVISI SUDAH MENGARAH KE update_wos WELDING --}}
-                                <form action="{{ route('ppic.welding.update_wos', $p->id) }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    
-                                    <div class="modal-body p-4">
-                                        <div class="alert alert-warning mb-4" style="font-size:12px; font-weight:700;">
-                                            <i class="fas fa-info-circle mr-1"></i> Part: <b>{{ $p->part_no }}</b><br>
-                                            Ubah target di bawah ini. Sisa stok WIP gudang akan divalidasi dan disesuaikan otomatis!
-                                        </div>
-
-                                        <div class="row">
-                                            @if($shift == 'S1')
-                                            <div class="col-6 form-group">
-                                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 1 (Reguler)</label>
-                                                <input type="number" class="form-control" name="s1_plan_reg" value="{{ $p->s1_plan_reg }}" style="font-weight:bold; font-family:'JetBrains Mono';">
-                                            </div>
-                                            <div class="col-6 form-group">
-                                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 1 (Lembur/OT)</label>
-                                                <input type="number" class="form-control" name="s1_plan_ot" value="{{ $p->s1_plan_ot }}" style="font-weight:bold; font-family:'JetBrains Mono';">
-                                            </div>
-                                            @else
-                                            <div class="col-6 form-group">
-                                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 2 (Reguler)</label>
-                                                <input type="number" class="form-control" name="s2_plan_reg" value="{{ $p->s2_plan_reg }}" style="font-weight:bold; font-family:'JetBrains Mono';">
-                                            </div>
-                                            <div class="col-6 form-group">
-                                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 2 (Lembur/OT)</label>
-                                                <input type="number" class="form-control" name="s2_plan_ot" value="{{ $p->s2_plan_ot }}" style="font-weight:bold; font-family:'JetBrains Mono';">
-                                            </div>
-                                            @endif
-                                        </div>
-                                        
-                                        <div class="form-group mt-3">
-                                            <label style="font-size:11px; font-weight:800; color:#64748b;">Kapasitas/Jam (Pcs)</label>
-                                            <input type="number" class="form-control" name="cap_per_hour" value="{{ $p->cap_per_hour }}" required style="font-weight:bold;">
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer" style="background:#f8fafc; border-top:1px solid #e2e8f0; border-radius: 0 0 16px 16px;">
-                                        <button type="button" class="btn btn-light" data-dismiss="modal" style="font-weight:800; font-size:12px; border-radius:50rem;">BATAL</button>
-                                        <button type="submit" class="btn btn-warning" style="font-weight:800; font-size:12px; border-radius:50rem; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);">UPDATE TARGET</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
                     @endforeach
                 </tbody>
             </table>
         </div>
     </div>
+
+    {{-- ✨ MODAL REVISI DIPINDAHKAN KE SINI AGAR TIDAK MERUSAK TABEL ✨ --}}
+    @foreach($linePlans as $p)
+    <div class="modal fade" id="revisiModal-{{ $p->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content" style="border-radius: 16px; border:none;">
+                <div class="modal-header" style="background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title" style="font-weight:900; font-size:16px; color:#1e293b;"><i class="fas fa-edit text-warning mr-2"></i>REVISI TARGET WELDING</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                </div>
+                
+                <form action="{{ route('ppic.welding.update_wos', $p->id) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="modal-body p-4">
+                        <div class="alert alert-warning mb-4" style="font-size:12px; font-weight:700;">
+                            <i class="fas fa-info-circle mr-1"></i> Part: <b>{{ $p->part_no }}</b><br>
+                            Ubah target di bawah ini. Sisa stok WIP gudang akan divalidasi dan disesuaikan otomatis!
+                        </div>
+
+                        <div class="row">
+                            @if($shift == 'S1')
+                            <div class="col-6 form-group">
+                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 1 (Reguler)</label>
+                                <input type="number" class="form-control" name="s1_plan_reg" value="{{ $p->s1_plan_reg }}" style="font-weight:bold; font-family:'JetBrains Mono';">
+                            </div>
+                            <div class="col-6 form-group">
+                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 1 (Lembur/OT)</label>
+                                <input type="number" class="form-control" name="s1_plan_ot" value="{{ $p->s1_plan_ot }}" style="font-weight:bold; font-family:'JetBrains Mono';">
+                            </div>
+                            @else
+                            <div class="col-6 form-group">
+                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 2 (Reguler)</label>
+                                <input type="number" class="form-control" name="s2_plan_reg" value="{{ $p->s2_plan_reg }}" style="font-weight:bold; font-family:'JetBrains Mono';">
+                            </div>
+                            <div class="col-6 form-group">
+                                <label style="font-size:11px; font-weight:800; color:#64748b;">Target Shift 2 (Lembur/OT)</label>
+                                <input type="number" class="form-control" name="s2_plan_ot" value="{{ $p->s2_plan_ot }}" style="font-weight:bold; font-family:'JetBrains Mono';">
+                            </div>
+                            @endif
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label style="font-size:11px; font-weight:800; color:#64748b;">Kapasitas/Jam (Pcs)</label>
+                            <input type="number" class="form-control" name="cap_per_hour" value="{{ $p->cap_per_hour }}" required style="font-weight:bold;">
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="background:#f8fafc; border-top:1px solid #e2e8f0; border-radius: 0 0 16px 16px;">
+                        <button type="button" class="btn btn-light" data-dismiss="modal" style="font-weight:800; font-size:12px; border-radius:50rem;">BATAL</button>
+                        <button type="submit" class="btn btn-warning" style="font-weight:800; font-size:12px; border-radius:50rem; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);">UPDATE TARGET</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endforeach
+
     @empty
     <div class="b-panel text-center py-5">
         <i class="fas fa-clipboard-list text-muted mb-3" style="font-size:40px; opacity:0.3;"></i>
