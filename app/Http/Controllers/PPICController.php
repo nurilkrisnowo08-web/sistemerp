@@ -629,7 +629,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 10. STORE MPS WELDING (SIMPAN JADWAL)
+     * 10. STORE MPS WELDING (SIMPAN JADWAL & AUTO-DEPLOY KE TERMINAL)
      */
     public function weldingMpsStore(Request $request)
     {
@@ -649,17 +649,17 @@ class PPICController extends Controller
                 $cleanPart = trim(explode(' - ', $cleanPart)[0]);
             }
 
-            // 2. Validasi Stok WIP (Welding Stock)
+            // 2. Validasi Stok WIP (Sisa hasil Stamping yang belum di-Las)
             $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
             $wipStock = $fg ? (int)$fg->welding_stock : 0;
 
             if ($wipStock < $total_target) {
-                throw new \Exception("❌ PLAN DITOLAK: STOK WIP KURANG! Kamu membuat target {$total_target} Pcs, tapi sisa WIP (hasil stamping) saat ini hanya {$wipStock} Pcs.");
+                throw new \Exception("❌ PLAN DITOLAK: STOK WIP KURANG! Kamu membuat target {$total_target} Pcs, tapi sisa stok WIP (hasil Stamping) saat ini hanya {$wipStock} Pcs.");
             }
 
             $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
 
-            // 3. Simpan ke database Plan Welding
+            // 3. Simpan ke database Master Plan Welding
             DB::table('welding_plans')->insert([
                 'plan_date'     => $request->plan_date, 
                 'part_no'       => $cleanPart, 
@@ -677,8 +677,49 @@ class PPICController extends Controller
                 'updated_at'    => now()
             ]);
 
+            // 4. PROSES DEPLOYMENT KE TERMINAL (WELDING BATCHES)
+            $mesin = DB::table('line_welding')->where('kode_line', $request->line_code)->first();
+            $mesin_id = $mesin ? $mesin->id : null;
+
+            // Potong stok WIP dari gudang (Karena sudah dialokasikan ke mesin las)
+            DB::table('finished_goods')->where('part_no', $cleanPart)->decrement('welding_stock', $total_target);
+
+            $ket = "AUTO-DEPLOY FROM PPIC";
+
+            // Deploy untuk Shift 1 (Pagi)
+            if ($target_s1 > 0) {
+                $base_prod_s1 = 'WOS-WELD-S1-' . date('YmdHis');
+                DB::table('welding_batches')->insert([
+                    'no_produksi_stamping' => $base_prod_s1,
+                    'line_id'       => $mesin_id,
+                    'part_no'       => $cleanPart,
+                    'shift'         => 'Pagi',
+                    'qty_masuk'     => $target_s1, 
+                    'status'        => 'PROSES',
+                    'keterangan'    => $ket,
+                    'created_at'    => $logTimestamp,
+                    'updated_at'    => now()
+                ]);
+            }
+
+            // Deploy untuk Shift 2 (Malam)
+            if ($target_s2 > 0) {
+                $base_prod_s2 = 'WOS-WELD-S2-' . date('YmdHis', strtotime('+1 second'));
+                DB::table('welding_batches')->insert([
+                    'no_produksi_stamping' => $base_prod_s2,
+                    'line_id'       => $mesin_id,
+                    'part_no'       => $cleanPart,
+                    'shift'         => 'Malam',
+                    'qty_masuk'     => $target_s2,
+                    'status'        => 'PROSES',
+                    'keterangan'    => $ket,
+                    'created_at'    => $logTimestamp,
+                    'updated_at'    => now()
+                ]);
+            }
+
             DB::commit();
-            return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dideploy! Target {$total_target} Pcs tercatat di WOS.");
+            return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dideploy ke Terminal! Total {$total_target} Pcs WIP otomatis dipotong dari Gudang.");
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
