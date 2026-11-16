@@ -44,7 +44,7 @@ class PPICController extends Controller
             });
         } elseif ($areaFilter === 'big') {
             $plansQuery->where(function($q) {
-                $q->where('line_code', 'NOT LIKE', '%C%')->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
+                $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%');
             });
         }
         $plans = $plansQuery->get();
@@ -93,29 +93,27 @@ class PPICController extends Controller
 
         $totalPlan = $plans->sum('plan_qty') ?: 0;
         $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+        $achievementRate =$totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+        $dailyLabels = []; $dailyOk = [];$dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
             $dailyLabels[] = date('d M', strtotime($d));
             
-            $qOk = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
-            $qNg = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
+            $qOk = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA');
+            $qNg = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA');
             
             if ($areaFilter === 'small') {
-                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
-                $qNg->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });$qNg->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
             } elseif ($areaFilter === 'big') {
-                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
-                $qNg->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });$qNg->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
             }
 
-            $dailyOk[] = $qOk->sum('qty_ok');
-            $dailyNg[] = $qNg->sum('qty_ng');
+            $dailyOk[] =$qOk->sum('qty_ok');
+            $dailyNg[] =$qNg->sum('qty_ng');
         }
 
-        $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
+        $monthlyLabels = []; $monthlyOk = [];$monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
             $monthlyLabels[] = date('M', strtotime("-$i months"));
@@ -124,15 +122,13 @@ class PPICController extends Controller
             $qNgM = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA');
             
             if ($areaFilter === 'small') {
-                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
-                $qNgM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });$qNgM->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
             } elseif ($areaFilter === 'big') {
-                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
-                $qNgM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });$qNgM->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
             }
 
-            $monthlyOk[] = $qOkM->sum('qty_ok');
-            $monthlyNg[] = $qNgM->sum('qty_ng');
+            $monthlyOk[] =$qOkM->sum('qty_ok');
+            $monthlyNg[] =$qNgM->sum('qty_ng');
         }
 
         return view('PPIC.ppic_planning', compact(
@@ -1042,157 +1038,6 @@ class PPICController extends Controller
         $batches = $allBatches;
 
         return view('PPIC.print_serah_terima', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
-    }
-
-    /**
-     * 5C. PRINT WOS KHUSUS SMALL PRESS
-     */
-    public function printWosSmall($date, $shift, $line_code)
-    {
-        $plansS1 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
-        $plansS2 = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0)->orderBy('id', 'asc')->get();
-
-        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada jadwal Small Press di mesin ini untuk dicetak.');
-        }
-
-        $planIds = collect()->merge($plansS1)->merge($plansS2)->pluck('id')->unique()->toArray();
-        $batches = DB::table('produksi_batches')
-            ->leftJoin('rm_stocks', 'produksi_batches.rm_stock_id', '=', 'rm_stocks.id')
-            ->whereIn('produksi_batches.plan_id', $planIds)
-            ->select('produksi_batches.*', 'rm_stocks.coil_id', 'rm_stocks.spec', 'rm_stocks.size', 'rm_stocks.material_name')
-            ->get();
-
-        $plansS1 = $plansS1->filter(function($plan) use ($batches) {
-            $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Pagi')->first();
-            if ($batchData) {
-                $plan->no_produksi = $batchData->no_produksi ?? '-';
-                $plan->keterangan = $batchData->keterangan;
-                $plan->actual_ok = $batchData->qty_hasil_ok ?? 0;
-                $plan->actual_ng = $batchData->qty_hasil_ng ?? 0;
-                $plan->actual_start = $batchData->created_at ? date('H:i', strtotime($batchData->created_at)) : '';
-                $plan->actual_end = ($batchData->status == 'COMPLETED') ? date('H:i', strtotime($batchData->updated_at)) : '';
-            } else {
-                $plan->no_produksi = '-';
-                $plan->actual_ok = 0; $plan->actual_ng = 0; $plan->actual_start = ''; $plan->actual_end = '';
-            }
-            return true;
-        })->values();
-
-        $plansS2 = $plansS2->filter(function($plan) use ($batches) {
-            $batchData = $batches->where('plan_id', $plan->id)->where('shift', 'Malam')->first();
-            if ($batchData) {
-                $plan->no_produksi = $batchData->no_produksi ?? '-';
-                $plan->keterangan = $batchData->keterangan;
-                $plan->actual_ok = $batchData->qty_hasil_ok ?? 0;
-                $plan->actual_ng = $batchData->qty_hasil_ng ?? 0;
-                $plan->actual_start = $batchData->created_at ? date('H:i', strtotime($batchData->created_at)) : '';
-                $plan->actual_end = ($batchData->status == 'COMPLETED') ? date('H:i', strtotime($batchData->updated_at)) : '';
-            } else {
-                $plan->no_produksi = '-';
-                $plan->actual_ok = 0; $plan->actual_ng = 0; $plan->actual_start = ''; $plan->actual_end = '';
-            }
-            return true;
-        })->values();
-
-        return view('PPIC.print_wos_small', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
-    }
-
-    /**
-     * 6B. PRINT SURAT SERAH TERIMA MATERIAL (BPRM) KHUSUS SMALL PRESS
-     */
-    public function printSerahTerimaSmall($date, $shift, $line_code)
-    {
-        $planIds = DB::table('production_plans')->where('plan_date', $date)->where('line_code', $line_code)->pluck('id');
-
-        $batchesRaw = DB::table('produksi_batches')
-            ->leftJoin('parts', 'produksi_batches.material_code', '=', 'parts.part_no')
-            ->whereIn('produksi_batches.plan_id', $planIds)
-            ->where('produksi_batches.no_produksi', 'NOT LIKE', '%-S')
-            ->select('produksi_batches.*', 'parts.part_name', 'parts.customer_code as part_cust')
-            ->orderBy('produksi_batches.id', 'asc')
-            ->get();
-
-        if ($batchesRaw->isEmpty()) {
-            return redirect()->back()->with('error', 'Belum ada Material Request untuk mesin Small Press ini.');
-        }
-
-        $allBatches = collect();
-
-        foreach ($batchesRaw as $batch) {
-            $subPartNo = null;
-            $subPartName = null;
-
-            $bNoProd = $batch->no_produksi ?? '';
-            $bKet = $batch->keterangan ?? '';
-
-            if (str_ends_with($bNoProd, '-M')) {
-                $timePrefix = substr($bNoProd, 0, strrpos($bNoProd, '-'));
-                $subBatch = DB::table('produksi_batches')->where('no_produksi', $timePrefix . '-S')->first();
-                if ($subBatch) {
-                    $subPartNo = $subBatch->material_code;
-                    $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
-                }
-            } elseif (strpos($bKet, 'PAIR_MAIN:') === 0) {
-                $subPartNo = str_replace('PAIR_MAIN:', '', $bKet);
-                $subPartName = DB::table('parts')->where('part_no', $subPartNo)->value('part_name');
-            }
-
-            $displayPartNo = $subPartNo ? "{$batch->material_code} / {$subPartNo}" : $batch->material_code;
-            $displayPartName = $subPartName ? ($batch->part_name . " / " . $subPartName) : ($batch->part_name ?? $batch->material_code);
-
-            $coilsUsed = DB::table('rm_production_logs')
-                ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
-                ->where('rm_production_logs.no_produksi', $bNoProd)
-                ->select(
-                    DB::raw('GROUP_CONCAT(DISTINCT rm_stocks.coil_id SEPARATOR ", ") as coil_id'),
-                    DB::raw('MAX(rm_stocks.spec) as spec'),
-                    DB::raw('MAX(rm_stocks.size) as size'),
-                    DB::raw('MAX(rm_stocks.material_name) as material_name'),
-                    DB::raw('MAX(rm_stocks.customer) as stock_cust'),
-                    DB::raw('GROUP_CONCAT(DISTINCT rm_stocks.no_surat_jalan SEPARATOR ", ") as stock_sj'),
-                    DB::raw('SUM(rm_production_logs.pcs_used) as total_used')
-                )
-                ->groupBy('rm_production_logs.no_produksi')
-                ->first();
-
-            if ($coilsUsed && $coilsUsed->total_used > 0) {
-                $item = clone $batch;
-                $item->qty_ambil_pcs = $coilsUsed->total_used;
-                $item->coil_id = $coilsUsed->coil_id;
-                $item->spec = $coilsUsed->spec;
-                $item->size = $coilsUsed->size;
-                $item->material_name = $coilsUsed->material_name;
-                $item->customer_code = $batch->part_cust ?? $coilsUsed->stock_cust ?? 'SAI';
-                $item->display_part_no = $displayPartNo;
-                $item->display_part_name = $displayPartName;
-
-                if (!empty($coilsUsed->stock_sj) && $coilsUsed->stock_sj !== '-') {
-                    $item->no_surat_jalan = $coilsUsed->stock_sj;
-                } else {
-                    $incomingSj = DB::table('rm_incoming_logs')->where('rm_stock_id', $coilsUsed->rm_stock_id ?? 0)->where('source', 'supplier')->orderBy('id', 'desc')->value('no_produksi');
-                    $item->no_surat_jalan = $incomingSj ?? '-';
-                }
-                $allBatches->push($item);
-            } else {
-                $stockData = DB::table('rm_stocks')->where('id', $batch->rm_stock_id)->first();
-                $item = clone $batch;
-                $item->coil_id = $stockData->coil_id ?? '-';
-                $item->spec = $stockData->spec ?? '-';
-                $item->size = $stockData->size ?? '-';
-                $item->customer_code = $batch->part_cust ?? $stockData->customer ?? 'SAI';
-                $item->display_part_no = $displayPartNo;
-                $item->display_part_name = $displayPartName;
-                $item->no_surat_jalan = $stockData->no_surat_jalan ?? '-';
-                $allBatches->push($item);
-            }
-        }
-
-        $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
-        $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
-        $batches = $allBatches;
-
-        return view('PPIC.print_serahterima_small', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
     }
 
     /**
@@ -2173,7 +2018,6 @@ class PPICController extends Controller
 
         return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
-
     /**
      * 15. PRINT INVENTORY TRACEABILITY (SUMMARY ONLY)
      */
@@ -2545,3 +2389,8 @@ class PPICController extends Controller
         return view('PPIC.print_sto_detail', compact('sto', 'details'));
     }
 }
+
+
+bikin fungsi buatin report buat di welddingnya 
+
+There is a file you can reference named "image_4d8d1e.png". Refer to this file by its name verbatim.
