@@ -629,6 +629,63 @@ class PPICController extends Controller
     }
 
     /**
+     * 10. STORE MPS WELDING (SIMPAN JADWAL)
+     */
+    public function weldingMpsStore(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            // 1. Hitung total target
+            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
+            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
+            $total_target = $target_s1 + $target_s2;
+
+            if ($total_target <= 0) {
+                throw new \Exception("Target produksi Welding tidak boleh kosong / 0.");
+            }
+
+            $cleanPart = trim(urldecode($request->part_no));
+            if (strpos($cleanPart, ' - ') !== false) {
+                $cleanPart = trim(explode(' - ', $cleanPart)[0]);
+            }
+
+            // 2. Validasi Stok WIP (Welding Stock)
+            $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
+            $wipStock = $fg ? (int)$fg->welding_stock : 0;
+
+            if ($wipStock < $total_target) {
+                throw new \Exception("❌ PLAN DITOLAK: STOK WIP KURANG! Kamu membuat target {$total_target} Pcs, tapi sisa WIP (hasil stamping) saat ini hanya {$wipStock} Pcs.");
+            }
+
+            $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
+
+            // 3. Simpan ke database Plan Welding
+            DB::table('welding_plans')->insert([
+                'plan_date'     => $request->plan_date, 
+                'part_no'       => $cleanPart, 
+                'line_code'     => $request->line_code, 
+                'manpower'      => $request->manpower ?? 1, 
+                'process_qty'   => $request->process_qty ?? 1,
+                'qty_lot'       => $request->qty_lot ?? 200, 
+                'cap_per_hour'  => $request->cap_per_hour ?? 320,
+                's1_plan_reg'   => $request->s1_plan_reg ?? 0, 
+                's1_plan_ot'    => $request->s1_plan_ot ?? 0,
+                's2_plan_reg'   => $request->s2_plan_reg ?? 0, 
+                's2_plan_ot'    => $request->s2_plan_ot ?? 0,
+                'dandory_time'  => $request->dandory_time ?? 15, 
+                'created_at'    => $logTimestamp, 
+                'updated_at'    => now()
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dideploy! Target {$total_target} Pcs tercatat di WOS.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    /**
      * 4. UPDATE & REVISI WOS STAMPING
      */
     public function updateWos(Request $request, $id)
