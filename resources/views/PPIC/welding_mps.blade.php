@@ -83,12 +83,10 @@
             </p>
         </div>
         
-        <form action="{{ route('ppic.welding.mps_index') }}" method="GET" class="filter-group">
-            <div class="shift-toggle">
-                <a href="{{ route('ppic.welding.mps_index', ['date' => $date, 'shift' => 'S1']) }}" class="shift-btn {{ $shift == 'S1' ? 'active' : '' }}">SHIFT_01</a>
-                <a href="{{ route('ppic.welding.mps_index', ['date' => $date, 'shift' => 'S2']) }}" class="shift-btn {{ $shift == 'S2' ? 'active' : '' }}">SHIFT_02</a>
-                <input type="hidden" name="shift" value="{{ $shift }}">
-            </div>
+       <form action="{{ route('ppic.welding.mps') }}" method="GET" class="filter-group">
+    <div class="shift-toggle">
+        <a href="{{ route('ppic.welding.mps', ['date' => $date, 'shift' => 'S1']) }}" class="shift-btn {{ $shift == 'S1' ? 'active' : '' }}">SHIFT_01</a>
+        <a href="{{ route('ppic.welding.mps', ['date' => $date, 'shift' => 'S2']) }}" class="shift-btn {{ $shift == 'S2' ? 'active' : '' }}">SHIFT_02</a>
             
             <div class="date-picker-box">
                 <input type="date" name="date" value="{{ $date }}" onchange="this.form.submit()">
