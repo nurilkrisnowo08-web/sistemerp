@@ -365,6 +365,68 @@ class PPICController extends Controller
     }
 
     /**
+     * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
+     */
+    public function weldingMps(Request $request)
+    {
+        $date = $request->date ?? date('Y-m-d');
+        $shiftParam = $request->shift ?? 'S1'; 
+        $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam'; 
+
+        $query = DB::table('welding_plans')->where('plan_date', $date);
+        
+        if ($shiftParam == 'S1') {
+            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
+        } else {
+            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
+        }
+
+        $plans = $query->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
+                       ->select('welding_plans.*', 'parts.part_name')
+                       ->orderBy('line_code', 'asc')
+                       ->orderBy('welding_plans.id', 'asc')
+                       ->get();
+
+        $totalPlanQty = 0;
+        $totalWorkingHours = 0;
+        $totalDandory = 0;
+        $lineFinishTime = []; 
+        $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
+
+        foreach($plans as $plan) {
+            $actual = DB::table('welding_actuals')
+                ->where('part_no', $plan->part_no)
+                ->where('shift', $dbShiftName) 
+                ->whereDate('created_at', $date)
+                ->sum('qty_ok');
+
+            $plan->total_actual = (int)$actual;
+            $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
+            $plan->balance = $plan->total_target - $plan->total_actual;
+
+            $totalPlanQty += $plan->total_target;
+            $totalDandory += ($plan->dandory_time ?? 15);
+
+            $dandoryH = ($plan->dandory_time ?? 15) / 60;
+            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
+            $totalWorkingHours += $duration;
+
+            $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
+            $plan->start_time = $startTime;
+            $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
+            $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
+        }
+
+        $availableLines = DB::table('line_welding')->get();
+        $availableParts = DB::table('parts')->where('next_process', 'WELDING')->get();
+
+        return view('PPIC.welding_mps', compact(
+            'plans', 'date', 'availableLines', 'availableParts', 
+            'totalPlanQty', 'totalWorkingHours', 'totalDandory'
+        ))->with('shift', $shiftParam);
+    }
+
+    /**
      * 2C. AJAX HELPER: GET PARTS BY CUSTOMER
      */
     public function getPartsByCustomer(Request $request, $customer = null)
