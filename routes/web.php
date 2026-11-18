@@ -197,6 +197,11 @@ Route::get('/ppic/inventory-trace/print-summary', [App\Http\Controllers\PPICCont
 Route::get('/ppic/sto/print-detail/{id}', [App\Http\Controllers\PPICController::class, 'printStoDetail'])->name('ppic.sto.print_detail');
 // REVISI / UPDATE WOS WELDING
 Route::put('/ppic/welding/mps/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWosWelding'])->name('ppic.welding.update_wos');
+// ROUTE WELDING YANG WAJIB ADA BIAR BUTTON TIDAK ERROR
+Route::put('/ppic/welding/mps/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWosWelding'])->name('ppic.welding.update_wos');
+Route::get('/ppic/welding/wos/print/{date}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosWelding'])->name('ppic.welding.print_wos');
+Route::get('/ppic/welding/bprm/print/{date}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaWelding'])->name('ppic.welding.print_bprm');
+Route::get('/ppic/welding/report/print', [App\Http\Controllers\PPICController::class, 'printWeldingReport'])->name('ppic.welding.print_report');
 // PRINT WOS WELDING & BPRM WELDING
 Route::get('/ppic/welding/wos/print/{date}/{line_code}', [App\Http\Controllers\PPICController::class, 'printWosWelding'])->name('ppic.welding.print_wos');
 Route::get('/ppic/welding/bprm/print/{date}/{line_code}', [App\Http\Controllers\PPICController::class, 'printSerahTerimaWelding'])->name('ppic.welding.print_bprm');
