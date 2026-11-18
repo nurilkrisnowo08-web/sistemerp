@@ -1,354 +1,336 @@
 @extends('layout.admin')
 
 @section('content')
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Orbitron:wght@600;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
 <style>
     :root {
-        --app-bg: #f8fafc;
-        --ind-navy: #1e293b;
-        --ind-blue: #3b82f6;
-        --ind-cyan: #06b6d4;
-        --ind-green: #10b981;
-        --ind-slate: #64748b;
-        --ind-border: #e2e8f0;
+        --p-primary: #3b82f6; --p-dark: #0f172a; --p-success: #10b981; 
+        --p-danger: #ef4444; --p-warning: #f59e0b; --p-slate: #64748b;
+        --glass-border: rgba(226, 232, 240, 0.8);
     }
-    body { background-color: var(--app-bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--ind-navy); }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: var(--p-dark); }
     
-    /* MODULAR HEADER */
-    .mrp-header-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border-radius: 20px; padding: 25px 35px; border: 1px solid rgba(226,232,240,0.8); margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.02);}
-    .heading-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 26px; letter-spacing: -0.5px; color: var(--ind-navy); margin-bottom: 5px; text-transform: uppercase;}
+    .hud-title { font-family: 'Orbitron'; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
+    .glass-card { background: white; border-radius: 24px; border: 1px solid var(--glass-border); box-shadow: 0 10px 30px -5px rgba(0,0,0,0.03); overflow: hidden; transition: 0.3s; }
+    .glass-card:hover { box-shadow: 0 15px 35px -5px rgba(0,0,0,0.06); transform: translateY(-3px); }
     
-    .kpi-card { background: white; border-radius: 16px; padding: 20px 25px; border: 1px solid var(--ind-border); position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); min-height: 100px;}
-    .kpi-card::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--accent-color, var(--ind-blue)); }
-    .kpi-label { font-size: 10.5px; font-weight: 800; color: var(--ind-slate); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
-    .kpi-value { font-weight: 800; font-size: 2rem; color: var(--ind-navy); font-family: 'JetBrains Mono', monospace; }
-    
-    .station-panel { background: white; border-radius: 16px; border: 1px solid var(--ind-border); overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.02); margin-bottom: 30px; }
-    .station-header { background: #475569; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; color: white;}
-    
-    .table-mps thead th { background: #fdfaf6; color: var(--ind-slate); font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 15px; border: none; letter-spacing: 0.5px; }
-    .table-mps tbody td { padding: 15px; vertical-align: middle; border-bottom: 1px dashed #e2e8f0; font-weight: 600; font-size: 12px; }
-    
-    /* BUTTONS MAIN PAGE */
-    .shift-toggle { background: #e2e8f0; border-radius: 50px; padding: 4px; display: inline-flex; }
-    .shift-btn { border-radius: 50px; padding: 8px 20px; font-weight: 900; font-size: 11px; transition: 0.3s; border: none; color: #64748b; text-decoration: none; }
-    .shift-btn.active { background: #1e293b; color: white; }
-    
-    .btn-pill { border-radius: 50rem; padding: 12px 24px; font-weight: 800; font-size: 12px; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer; text-decoration: none;}
-    .btn-new-plan { background: #4f46e5; color: white; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); }
-    
-    .btn-print-wos { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
-    .btn-print-bprm { background: #3b82f6; color: white; border: none; border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
-    .btn-revisi { background: #f59e0b; color: white; border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
-    
-    .time-chip { font-family: 'JetBrains Mono'; background: #f1f5f9; color: var(--ind-navy); padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; border: 1px solid #e2e8f0; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
+    .machine-switcher { background: #f1f5f9; padding: 6px; border-radius: 50px; display: inline-flex; border: 1px solid #e2e8f0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+    .machine-switcher .btn { border-radius: 50px; font-weight: 800; padding: 10px 28px; font-size: 12px; letter-spacing: 0.5px; transition: 0.3s; text-transform: uppercase; }
+    .machine-switcher .btn.active { background: var(--p-primary); color: white; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.35); }
+    .machine-switcher .btn:not(.active) { color: var(--p-slate); }
+    .machine-switcher .btn:not(.active):hover { background: #e2e8f0; color: var(--p-dark); }
 
-    /* ========================================================
-       ✨ STYLE MODAL BARU (LEBIH CLEAN & RESPONSIF) ✨ 
-       ======================================================== */
-    .mrp-modal-content { border-radius: 20px; border: none; overflow: hidden; background: #f8fafc; box-shadow: 0 25px 50px rgba(0,0,0,0.2); }
-    .mrp-modal-header { background: #1e293b; padding: 25px 35px; border-bottom: none; display: flex; align-items: center; }
-    .mrp-modal-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; color: #ffffff; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;}
+    .card-grad-1 { background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); border-left: 5px solid var(--p-primary); }
+    .card-grad-2 { background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-left: 5px solid var(--p-success); }
+    .card-grad-3 { background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%); border-left: 5px solid var(--p-warning); }
     
-    .mrp-card-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 25px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-    .mrp-card-title { font-size: 13px; font-weight: 800; margin-bottom: 25px; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; padding-bottom:10px; border-bottom: 2px dashed #f1f5f9;}
+    .table-mps { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .table-mps thead th { background: #f8fafc; padding: 18px 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--p-slate); border-bottom: 2px solid #e2e8f0; }
+    .table-mps tbody td { padding: 18px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600; vertical-align: middle; transition: 0.2s; }
+    .table-mps tbody tr:hover td { background-color: #f8fafc; }
     
-    .col-id .mrp-card-title { color: #3b82f6; border-bottom-color: #dbeafe;}
-    .col-pm .mrp-card-title { color: #06b6d4; border-bottom-color: #cffafe;}
-    .col-qa .mrp-card-title { color: #10b981; border-bottom-color: #d1fae5;}
+    .part-cell { border-left: 4px solid var(--p-primary); background: #f8faff; font-weight: 800 !important; color: var(--p-primary); }
+    .badge-time { background: #fff9c4; color: #856404; font-family: 'JetBrains Mono', monospace; padding: 6px 12px; border-radius: 8px; font-weight: 800; border: 1px solid #ffe58f; font-size: 11px; }
+    .badge-balance { padding: 6px 14px; border-radius: 8px; font-family: 'Orbitron', sans-serif; font-size: 12px; font-weight: 900; }
+    .balance-danger { background: rgba(239, 68, 68, 0.1); color: var(--p-danger); border: 1px solid var(--p-danger); }
+    .balance-success { background: rgba(16, 185, 129, 0.1); color: var(--p-success); border: 1px solid var(--p-success); }
+    .footer-summary { background: var(--p-dark) !important; color: white !important; font-family: 'Orbitron', sans-serif; font-weight: 800; }
+    .footer-summary td { border: none !important; padding: 22px !important; }
     
-    .mrp-label { font-size: 11px; font-weight: 800; color: #475569; margin-bottom: 8px; display: block;}
-    .mrp-input { border-radius: 10px; border: 2px solid #f1f5f9; padding: 12px 18px; font-weight: 700; font-size: 13px; color: #1e293b; transition: 0.3s; width: 100%; outline: none; background: #fdfdfd;}
-    .mrp-input:focus { border-color: #3b82f6; background: #ffffff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
-    .mrp-input[readonly] { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; cursor: not-allowed;}
+    .rev-badge { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; margin-left: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     
-    /* Kotak Calculated M/C Load */
-    .mc-load-box { background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd; border-radius: 16px; padding: 25px; text-align: center; margin-top: 20px; }
-    .mc-load-label { font-size: 10px; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;}
-    .mc-load-val { font-family: 'Orbitron', sans-serif; font-size: 30px; font-weight: 900; color: #0891b2; letter-spacing: 1px;}
-    
-    /* Tabs Shift */
-    .mrp-tabs { display: flex; border: 2px solid #3b82f6; border-radius: 10px; overflow: hidden; margin-bottom: 25px; background: #ffffff;}
-    .mrp-tab { flex: 1; text-align: center; font-size: 12px; font-weight: 800; padding: 12px; cursor: pointer; color: #64748b; transition: 0.3s;}
-    .mrp-tab.active { background: #3b82f6; color: white; }
-    .tab-content-mrp { display: none; }
-    .tab-content-mrp.active { display: block; }
-    
-    /* Custom Alert Bawah */
-    .alert-stok-error { background-color: #fef2f2; border-radius: 12px; padding: 15px 25px; text-align: center; border: 1px solid #fecaca; width: 100%; margin-bottom: 20px; color: #dc2626; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.1);}
-    .alert-stok-error .title { font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px;}
-    .alert-stok-error .desc { font-size: 12px; font-weight: 600; }
-    
-    .alert-stok-success { background-color: #ecfdf5; border-radius: 12px; padding: 15px 25px; text-align: center; border: 1px solid #a7f3d0; width: 100%; margin-bottom: 20px; color: #059669; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.1);}
-    .alert-stok-success .title { font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px;}
-    .alert-stok-success .desc { font-size: 12px; font-weight: 600; }
+    .t-mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
+    .btn-cyber { border-radius: 14px; font-weight: 800; padding: 10px 24px; font-size: 12px; letter-spacing: 0.5px; transition: 0.3s; }
+    .btn-cyber:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
 
-    /* Tombol Aksi Bawah */
-    .btn-abort { background: #cbd5e1; color: #475569; border-radius: 50rem; padding: 14px 40px; font-weight: 900; font-size: 13px; border: none; cursor: pointer; transition: 0.3s;}
-    .btn-abort:hover { background: #94a3b8; color: white;}
-    .btn-auth { background: #4f46e5; color: white; border-radius: 50rem; padding: 14px 40px; font-weight: 900; font-size: 13px; border: none; cursor: pointer; transition: 0.3s; box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);}
-    .btn-auth:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(79, 70, 229, 0.5);}
-    .btn-auth:disabled { background: #cbd5e1; color: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
-
-    /* Fix Select2 Tinggi & Styling */
-    .select2-container--default .select2-selection--single { background-color: #fdfdfd; border: 2px solid #f1f5f9; border-radius: 10px; height: 45px; }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 41px; font-weight: 700; font-size: 13px; color: #1e293b; padding-left: 15px; }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 41px; right: 10px; }
-    .select2-container--default.select2-container--open .select2-selection--single { border-color: #3b82f6; }
+    .anim-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* MODAL UI STAMPING */
+    .input-industrial { border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 15px; font-weight: 700; font-size: 12px; transition: 0.3s; }
+    .input-industrial:focus { border-color: var(--p-primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    .input-industrial[readonly] { background: #f8fafc; color: var(--p-slate); border-color: #f1f5f9; cursor: not-allowed;}
+    
+    .shift-toggle-pill { display: flex; border: 1px solid var(--p-primary); border-radius: 8px; overflow: hidden; }
+    .shift-btn { font-size: 11px; font-weight: 800; padding: 10px; border: none; cursor: pointer; transition: 0.2s; }
+    
+    .select2-container--default .select2-selection--single { background-color: #fff; border: 1px solid #e2e8f0; border-radius: 8px; height: 41px; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 39px; font-weight: 700; font-size: 12px; padding-left: 15px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 39px; right: 10px; }
 </style>
 
-<div class="container-fluid py-4 px-lg-5 animate__animated animate__fadeIn">
-    
-    @if(session('success')) 
-    <div class="alert alert-success border-0 shadow-sm animate__animated animate__bounceIn" style="border-radius: 12px; background:#ecfdf5; color:#047857; font-weight:800;">
-        <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
-    </div> 
+<div class="container-fluid mt-4 mb-5 anim-up">
+    @if(session('success'))
+        <div class="alert alert-success border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #10b981 !important; background-color: #d1fae5; padding: 15px 20px;">
+            <h6 class="font-weight-bold mb-1"><i class="fas fa-check-circle mr-2 text-success"></i>Operation Successful</h6>
+            <p class="mb-0 text-dark" style="font-size: 13px; font-weight: 600;">{{ session('success') }}</p>
+        </div>
     @endif
-    @if(session('error')) 
-    <div class="alert alert-danger border-0 shadow-sm animate__animated animate__shakeX" style="border-radius: 12px; background:#fef2f2; color:#b91c1c; font-weight:800;">
-        <i class="fas fa-exclamation-triangle mr-2"></i> {{ session('error') }}
-    </div> 
+    @if(session('error'))
+        <div class="alert alert-danger border-0 shadow-sm rounded-lg mb-4" style="border-left: 5px solid #ef4444 !important; background-color: #fee2e2; padding: 15px 20px;">
+            <h6 class="font-weight-bold mb-1 text-danger"><i class="fas fa-exclamation-triangle mr-2"></i>System Warning</h6>
+            <p class="mb-0 text-dark" style="font-size: 13px; font-weight: 600;">{{ session('error') }}</p>
+        </div>
     @endif
 
-    <div class="mrp-header-card d-flex flex-column flex-md-row justify-content-between align-items-center">
+    {{-- HEADER & NAVIGATION --}}
+    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-4 gap-3">
         <div>
-            <h2 class="heading-title">MPS_WELDING <span style="color: var(--ind-blue);">ENGINE</span></h2>
-            <div class="d-flex align-items-center mt-2">
-                <span class="badge badge-dark px-3 py-1 mr-3" style="border-radius: 6px; font-weight:800; font-size:10px;">SYSTEM_ACTIVE</span>
-                <span style="font-size:11px; font-weight:800; color:var(--ind-slate);"><i class="far fa-calendar-alt mr-1"></i> {{ date('D, d M Y', strtotime($date)) }}</span>
-            </div>
+            <h2 class="hud-title m-0" style="font-size: 28px;">MPS_WELDING <span class="text-primary"> ENGINE</span></h2>
+            <p class="text-muted small font-weight-bold uppercase mb-0 mt-1"><i class="far fa-calendar-alt mr-2"></i> Operational Date: <span class="text-dark">{{ date('d F Y', strtotime($date)) }}</span></p>
         </div>
 
-        <div class="d-flex align-items-center mt-3 mt-md-0 gap-3">
-            <div class="shift-toggle mr-3">
-                <a href="?date={{$date}}&shift=S1" class="shift-btn {{ $shift == 'S1' ? 'active' : '' }}">SHIFT_01</a>
-                <a href="?date={{$date}}&shift=S2" class="shift-btn {{ $shift == 'S2' ? 'active' : '' }}">SHIFT_02</a>
-            </div>
-            <input type="date" class="mrp-input px-3 mr-3" value="{{ $date }}" style="width: 160px; height: 38px; cursor:pointer;" onchange="location.href='?date='+this.value+'&shift={{$shift}}'">
-            
-            <button class="btn-pill btn-new-plan" data-toggle="modal" data-target="#modalRegisterPlan">
-                <i class="fas fa-plus mr-1"></i> REGISTER_PLAN
+        <div class="machine-switcher mx-xl-auto my-3 my-xl-0">
+            <a href="?date={{$date}}&shift=S1" class="btn {{ $shift == 'S1' ? 'active' : '' }}"><i class="fas fa-sun mr-2"></i>SHIFT_01</a>
+            <a href="?date={{$date}}&shift=S2" class="btn {{ $shift == 'S2' ? 'active' : '' }}"><i class="fas fa-moon mr-2"></i>SHIFT_02</a>
+        </div>
+
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <form action="" method="GET" class="mr-2">
+                <input type="hidden" name="shift" value="{{ $shift }}">
+                <input type="date" name="date" class="form-control rounded-pill border-dark px-4 shadow-sm font-weight-bold" style="height: 42px;" value="{{ $date }}" onchange="this.form.submit()">
+            </form>
+            <button class="btn btn-primary btn-cyber shadow-sm" data-toggle="modal" data-target="#modalAddPlan">
+                <i class="fas fa-plus-circle mr-2"></i> REGISTER PLAN
             </button>
         </div>
     </div>
 
+    {{-- TOP CARDS --}}
     <div class="row mb-4">
-        <div class="col-md-3 mb-3"><div class="kpi-card"><div class="kpi-label">Volume Target ({{ $shift }})</div><div class="kpi-value" style="color:var(--ind-blue);">{{ number_format($totalPlanQty) }}<small class="ml-1 text-muted" style="font-size: 11px">PCS</small></div></div></div>
-        <div class="col-md-3 mb-3"><div class="kpi-card"><div class="kpi-label">Load Capacity</div><div class="kpi-value" style="color: #8b5cf6">{{ number_format($totalWorkingHours, 1) }}<small class="ml-1 text-muted" style="font-size: 11px">HRS</small></div></div></div>
-        <div class="col-md-3 mb-3"><div class="kpi-card"><div class="kpi-label">Switching Loss</div><div class="kpi-value" style="color: #f59e0b">{{ $totalDandory }}<small class="ml-1 text-muted" style="font-size: 11px">MIN</small></div></div></div>
-        <div class="col-md-3 mb-3"><div class="kpi-card" style="background:#475569;"><div class="kpi-label" style="color:#cbd5e1;">Operational Shift</div><div class="kpi-value text-white">{{ $shift == 'S1' ? 'DAY_OPS' : 'NIGHT_OPS' }}</div></div></div>
-    </div>
-
-    @forelse($plans->groupBy('line_code') as $lineCode => $linePlans)
-    <div class="station-panel animate__animated animate__fadeInUp">
-        <div class="station-header">
-            <h6 class="mb-0" style="font-weight:800; font-size:14px; letter-spacing:0.5px;">
-                <i class="fas fa-robot text-info mr-2"></i> STATION: {{ $lineCode }}
-            </h6>
-            <div>
-                <a href="{{ url('/ppic/welding/wos/print/'.$date.'/'.$lineCode) }}" target="_blank" class="btn-print-wos mr-2 text-decoration-none"><i class="fas fa-print mr-1"></i> PRINT WOS</a>
-                <a href="{{ url('/ppic/welding/bprm/print/'.$date.'/'.$lineCode) }}" target="_blank" class="btn-print-bprm text-decoration-none"><i class="fas fa-file-alt mr-1"></i> PRINT BPRM</a>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="glass-card card-grad-1 p-4 text-center">
+                <small class="text-muted font-weight-bold uppercase letter-spacing-1">Volume Target ({{ $shift }})</small>
+                <h2 class="font-weight-bold mb-0 mt-2 text-primary" style="font-family: 'Orbitron'; font-size: 38px;">{{ number_format($totalPlanQty) }}</h2>
             </div>
         </div>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="glass-card card-grad-2 p-4 text-center">
+                <small class="text-muted font-weight-bold uppercase letter-spacing-1">Load Capacity</small>
+                <h4 class="font-weight-bold mb-0 mt-3 text-info font-mono" style="font-size: 26px;">
+                    <span class="text-success">{{ number_format($totalWorkingHours, 1) }}H</span>
+                </h4>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3 mb-md-0">
+            <div class="glass-card card-grad-3 p-4 text-center">
+                <small class="text-muted font-weight-bold uppercase letter-spacing-1">Switch Loss (Dandory)</small>
+                <h2 class="font-weight-bold mb-0 mt-2 text-warning" style="font-family: 'Orbitron'; font-size: 38px;">{{ $totalDandory }}<span style="font-size: 20px;">m</span></h2>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-4 text-center bg-dark text-white border-0" style="border-left: 5px solid #38bdf8 !important;">
+                <small class="text-info font-weight-bold uppercase letter-spacing-1">Operational Shift</small>
+                <h2 class="font-weight-bold mb-0 mt-2" style="font-family: 'Orbitron'; font-size: 28px; padding-top: 5px;">{{ $shift == 'S1' ? 'DAY_OPS' : 'NIGHT_OPS' }}</h2>
+            </div>
+        </div>
+    </div>
+
+    {{-- DAFTAR MPS WELDING PER STATION --}}
+    <div class="glass-card">
         <div class="table-responsive">
-            <table class="table table-mps mb-0">
+            <table class="table-mps text-center">
                 <thead>
                     <tr>
-                        <th class="text-center">Pos</th>
-                        <th class="text-left">Part Identification</th>
-                        <th class="text-center">M/P</th>
-                        <th class="text-center">Quota</th>
-                        <th class="text-center">Actual</th>
-                        <th class="text-center">Gap</th>
-                        <th class="text-center">T-Start</th>
-                        <th class="text-center">T-Finish</th>
-                        <th class="text-center">Status</th>
-                        <th class="text-center">Action</th>
+                        <th style="width: 50px;">#</th>
+                        <th class="text-left pl-4">Identification</th>
+                        <th>MP</th>
+                        <th>Quota</th>
+                        <th>Actual</th>
+                        <th>Gap</th>
+                        <th class="text-primary">Start</th>
+                        <th class="text-primary">Finish</th>
+                        <th>Status</th>
+                        <th width="120">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($linePlans as $index => $plan)
-                    @php $percent = ($plan->total_target > 0) ? ($plan->total_actual / $plan->total_target) * 100 : 0; @endphp
+                    @forelse ($plans->groupBy('line_code') as $lineCode => $linePlans)
+                        <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; border-top: 4px solid #1e293b;">
+                            <td colspan="8" class="text-left pl-4">
+                                <h5 class="font-weight-bold text-dark m-0 uppercase py-2" style="letter-spacing: 1px; font-family: 'Orbitron';">
+                                    <i class="fas fa-robot mr-2 text-primary"></i> STATION : {{ $lineCode }}
+                                </h5>
+                            </td>
+                            <td colspan="2" class="text-right pr-4">
+                                <div class="btn-group shadow-sm">
+                                    <a href="{{ url('/ppic/welding/wos/print/'.$date.'/'.$lineCode) }}" class="btn btn-primary btn-sm font-weight-bold px-3" target="_blank" title="Print Kertas WOS">
+                                        <i class="fas fa-print mr-1"></i> WOS
+                                    </a>
+                                    <a href="{{ url('/ppic/welding/bprm/print/'.$date.'/'.$lineCode) }}" class="btn btn-success btn-sm font-weight-bold px-3" target="_blank" title="Print BPRM">
+                                        <i class="fas fa-file-alt mr-1"></i> BPRM
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        @foreach ($linePlans as $index => $p)
+                            @php 
+                                $percent = ($p->total_target > 0) ? ($p->total_actual / $p->total_target) * 100 : 0;
+                                if ($p->balance > 0) {
+                                    $balanceStatus = 'balance-danger'; $balanceIcon = 'fa-exclamation-triangle'; $balanceText = '-' . number_format($p->balance);
+                                } else {
+                                    $balanceStatus = 'balance-success'; $balanceIcon = 'fa-check-circle'; $balanceText = '+' . number_format(abs($p->balance));
+                                }
+                            @endphp
+                            <tr>
+                                <td class="text-muted t-mono">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</td>
+                                <td class="text-left pl-4 part-cell">
+                                    <div class="font-weight-bold" style="font-size: 14px;">{{ $p->part_name }}</div>
+                                    <small class="text-muted font-weight-bold mt-1 d-block">{{ $p->part_no }}</small>
+                                </td>
+                                <td><span class="badge badge-light border px-2 py-1">{{ $p->manpower }}P</span></td>
+                                <td class="t-mono text-dark" style="font-size: 15px;">{{ number_format($p->total_target) }}</td>
+                                <td class="t-mono text-primary" style="font-size: 15px;">{{ number_format($p->total_actual) }}</td>
+                                <td>
+                                    <span class="badge-balance {{ $balanceStatus }}">
+                                        <i class="fas {{ $balanceIcon }} mr-1"></i> {{ $balanceText }}
+                                    </span>
+                                </td>
+                                <td><span class="badge-time">{{ $p->start_time }}</span></td>
+                                <td><span class="badge-time">{{ $p->ahir_time }}</span></td>
+                                <td>
+                                    @if($percent >= 100) <i class="fas fa-check-circle text-success fa-lg"></i>
+                                    @elseif($percent > 0) <div class="spinner-grow spinner-grow-sm text-primary" role="status"></div>
+                                    @else <i class="far fa-clock text-muted fa-lg"></i> @endif
+                                </td>
+                                <td>
+                                    @if($p->total_actual > 0)
+                                        <button class="btn btn-secondary btn-sm shadow-sm font-weight-bold px-3" disabled title="LOCKED">
+                                            <i class="fas fa-lock"></i>
+                                        </button>
+                                    @else
+                                        <button class="btn btn-warning btn-sm shadow-sm font-weight-bold text-dark px-3" data-toggle="modal" data-target="#modalEditPlan-{{ $p->id }}" title="Revisi">
+                                            <i class="fas fa-edit mr-1"></i> Edit
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    @empty
                     <tr>
-                        <td class="text-center text-muted font-mono">{{ str_pad($index + 1, 2, '0', STR_PAD_LEFT) }}</td>
-                        <td class="text-left">
-                            <div style="font-weight:900; color:var(--ind-navy); font-size:12.5px;">{{ $plan->part_name }}</div>
-                            <div class="font-mono" style="font-size:10px; color:var(--ind-slate);">{{ $plan->part_no }}</div>
-                        </td>
-                        <td class="text-center"><span class="badge" style="background:#f1f5f9; color:var(--ind-slate); border-radius:4px; padding:4px 6px;">{{ $plan->manpower }}P</span></td>
-                        <td class="text-center font-mono">{{ number_format($plan->total_target) }}</td>
-                        <td class="text-center">
-                            <div class="d-flex flex-column align-items-center">
-                                <span class="font-mono text-success">{{ number_format($plan->total_actual) }}</span>
+                        <td colspan="10" class="py-5 text-center text-muted">
+                            <div style="background: #f1f5f9; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                                <i class="fas fa-calendar-times fa-2x" style="color: #94a3b8;"></i>
                             </div>
-                        </td>
-                        <td class="text-center font-mono">
-                            @if($plan->balance > 0) <span style="color:#ef4444;">-{{ number_format($plan->balance) }}</span>
-                            @else <span style="color:#10b981;">+{{ abs($plan->balance) }}</span> @endif
-                        </td>
-                        <td class="text-center"><span class="time-chip">{{ $plan->start_time }}</span></td>
-                        <td class="text-center"><span class="time-chip" style="background:#e0e7ff; color:var(--ind-blue); border-color:#c7d2fe;">{{ $plan->ahir_time }}</span></td>
-                        <td class="text-center">
-                            @if($percent >= 100) <i class="fas fa-check-circle" style="color:#10b981; font-size:16px;"></i>
-                            @elseif($percent > 0) <div class="spinner-grow spinner-grow-sm text-primary" role="status"></div>
-                            @else <i class="far fa-clock text-muted" style="font-size:16px;"></i> @endif
-                        </td>
-                        <td class="text-center">
-                            @if($plan->total_actual > 0)
-                                <button class="btn btn-sm text-muted rounded-pill px-3 shadow-none border" style="background:#f1f5f9; cursor:not-allowed;" title="LOCKED"><i class="fas fa-lock"></i></button>
-                            @else
-                                <button class="btn-revisi border-0" data-toggle="modal" data-target="#modalEditPlan{{ $plan->id }}"><i class="fas fa-edit mr-1"></i> REVISI</button>
-                            @endif
+                            <h6 class="font-weight-bold text-dark mb-1">TIDAK ADA JADWAL WELDING</h6>
+                            <span style="font-size: 13px;">Klik tombol + REGISTER PLAN untuk menyusun jadwal.</span>
                         </td>
                     </tr>
-                    @endforeach
+                    @endforelse
                 </tbody>
             </table>
         </div>
     </div>
-    @empty
-    <div class="text-center py-5" style="background:transparent;">
-        <i class="fas fa-clipboard-list text-muted mb-3" style="font-size:40px; opacity:0.3;"></i>
-        <h5 style="font-weight:900; color:var(--ind-slate);">TIDAK ADA JADWAL WELDING</h5>
-        <p class="text-muted mb-0" style="font-weight:600;">Klik tombol <b style="color:var(--ind-blue);">+ REGISTER_PLAN</b> untuk menyusun jadwal.</p>
-    </div>
-    @endforelse
 </div>
 
-{{-- ========================================================================================= --}}
-{{-- ✨ 1. MODAL REGISTER NEW PLAN (DESAIN BARU) ✨ --}}
-{{-- ========================================================================================= --}}
-<div class="modal fade animate__animated animate__zoomIn" id="modalRegisterPlan" tabindex="-1" style="z-index: 9999 !important;">
-    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1050px;">
-        <div class="modal-content mrp-modal-content">
-            <div class="mrp-modal-header">
-                <h5 class="mrp-modal-title">
-                    <i class="fas fa-plus-circle mr-2" style="color: #93c5fd;"></i> REGISTER_PLAN_SYSTEM
-                </h5>
-                <button type="button" class="close text-white ml-auto" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
+{{-- =========================================================================
+     MODAL REGISTER NEW PLAN (100% PERSIS STAMPING UI & LOGIC)
+     ========================================================================= --}}
+<div class="modal fade" id="modalAddPlan" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+        <div class="modal-content border-0 shadow-2xl" style="border-radius: 25px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title hud-title"><i class="fas fa-plus-circle mr-2"></i> REGISTER_PLAN_SYSTEM</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            
-            <form action="{{ route('ppic.welding.mps_store') }}" method="POST" id="formNewPlan">
+            <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
                 @csrf
-                <div class="modal-body p-4 p-md-5">
+                <div class="modal-body p-5">
                     <div class="row">
-                        <!-- KOLOM 1: Identifikasi -->
-                        <div class="col-md-4 mb-3 col-id">
-                            <div class="mrp-card-box">
-                                <h6 class="mrp-card-title"><i class="fas fa-tag"></i> 01. PRODUCT_IDENTITY</h6>
-                                
-                                <label class="mrp-label">Tanggal Produksi</label>
-                                <input type="date" name="plan_date" class="mrp-input mb-4" value="{{ $date }}" required>
-                                
-                                <label class="mrp-label">Select Line</label>
-                                <select name="line_code" class="mrp-input mb-4" required>
-                                    <option value="">Pilih Station...</option>
-                                    @foreach($availableLines as $line)
-                                        <option value="{{ $line->kode_line }}">{{ $line->kode_line }}</option>
+                        <!-- KOLOM 1: IDENTIFICATION -->
+                        <div class="col-md-4 border-right">
+                            <h6 class="font-weight-bold text-primary mb-3">01. PRODUCT_IDENTITY</h6>
+                            
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Tanggal Produksi</label>
+                                <input type="date" name="plan_date" class="form-control input-industrial" value="{{ $date }}" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Select Line</label>
+                                <select name="line_code" id="select_line" class="form-control input-industrial" required>
+                                    <option value="">-- CHOOSE STATION --</option>
+                                    @foreach ($availableLines as $l)
+                                        <option value="{{ $l->kode_line }}">{{ $l->kode_line }}</option>
                                     @endforeach
                                 </select>
-                                
-                                <label class="mrp-label">Customer (Auto)</label>
-                                <input type="text" id="custDispNew" name="customer_code" class="mrp-input mb-4 font-mono" value="AUTO DETECT" readonly>
-
-                                <label class="mrp-label">Part Identification</label>
-                                <select name="part_no" id="partSelectorNew" class="mrp-input select2-part input-pemicu-jam" required style="width:100%;">
-                                    <option value="">Ketik Part No / Nama...</option>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Customer (Auto)</label>
+                                <input type="text" id="input_customer_auto" name="customer_code" class="form-control input-industrial font-weight-bold" value="AUTO DETECT" readonly>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Part Identification</label>
+                                <select name="part_no" id="select_part" class="form-control select2-part" required style="width:100%;">
+                                    <option value="">-- SELECT PART --</option>
                                     @foreach($availableParts as $p)
                                         @php
                                             $cleanPart = trim(urldecode($p->part_no));
-                                            if (strpos($cleanPart, ' - ') !== false) {
-                                                $cleanPart = trim(explode(' - ', $cleanPart)[0]);
-                                            }
-                                            $fg = \Illuminate\Support\Facades\DB::table('finished_goods')->where('part_no', $cleanPart)->first();
-                                            $wipStock = $fg ? (int)$fg->welding_stock : 0;
-                                            $custName = $p->customer_code ?? 'SAI';
+                                            if (strpos($cleanPart, ' - ') !== false) $cleanPart = trim(explode(' - ', $cleanPart)[0]);
                                         @endphp
-                                        <option value="{{ $cleanPart }}" data-wip="{{ $wipStock }}" data-cust="{{ $custName }}">
-                                            [{{ $custName }}] {{ $cleanPart }} - {{ $p->part_name }}
-                                        </option>
+                                        <option value="{{ $cleanPart }}">[{{ $p->customer_code ?? 'SAI' }}] {{ $cleanPart }} - {{ $p->part_name }}</option>
                                     @endforeach
                                 </select>
                             </div>
                         </div>
 
-                        <!-- KOLOM 2: M/C Load (DITENGAH!) -->
-                        <div class="col-md-4 mb-3 col-pm">
-                            <div class="mrp-card-box d-flex flex-column">
-                                <h6 class="mrp-card-title"><i class="fas fa-chart-line"></i> 02. PERFORMANCE_METRICS</h6>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-6">
-                                        <label class="mrp-label">Manpower</label>
-                                        <input type="number" name="manpower" class="mrp-input font-mono input-pemicu-jam" value="1" required>
-                                    </div>
-                                    <div class="col-6">
-                                        <label class="mrp-label">Cap/Hour</label>
-                                        <input type="number" name="cap_per_hour" id="cap_new" class="mrp-input font-mono input-pemicu-jam" value="400" required>
-                                    </div>
-                                </div>
-                                
-                                <div class="mc-load-box mt-auto mb-2">
-                                    <label class="mc-load-label">CALCULATED M/C LOAD</label>
-                                    <div class="mc-load-val" id="display_hours_new">
-                                        <span style="font-size:18px;">S1</span> 0.0H <span style="color:#94a3b8; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> 0.0H
-                                    </div>
-                                </div>
+                        <!-- KOLOM 2: PERFORMANCE METRICS & M/C LOAD -->
+                        <div class="col-md-4 border-right px-4">
+                            <h6 class="font-weight-bold text-info mb-3">02. PERFORMANCE_METRICS</h6>
+                            <div class="row">
+                                <div class="col-6"><label class="small font-weight-bold">Manpower</label><input type="number" name="manpower" class="form-control input-industrial mb-3" value="1" required></div>
+                                <div class="col-6"><label class="small font-weight-bold">Process</label><input type="number" name="process_qty" class="form-control input-industrial mb-3" value="1"></div>
+                                <div class="col-6"><label class="small font-weight-bold text-primary">Cap/Hour</label><input type="number" name="cap_per_hour" id="input_cap" class="form-control input-industrial mb-3 font-weight-bold border-primary calc-trigger" value="400" required></div>
+                                <div class="col-6"><label class="small font-weight-bold text-warning">Dandory (m)</label><input type="number" name="dandory_time" id="input_dandory" class="form-control input-industrial mb-3 calc-trigger" value="15"></div>
+                            </div>
+                            <div class="alert alert-info border-0 rounded-lg text-center mt-3 py-4 shadow-sm" style="background:#e0f2fe;">
+                                <small class="d-block font-weight-bold uppercase mb-2" style="color:#0369a1;">Calculated M/C Load</small>
+                                <h5 class="hud-title mb-0" id="live_load_label" style="font-size: 26px;">
+                                    <span class="text-info">S1: 0.0H</span> <span class="text-muted mx-1">|</span> <span class="text-info">S2: 0.0H</span>
+                                </h5>
                             </div>
                         </div>
 
-                        <!-- KOLOM 3: Target Allocation -->
-                        <div class="col-md-4 mb-3 col-qa">
-                            <div class="mrp-card-box pb-2">
-                                <h6 class="mrp-card-title"><i class="fas fa-crosshairs"></i> 03. QUANTITY_PLANNING</h6>
-                                
-                                <div class="mrp-tabs">
-                                    <div class="mrp-tab active" data-tab="shift1">SHIFT_1</div>
-                                    <div class="mrp-tab" data-tab="shift2">SHIFT_2</div>
+                        <!-- KOLOM 3: QUANTITY PLANNING -->
+                        <div class="col-md-4 pl-4">
+                            <h6 class="font-weight-bold text-success mb-3">03. QUANTITY_PLANNING</h6>
+
+                            <div class="shift-toggle-pill mb-4 w-100">
+                                <button type="button" id="m_btn_s1" class="shift-btn active-s1 w-50" style="background:#4361ee; color:white;" onclick="modalShiftSwitch(1)">SHIFT_1</button>
+                                <button type="button" id="m_btn_s2" class="shift-btn w-50" style="background:transparent; color:#64748b;" onclick="modalShiftSwitch(2)">SHIFT_2</button>
+                                <input type="hidden" name="active_shift_input" id="m_active_shift" value="1">
+                            </div>
+                            
+                            <div class="bg-light p-3 rounded-lg border">
+                                <div id="m_box_s1">
+                                    <label class="small font-weight-bold text-primary">S1 Reguler Plan</label>
+                                    <input type="number" name="s1_plan_reg" id="s1_reg" class="form-control input-industrial mb-3 calc-trigger" value="0">
+                                    <label class="small font-weight-bold text-danger">S1 Overtime Plan</label>
+                                    <input type="number" name="s1_plan_ot" id="s1_ot" class="form-control input-industrial calc-trigger" value="0">
                                 </div>
-                                
-                                <!-- Tab 1 -->
-                                <div class="tab-content-mrp active" id="tab-shift1">
-                                    <div class="row">
-                                        <div class="col-12 mb-4">
-                                            <label class="mrp-label text-primary">S1 Reguler Plan</label>
-                                            <input type="number" name="s1_plan_reg" id="new_s1_reg" class="mrp-input font-mono input-pemicu-jam" value="0" required>
-                                        </div>
-                                        <div class="col-12 mb-4">
-                                            <label class="mrp-label text-danger">S1 Overtime Plan</label>
-                                            <input type="number" name="s1_plan_ot" id="new_s1_ot" class="mrp-input font-mono input-pemicu-jam" value="0" required>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Tab 2 -->
-                                <div class="tab-content-mrp" id="tab-shift2">
-                                    <div class="row">
-                                        <div class="col-12 mb-4">
-                                            <label class="mrp-label text-primary">S2 Reguler Plan</label>
-                                            <input type="number" name="s2_plan_reg" id="new_s2_reg" class="mrp-input font-mono input-pemicu-jam" value="0" required>
-                                        </div>
-                                        <div class="col-12 mb-4">
-                                            <label class="mrp-label text-danger">S2 Overtime Plan</label>
-                                            <input type="number" name="s2_plan_ot" id="new_s2_ot" class="mrp-input font-mono input-pemicu-jam" value="0" required>
-                                        </div>
-                                    </div>
+                                <div id="m_box_s2" style="display: none;">
+                                    <label class="small font-weight-bold text-primary">S2 Reguler Plan</label>
+                                    <input type="number" name="s2_plan_reg" id="s2_reg" class="form-control input-industrial mb-3 calc-trigger" value="0">
+                                    <label class="small font-weight-bold text-danger">S2 Overtime Plan</label>
+                                    <input type="number" name="s2_plan_ot" id="s2_ot" class="form-control input-industrial calc-trigger" value="0">
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="modal-footer d-flex flex-column align-items-center pb-4 pt-0" style="background:#f8fafc; border-top: 1px solid #e2e8f0;">
-                    <!-- TEMPAT KOTAK PERINGATAN MUNCUL PAS KLIK DEPLOY -->
-                    <div id="wipValidationMsgNew" class="w-100 px-3 mt-3"></div>
+                <div class="modal-footer bg-light p-4 flex-column">
+                    <!-- TEMPAT KOTAK PERINGATAN (AJAX/REALTIME MUNCUL DISINI) -->
+                    <div class="wipValidationMsg w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>
                     
-                    <div class="d-flex justify-content-center gap-3 w-100 mt-2">
-                        <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                        <button type="button" id="btnAuthNew" class="btn-auth"><i class="fas fa-rocket mr-2"></i> AUTHORIZE & DEPLOY</button>
+                    <div class="d-flex justify-content-end w-100">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4 font-weight-bold shadow-sm mr-2" data-dismiss="modal">ABORT</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-5 font-weight-black shadow-lg">AUTHORIZE & DEPLOY</button>
                     </div>
                 </div>
             </form>
@@ -356,134 +338,90 @@
     </div>
 </div>
 
-{{-- ✨ 2. MODAL REVISI (DESAIN 3 KOLOM) ✨ --}}
-@foreach($plans as $plan)
-    @if($plan->total_actual == 0)
-    <div class="modal fade animate__animated animate__zoomIn" id="modalEditPlan{{ $plan->id }}" tabindex="-1" style="z-index: 9999 !important;">
-        <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1050px;">
-            <div class="modal-content mrp-modal-content">
-                <div class="mrp-modal-header" style="background:#f59e0b;">
-                    <h5 class="mrp-modal-title"><i class="fas fa-edit mr-2" style="color: #fde68a;"></i> REVISE_PLAN_SYSTEM</h5>
-                    <button type="button" class="close text-white ml-auto" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
+{{-- 2. KUMPULAN MODAL EDIT REVISI --}}
+@foreach ($plans as $p)
+    @if($p->total_actual == 0)
+    @php
+        $oldTargetS1 = $p->s1_plan_reg + $p->s1_plan_ot;
+        $oldTargetS2 = $p->s2_plan_reg + $p->s2_plan_ot;
+    @endphp
+    <div class="modal fade" id="modalEditPlan-{{ $p->id }}" tabindex="-1" role="dialog" data-old-target="{{ $oldTargetS1 + $oldTargetS2 }}">
+        <div class="modal-dialog modal-xl modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                <div class="modal-header bg-warning text-dark p-4 border-0">
+                    <h6 class="modal-title font-weight-bold uppercase" style="letter-spacing: 1px;"><i class="fas fa-tools mr-2"></i> Revisi WOS & Sync Material</h6>
+                    <button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button>
                 </div>
-                
-                <form action="{{ route('ppic.welding.update_wos', $plan->id) }}" method="POST" id="formRev{{ $plan->id }}">
-                    @csrf
-                    @method('PUT') 
+                <form action="{{ route('ppic.welding.update_wos', $p->id) }}" method="POST">
+                    @csrf @method('PUT')
                     
-                    <div class="modal-body p-4 p-md-5" style="background:#f8fafc;">
+                    <div class="modal-body p-4 p-md-5 bg-white">
                         <div class="row">
-                            <!-- BOX 1: Identifikasi -->
-                            <div class="col-md-4 mb-3 col-id">
-                                <div class="mrp-card-box" style="border:1px solid #fde68a;">
-                                    <h6 class="mrp-card-title" style="color:#d97706; border-bottom-color:#fef3c7;"><i class="fas fa-tag"></i> 01. PRODUCT_IDENTITY</h6>
-                                    
-                                    <label class="mrp-label">Select Line</label>
-                                    <select name="line_code" class="mrp-input mb-4" required>
-                                        @foreach($availableLines as $line)
-                                            <option value="{{ $line->kode_line }}" {{ $plan->line_code == $line->kode_line ? 'selected' : '' }}>{{ $line->kode_line }}</option>
+                            <!-- KOLOM 1 -->
+                            <div class="col-md-4 border-right">
+                                <h6 class="font-weight-bold text-warning mb-3">01. PRODUCT_IDENTITY</h6>
+                                <div class="form-group">
+                                    <label class="small font-weight-bold">Line Code</label>
+                                    <select name="line_code" class="form-control input-industrial" required>
+                                        @foreach ($availableLines as $l)
+                                            <option value="{{ $l->kode_line }}" {{ $p->line_code == $l->kode_line ? 'selected' : '' }}>{{ $l->kode_line }}</option>
                                         @endforeach
                                     </select>
-                                    
-                                    <label class="mrp-label">Part No (Locked)</label>
-                                    <input type="text" class="mrp-input mb-0 font-mono" value="{{ $plan->part_no }}" readonly style="background:#fef3c7; color:#b45309; border-color:transparent;">
+                                </div>
+                                <div class="form-group">
+                                    <label class="small font-weight-bold">Part No (Locked)</label>
+                                    <input type="text" name="part_no" class="form-control input-industrial font-weight-bold bg-light text-muted" value="{{ $p->part_no }}" readonly>
                                 </div>
                             </div>
                             
-                            <!-- BOX 2: M/C Load (DITENGAH!) -->
-                            <div class="col-md-4 mb-3 col-pm">
-                                <div class="mrp-card-box d-flex flex-column" style="border:1px solid #fde68a;">
-                                    <h6 class="mrp-card-title" style="color:#d97706; border-bottom-color:#fef3c7;"><i class="fas fa-chart-line"></i> 02. PERFORMANCE_METRICS</h6>
-                                    
-                                    <div class="row mb-3">
-                                        <div class="col-6">
-                                            <label class="mrp-label">Manpower</label>
-                                            <input type="number" name="manpower" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->manpower }}" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="mrp-label">Cap/Hour</label>
-                                            <input type="number" name="cap_per_hour" id="cap_rev_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->cap_per_hour }}" required>
-                                        </div>
-                                    </div>
-
-                                    <div class="mc-load-box mt-auto mb-2" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-color:#fde68a;">
-                                        <label class="mc-load-label" style="color:#b45309;">CALCULATED M/C LOAD</label>
-                                        
-                                        <!-- HITUNG STOK MAKSIMAL DARI PHP -->
-                                        @php
-                                            $cleanPartRev = trim(urldecode($plan->part_no));
-                                            if (strpos($cleanPartRev, ' - ') !== false) {
-                                                $cleanPartRev = trim(explode(' - ', $cleanPartRev)[0]);
-                                            }
-                                            $fgRev = \Illuminate\Support\Facades\DB::table('finished_goods')->where('part_no', $cleanPartRev)->first();
-                                            $wipRev = $fgRev ? (int)$fgRev->welding_stock : 0;
-                                            
-                                            $oldTgtS1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
-                                            $oldTgtS2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
-                                            $maxRevAvailable = $wipRev + $oldTgtS1 + $oldTgtS2; 
-                                            
-                                            $hS1 = ($plan->cap_per_hour > 0) ? ($oldTgtS1 / $plan->cap_per_hour) : 0; 
-                                            $hS2 = ($plan->cap_per_hour > 0) ? ($oldTgtS2 / $plan->cap_per_hour) : 0; 
-                                        @endphp
-                                        
-                                        <div class="mc-load-val" id="display_hours_{{ $plan->id }}" style="color:#d97706;">
-                                            <span style="font-size:18px;">S1</span> {{ number_format($hS1, 1) }}H <span style="color:#fcd34d; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> {{ number_format($hS2, 1) }}H
-                                        </div>
-                                        <!-- Simpan stok maksimal di sini biar bisa dibaca Javascript -->
-                                        <input type="hidden" id="max_stock_rev_{{ $plan->id }}" value="{{ $maxRevAvailable }}">
-                                    </div>
+                            <!-- KOLOM 2 -->
+                            <div class="col-md-4 border-right px-4">
+                                <h6 class="font-weight-bold text-info mb-3">02. PERFORMANCE_METRICS</h6>
+                                <div class="row">
+                                    <div class="col-6"><label class="small font-weight-bold">Manpower</label><input type="number" name="manpower" class="form-control input-industrial mb-3" value="{{ $p->manpower }}"></div>
+                                    <div class="col-6"><label class="small font-weight-bold text-primary">Cap/Hour</label><input type="number" name="cap_per_hour" id="input_cap_{{ $p->id }}" class="form-control input-industrial mb-3 border-primary calc-trigger-{{ $p->id }}" value="{{ $p->cap_per_hour }}" required></div>
+                                    <div class="col-12"><label class="small font-weight-bold text-warning">Dandory (m)</label><input type="number" name="dandory_time" id="input_dandory_{{ $p->id }}" class="form-control input-industrial mb-3 calc-trigger-{{ $p->id }}" value="{{ $p->dandory_time ?? 15 }}"></div>
+                                </div>
+                                <div class="alert alert-warning border-0 rounded-lg text-center mt-1 py-3 shadow-sm">
+                                    <small class="d-block font-weight-bold uppercase mb-1">Calculated M/C Load</small>
+                                    <h5 class="hud-title mb-0" id="live_load_label_{{ $p->id }}">
+                                        <span class="text-primary">S1: 0.0H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: 0.0H</span>
+                                    </h5>
                                 </div>
                             </div>
                             
-                            <!-- BOX 3: Target -->
-                            <div class="col-md-4 mb-3 col-qa">
-                                <div class="mrp-card-box pb-2" style="border:1px solid #fde68a;">
-                                    <h6 class="mrp-card-title" style="color:#d97706; border-bottom-color:#fef3c7;"><i class="fas fa-crosshairs"></i> 03. QUANTITY_PLANNING</h6>
-                                    
-                                    <div class="mrp-tabs" style="border-color:#f59e0b;">
-                                        <div class="mrp-tab rev-tab-s1-{{ $plan->id }} active" onclick="switchRevTab('{{ $plan->id }}', 1)">SHIFT_1</div>
-                                        <div class="mrp-tab rev-tab-s2-{{ $plan->id }}" onclick="switchRevTab('{{ $plan->id }}', 2)">SHIFT_2</div>
+                            <!-- KOLOM 3 -->
+                            <div class="col-md-4 pl-4">
+                                <h6 class="font-weight-bold text-success mb-3">03. QUANTITY_REVISION</h6>
+                                <div class="shift-toggle-pill mb-3 w-100">
+                                    <button type="button" id="m_btn_s1_{{ $p->id }}" class="shift-btn w-50" style="background:#4361ee; color:white;" onclick="modalShiftSwitchRev({{ $p->id }}, 1)">SHIFT_1</button>
+                                    <button type="button" id="m_btn_s2_{{ $p->id }}" class="shift-btn w-50" style="background:transparent; color:#64748b;" onclick="modalShiftSwitchRev({{ $p->id }}, 2)">SHIFT_2</button>
+                                    <input type="hidden" id="m_active_shift_{{ $p->id }}" value="1">
+                                </div>
+                                
+                                <div class="bg-light p-3 rounded-lg border">
+                                    <div id="m_box_s1_{{ $p->id }}">
+                                        <label class="small font-weight-bold">S1 Reguler Plan</label>
+                                        <input type="number" name="s1_plan_reg" id="s1_reg_{{ $p->id }}" class="form-control input-industrial mb-2 calc-trigger-{{ $p->id }}" value="{{ $p->s1_plan_reg }}">
+                                        <label class="small font-weight-bold text-warning">S1 Overtime Plan</label>
+                                        <input type="number" name="s1_plan_ot" id="s1_ot_{{ $p->id }}" class="form-control input-industrial calc-trigger-{{ $p->id }}" value="{{ $p->s1_plan_ot }}">
                                     </div>
-                                    
-                                    <!-- Tab 1 Rev -->
-                                    <div class="tab-content-mrp rev-cont-s1-{{ $plan->id }} active">
-                                        <div class="row">
-                                            <div class="col-12 mb-4">
-                                                <label class="mrp-label text-primary">S1 Reguler Plan</label>
-                                                <input type="number" name="s1_plan_reg" id="rev_s1_reg_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s1_plan_reg }}" required>
-                                            </div>
-                                            <div class="col-12 mb-4">
-                                                <label class="mrp-label text-danger">S1 Overtime Plan</label>
-                                                <input type="number" name="s1_plan_ot" id="rev_s1_ot_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s1_plan_ot }}" required>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Tab 2 Rev -->
-                                    <div class="tab-content-mrp rev-cont-s2-{{ $plan->id }}">
-                                        <div class="row">
-                                            <div class="col-12 mb-4">
-                                                <label class="mrp-label text-primary">S2 Reguler Plan</label>
-                                                <input type="number" name="s2_plan_reg" id="rev_s2_reg_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s2_plan_reg }}" required>
-                                            </div>
-                                            <div class="col-12 mb-4">
-                                                <label class="mrp-label text-danger">S2 Overtime Plan</label>
-                                                <input type="number" name="s2_plan_ot" id="rev_s2_ot_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s2_plan_ot }}" required>
-                                            </div>
-                                        </div>
+                                    <div id="m_box_s2_{{ $p->id }}" style="display: none;">
+                                        <label class="small font-weight-bold">S2 Reguler Plan</label>
+                                        <input type="number" name="s2_plan_reg" id="s2_reg_{{ $p->id }}" class="form-control input-industrial mb-2 calc-trigger-{{ $p->id }}" value="{{ $p->s2_plan_reg }}">
+                                        <label class="small font-weight-bold text-warning">S2 Overtime Plan</label>
+                                        <input type="number" name="s2_plan_ot" id="s2_ot_{{ $p->id }}" class="form-control input-industrial calc-trigger-{{ $p->id }}" value="{{ $p->s2_plan_ot }}">
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="modal-footer d-flex flex-column align-items-center pb-4 pt-0" style="background:#f8fafc; border-top: 1px solid #e2e8f0;">
-                        <!-- TEMPAT ERROR REVISI MUNCUL PAS KLIK -->
-                        <div id="wipValidationMsgRev{{ $plan->id }}" class="w-100 px-3 mt-3"></div>
-                        
-                        <div class="d-flex justify-content-center gap-3 w-100 mt-2">
-                            <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                            <button type="button" id="btnAuthRev{{ $plan->id }}" class="btn-auth" style="background:#f59e0b;"><i class="fas fa-check mr-2"></i> AUTHORIZE REVISION</button>
+                    <div class="modal-footer bg-light border-0 p-4 flex-column">
+                        <div class="wipValidationMsg w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>
+                        <div class="d-flex justify-content-end w-100">
+                            <button type="button" class="btn btn-secondary font-weight-bold border rounded-pill px-4 mr-2" data-dismiss="modal">BATAL</button>
+                            <button type="submit" class="btn btn-warning font-weight-bold shadow-sm text-dark rounded-pill px-4"><i class="fas fa-sync-alt mr-2"></i> AUTHORIZE REVISION</button>
                         </div>
                     </div>
                 </form>
@@ -496,189 +434,198 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    // FUNGSI TABS
-    $('.mrp-tab').on('click', function() {
-        $(this).siblings().removeClass('active').css('background', 'white').css('color', '#64748b');
-        $(this).addClass('active');
-        if($(this).closest('.mrp-modal-header').css('background-color') != 'rgb(245, 158, 11)') {
-            $(this).css('background', '#3b82f6').css('color', 'white');
-        } else {
-            $(this).css('background', '#f59e0b').css('color', 'white'); 
-        }
-        let target = $(this).data('tab');
-        $(this).parent().siblings('.tab-content-mrp').removeClass('active');
-        $('#tab-' + target).addClass('active');
-    });
-
-    function switchRevTab(id, shift) {
-        $('.rev-tab-s1-' + id + ', .rev-tab-s2-' + id).removeClass('active').css('background', 'white').css('color', '#64748b');
-        $('.rev-tab-s' + shift + '-' + id).addClass('active').css('background', '#f59e0b').css('color', 'white');
-        
-        $('.rev-cont-s1-' + id + ', .rev-cont-s2-' + id).removeClass('active');
-        $('.rev-cont-s' + shift + '-' + id).addClass('active');
+    // ==========================================
+    // FUNGSI TOGGLE SHIFT TABS (BARU)
+    // ==========================================
+    function modalShiftSwitch(s) {
+        const isS1 = s === 1;
+        document.getElementById('m_btn_s1').style.background = isS1 ? '#4361ee' : 'transparent';
+        document.getElementById('m_btn_s1').style.color = isS1 ? 'white' : '#64748b';
+        document.getElementById('m_btn_s2').style.background = !isS1 ? '#0f172a' : 'transparent';
+        document.getElementById('m_btn_s2').style.color = !isS1 ? 'white' : '#64748b';
+        document.getElementById('m_box_s1').style.display = isS1 ? 'block' : 'none';
+        document.getElementById('m_box_s2').style.display = isS1 ? 'none' : 'block';
+        document.getElementById('m_active_shift').value = s;
+        // Hanya visual hide/show, tidak me-reset input agar data tidak hilang saat pindah tab
+        calculateLiveHours();
     }
 
-    $(document).ready(function() {
-        // Init Select2
+    function modalShiftSwitchRev(id, s) {
+        const isS1 = s === 1;
+        document.getElementById('m_btn_s1_' + id).style.background = isS1 ? '#4361ee' : 'transparent';
+        document.getElementById('m_btn_s1_' + id).style.color = isS1 ? 'white' : '#64748b';
+        document.getElementById('m_btn_s2_' + id).style.background = !isS1 ? '#0f172a' : 'transparent';
+        document.getElementById('m_btn_s2_' + id).style.color = !isS1 ? 'white' : '#64748b';
+        document.getElementById('m_box_s1_' + id).style.display = isS1 ? 'block' : 'none';
+        document.getElementById('m_box_s2_' + id).style.display = isS1 ? 'none' : 'block';
+        document.getElementById('m_active_shift_' + id).value = s;
+    }
+
+    // ==========================================
+    // FUNGSI HITUNG M/C LOAD UNTUK NEW PLAN
+    // ==========================================
+    function calculateLiveHours() {
+        const cap = parseFloat(document.getElementById('input_cap').value) || 1;
+        const dandory = parseFloat(document.getElementById('input_dandory').value) || 0;
+        
+        const s1 = (parseFloat(document.getElementById('s1_reg').value) || 0) + (parseFloat(document.getElementById('s1_ot').value) || 0);
+        const s2 = (parseFloat(document.getElementById('s2_reg').value) || 0) + (parseFloat(document.getElementById('s2_ot').value) || 0);
+        
+        let hoursS1 = s1 > 0 ? (s1 / cap) + (dandory / 60) : 0;
+        let hoursS2 = s2 > 0 ? (s2 / cap) + (dandory / 60) : 0;
+        
+        const label = document.getElementById('live_load_label');
+        label.innerHTML = `<span class="text-primary">S1: ${hoursS1.toFixed(1)}H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: ${hoursS2.toFixed(1)}H</span>`;
+    }
+
+    // ==========================================
+    // MAIN SCRIPT (AJAX STOK & EVENT LISTENER)
+    // ==========================================
+    $(document).ready(function() { 
+        // 1. SELECT2 INIT
         $('.select2-part').select2({
-            dropdownParent: $('#modalRegisterPlan'),
-            placeholder: "Ketik Part No / Nama...",
+            dropdownParent: $('#modalAddPlan'),
+            placeholder: "-- SELECT PART --",
             allowClear: true,
             width: '100%'
         });
 
-        // ==========================================
-        // 1. SELECT PART -> AUTO CUSTOMER
-        // ==========================================
-        $('#partSelectorNew').on('change', function() {
-            let selected = $(this).find('option:selected');
+        // 2. TRIGGER M/C LOAD SAAT NGETIK (NEW PLAN)
+        $('.calc-trigger, #input_cap, #input_dandory').on('input', function() {
+            calculateLiveHours();
+            validateWipStock($('#modalAddPlan'));
+        });
+
+        // 3. FUNGSI UTAMA VALIDASI STOK (MUNCULIN HIJAU/MERAH SECARA REALTIME)
+        function validateWipStock(modal) {
+            // Cek ini modal yang mana (New Plan atau Revisi)
+            let isRev = modal.attr('id').includes('modalEditPlan');
+            let idSuffix = isRev ? '_' + modal.attr('id').split('-')[1] : '';
+            
+            let s1_reg = parseInt(modal.find('#s1_reg' + idSuffix).val()) || 0;
+            let s1_ot = parseInt(modal.find('#s1_ot' + idSuffix).val()) || 0;
+            let s2_reg = parseInt(modal.find('#s2_reg' + idSuffix).val()) || 0;
+            let s2_ot = parseInt(modal.find('#s2_ot' + idSuffix).val()) || 0;
+            
+            let currentWipStock = modal.data('wip-stock') || 0;
+            let totalPcs = s1_reg + s1_ot + s2_reg + s2_ot;
+            
+            let submitBtn = modal.find('button:contains("AUTHORIZE")');
+            if(submitBtn.length === 0) submitBtn = modal.find('button[type="submit"]');
+            let msgBox = modal.find('.wipValidationMsg');
+            
+            if (totalPcs === 0) {
+                if(isRev) {
+                    msgBox.html(`
+                        <div class="alert alert-warning p-2 m-0 border-0 shadow-sm animate__animated animate__pulse" style="border-radius:10px; background-color: #fffbeb; color: #b45309;">
+                            <b>⚠️ JADWAL DIBATALKAN</b><br>
+                            Simpan untuk menghapus jadwal. <b style="font-size:12px;">${currentWipStock}</b> Pcs WIP akan kembali ke gudang.
+                        </div>
+                    `);
+                    submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-danger').html('<i class="fas fa-trash mr-2"></i> CONFIRM CANCEL');
+                } else {
+                    msgBox.html('<span class="text-muted font-weight-bold"><i class="fas fa-info-circle"></i> Input target qty (Shift 1 atau Shift 2) untuk cek ketersediaan material.</span>');
+                    submitBtn.prop('disabled', true);
+                }
+                return;
+            }
+            
+            if (totalPcs > currentWipStock) {
+                // UI MERAH KALO STOK KURANG
+                msgBox.html(`
+                    <div class="alert alert-danger p-2 m-0 border-0 shadow-sm animate__animated animate__headShake" style="border-radius:10px;">
+                        <b>❌ PLAN DITOLAK: STOK WIP KURANG!</b><br>
+                        Butuh: <b style="font-size:14px;">${totalPcs}</b> Pcs | Tersedia: <b>${currentWipStock}</b> Pcs
+                    </div>
+                `);
+                submitBtn.prop('disabled', true).removeClass('btn-primary btn-warning btn-danger').addClass('btn-secondary');
+            } else {
+                // UI HIJAU KALO STOK AMAN
+                msgBox.html(`
+                    <div class="alert alert-success p-2 m-0 border-0 shadow-sm" style="border-radius:10px; background-color: #d1fae5; color: #065f46;">
+                        <b>✅ STOK WIP AMAN!</b><br>
+                        Butuh: <b>${totalPcs}</b> Pcs | Tersedia: <b>${currentWipStock}</b> Pcs
+                    </div>
+                `);
+                if (isRev) {
+                    submitBtn.prop('disabled', false).removeClass('btn-secondary btn-danger').addClass('btn-warning').html('<i class="fas fa-sync-alt mr-2"></i> AUTHORIZE REVISION');
+                } else {
+                    submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
+                }
+            }
+        }
+        
+        // 4. AJAX CHECKER SAAT PILIH PART (NEW PLAN)
+        $('select[name="part_no"]').on('change', function() {
+            let modal = $(this).closest('.modal'); 
             let partNo = $(this).val();
+            if (!partNo || modal.attr('id') !== 'modalAddPlan') return; 
             
-            if(partNo) {
-                let cust = selected.attr('data-cust') || 'AUTO DETECT';
-                $('#custDispNew').val(cust); 
-            } else {
-                $('#custDispNew').val('AUTO DETECT');
-            }
-            $('#wipValidationMsgNew').html(''); // Bersihkan notif error kalau ganti part
+            let submitBtn = modal.find('button:contains("AUTHORIZE & DEPLOY")');
+            if(submitBtn.length === 0) submitBtn = modal.find('button[type="submit"]');
+            let msgBox = modal.find('.wipValidationMsg');
+            
+            msgBox.html('<span class="text-primary font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek ketersediaan WIP di database...</span>');
+            submitBtn.prop('disabled', true);
+            
+            // JALUR AJAX LARAVEL
+            $.get("{{ url('planning/ppic/check-wip-stock') }}/" + encodeURIComponent(partNo), function(res) {
+                if (res.status === 'success') {
+                    modal.data('wip-stock', res.wip_stock);
+                    $('#input_customer_auto').val(res.customer_code); // Tulis nama customer
+                    validateWipStock(modal); // Langsung cek angka yang ada di inputan bawah
+                }
+            }).fail(function() {
+                msgBox.html('<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Gagal terhubung ke server/rute tidak ditemukan.</span>');
+            });
         });
 
-        // ==========================================
-        // 2. HITUNG JAM SECARA REALTIME SAAT MENGETIK
-        // ==========================================
-        $('.input-pemicu-jam').on('input change', function() { 
-            let s1r = parseInt($('#new_s1_reg').val()) || 0;
-            let s1o = parseInt($('#new_s1_ot').val()) || 0;
-            let s2r = parseInt($('#new_s2_reg').val()) || 0;
-            let s2o = parseInt($('#new_s2_ot').val()) || 0;
-            
-            let totalS1 = s1r + s1o;
-            let totalS2 = s2r + s2o;
-            
-            let cap = parseFloat($('#cap_new').val()) || 0;
-            
-            let h1 = (cap > 0) ? (totalS1 / cap) : 0;
-            let h2 = (cap > 0) ? (totalS2 / cap) : 0;
-            
-            $('#display_hours_new').html(`<span style="font-size:18px;">S1</span> ${h1.toFixed(1)}H <span style="color:#94a3b8; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> ${h2.toFixed(1)}H`);
-            
-            // Hapus peringatan bawah pas lagi ngetik supaya bersih
-            $('#wipValidationMsgNew').html('');
-        });
-
-        // ==============================================================
-        // 3. EVENT KLIK DEPLOY -> DISINI VALIDASI STOK MUNCUL!
-        // ==============================================================
-        $('#btnAuthNew').on('click', function(e) {
-            let partNo = $('#partSelectorNew').val();
-            let msgBoxNew = $('#wipValidationMsgNew');
-            
-            if(!partNo) { 
-                msgBoxNew.html(`<div class="alert-stok-error animate__animated animate__headShake"><div class="title">❌ PART KOSONG</div><div class="desc">Harap pilih Part Number terlebih dahulu!</div></div>`);
-                return; 
-            } 
-            
-            let selected = $('#partSelectorNew').find('option:selected');
-            let currentWipStock = parseInt(selected.attr('data-wip')) || 0; 
-
-            let s1r = parseInt($('#new_s1_reg').val()) || 0;
-            let s1o = parseInt($('#new_s1_ot').val()) || 0;
-            let s2r = parseInt($('#new_s2_reg').val()) || 0;
-            let s2o = parseInt($('#new_s2_ot').val()) || 0;
-            let totalTarget = s1r + s1o + s2r + s2o;
-
-            if (totalTarget === 0) {
-                msgBoxNew.html(`<div class="alert-stok-error animate__animated animate__headShake"><div class="title">❌ TARGET KOSONG</div><div class="desc">Harap isi angka target produksi di salah satu shift!</div></div>`);
-            } else if (totalTarget > currentWipStock) {
-                msgBoxNew.html(`
-                    <div class="alert-stok-error animate__animated animate__headShake">
-                        <div class="title"><i class="fas fa-times-circle mr-1"></i> PLAN DITOLAK: STOK WIP KURANG!</div>
-                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia WIP: <b>${currentWipStock}</b> Pcs</div>
-                    </div>
-                `);
-            } else {
-                // STOK AMAN! Tampilkan pesan Hijau, dan submit form!
-                msgBoxNew.html(`
-                    <div class="alert-stok-success animate__animated animate__fadeInUp">
-                        <div class="title"><i class="fas fa-check-circle mr-1"></i> STOK WIP AMAN!</div>
-                        <div class="desc">Mendeploy ${totalTarget} Pcs (Sisa Gudang: ${currentWipStock - totalTarget} Pcs)</div>
-                    </div>
-                `);
-                
-                // Matikan tombol biar gak ke-klik 2x, trus submit formnya
-                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MEMPROSES...');
-                $('#formNewPlan').submit();
-            }
-        });
-
-        // ==============================================================
-        // 4. LOGIKA REVISI (NGITUNG JAM REALTIME & VALIDASI PAS KLIK)
-        // ==============================================================
+        // 5. EVENT LISTENER REVISI (NGITUNG JAM & AJAX STOK)
         @foreach($plans as $plan)
             @if($plan->total_actual == 0)
             
-            $('.input-pemicu-rev-{{ $plan->id }}').on('input change', function() { 
-                let s1r = parseInt($('#rev_s1_reg_{{ $plan->id }}').val()) || 0;
-                let s1o = parseInt($('#rev_s1_ot_{{ $plan->id }}').val()) || 0;
-                let s2r = parseInt($('#rev_s2_reg_{{ $plan->id }}').val()) || 0;
-                let s2o = parseInt($('#rev_s2_ot_{{ $plan->id }}').val()) || 0;
+            // A. Update Jam M/C Load (Revisi)
+            $('.calc-trigger-{{ $plan->id }}').on('input', function() { 
+                let s1r = parseInt($('#modalEditPlan-{{ $plan->id }} #s1_reg_{{ $plan->id }}').val()) || 0;
+                let s1o = parseInt($('#modalEditPlan-{{ $plan->id }} #s1_ot_{{ $plan->id }}').val()) || 0;
+                let s2r = parseInt($('#modalEditPlan-{{ $plan->id }} #s2_reg_{{ $plan->id }}').val()) || 0;
+                let s2o = parseInt($('#modalEditPlan-{{ $plan->id }} #s2_ot_{{ $plan->id }}').val()) || 0;
+                let cap = parseFloat($('#modalEditPlan-{{ $plan->id }} #input_cap_{{ $plan->id }}').val()) || 1;
+                let dandory = parseFloat($('#modalEditPlan-{{ $plan->id }} #input_dandory_{{ $plan->id }}').val()) || 0;
                 
-                let totalS1 = s1r + s1o;
-                let totalS2 = s2r + s2o;
-
-                let cap = parseFloat($('#cap_rev_{{ $plan->id }}').val()) || 0;
+                let s1 = s1r + s1o;
+                let s2 = s2r + s2o;
                 
-                let h1 = (cap > 0) ? (totalS1 / cap) : 0;
-                let h2 = (cap > 0) ? (totalS2 / cap) : 0;
+                let h1 = s1 > 0 ? (s1 / cap) + (dandory / 60) : 0;
+                let h2 = s2 > 0 ? (s2 / cap) + (dandory / 60) : 0;
                 
-                $('#display_hours_{{ $plan->id }}').html(`<span style="font-size:18px;">S1</span> ${h1.toFixed(1)}H <span style="color:#fcd34d; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> ${h2.toFixed(1)}H`);
+                $('#live_load_label_{{ $plan->id }}').html(`<span class="text-primary">S1: ${h1.toFixed(1)}H</span> <span class="text-muted mx-1">|</span> <span class="text-dark">S2: ${h2.toFixed(1)}H</span>`);
                 
-                $('#wipValidationMsgRev{{ $plan->id }}').html(''); // Bersihkan error saat ngetik ulang
+                validateWipStock($('#modalEditPlan-{{ $plan->id }}'));
             });
 
-            // Pas Klik Tombol Revisi
-            $('#btnAuthRev{{ $plan->id }}').on('click', function(e) {
-                let maxAvailable = parseInt($('#max_stock_rev_{{ $plan->id }}').val()) || 0; // Ambil nilai stok dari input hidden
+            // B. Tarik Stok Maksimal saat Modal Revisi Muncul
+            $('#modalEditPlan-{{ $plan->id }}').on('shown.bs.modal', function () {
+                let modal = $(this);
+                let partNo = '{{ $plan->part_no }}';
+                let oldTarget = modal.data('old-target') || 0;
+                let msgBox = modal.find('.wipValidationMsg');
+                let submitBtn = modal.find('button[type="submit"]');
                 
-                let s1r = parseInt($('#rev_s1_reg_{{ $plan->id }}').val()) || 0;
-                let s1o = parseInt($('#rev_s1_ot_{{ $plan->id }}').val()) || 0;
-                let s2r = parseInt($('#rev_s2_reg_{{ $plan->id }}').val()) || 0;
-                let s2o = parseInt($('#rev_s2_ot_{{ $plan->id }}').val()) || 0;
-                let newTarget = s1r + s1o + s2r + s2o;
+                msgBox.html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Sinkronisasi stok WIP...</span>');
+                submitBtn.prop('disabled', true);
                 
-                let msgBox = $('#wipValidationMsgRev{{ $plan->id }}');
-
-                if (newTarget === 0) {
-                    msgBox.html(`
-                        <div class="alert-stok-info animate__animated animate__fadeInUp">
-                            <div class="title" style="color:#0f52ba;"><i class="fas fa-trash mr-1"></i> JADWAL DIBATALKAN</div>
-                            <div class="desc" style="color:#1e3a8a;"><b style="font-size:12px;">${maxAvailable}</b> Pcs WIP dikembalikan ke gudang.</div>
-                        </div>
-                    `);
-                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENGHAPUS...');
-                    $('#formRev{{ $plan->id }}').submit();
-                } else if (newTarget > maxAvailable) {
-                    msgBox.html(`
-                        <div class="alert-stok-error animate__animated animate__headShake">
-                            <div class="title"><i class="fas fa-times-circle mr-1"></i> REVISI DITOLAK: STOK WIP KURANG!</div>
-                            <div class="desc">Maksimal target revisi untuk part ini adalah <b style="font-size:13px;">${maxAvailable}</b> Pcs.</div>
-                        </div>
-                    `);
-                } else {
-                    msgBox.html(`
-                        <div class="alert-stok-success animate__animated animate__fadeInUp">
-                            <div class="title"><i class="fas fa-check-circle mr-1"></i> STOK AMAN!</div>
-                            <div class="desc">Sisa WIP di gudang setelah revisi: <b style="font-size:13px;">${maxAvailable - newTarget}</b> Pcs.</div>
-                        </div>
-                    `);
-                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MEMPROSES...');
-                    $('#formRev{{ $plan->id }}').submit();
-                }
-            });
-
-            // Langsung panggil event input saat modal dibuka biar status jam nya ngitung
-            $('#modalEditPlan{{ $plan->id }}').on('shown.bs.modal', function () {
-                $('.input-pemicu-rev-{{ $plan->id }}').first().trigger('input');
+                $.get("{{ url('planning/ppic/check-wip-stock') }}/" + encodeURIComponent(partNo), function(res) {
+                    if (res.status === 'success') {
+                        let maxAvailable = res.wip_stock + oldTarget;
+                        modal.data('wip-stock', maxAvailable);
+                        validateWipStock(modal);
+                        // Trigger jam biar nyesuaikan data pas modal dibuka
+                        $('.calc-trigger-{{ $plan->id }}').first().trigger('input');
+                    }
+                }).fail(function() {
+                    msgBox.html('<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Gagal tarik stok gudang.</span>');
+                });
             });
             @endif
         @endforeach
