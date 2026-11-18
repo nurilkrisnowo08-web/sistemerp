@@ -48,11 +48,11 @@
        ✨ STYLE KHUSUS MODAL REGISTER MRP (SEPERTI DI GAMBAR) ✨ 
        ======================================================== */
     .mrp-modal-content { border-radius: 16px; border: none; overflow: hidden; background: #ffffff; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-    .mrp-modal-header { background: #4f73d9; padding: 20px 30px; border-bottom: none; display: flex; align-items: center; }
+    .mrp-modal-header { background: #1e293b; padding: 20px 30px; border-bottom: none; display: flex; align-items: center; }
     .mrp-modal-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; color: #ffffff; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;}
     
     .mrp-card-box { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 25px; height: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.01); }
-    .mrp-card-title { font-size: 13px; font-weight: 800; margin-bottom: 20px; letter-spacing: 0.5px; }
+    .mrp-card-title { font-size: 13px; font-weight: 800; margin-bottom: 20px; letter-spacing: 0.5px; text-transform: uppercase;}
     
     /* Warna Tiap Kolom */
     .col-id .mrp-card-title { color: #2563eb; }
@@ -77,10 +77,6 @@
     .alert-stok-error .title { color: #c5221f; font-weight: 900; font-size: 12px; margin-bottom: 5px; }
     .alert-stok-error .desc { color: #a50e0e; font-size: 11px; font-weight: 500; }
     
-    .alert-stok-success { background-color: #e6f4ea; border-radius: 8px; padding: 15px; text-align: center; border: 1px solid #ceead6; width: 100%; margin-bottom: 15px; }
-    .alert-stok-success .title { color: #137333; font-weight: 900; font-size: 12px; margin-bottom: 5px; }
-    .alert-stok-success .desc { color: #0d652d; font-size: 11px; font-weight: 500; }
-    
     .alert-stok-info { background-color: #e8f0fe; border-radius: 8px; padding: 15px; text-align: center; border: 1px solid #d2e3fc; width: 100%; margin-bottom: 15px; }
     .alert-stok-info .title { color: #0f52ba; font-weight: 900; font-size: 12px; margin-bottom: 5px; }
     .alert-stok-info .desc { color: #1e3a8a; font-size: 11px; font-weight: 500; }
@@ -88,7 +84,7 @@
     /* Tombol Aksi */
     .btn-abort { background: #94a3b8; color: white; border-radius: 50rem; padding: 12px 30px; font-weight: 800; font-size: 12px; border: none; cursor: pointer; }
     .btn-auth { background: #cbd5e1; color: white; border-radius: 50rem; padding: 12px 30px; font-weight: 800; font-size: 12px; border: none; transition: 0.3s; }
-    .btn-auth.active { background: #4f73d9; cursor: pointer; }
+    .btn-auth.active { background: #5c67f2; cursor: pointer; box-shadow: 0 4px 15px rgba(92, 103, 242, 0.4); }
 
     /* Fix Select2 */
     .select2-container--default .select2-selection--single { background-color: #fff; border: 1px solid #e2e8f0; border-radius: 8px; height: 43px; }
@@ -214,9 +210,8 @@
     @endforelse
 </div>
 
-
 {{-- ========================================================================================= --}}
-{{-- ✨ 1. MODAL REGISTER NEW PLAN (MENGGUNAKAN LOGIKA BYPASS AJAX) ✨ --}}
+{{-- ✨ 1. MODAL REGISTER NEW PLAN (DESAIN 3 KOLOM SEPERTI GAMBAR) ✨ --}}
 {{-- ========================================================================================= --}}
 <div class="modal fade animate__animated animate__zoomIn" id="modalRegisterPlan" tabindex="-1" style="z-index: 9999 !important;">
     <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1000px;">
@@ -249,11 +244,11 @@
                                 </select>
                                 
                                 <label class="mrp-label">Customer (Auto)</label>
-                                <input type="text" id="custDispNew" class="mrp-input mb-3" value="AUTO DETECT" readonly style="background:#f1f5f9; color:#94a3b8;">
+                                <input type="text" id="custDispNew" name="customer_code" class="mrp-input mb-3" value="AUTO DETECT" readonly style="background:#f1f5f9; color:#94a3b8;">
                             </div>
                         </div>
 
-                        <!-- BOX 2: Pencarian Part & WIP (LANGSUNG LOAD DARI BLADE) -->
+                        <!-- BOX 2: Pencarian Part & WIP -->
                         <div class="col-md-4 mb-3 col-pm">
                             <div class="mrp-card-box">
                                 <h6 class="mrp-card-title"><i class="fas fa-search mr-1"></i> 02. MATERIAL & WIP</h6>
@@ -262,13 +257,7 @@
                                 <select name="part_no" id="partSelectorNew" class="mrp-input select2-part" required style="width:100%;">
                                     <option value="">Ketik Part No / Nama...</option>
                                     @foreach($availableParts as $p)
-                                        @php
-                                            $fg = \Illuminate\Support\Facades\DB::table('finished_goods')->where('part_no', $p->part_no)->first();
-                                            $wipStock = $fg ? (int)$fg->welding_stock : 0;
-                                        @endphp
-                                        <option value="{{ $p->part_no }}" data-wip="{{ $wipStock }}" data-cust="{{ $p->customer_code }}">
-                                            [{{ $p->customer_code }}] {{ $p->part_no }} - {{ $p->part_name }}
-                                        </option>
+                                        <option value="{{ $p->part_no }}">[{{ $p->customer_code }}] {{ $p->part_no }} - {{ $p->part_name }}</option>
                                     @endforeach
                                 </select>
                                 
@@ -339,7 +328,7 @@
                     <div id="wipValidationMsgNew" class="w-100 px-3"></div>
                     <div class="d-flex justify-content-center gap-3 w-100">
                         <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                        <button type="submit" id="btnAuthNew" class="btn-auth">AUTHORIZE & DEPLOY</button>
+                        <button type="submit" id="btnAuthNew" class="btn-auth"><i class="fas fa-rocket mr-1"></i> AUTHORIZE & DEPLOY</button>
                     </div>
                 </div>
             </form>
@@ -347,18 +336,21 @@
     </div>
 </div>
 
-{{-- ✨ 2. MODAL REVISI (BYPASS AJAX, AMAN 100%) ✨ --}}
+{{-- ✨ 2. MODAL REVISI (DESAIN 3 KOLOM SEPERTI GAMBAR) ✨ --}}
 @foreach($plans as $plan)
     @if($plan->total_actual == 0)
+    
+    {{-- Menghitung Stok Maksimal yang bisa di-revisi --}}
     @php
         $fgRev = \Illuminate\Support\Facades\DB::table('finished_goods')->where('part_no', $plan->part_no)->first();
         $wipRev = $fgRev ? (int)$fgRev->welding_stock : 0;
         $oldTarget = $plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot;
         $maxRev = $wipRev + $oldTarget; // Stok Gudang Sekarang + Target Lama yg dikembalikan sementara
     @endphp
+    
     <div class="modal fade animate__animated animate__zoomIn" id="modalEditPlan{{ $plan->id }}" data-max-stock="{{ $maxRev }}" tabindex="-1" style="z-index: 9999 !important;">
         <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1000px;">
-            <div class="modal-content mrp-modal-content">
+            <div class="modal-content mrp-modal-content border-0">
                 <div class="mrp-modal-header" style="background:#f59e0b;">
                     <h5 class="mrp-modal-title"><i class="fas fa-edit mr-2"></i> REVISE_PLAN_SYSTEM</h5>
                     <button type="button" class="close text-white ml-auto" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
@@ -372,7 +364,7 @@
                         <div class="row">
                             <!-- BOX 1: Identifikasi -->
                             <div class="col-md-4 mb-3 col-id">
-                                <div class="mrp-card-box">
+                                <div class="mrp-card-box border-warning shadow-sm">
                                     <h6 class="mrp-card-title" style="color:#d97706;">01. PRODUCT_IDENTITY</h6>
                                     
                                     <label class="mrp-label">Select Line</label>
@@ -389,7 +381,7 @@
                             
                             <!-- BOX 2: Metrics -->
                             <div class="col-md-4 mb-3 col-pm">
-                                <div class="mrp-card-box">
+                                <div class="mrp-card-box border-warning shadow-sm">
                                     <h6 class="mrp-card-title" style="color:#d97706;">02. PERFORMANCE_METRICS</h6>
                                     <div class="row mb-3">
                                         <div class="col-6">
@@ -401,17 +393,17 @@
                                             <input type="number" name="cap_per_hour" id="cap_rev_{{ $plan->id }}" class="mrp-input font-mono calc-rev-{{ $plan->id }}" value="{{ $plan->cap_per_hour }}" required>
                                         </div>
                                     </div>
-                                    <div class="wip-box" style="background:#fffbeb; border-color:#fde68a;">
+                                    <div class="wip-box" style="background:#e0f2fe; border-color:#bae6fd;">
                                         <label class="mrp-label text-muted d-block m-0" style="font-size:9px;">CALCULATED M/C LOAD</label>
                                         @php $loadH = ($plan->cap_per_hour > 0) ? ($oldTarget / $plan->cap_per_hour) : 0; @endphp
-                                        <h3 class="font-weight-black mb-0 font-mono mt-2" style="color:#b45309;" id="display_hours_{{ $plan->id }}">{{ number_format($loadH, 1) }}H</h3>
+                                        <h3 class="font-weight-black mb-0 font-mono mt-2" style="color:#0369a1;" id="display_hours_{{ $plan->id }}">{{ number_format($loadH, 1) }}H</h3>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- BOX 3: Target -->
                             <div class="col-md-4 mb-3 col-qa">
-                                <div class="mrp-card-box pb-2">
+                                <div class="mrp-card-box pb-2 border-warning shadow-sm">
                                     <h6 class="mrp-card-title" style="color:#d97706;">03. QUANTITY_REVISION</h6>
                                     
                                     <div class="mrp-tabs">
@@ -455,7 +447,7 @@
                         <div id="wipValidationMsgRev{{ $plan->id }}" class="w-100 px-3"></div>
                         <div class="d-flex justify-content-center gap-3 w-100">
                             <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                            <button type="submit" id="btnAuthRev{{ $plan->id }}" class="btn-auth active" style="background:#f59e0b;">AUTHORIZE REVISION</button>
+                            <button type="submit" id="btnAuthRev{{ $plan->id }}" class="btn-auth active" style="background:#f59e0b;"><i class="fas fa-check mr-1"></i> AUTHORIZE REVISION</button>
                         </div>
                     </div>
                 </form>
@@ -464,6 +456,22 @@
     </div>
     @endif
 @endforeach
+
+<!-- MENGHUBUNGKAN DATA JSON DATABASE KE JAVASCRIPT TANPA PERLU LOADING AJAX! -->
+<script>
+    const wipDataMap = {
+        @foreach($availableParts as $p)
+        @php
+            $fg = \Illuminate\Support\Facades\DB::table('finished_goods')->where('part_no', $p->part_no)->first();
+            $wipStock = $fg ? (int)$fg->welding_stock : 0;
+        @endphp
+        "{!! $p->part_no !!}": { 
+            wip: {{ $wipStock }}, 
+            cust: "{!! $p->customer_code !!}" 
+        },
+        @endforeach
+    };
+</script>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
@@ -497,7 +505,7 @@
         });
 
         // ==========================================
-        // 1. VALIDASI STOK WIP (BYPASS AJAX, AMBIL DARI BLADE LANSGUNG)
+        // 1. VALIDASI STOK WIP (NEW PLAN) - NO AJAX
         // ==========================================
         let currentWipStock = 0;
         let submitBtnNew = $('#btnAuthNew');
@@ -518,30 +526,34 @@
             }
             
             if (totalTarget > currentWipStock) {
+                // UI ERROR STOK
                 msgBoxNew.html(`
                     <div class="alert-stok-error animate__animated animate__headShake">
                         <div class="title">❌ STOK WIP TIDAK CUKUP!</div>
-                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia: <b>${currentWipStock}</b> Pcs</div>
+                        <div class="desc">Butuh: <b style="font-size:12px;">${totalTarget}</b> Pcs | Tersedia: <b>${currentWipStock}</b> Pcs</div>
                     </div>
                 `);
                 submitBtnNew.removeClass('active').prop('disabled', true);
             } else {
-                msgBoxNew.html(''); 
+                msgBoxNew.html(''); // Kosongkan jika aman
                 submitBtnNew.addClass('active').prop('disabled', false);
             }
+            
+            let cap = parseFloat($('#cap_new').val()) || 0;
+            let hours = (cap > 0) ? (totalTarget / cap) : 0;
+            $('#display_hours_new').text(hours.toFixed(1) + 'H');
         }
 
         $('#partSelectorNew').on('change', function() {
-            let selected = $(this).find('option:selected');
             let partNo = $(this).val();
             
-            if(partNo) {
-                // Tarik angka stok & customer otomatis dari atribut data HTML yang digenerate Blade
-                currentWipStock = parseInt(selected.data('wip')) || 0;
-                let cust = selected.data('cust') || 'AUTO DETECT';
+            if(partNo && wipDataMap[partNo]) {
+                // Tarik angka stok & customer otomatis dari JSON Map
+                currentWipStock = wipDataMap[partNo].wip;
+                let cust = wipDataMap[partNo].cust || 'AUTO DETECT';
                 
                 $('#custDispNew').val(cust); 
-                let color = currentWipStock <= 0 ? '#ef4444' : '#10b981';
+                let color = currentWipStock <= 0 ? '#ef4444' : '#4f46e5';
                 $('#displayWipStockNew').html(`<span style="color:${color};">${currentWipStock}</span> <span style="font-size:10px; color:#64748b;">PCS</span>`);
                 
                 validateWipStock();
@@ -555,12 +567,12 @@
         $('.calc-new').on('input', function() { validateWipStock(); });
 
         // ==========================================
-        // 2. VALIDASI STOK (REVISI PLAN, NO AJAX)
+        // 2. VALIDASI STOK (REVISI PLAN) - NO AJAX
         // ==========================================
         @foreach($plans as $plan)
             @if($plan->total_actual == 0)
             $('#modalEditPlan{{ $plan->id }}').on('show.bs.modal', function () {
-                validateRev{{ $plan->id }}(); // Langsung hitung pas modal dibuka
+                validateRev{{ $plan->id }}(); // Langsung hitung pas modal dibuka tanpa loading!
             });
 
             function validateRev{{ $plan->id }}() {
@@ -582,7 +594,7 @@
                     msgBox.html(`
                         <div class="alert-stok-error animate__animated animate__headShake">
                             <div class="title">❌ STOK WIP TIDAK CUKUP!</div>
-                            <div class="desc">Maksimal target revisi: <b style="font-size:13px;">${maxStock}</b> Pcs</div>
+                            <div class="desc">Maksimal target revisi: <b style="font-size:12px;">${maxStock}</b> Pcs</div>
                         </div>
                     `);
                     btn.removeClass('active').prop('disabled', true).css('background', '#cbd5e1');
