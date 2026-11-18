@@ -44,7 +44,9 @@
     .time-chip { font-family: 'JetBrains Mono'; background: #f1f5f9; color: var(--ind-navy); padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; border: 1px solid #e2e8f0; }
     .font-mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
 
-    /* MODAL GELEMBUNG */
+    /* ========================================================
+       ✨ STYLE KHUSUS MODAL REGISTER MRP (SEPERTI DI GAMBAR) ✨ 
+       ======================================================== */
     .mrp-modal-content { border-radius: 16px; border: none; overflow: hidden; background: #ffffff; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
     .mrp-modal-header { background: #1e293b; padding: 20px 30px; border-bottom: none; display: flex; align-items: center; }
     .mrp-modal-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; color: #ffffff; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;}
@@ -52,6 +54,7 @@
     .mrp-card-box { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 25px; height: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.01); }
     .mrp-card-title { font-size: 13px; font-weight: 800; margin-bottom: 20px; letter-spacing: 0.5px; text-transform: uppercase;}
     
+    /* Warna Tiap Kolom */
     .col-id .mrp-card-title { color: #2563eb; }
     .col-pm .mrp-card-title { color: #06b6d4; }
     .col-qa .mrp-card-title { color: #10b981; }
@@ -74,7 +77,8 @@
 
     /* Tombol Aksi */
     .btn-abort { background: #94a3b8; color: white; border-radius: 50rem; padding: 12px 30px; font-weight: 800; font-size: 12px; border: none; cursor: pointer; }
-    .btn-auth { background: #5c67f2; color: white; border-radius: 50rem; padding: 12px 30px; font-weight: 800; font-size: 12px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(92, 103, 242, 0.4); }
+    .btn-auth { background: #5c67f2; color: white; border-radius: 50rem; padding: 12px 30px; font-weight: 800; font-size: 12px; border: none; transition: 0.3s; }
+    .btn-auth.active { background: #5c67f2; cursor: pointer; box-shadow: 0 4px 15px rgba(92, 103, 242, 0.4); }
 
     /* Fix Select2 */
     .select2-container--default .select2-selection--single { background-color: #fff; border: 1px solid #e2e8f0; border-radius: 8px; height: 43px; }
@@ -200,7 +204,7 @@
     @endforelse
 </div>
 
-{{-- ✨ 1. MODAL REGISTER NEW PLAN (Validasi Pas Klik Submit) ✨ --}}
+{{-- ✨ 1. MODAL REGISTER NEW PLAN (LOGIKA BACKEND DI KLIK SUBMIT, UI 3 KOLOM SEPERTI GAMBAR) ✨ --}}
 <div class="modal fade animate__animated animate__zoomIn" id="modalRegisterPlan" tabindex="-1" style="z-index: 9999 !important;">
     <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1000px;">
         <div class="modal-content mrp-modal-content">
@@ -221,10 +225,10 @@
                                 <h6 class="mrp-card-title"><i class="fas fa-tag mr-2"></i> 01. IDENTIFICATION</h6>
                                 
                                 <label class="mrp-label">Tanggal Produksi</label>
-                                <input type="date" name="plan_date" class="mrp-input mb-3" value="{{ $date }}" required>
+                                <input type="date" name="plan_date" class="mrp-input mb-4" value="{{ $date }}" required>
                                 
                                 <label class="mrp-label">Station Code</label>
-                                <select name="line_code" class="mrp-input mb-3" required>
+                                <select name="line_code" class="mrp-input mb-4" required>
                                     <option value="">Pilih Station...</option>
                                     @foreach($availableLines as $line)
                                         <option value="{{ $line->kode_line }}">{{ $line->kode_line }}</option>
@@ -232,11 +236,11 @@
                                 </select>
                                 
                                 <label class="mrp-label">Customer (Auto)</label>
-                                <input type="text" id="custDispNew" name="customer_code" class="mrp-input mb-3 font-mono" value="AUTO DETECT" readonly style="background:#f1f5f9; color:#94a3b8; border-color:transparent;">
+                                <input type="text" id="custDispNew" name="customer_code" class="mrp-input mb-0 font-mono" value="AUTO DETECT" readonly style="background:#f1f5f9; color:#94a3b8; border-color:transparent;">
                             </div>
                         </div>
 
-                        <!-- BOX 2: Pencarian Part & Kalkulasi Waktu (BERSIH) -->
+                        <!-- BOX 2: Pencarian Part & M/C Load (UI SEPERTI STAMPING) -->
                         <div class="col-md-4 mb-3 col-pm">
                             <div class="mrp-card-box border-0 shadow-sm">
                                 <h6 class="mrp-card-title"><i class="fas fa-search mr-1"></i> 02. MATERIAL & WIP</h6>
@@ -251,14 +255,14 @@
                                     @endforeach
                                 </select>
                                 
-                                <div class="mt-4 p-4 text-center" style="background:#f8fafc; border-radius:20px; border:1px solid #e2e8f0;">
-                                    <label class="mrp-label text-muted d-block m-0" style="font-size:9px;">CALCULATED M/C LOAD</label>
-                                    <h3 class="font-weight-black mb-0 font-mono mt-2" style="color:#06b6d4;" id="display_hours_new">0.0H</h3>
+                                <div class="mt-4 p-4 text-center" style="background:#f8fafc; border-radius:16px; border:1px solid #e2e8f0;">
+                                    <label class="mrp-label text-muted d-block m-0" style="font-size:9px; letter-spacing:1px;">CALCULATED M/C LOAD</label>
+                                    <h2 class="font-weight-black mb-0 font-mono mt-2" style="color:#06b6d4; font-size:32px;" id="display_hours_new">0.0H</h2>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- BOX 3: Target Allocation (TABS) -->
+                        <!-- BOX 3: Target Allocation & Parameters -->
                         <div class="col-md-4 mb-3 col-qa">
                             <div class="mrp-card-box pb-2 border-0 shadow-sm">
                                 <h6 class="mrp-card-title"><i class="fas fa-crosshairs mr-1"></i> 03. TARGET_ALLOCATION</h6>
@@ -315,7 +319,7 @@
                     <div id="wipValidationMsgNew" class="w-100 px-3"></div>
                     <div class="d-flex justify-content-center gap-3 w-100">
                         <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                        <button type="submit" class="btn-auth"><i class="fas fa-rocket mr-1"></i> AUTHORIZE & DEPLOY</button>
+                        <button type="submit" id="btnAuthNew" class="btn-auth active"><i class="fas fa-rocket mr-1"></i> AUTHORIZE & DEPLOY</button>
                     </div>
                 </div>
             </form>
@@ -323,7 +327,7 @@
     </div>
 </div>
 
-{{-- ✨ 2. MODAL REVISI (Validasi Pas Klik Submit) ✨ --}}
+{{-- ✨ 2. MODAL REVISI (LOGIKA SAMA) ✨ --}}
 @foreach($plans as $plan)
     @if($plan->total_actual == 0)
     <div class="modal fade animate__animated animate__zoomIn" id="modalEditPlan{{ $plan->id }}" tabindex="-1" style="z-index: 9999 !important;">
@@ -346,36 +350,26 @@
                                     <h6 class="mrp-card-title" style="color:#d97706;">01. PRODUCT_IDENTITY</h6>
                                     
                                     <label class="mrp-label">Select Line</label>
-                                    <select name="line_code" class="mrp-input mb-3" required>
+                                    <select name="line_code" class="mrp-input mb-4" required>
                                         @foreach($availableLines as $line)
                                             <option value="{{ $line->kode_line }}" {{ $plan->line_code == $line->kode_line ? 'selected' : '' }}>{{ $line->kode_line }}</option>
                                         @endforeach
                                     </select>
                                     
                                     <label class="mrp-label">Part No (Locked)</label>
-                                    <input type="text" class="mrp-input mb-3 font-mono" value="{{ $plan->part_no }}" readonly style="background:#f1f5f9; color:#94a3b8; border-color:transparent;">
+                                    <input type="text" class="mrp-input mb-0 font-mono" value="{{ $plan->part_no }}" readonly style="background:#f1f5f9; color:#94a3b8; border-color:transparent;">
                                 </div>
                             </div>
                             
-                            <!-- BOX 2: Metrics -->
+                            <!-- BOX 2: M/C Load (SAMA KAYAK REGISTER) -->
                             <div class="col-md-4 mb-3 col-pm">
                                 <div class="mrp-card-box shadow-sm border-0">
                                     <h6 class="mrp-card-title" style="color:#d97706;">02. PERFORMANCE_METRICS</h6>
-                                    <div class="row mb-3">
-                                        <div class="col-6">
-                                            <label class="mrp-label">Manpower</label>
-                                            <input type="number" name="manpower" class="mrp-input font-mono" value="{{ $plan->manpower }}" required>
-                                        </div>
-                                        <div class="col-6">
-                                            <label class="mrp-label">Cap/Hour</label>
-                                            <input type="number" name="cap_per_hour" id="cap_rev_{{ $plan->id }}" class="mrp-input font-mono calc-rev-{{ $plan->id }}" value="{{ $plan->cap_per_hour }}" required>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 p-3 bg-light rounded-xl text-center border">
-                                        <label class="mrp-label text-muted d-block m-0">Expected Load</label>
+                                    <div class="mt-4 p-4 text-center" style="background:#fffbeb; border-radius:16px; border:1px solid #fde68a;">
+                                        <label class="mrp-label text-muted d-block m-0" style="font-size:9px; letter-spacing:1px;">CALCULATED M/C LOAD</label>
                                         @php $oldTarget = $plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot; @endphp
                                         @php $loadH = ($plan->cap_per_hour > 0) ? ($oldTarget / $plan->cap_per_hour) : 0; @endphp
-                                        <h3 class="font-weight-black text-warning mb-0 font-mono mt-1" id="display_hours_{{ $plan->id }}">{{ number_format($loadH, 1) }}H</h3>
+                                        <h3 class="font-weight-black mb-0 font-mono mt-2" style="color:#d97706; font-size:32px;" id="display_hours_{{ $plan->id }}">{{ number_format($loadH, 1) }}H</h3>
                                     </div>
                                 </div>
                             </div>
@@ -417,6 +411,17 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <div class="row mt-2">
+                                        <div class="col-6">
+                                            <label class="mrp-label text-muted">Cap/Hr</label>
+                                            <input type="number" name="cap_per_hour" id="cap_rev_{{ $plan->id }}" class="mrp-input font-mono calc-rev-{{ $plan->id }}" value="{{ $plan->cap_per_hour }}" required>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="mrp-label text-muted">Manpower</label>
+                                            <input type="number" name="manpower" class="mrp-input font-mono" value="{{ $plan->manpower }}" required>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -426,7 +431,7 @@
                         <div id="wipValidationMsgRev{{ $plan->id }}" class="w-100 px-3"></div>
                         <div class="d-flex justify-content-center gap-3 w-100">
                             <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                            <button type="submit" class="btn-auth" style="background:#f59e0b;"><i class="fas fa-check mr-1"></i> AUTHORIZE REVISION</button>
+                            <button type="submit" class="btn-auth active" style="background:#f59e0b;"><i class="fas fa-check mr-1"></i> AUTHORIZE REVISION</button>
                         </div>
                     </div>
                 </form>
@@ -455,17 +460,15 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-    // Style Tab Animasi
+    // Tab Scripting
     $('.mrp-tab').on('click', function() {
         $(this).siblings().removeClass('active').css('background', 'white').css('color', '#64748b');
         $(this).addClass('active');
-        // Kalo modal biru
         if($(this).closest('.mrp-modal-header').css('background-color') != 'rgb(245, 158, 11)') {
             $(this).css('background', '#4f73d9').css('color', 'white');
         } else {
-            $(this).css('background', '#f59e0b').css('color', 'white'); // Kalo modal kuning
+            $(this).css('background', '#f59e0b').css('color', 'white'); 
         }
-        
         let target = $(this).data('tab');
         $(this).parent().siblings('.tab-content-mrp').removeClass('active');
         $('#tab-' + target).addClass('active');
@@ -488,7 +491,7 @@
             width: '100%'
         });
 
-        // 1. AUTO CUSTOMER NAME SAAT PART DIPILIH
+        // 1. AUTO CUSTOMER NAME
         $('#partSelectorNew').on('change', function() {
             let partNo = $(this).val();
             if(partNo && wipDataMap[partNo]) {
@@ -499,7 +502,7 @@
             }
         });
 
-        // 2. KALKULASI JAM SAAT MENGETIK
+        // 2. KALKULASI JAM SAAT MENGETIK (NEW PLAN)
         $('.calc-new').on('input', function() { 
             let s1r = parseInt($('#modalRegisterPlan input[name="s1_plan_reg"]').val()) || 0;
             let s1o = parseInt($('#modalRegisterPlan input[name="s1_plan_ot"]').val()) || 0;
@@ -513,7 +516,7 @@
         // 3. EVENT LISTENER KLIK DEPLOY (VALIDASI STOK MUNCUL HANYA PAS KLIK)
         $('#formNewPlan').on('submit', function(e) {
             let partNo = $('#partSelectorNew').val();
-            if(!partNo) { e.preventDefault(); return; } // Pencegahan
+            if(!partNo) { e.preventDefault(); return; }
             
             let s1r = parseInt($('#modalRegisterPlan input[name="s1_plan_reg"]').val()) || 0;
             let s1o = parseInt($('#modalRegisterPlan input[name="s1_plan_ot"]').val()) || 0;
@@ -536,7 +539,7 @@
                 e.preventDefault(); // Stop Submit!
                 msgBoxNew.html(`<div class="alert-stok-error animate__animated animate__headShake"><div class="title">❌ TARGET KOSONG</div><div class="desc">Harap isi angka target di salah satu shift!</div></div>`);
             } else {
-                msgBoxNew.html(''); // Aman, submit dilanjutkan
+                msgBoxNew.html(''); // Aman, biarkan ter-submit ke server
             }
         });
 
@@ -544,7 +547,7 @@
         @foreach($plans as $plan)
             @if($plan->total_actual == 0)
             
-            // Kalkulasi jam
+            // Kalkulasi jam & Cek Hapus (0) saat ngetik
             $('.calc-rev-{{ $plan->id }}').on('input', function() { 
                 let s1r = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s1_plan_reg"]').val()) || 0;
                 let s1o = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s1_plan_ot"]').val()) || 0;
