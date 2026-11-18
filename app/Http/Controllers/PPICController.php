@@ -13,107 +13,90 @@ class PPICController extends Controller
      */
     public function index(Request $request)
     {
-        $date = $request->date ?? date('Y-m-d');
+        $date =$request->date ?? date('Y-m-d');
         $today = date('Y-m-d');
         
-        $areaFilter = $request->area ?? 'all';
+        $areaFilter =$request->area ?? 'all';
         
         $alertsQuery = DB::table('produksi_batches')
             ->leftJoin('line', 'produksi_batches.mesin_id', '=', 'line.id')
             ->where('produksi_batches.status', 'PROBLEM')
             ->select('produksi_batches.id', 'produksi_batches.no_produksi', 'produksi_batches.material_code', 'line.kode_Line', 'produksi_batches.keterangan', 'produksi_batches.updated_at');
 
-        if ($areaFilter === 'small') {
-            $alertsQuery->where(function($q) {
-                $q->where('line.kode_Line', 'LIKE', '%C%')->orWhere('line.kode_Line', 'LIKE', '%SMALL%')->orWhere('line.nama_Line', 'LIKE', '%SMALL%');
+        if ($areaFilter === 'small') {$alertsQuery->where(function($q) {$q->where('line.kode_Line', 'LIKE', '%C%')->orWhere('line.kode_Line', 'LIKE', '%SMALL%')->orWhere('line.nama_Line', 'LIKE', '%SMALL%');
             });
-        } elseif ($areaFilter === 'big') {
-            $alertsQuery->where(function($q) {
-                $q->where('line.kode_Line', 'NOT LIKE', '%C%')->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
+        } elseif ($areaFilter === 'big') {$alertsQuery->where(function($q) {$q->where('line.kode_Line', 'NOT LIKE', '%C%')->where('line.kode_Line', 'NOT LIKE', '%SMALL%');
             });
         }
-        $alerts = $alertsQuery->get();
+        $alerts =$alertsQuery->get();
 
-        $plansQuery = DB::table('production_plans')->where('plan_date', $date);
+        $plansQuery = DB::table('production_plans')->where('plan_date',$date);
         
-        if ($areaFilter === 'small') {
-            $plansQuery->where(function($q) {
-                $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%');
+        if ($areaFilter === 'small') {$plansQuery->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%');
             });
-        } elseif ($areaFilter === 'big') {
-            $plansQuery->where(function($q) {
-                $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%');
+        } elseif ($areaFilter === 'big') {$plansQuery->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%');
             });
         }
-        $plans = $plansQuery->get();
+        $plans =$plansQuery->get();
 
-        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];
-        $chartLabels = []; $chartTargets = []; $chartActuals = [];
+        $statusCount = ['waiting' => 0, 'running' => 0, 'completed' => 0, 'shortage' => 0];$chartLabels = []; $chartTargets = [];$chartActuals = [];
 
-        foreach($plans as $p) {
-            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot + $p->s2_plan_reg + $p->s2_plan_ot);
-            
-            $actualsQuery = DB::table('production_actuals')
+        foreach($plans as$p) {
+            $targetPerPart = ($p->s1_plan_reg + $p->s1_plan_ot +$p->s2_plan_reg + $p->s2_plan_ot);$actualsQuery = DB::table('production_actuals')
                 ->where('part_no', $p->part_no)
                 ->whereDate('created_at', $date)
                 ->where('line_code', '!=', 'WELDING AREA');
                 
-            $actualPerPart = $actualsQuery->sum('qty_ok');
+            $actualPerPart =$actualsQuery->sum('qty_ok');
             
             $p->actual_qty = (int)$actualPerPart;
             $p->plan_qty = (int)$targetPerPart;
             
-            $idx = array_search($p->part_no, $chartLabels);
+            $idx = array_search($p->part_no,$chartLabels);
             if ($idx === false) {
-                $chartLabels[] = $p->part_no;
+                $chartLabels[] =$p->part_no;
                 $chartTargets[] = (int)$targetPerPart;
                 $chartActuals[] = (int)$actualPerPart;
             } else {
                 $chartTargets[$idx] += (int)$targetPerPart;
             }
 
-            $batchStatuses = DB::table('produksi_batches')->where('plan_id', $p->id)->pluck('status');
-            $isAllBatchCompleted = $batchStatuses->isNotEmpty() && $batchStatuses->every(fn($st) => $st === 'COMPLETED');
+            $batchStatuses = DB::table('produksi_batches')->where('plan_id', $p->id)->pluck('status');$isAllBatchCompleted = $batchStatuses->isNotEmpty() &&$batchStatuses->every(fn($st) =>$st === 'COMPLETED');
 
-            if ($isAllBatchCompleted || ($targetPerPart > 0 && $actualPerPart >= $targetPerPart)) { 
-                $statusCount['completed']++; 
+            if ($isAllBatchCompleted || ($targetPerPart > 0 &&$actualPerPart >= $targetPerPart)) {$statusCount['completed']++; 
             }
-            elseif ($date < $today && $actualPerPart < $targetPerPart) { 
-                $statusCount['shortage']++; 
+            elseif ($date < $today &&$actualPerPart < $targetPerPart) {$statusCount['shortage']++; 
             }
-            elseif ($actualPerPart > 0) { 
-                $statusCount['running']++; 
+            elseif ($actualPerPart > 0) {$statusCount['running']++; 
             }
             else { 
                 $statusCount['waiting']++; 
             }
         }
 
-        $totalPlan = $plans->sum('plan_qty') ?: 0;
-        $totalActual = $plans->sum('actual_qty') ?: 0;
-        $achievementRate = $totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
+        $totalPlan =$plans->sum('plan_qty') ?: 0;
+        $totalActual =$plans->sum('actual_qty') ?: 0;
+        $achievementRate =$totalPlan > 0 ? round(($totalActual / $totalPlan) * 100, 1) : 0;
 
-        $dailyLabels = []; $dailyOk = []; $dailyNg = [];
+        $dailyLabels = []; $dailyOk = [];$dailyNg = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = date('Y-m-d', strtotime("-$i days"));
             $dailyLabels[] = date('d M', strtotime($d));
             
-            $qOk = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
-            $qNg = DB::table('production_actuals')->whereDate('created_at', $d)->where('line_code', '!=', 'WELDING AREA');
+            $qOk = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA');
+            $qNg = DB::table('production_actuals')->whereDate('created_at',$d)->where('line_code', '!=', 'WELDING AREA');
             
             if ($areaFilter === 'small') {
-                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
-                $qNg->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qOk->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });$qNg->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
             } elseif ($areaFilter === 'big') {
-                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
-                $qNg->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qOk->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });$qNg->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
             }
 
-            $dailyOk[] = $qOk->sum('qty_ok');
-            $dailyNg[] = $qNg->sum('qty_ng');
+            $dailyOk[] =$qOk->sum('qty_ok');
+            $dailyNg[] =$qNg->sum('qty_ng');
         }
 
-        $monthlyLabels = []; $monthlyOk = []; $monthlyNg = [];
+        $monthlyLabels = []; $monthlyOk = [];$monthlyNg = [];
         for ($i = 5; $i >= 0; $i--) {
             $mDate = date('Y-m', strtotime("-$i months"));
             $monthlyLabels[] = date('M', strtotime("-$i months"));
@@ -122,15 +105,13 @@ class PPICController extends Controller
             $qNgM = DB::table('production_actuals')->where('created_at', 'LIKE', "$mDate%")->where('line_code', '!=', 'WELDING AREA');
             
             if ($areaFilter === 'small') {
-                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
-                $qNgM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
+                $qOkM->where(function($q) { $q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });$qNgM->where(function($q) {$q->where('line_code', 'LIKE', '%C%')->orWhere('line_code', 'LIKE', '%SMALL%'); });
             } elseif ($areaFilter === 'big') {
-                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
-                $qNgM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
+                $qOkM->where(function($q) { $q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });$qNgM->where(function($q) {$q->where('line_code', 'NOT LIKE', '%C%')->where('line_code', 'NOT LIKE', '%SMALL%'); });
             }
 
-            $monthlyOk[] = $qOkM->sum('qty_ok');
-            $monthlyNg[] = $qNgM->sum('qty_ng');
+            $monthlyOk[] =$qOkM->sum('qty_ok');
+            $monthlyNg[] =$qNgM->sum('qty_ng');
         }
 
         return view('PPIC.ppic_planning', compact(
@@ -1043,389 +1024,6 @@ class PPICController extends Controller
     }
 
     /**
-     * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
-     */
-    public function weldingMps(Request $request)
-    {
-        $date = $request->date ?? date('Y-m-d');
-        $shiftParam = $request->shift ?? 'S1'; 
-        $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam'; 
-
-        $query = DB::table('welding_plans')->where('plan_date', $date);
-        
-        if ($shiftParam == 'S1') {
-            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
-        } else {
-            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
-        }
-
-        $plans = $query->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
-                       ->select('welding_plans.*', 'parts.part_name')
-                       ->orderBy('line_code', 'asc')
-                       ->orderBy('welding_plans.id', 'asc')
-                       ->get();
-
-        $totalPlanQty = 0;
-        $totalWorkingHours = 0;
-        $totalDandory = 0;
-        $lineFinishTime = []; 
-        $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
-
-        foreach($plans as $plan) {
-            $actual = DB::table('welding_actuals')
-                ->where('part_no', $plan->part_no)
-                ->where('shift', $dbShiftName) 
-                ->whereDate('created_at', $date)
-                ->sum('qty_ok');
-
-            $plan->total_actual = (int)$actual;
-            $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
-            $plan->balance = $plan->total_target - $plan->total_actual;
-
-            $totalPlanQty += $plan->total_target;
-            $totalDandory += ($plan->dandory_time ?? 15);
-
-            $dandoryH = ($plan->dandory_time ?? 15) / 60;
-            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
-            $totalWorkingHours += $duration;
-
-            $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
-            $plan->start_time = $startTime;
-            $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
-            $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
-        }
-
-        $availableLines = DB::table('line_welding')->get();
-        $availableParts = DB::table('parts')->where('next_process', 'WELDING')->get();
-
-        return view('PPIC.welding_mps', compact(
-            'plans', 'date', 'availableLines', 'availableParts', 
-            'totalPlanQty', 'totalWorkingHours', 'totalDandory'
-        ))->with('shift', $shiftParam);
-    }
-    
-    /**
-     * 10. STORE MPS WELDING (SIMPAN JADWAL & AUTO-DEPLOY KE TERMINAL)
-     */
-    public function weldingMpsStore(Request $request)
-    {
-        DB::beginTransaction();
-        try {
-            $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
-            $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
-            $total_target = $target_s1 + $target_s2;
-
-            if ($total_target <= 0) {
-                throw new \Exception("Target produksi Welding tidak boleh kosong / 0.");
-            }
-
-            $cleanPart = trim(urldecode($request->part_no));
-            if (strpos($cleanPart, ' - ') !== false) {
-                $cleanPart = trim(explode(' - ', $cleanPart)[0]);
-            }
-
-            $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
-            $wipStock = $fg ? (int)$fg->welding_stock : 0;
-
-            if ($wipStock < $total_target) {
-                throw new \Exception("❌ PLAN DITOLAK: STOK WIP KURANG! Kamu membuat target {$total_target} Pcs, tapi sisa stok WIP (hasil Stamping) saat ini hanya {$wipStock} Pcs.");
-            }
-
-            $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
-
-            DB::table('welding_plans')->insert([
-                'plan_date'     => $request->plan_date, 
-                'part_no'       => $cleanPart, 
-                'line_code'     => $request->line_code, 
-                'manpower'      => $request->manpower ?? 1, 
-                'process_qty'   => $request->process_qty ?? 1,
-                'qty_lot'       => $request->qty_lot ?? 200, 
-                'cap_per_hour'  => $request->cap_per_hour ?? 320,
-                's1_plan_reg'   => $request->s1_plan_reg ?? 0, 
-                's1_plan_ot'    => $request->s1_plan_ot ?? 0,
-                's2_plan_reg'   => $request->s2_plan_reg ?? 0, 
-                's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-                'dandory_time'  => $request->dandory_time ?? 15, 
-                'created_at'    => $logTimestamp, 
-                'updated_at'    => now()
-            ]);
-
-            $mesin = DB::table('line_welding')->where('kode_line', $request->line_code)->first();
-            $mesin_id = $mesin ? $mesin->id : null;
-
-            DB::table('finished_goods')->where('part_no', $cleanPart)->decrement('welding_stock', $total_target);
-
-            $ket = "AUTO-DEPLOY FROM PPIC";
-
-            if ($target_s1 > 0) {
-                $base_prod_s1 = 'WOS-WELD-S1-' . date('YmdHis');
-                DB::table('welding_batches')->insert([
-                    'no_produksi_stamping' => $base_prod_s1,
-                    'line_id'       => $mesin_id,
-                    'part_no'       => $cleanPart,
-                    'shift'         => 'Pagi',
-                    'qty_masuk'     => $target_s1, 
-                    'status'        => 'PROSES',
-                    'keterangan'    => $ket,
-                    'created_at'    => $logTimestamp,
-                    'updated_at'    => now()
-                ]);
-            }
-
-            if ($target_s2 > 0) {
-                $base_prod_s2 = 'WOS-WELD-S2-' . date('YmdHis', strtotime('+1 second'));
-                DB::table('welding_batches')->insert([
-                    'no_produksi_stamping' => $base_prod_s2,
-                    'line_id'       => $mesin_id,
-                    'part_no'       => $cleanPart,
-                    'shift'         => 'Malam',
-                    'qty_masuk'     => $target_s2,
-                    'status'        => 'PROSES',
-                    'keterangan'    => $ket,
-                    'created_at'    => $logTimestamp,
-                    'updated_at'    => now()
-                ]);
-            }
-
-            DB::commit();
-            return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dideploy ke Terminal! Total {$total_target} Pcs WIP otomatis dipotong dari Gudang.");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', $e->getMessage());
-        }
-    }
-
-    /**
-     * 10B. UPDATE & REVISI WOS WELDING
-     */
-    /**
-     * 10B. UPDATE & REVISI WOS WELDING
-     */
-    public function updateWosWelding(Request $request, $id)
-    {
-        DB::beginTransaction();
-        try {
-            $plan = DB::table('welding_plans')->where('id', $id)->first();
-            if (!$plan) throw new \Exception("Schedule Welding tidak ditemukan.");
-
-            $existingBatches = DB::table('welding_batches')->where('part_no', $plan->part_no)->whereDate('created_at', $plan->plan_date)->get();
-            
-            $isStarted = $existingBatches->contains(function($b) {
-                return $b->qty_ok > 0 || $b->qty_ng > 0 || $b->status === 'COMPLETED';
-            });
-
-            if ($isStarted) {
-                throw new \Exception("❌ REVISI DITOLAK! WOS Welding ini sudah mulai dikerjakan (Aktual > 0) atau sudah ditutup.");
-            }
-
-            $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
-            $old_target_s2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
-            $old_total = $old_target_s1 + $old_target_s2;
-
-            $new_target_s1 = (int)($request->s1_plan_reg ?? 0) + (int)($request->s1_plan_ot ?? 0);
-            $new_target_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
-            $new_total = $new_target_s1 + $new_target_s2;
-
-            if ($new_total <= 0) {
-                DB::table('finished_goods')->where('part_no', $plan->part_no)->increment('welding_stock', $old_total);
-                DB::table('welding_batches')->where('part_no', $plan->part_no)->whereDate('created_at', $plan->plan_date)->delete();
-                DB::table('welding_plans')->where('id', $id)->delete();
-                
-                DB::commit();
-                return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dibatalkan (Target 0). Stok WIP dikembalikan ke Gudang!");
-            }
-
-            $selisih = $new_total - $old_total;
-            if ($selisih > 0) {
-                $fg = DB::table('finished_goods')->where('part_no', $plan->part_no)->first();
-                $wipStock = $fg ? (int)$fg->welding_stock : 0;
-                
-                if ($wipStock < $selisih) {
-                    throw new \Exception("❌ REVISI DITOLAK! Sisa stok WIP di gudang hanya {$wipStock} Pcs, tidak cukup untuk menambah {$selisih} Pcs.");
-                }
-                DB::table('finished_goods')->where('part_no', $plan->part_no)->decrement('welding_stock', $selisih);
-            } elseif ($selisih < 0) {
-                $raw_return = abs($selisih);
-                DB::table('finished_goods')->where('part_no', $plan->part_no)->increment('welding_stock', $raw_return);
-            }
-
-            DB::table('welding_plans')->where('id', $id)->update([
-                's1_plan_reg'  => $request->s1_plan_reg ?? 0, 
-                's1_plan_ot'   => $request->s1_plan_ot ?? 0,
-                's2_plan_reg'  => $request->s2_plan_reg ?? 0, 
-                's2_plan_ot'   => $request->s2_plan_ot ?? 0,
-                'cap_per_hour' => $request->cap_per_hour ?? $plan->cap_per_hour, 
-                'dandory_time' => $request->dandory_time ?? $plan->dandory_time, 
-                'updated_at'   => now()
-            ]);
-
-            $mesin = DB::table('line_welding')->where('kode_line', $request->line_code ?? $plan->line_code)->first();
-            $mesin_id = $mesin ? $mesin->id : null;
-            $keteranganRev = "DIREVISI PPIC (TGL: ".date('d/m').")";
-            $logTimestamp = date('Y-m-d H:i:s', strtotime($plan->plan_date . ' ' . date('H:i:s')));
-
-            $bS1 = $existingBatches->where('shift', 'Pagi')->first();
-            if ($new_target_s1 > 0) {
-                if ($bS1) {
-                    DB::table('welding_batches')->where('id', $bS1->id)->update([
-                        'qty_masuk' => $new_target_s1, 'keterangan' => $keteranganRev, 'line_id' => $mesin_id, 'updated_at' => now()
-                    ]);
-                } else {
-                    DB::table('welding_batches')->insert([
-                        'no_produksi_stamping' => 'WOS-WELD-S1-REV-' . date('YmdHis'), 'line_id' => $mesin_id, 'part_no' => $plan->part_no, 'shift' => 'Pagi',
-                        'qty_masuk' => $new_target_s1, 'status' => 'PROSES', 'keterangan' => $keteranganRev, 'created_at' => $logTimestamp, 'updated_at' => now()
-                    ]);
-                }
-            } else {
-                if ($bS1) DB::table('welding_batches')->where('id', $bS1->id)->delete();
-            }
-
-            $bS2 = $existingBatches->where('shift', 'Malam')->first();
-            if ($new_target_s2 > 0) {
-                if ($bS2) {
-                    DB::table('welding_batches')->where('id', $bS2->id)->update([
-                        'qty_masuk' => $new_target_s2, 'keterangan' => $keteranganRev, 'line_id' => $mesin_id, 'updated_at' => now()
-                    ]);
-                } else {
-                    DB::table('welding_batches')->insert([
-                        'no_produksi_stamping' => 'WOS-WELD-S2-REV-' . date('YmdHis'), 'line_id' => $mesin_id, 'part_no' => $plan->part_no, 'shift' => 'Malam',
-                        'qty_masuk' => $new_target_s2, 'status' => 'PROSES', 'keterangan' => $keteranganRev, 'created_at' => $logTimestamp, 'updated_at' => now()
-                    ]);
-                }
-            } else {
-                if ($bS2) DB::table('welding_batches')->where('id', $bS2->id)->delete();
-            }
-
-            DB::commit();
-            return redirect()->back()->with('success', "✅ Revisi Welding Sukses! Target diperbarui dan Stok WIP disesuaikan otomatis.");
-        } catch (\Exception $e) {
-            DB::rollBack(); return redirect()->back()->with('error', $e->getMessage());
-        }
-    }
-
-    /**
-     * 11. PRINT WOS WELDING
-     */
-    public function printWosWelding($date, $line_code)
-    {
-        $plansS1 = DB::table('welding_plans')
-            ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
-            ->where('welding_plans.plan_date', $date)
-            ->where('welding_plans.line_code', $line_code)
-            ->where(DB::raw('welding_plans.s1_plan_reg + welding_plans.s1_plan_ot'), '>', 0)
-            ->select('welding_plans.*', 'parts.part_name')
-            ->orderBy('welding_plans.id', 'asc')
-            ->get();
-
-        $plansS2 = DB::table('welding_plans')
-            ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
-            ->where('welding_plans.plan_date', $date)
-            ->where('welding_plans.line_code', $line_code)
-            ->where(DB::raw('welding_plans.s2_plan_reg + welding_plans.s2_plan_ot'), '>', 0)
-            ->select('welding_plans.*', 'parts.part_name')
-            ->orderBy('welding_plans.id', 'asc')
-            ->get();
-
-        if ($plansS1->isEmpty() && $plansS2->isEmpty()) {
-            return redirect()->back()->with('error', 'Tidak ada jadwal Welding di mesin ini untuk dicetak.');
-        }
-
-        $parts = collect()->merge($plansS1)->merge($plansS2)->pluck('part_no')->unique()->toArray();
-        
-        $batches = DB::table('welding_batches')
-            ->whereIn('part_no', $parts)
-            ->whereDate('created_at', $date)
-            ->get();
-
-        foreach ($plansS1 as $p) {
-            $batchData = $batches->where('part_no', $p->part_no)->where('shift', 'Pagi')->first();
-            
-            if ($batchData) {
-                $p->no_produksi = $batchData->no_produksi_stamping ?? '-';
-                $p->actual_ok   = $batchData->qty_ok ?? 0;
-                $p->actual_ng   = $batchData->qty_ng ?? 0;
-                $p->actual_ret  = $batchData->qty_return ?? 0;
-                $p->actual_start = $batchData->created_at ? date('H:i', strtotime($batchData->created_at)) : '';
-                $p->actual_end   = ($batchData->status == 'COMPLETED') ? date('H:i', strtotime($batchData->updated_at)) : '';
-            } else {
-                $p->no_produksi = '-';
-                $p->actual_ok = 0; $p->actual_ng = 0; $p->actual_ret = 0;
-                $p->actual_start = ''; $p->actual_end = '';
-            }
-        }
-
-        foreach ($plansS2 as $p) {
-            $batchData = $batches->where('part_no', $p->part_no)->where('shift', 'Malam')->first();
-            
-            if ($batchData) {
-                $p->no_produksi = $batchData->no_produksi_stamping ?? '-';
-                $p->actual_ok   = $batchData->qty_ok ?? 0;
-                $p->actual_ng   = $batchData->qty_ng ?? 0;
-                $p->actual_ret  = $batchData->qty_return ?? 0;
-                $p->actual_start = $batchData->created_at ? date('H:i', strtotime($batchData->created_at)) : '';
-                $p->actual_end   = ($batchData->status == 'COMPLETED') ? date('H:i', strtotime($batchData->updated_at)) : '';
-            } else {
-                $p->no_produksi = '-';
-                $p->actual_ok = 0; $p->actual_ng = 0; $p->actual_ret = 0;
-                $p->actual_start = ''; $p->actual_end = '';
-            }
-        }
-
-        return view('PPIC.print_wos_welding', compact('plansS1', 'plansS2', 'batches', 'date', 'line_code'));
-    }
-
-    /**
-     * 12. PRINT SERAH TERIMA WELDING (WIP)
-     */
-    public function printSerahTerimaWelding(Request $request, $date, $line_code)
-    {
-        $clean_line = trim(urldecode($line_code));
-        $shift = $request->shift ?? 'S1'; 
-
-        $plans = DB::table('welding_plans')
-            ->where('plan_date', $date)
-            ->where('line_code', 'LIKE', "%{$clean_line}%")
-            ->get();
-            
-        if ($plans->isEmpty()) return redirect()->back()->with('error', 'Belum ada Material Request (WIP) untuk mesin ini.');
-
-        $parts = $plans->pluck('part_no')->toArray();
-
-        $batchesRaw = DB::table('welding_batches')
-            ->leftJoin('parts', 'welding_batches.part_no', '=', 'parts.part_no')
-            ->whereIn('welding_batches.part_no', $parts)
-            ->whereDate('welding_batches.created_at', $date)
-            ->select('welding_batches.*', 'parts.part_name', 'parts.customer_code as part_cust')
-            ->orderBy('welding_batches.id', 'asc')
-            ->get();
-
-        $allBatches = collect();
-
-        foreach ($batchesRaw as $batch) {
-            $item = clone $batch;
-            
-            $item->display_part_no = $batch->part_no;
-            $item->display_part_name = $batch->part_name;
-            $item->customer_code = $batch->part_cust ?? 'SAI';
-            
-            $item->no_surat_jalan = 'WIP-STAMPING';
-            $item->coil_id = '-';
-            $item->spec = '-';
-            $item->size = '-';
-            
-            $item->qty_ambil_pcs = $batch->qty_masuk;
-            
-            $allBatches->push($item);
-        }
-
-        $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
-        $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
-        $batches = $allBatches;
-
-        return view('PPIC.print_serah_terima', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
-    }
-
-    /**
      * 5C. PRINT WOS KHUSUS SMALL PRESS
      */
     public function printWosSmall($date, $shift, $line_code)
@@ -1644,12 +1242,18 @@ class PPICController extends Controller
                 $cleanPart = trim(explode(' - ', $cleanPart)[0]);
             }
 
+            // 1. Ambil data Customer Asli dari Master Parts
+            $partData = DB::table('parts')->where('part_no', $cleanPart)->first();
+            $customerCode = $partData ? $partData->customer_code : 'AUTO DETECT';
+
+            // 2. Ambil Stok WIP
             $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
             $wipStock = $fg ? (int)$fg->welding_stock : 0;
 
             return response()->json([
                 'status' => 'success',
-                'wip_stock' => $wipStock
+                'wip_stock' => $wipStock,
+                'customer_code' => $customerCode // Kirim customer_code ke Blade
             ]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
@@ -1791,140 +1395,11 @@ class PPICController extends Controller
                 $myFgIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
             }
             $p->fg_out = $delvOut[$p->part_no] ?? 0;
-
             $myDelv = $allDelv->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
             $p->history_fg = $myFgIn->concat($myDelv)->sortByDesc('created_at')->take(15)->values();
         }
 
         return view('PPIC.inventory_trace', compact('parts', 'search', 'customersList', 'selectedCustomer', 'partsList', 'selectedPart'));
-    }
-
-    /**
-     * 14. PRINT INVENTORY TRACEABILITY HUB
-     */
-    public function printInventoryTrace(Request $request)
-    {
-        $search = $request->search;
-        $selectedCustomer = $request->customer; 
-        $selectedPart = $request->part_no; 
-        
-        $query = DB::table('parts')
-            ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
-            ->select('parts.part_no', 'parts.part_name', 'parts.customer_code', 'parts.next_process', 'finished_goods.actual_stock as fg_stock', 'finished_goods.welding_stock as wip_stock');
-            
-        if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('parts.part_no', 'LIKE', "%{$search}%")->orWhere('parts.part_name', 'LIKE', "%{$search}%");
-            });
-        }
-        if ($selectedCustomer) {
-            $query->where('parts.customer_code', $selectedCustomer);
-        }
-        if ($selectedPart) {
-            $query->where('parts.part_no', $selectedPart);
-        }
-        
-        $parts = $query->orderBy('parts.part_no', 'asc')->get();
-
-        $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
-        $allRmStocksRaw = DB::table('rm_stocks')->get();
-        
-        $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
-        $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
-        $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-        $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-        $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-        $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-
-        // Tarik Histori Log
-        $partNos = $parts->pluck('part_no')->toArray();
-        $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
-        $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
-        $allDelv = DB::table('deliveries')->orderBy('id', 'desc')->take(2000)->get();
-        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
-        
-        $allRmIn = DB::table('rm_incoming_logs')
-            ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
-            ->select('rm_incoming_logs.*', 'rm_stocks.coil_id as stock_coil_id', 'rm_stocks.material_code as stock_mat_code')
-            ->orderBy('rm_incoming_logs.id', 'desc')->take(3000)->get();
-
-        $allRmOut = DB::table('rm_production_logs')
-            ->leftJoin('rm_stocks', 'rm_production_logs.rm_stock_id', '=', 'rm_stocks.id')
-            ->select('rm_production_logs.*', 'rm_stocks.coil_id as stock_coil_id', 'rm_stocks.material_code as stock_mat_code')
-            ->orderBy('rm_production_logs.id', 'desc')->take(3000)->get();
-
-        foreach ($parts as $p) {
-            $cleanPart = $p->part_no;
-            $mappedCoils = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
-                $code = trim($st->material_code);
-                $name = trim($st->material_name);
-                $clean = str_replace(' ', '', $cleanPart);
-                return ($code === $cleanPart || $name === $cleanPart || str_replace(' ', '', $code) === $clean);
-            })->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
-
-            if ($mappedCoils->isEmpty() && isset($partMaterials[$cleanPart])) {
-                $relatedMatCodes = $partMaterials[$cleanPart]->pluck('material_code')->toArray();
-                $mappedCoils = $allRmStocksRaw->whereIn('material_code', $relatedMatCodes)
-                    ->pluck('coil_id')->map(function($c){ return trim($c); })->filter(function($c){ return $c !== '-' && $c !== ''; })->unique();
-            }
-
-            if ($mappedCoils->isNotEmpty()) {
-                $familyStocks = $allRmStocksRaw->whereIn('coil_id', $mappedCoils);
-            } else {
-                $familyStocks = $allRmStocksRaw->filter(function($st) use ($cleanPart) {
-                    return trim($st->material_code) === $cleanPart || trim($st->material_name) === $cleanPart;
-                });
-            }
-            
-            $myOwnStocks = $familyStocks->filter(function($st) use ($cleanPart, $partMaterials) {
-                $related = [$cleanPart];
-                if(isset($partMaterials[$cleanPart])) {
-                    $related = array_merge($related, $partMaterials[$cleanPart]->pluck('material_code')->toArray());
-                }
-                return in_array(trim($st->material_code), $related);
-            });
-            $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
-            $familyStockIds = $familyStocks->pluck('id')->toArray(); 
-
-            if (!empty($familyStockIds)) {
-                $p->rm_in = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'supplier')->sum('total');
-                $p->rm_ret = $rmIncAgg->whereIn('rm_stock_id', $familyStockIds)->where('source', 'return')->sum('total');
-                $outSum = 0;
-                foreach($myOwnStocks->pluck('id')->toArray() as $myFid) { $outSum += $rmOutAgg[$myFid] ?? 0; }
-                $p->rm_out = $outSum;
-                
-                $myRmIn = $allRmIn->whereIn('rm_stock_id', $familyStockIds)->map(function($item) { $item->type_log = 'IN'; return $item; });
-                $myRmOut = $allRmOut->whereIn('rm_stock_id', $familyStockIds)->map(function($item) { $item->type_log = 'OUT'; return $item; });
-                $p->history_rm = $myRmIn->concat($myRmOut)->sortByDesc('created_at')->take(15)->values();
-            } else {
-                $p->rm_in = 0; $p->rm_ret = 0; $p->rm_out = 0;
-                $p->history_rm = collect();
-            }
-
-            $isWelding = ($p->next_process === 'WELDING');
-            if($isWelding) {
-                $p->wip_in = $prodAct[$p->part_no] ?? 0;
-                $p->wip_out = $weldBatches[$p->part_no] ?? 0;
-                $p->fg_in = $weldAct[$p->part_no] ?? 0;
-                
-                $myWipIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
-                $myWipOut = $allWeldBatches->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
-                $p->history_wip = $myWipIn->concat($myWipOut)->sortByDesc('created_at')->take(15)->values();
-                $myFgIn = $allWeldAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
-            } else {
-                $p->wip_in = 0;
-                $p->wip_out = 0;
-                $p->fg_in = $prodAct[$p->part_no] ?? 0;
-                
-                $p->history_wip = collect();
-                $myFgIn = $allProdAct->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'IN'; return $i; });
-            }
-            $p->fg_out = $delvOut[$p->part_no] ?? 0;
-            $myDelv = $allDelv->where('part_no', $p->part_no)->map(function($i) { $i->type_log = 'OUT'; return $i; });
-            $p->history_fg = $myFgIn->concat($myDelv)->sortByDesc('created_at')->take(15)->values();
-        }
-
-        return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
     /**
      * 15. PRINT INVENTORY TRACEABILITY (SUMMARY ONLY)
