@@ -1124,7 +1124,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 9. WELDING MPS
+     * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
      */
     public function weldingMps(Request $request)
     {
@@ -1186,7 +1186,7 @@ class PPICController extends Controller
     }
     
     /**
-     * 10. STORE MPS WELDING
+     * 10. STORE MPS WELDING (SIMPAN JADWAL & AUTO-DEPLOY KE TERMINAL)
      */
     public function weldingMpsStore(Request $request)
     {
@@ -2012,7 +2012,6 @@ class PPICController extends Controller
 
         return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
-
     /**
      * 15. PRINT INVENTORY TRACEABILITY (SUMMARY ONLY)
      */
