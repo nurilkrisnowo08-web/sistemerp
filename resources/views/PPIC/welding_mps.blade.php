@@ -51,8 +51,17 @@
     .modal-header.bubble-header-modal { border-bottom: none; padding: 25px 35px 10px 35px; }
     .tech-input-group { background: #ffffff; padding: 25px; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); height: 100%; transition: 0.3s; }
     .tech-input-group:hover { border-color: #e2e8f0; }
-    .form-control.bubble-input { border-radius: 16px; border: 2px solid #f1f5f9; padding: 12px 20px; font-weight: 800; background: #f8fafc; color: #1e293b; transition: 0.3s; }
+    
+    /* FIX UI INPUT TEXT & SELECT (BIAR NGGAK KEPOTONG) */
+    .form-control.bubble-input { border-radius: 16px; border: 2px solid #f1f5f9; padding: 14px 20px; font-weight: 800; background: #f8fafc; color: #1e293b; transition: 0.3s; height: 50px; line-height: 1.5; font-size: 13px;}
     .form-control.bubble-input:focus { border-color: var(--ind-blue); background: #fff; box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1); }
+    select.form-control.bubble-input { appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 20px; padding-right: 40px;}
+    
+    /* FIX UI SELECT2 (BIAR SAMA TEBALNYA DENGAN BUBBLE INPUT) */
+    .select2-container--default .select2-selection--single { background-color: #f8fafc; border: 2px solid #f1f5f9; border-radius: 16px; height: 50px; transition: 0.3s; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 46px; color: #1e293b; font-weight: 800; padding-left: 20px; font-size: 13px;}
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px; right: 15px; }
+    .select2-container--default.select2-container--open .select2-selection--single { border-color: var(--ind-blue); background: #fff; box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1); }
 </style>
 
 <div class="container-fluid py-4 px-lg-5 animate__animated animate__fadeIn">
@@ -88,9 +97,6 @@
             <button class="btn-pill btn-new-plan" data-toggle="modal" data-target="#modalRegisterPlan">
                 <i class="fas fa-plus"></i> NEW_PLAN
             </button>
-            <a href="{{ route('ppic.welding.print_report', ['date' => $date]) }}" target="_blank" class="btn-pill ml-2" style="background:#05CD99; color:white; box-shadow:0 6px 15px rgba(5,205,153,0.3); text-decoration:none;">
-                <i class="fas fa-print"></i> REPORT
-            </a>
         </div>
     </div>
 
@@ -222,7 +228,7 @@
                                 </div>
                                 <div class="form-group mb-0">
                                     <label class="small font-weight-bold text-muted">Customer (Auto)</label>
-                                    <input type="text" id="custDisp" class="form-control bubble-input" value="AUTO DETECT" readonly style="background:#e2e8f0; color:var(--ind-slate);">
+                                    <input type="text" id="custDisp" class="form-control bubble-input" value="AUTO DETECT" readonly style="background:#e2e8f0; color:var(--ind-slate); border-color:#cbd5e1;">
                                 </div>
                             </div>
                         </div>
@@ -314,11 +320,16 @@
                     <button type="button" class="close text-white" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
                 </div>
                 
+                {{-- ⚠️ INI YANG PALING PENTING, ACTION HARUS MENGARAH KE update_wos WELDING! ⚠️ --}}
                 <form action="{{ route('ppic.welding.update_wos', $plan->id) }}" method="POST">
                     @csrf
                     @method('PUT') 
                     
                     <div class="modal-body p-4">
+                        <div class="alert mb-4" style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; font-size:12.5px; font-weight:800; border-radius:16px;">
+                            <i class="fas fa-info-circle mr-2"></i> <strong>TIPS REVISI:</strong> Kosongkan (Isi angka 0) pada semua target form di bawah untuk <strong>MENGHAPUS</strong> jadwal ini. Stok WIP gudang akan kembali secara otomatis!
+                        </div>
+                        
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="tech-input-group" style="background:white; border-color:#fde68a;">
@@ -333,7 +344,7 @@
                                     </div>
                                     <div class="form-group mb-0">
                                         <label class="small font-weight-bold text-muted">Part No</label>
-                                        <input type="text" class="form-control bubble-input font-mono" value="{{ $plan->part_no }}" readonly style="background:#f1f5f9; color:#94a3b8;">
+                                        <input type="text" class="form-control bubble-input font-mono" value="{{ $plan->part_no }}" readonly style="background:#f1f5f9; color:#94a3b8; border-color:#cbd5e1;">
                                     </div>
                                 </div>
                             </div>
@@ -419,6 +430,7 @@
         let msgBoxNew = $('#wipValidationMsg');
 
         function validateWipStock() {
+            // Ambil input khusus dari dalam #modalRegisterPlan agar tidak bentrok dengan modal revisi
             let s1r = parseInt($('#modalRegisterPlan input[name="s1_plan_reg"]').val()) || 0;
             let s1o = parseInt($('#modalRegisterPlan input[name="s1_plan_ot"]').val()) || 0;
             let s2r = parseInt($('#modalRegisterPlan input[name="s2_plan_reg"]').val()) || 0;
@@ -440,6 +452,7 @@
                 submitBtnNew.prop('disabled', false).css('opacity', '1');
             }
             
+            // Kalkulasi Cap/Hr New Plan
             let cap = parseFloat($('#cap_new').val()) || 0;
             let hours = (cap > 0) ? (totalTarget / cap) : 0;
             $('#display_hours_new').text(hours.toFixed(1) + 'H');
@@ -454,14 +467,16 @@
                 $('#displayWipStock').html('<i class="fas fa-spinner fa-spin" style="color:#94a3b8;"></i>');
                 submitBtnNew.prop('disabled', true);
                 
-                // MENGGUNAKAN URL() LARAVEL AGAR ROUTE PASTI BENAR!
-                $.get('{{ url("ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
+                // KITA PAKE URL ABSOLUT LARAVEL SUPAYA ROUTING SELALU BENAR!
+                $.get('{{ url("/ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
                         currentWipStock = res.wip_stock;
                         let color = currentWipStock <= 0 ? '#ef4444' : '#10b981';
                         $('#displayWipStock').html(`<span style="color:${color};">${currentWipStock}</span> <span style="font-size:12px; color:#64748b;">PCS</span>`);
                         validateWipStock();
                     }
+                }).fail(function() {
+                    $('#displayWipStock').html('<span class="text-danger" style="font-size:14px;">ERROR URL</span>');
                 });
             } else {
                 $('#displayWipStock').html('0 <span style="font-size:12px; color:#64748b;">PCS</span>');
@@ -469,6 +484,7 @@
             }
         });
 
+        // Trigger validasi saat mengetik (khusus modal NEW PLAN)
         $('.input-calc-new').on('input', function() { validateWipStock(); });
 
         // ==========================================
@@ -480,6 +496,7 @@
             // Ketika modal revisi terbuka, tarik info stok WIP asli dari server
             $('#modalEditPlan{{ $plan->id }}').on('show.bs.modal', function () {
                 let partNo = '{{ $plan->part_no }}';
+                // Target asli waktu plan ini dibuat
                 let oldTarget = {{ $plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot }};
                 let msgBox = $('#msgRev{{ $plan->id }}');
                 let btnSubmit = $('#btnSubmitRev{{ $plan->id }}');
@@ -487,8 +504,8 @@
                 msgBox.html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek ketersediaan stok WIP gudang...</span>');
                 btnSubmit.prop('disabled', true);
                 
-                // MENGGUNAKAN URL() LARAVEL AGAR ROUTE PASTI BENAR!
-                $.get('{{ url("ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
+                // KITA PAKE URL ABSOLUT LARAVEL SUPAYA ROUTING SELALU BENAR!
+                $.get('{{ url("/ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
                         // Max stok yg bisa direvisi = Sisa WIP di gudang SEKARANG + Target jadwal ini yg mau direvisi
                         let maxAvailable = res.wip_stock + oldTarget;
@@ -503,6 +520,7 @@
             // Fungsi untuk memvalidasi angka saat diketik di modal revisi
             function validateRev{{ $plan->id }}() {
                 let maxStock = parseInt($('#modalEditPlan{{ $plan->id }}').attr('data-max-stock')) || 0;
+                
                 let s1r = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s1_plan_reg"]').val()) || 0;
                 let s1o = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s1_plan_ot"]').val()) || 0;
                 let s2r = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s2_plan_reg"]').val()) || 0;
