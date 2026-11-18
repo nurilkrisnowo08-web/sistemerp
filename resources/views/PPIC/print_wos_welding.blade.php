@@ -181,7 +181,7 @@
                     <td></td>
                     <td></td>
                     
-                    <td class="text-left" style="font-size: 8px;">AUTO-DEPLOY</td>
+                    <td class="text-left" style="font-size: 8px;"></td>
                 </tr>
                 @php $startTime = $endTime; @endphp
             @empty
@@ -242,7 +242,7 @@
                     <td></td>
                     <td></td>
                     
-                    <td class="text-left" style="font-size: 8px;">AUTO-DEPLOY</td>
+                    <td class="text-left" style="font-size: 8px;"></td>
                 </tr>
                 @php $startTime = $endTime; @endphp
             @endforeach
