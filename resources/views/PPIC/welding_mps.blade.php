@@ -8,7 +8,7 @@
     :root {
         --app-bg: #f8fafc;
         --ind-navy: #1e293b;
-        --ind-blue: #4f73d9;
+        --ind-blue: #3b82f6;
         --ind-cyan: #06b6d4;
         --ind-green: #10b981;
         --ind-slate: #64748b;
@@ -31,76 +31,73 @@
     .table-mps thead th { background: #fdfaf6; color: var(--ind-slate); font-size: 10px; font-weight: 900; text-transform: uppercase; padding: 15px; border: none; letter-spacing: 0.5px; }
     .table-mps tbody td { padding: 15px; vertical-align: middle; border-bottom: 1px dashed #e2e8f0; font-weight: 600; font-size: 12px; }
     
+    /* BUTTONS MAIN PAGE */
     .shift-toggle { background: #e2e8f0; border-radius: 50px; padding: 4px; display: inline-flex; }
     .shift-btn { border-radius: 50px; padding: 8px 20px; font-weight: 900; font-size: 11px; transition: 0.3s; border: none; color: #64748b; text-decoration: none; }
     .shift-btn.active { background: #1e293b; color: white; }
     
-    .btn-pill { border-radius: 50rem; padding: 10px 24px; font-weight: 900; font-size: 11px; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer; text-decoration: none;}
-    .btn-new-plan { background: var(--ind-blue); color: white; box-shadow: 0 4px 15px rgba(79, 115, 217, 0.3); }
-    .btn-new-plan:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 115, 217, 0.4); color:white; }
+    .btn-pill { border-radius: 50rem; padding: 12px 24px; font-weight: 800; font-size: 12px; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer; text-decoration: none;}
+    .btn-new-plan { background: #4f46e5; color: white; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3); }
     
     .btn-print-wos { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.4); border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
-    .btn-print-bprm { background: var(--ind-blue); color: white; border: none; border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
+    .btn-print-bprm { background: #3b82f6; color: white; border: none; border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
     .btn-revisi { background: #f59e0b; color: white; border-radius: 50rem; padding: 6px 16px; font-size: 10px; font-weight: 800; }
     
     .time-chip { font-family: 'JetBrains Mono'; background: #f1f5f9; color: var(--ind-navy); padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 700; border: 1px solid #e2e8f0; }
     .font-mono { font-family: 'JetBrains Mono', monospace; font-weight: 800; }
 
     /* ========================================================
-       ✨ STYLE KHUSUS MODAL REGISTER MRP (PERSIS GAMBAR) ✨ 
+       ✨ STYLE MODAL BARU (LEBIH CLEAN & RESPONSIF) ✨ 
        ======================================================== */
-    .mrp-modal-content { border-radius: 16px; border: none; overflow: hidden; background: #ffffff; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
-    .mrp-modal-header { background: var(--ind-blue); padding: 20px 30px; border-bottom: none; display: flex; align-items: center; }
-    .mrp-modal-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 16px; color: #ffffff; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;}
+    .mrp-modal-content { border-radius: 20px; border: none; overflow: hidden; background: #f8fafc; box-shadow: 0 25px 50px rgba(0,0,0,0.2); }
+    .mrp-modal-header { background: #1e293b; padding: 25px 35px; border-bottom: none; display: flex; align-items: center; }
+    .mrp-modal-title { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 18px; color: #ffffff; margin: 0; letter-spacing: 0.5px; text-transform: uppercase;}
     
-    .mrp-card-box { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 12px; padding: 25px; height: 100%; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
-    .mrp-card-title { font-size: 12.5px; font-weight: 800; margin-bottom: 20px; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 8px;}
+    .mrp-card-box { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 25px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .mrp-card-title { font-size: 13px; font-weight: 800; margin-bottom: 25px; letter-spacing: 0.5px; text-transform: uppercase; display: flex; align-items: center; gap: 10px; padding-bottom:10px; border-bottom: 2px dashed #f1f5f9;}
     
-    .col-id .mrp-card-title { color: var(--ind-blue); }
-    .col-pm .mrp-card-title { color: var(--ind-cyan); }
-    .col-qa .mrp-card-title { color: var(--ind-green); }
+    .col-id .mrp-card-title { color: #3b82f6; border-bottom-color: #dbeafe;}
+    .col-pm .mrp-card-title { color: #06b6d4; border-bottom-color: #cffafe;}
+    .col-qa .mrp-card-title { color: #10b981; border-bottom-color: #d1fae5;}
     
-    .mrp-label { font-size: 10px; font-weight: 800; color: #0f172a; margin-bottom: 6px; display: block;}
-    .mrp-input { border-radius: 8px; border: 1px solid #e2e8f0; padding: 10px 15px; font-weight: 700; font-size: 12px; color: #1e293b; transition: 0.3s; width: 100%; outline: none; background: #ffffff;}
-    .mrp-input:focus { border-color: var(--ind-blue); box-shadow: 0 0 0 3px rgba(79, 115, 217, 0.1); }
-    .mrp-input[readonly] { background: #f8fafc; color: #64748b; border-color: #f1f5f9; }
+    .mrp-label { font-size: 11px; font-weight: 800; color: #475569; margin-bottom: 8px; display: block;}
+    .mrp-input { border-radius: 10px; border: 2px solid #f1f5f9; padding: 12px 18px; font-weight: 700; font-size: 13px; color: #1e293b; transition: 0.3s; width: 100%; outline: none; background: #fdfdfd;}
+    .mrp-input:focus { border-color: #3b82f6; background: #ffffff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+    .mrp-input[readonly] { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; cursor: not-allowed;}
     
     /* Kotak Calculated M/C Load */
-    .mc-load-box { background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 12px; padding: 25px; text-align: center; margin-top: 15px; }
-    .mc-load-label { font-size: 9px; font-weight: 800; color: #0369a1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;}
-    .mc-load-val { font-family: 'Orbitron', sans-serif; font-size: 28px; font-weight: 900; color: var(--ind-cyan); letter-spacing: 1px;}
+    .mc-load-box { background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd; border-radius: 16px; padding: 25px; text-align: center; margin-top: 20px; }
+    .mc-load-label { font-size: 10px; font-weight: 800; color: #0284c7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;}
+    .mc-load-val { font-family: 'Orbitron', sans-serif; font-size: 30px; font-weight: 900; color: #0891b2; letter-spacing: 1px;}
     
     /* Tabs Shift */
-    .mrp-tabs { display: flex; border: 1px solid var(--ind-blue); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
-    .mrp-tab { flex: 1; text-align: center; font-size: 11px; font-weight: 800; padding: 10px; cursor: pointer; background: #ffffff; color: var(--ind-slate); transition: 0.2s;}
-    .mrp-tab.active { background: var(--ind-blue); color: white; }
+    .mrp-tabs { display: flex; border: 2px solid #3b82f6; border-radius: 10px; overflow: hidden; margin-bottom: 25px; background: #ffffff;}
+    .mrp-tab { flex: 1; text-align: center; font-size: 12px; font-weight: 800; padding: 12px; cursor: pointer; color: #64748b; transition: 0.3s;}
+    .mrp-tab.active { background: #3b82f6; color: white; }
     .tab-content-mrp { display: none; }
     .tab-content-mrp.active { display: block; }
     
     /* Custom Alert Bawah */
-    .alert-stok-error { background-color: #fef2f2; border-radius: 8px; padding: 12px 20px; text-align: center; border: 1px solid #fecaca; width: 100%; margin-bottom: 15px; color: #dc2626;}
-    .alert-stok-error .title { font-weight: 900; font-size: 12px; margin-bottom: 4px; letter-spacing: 0.5px;}
-    .alert-stok-error .desc { font-size: 11px; font-weight: 600; }
+    .alert-stok-error { background-color: #fef2f2; border-radius: 12px; padding: 15px 25px; text-align: center; border: 1px solid #fecaca; width: 100%; margin-bottom: 20px; color: #dc2626; box-shadow: 0 4px 10px rgba(220, 38, 38, 0.1);}
+    .alert-stok-error .title { font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px;}
+    .alert-stok-error .desc { font-size: 12px; font-weight: 600; }
     
-    .alert-stok-success { background-color: #ecfdf5; border-radius: 8px; padding: 12px 20px; text-align: center; border: 1px solid #a7f3d0; width: 100%; margin-bottom: 15px; color: #059669;}
-    .alert-stok-success .title { font-weight: 900; font-size: 12px; margin-bottom: 4px; letter-spacing: 0.5px;}
-    .alert-stok-success .desc { font-size: 11px; font-weight: 600; }
-    
-    .alert-stok-info { background-color: #e8f0fe; border-radius: 8px; padding: 12px 20px; text-align: center; border: 1px solid #d2e3fc; width: 100%; margin-bottom: 15px; color: #1e3a8a;}
-    .alert-stok-info .title { font-weight: 900; font-size: 12px; margin-bottom: 4px; letter-spacing: 0.5px;}
-    .alert-stok-info .desc { font-size: 11px; font-weight: 600; }
+    .alert-stok-success { background-color: #ecfdf5; border-radius: 12px; padding: 15px 25px; text-align: center; border: 1px solid #a7f3d0; width: 100%; margin-bottom: 20px; color: #059669; box-shadow: 0 4px 10px rgba(5, 150, 105, 0.1);}
+    .alert-stok-success .title { font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px;}
+    .alert-stok-success .desc { font-size: 12px; font-weight: 600; }
 
     /* Tombol Aksi Bawah */
-    .btn-abort { background: #94a3b8; color: white; border-radius: 50rem; padding: 12px 35px; font-weight: 800; font-size: 12px; border: none; cursor: pointer; transition: 0.3s;}
-    .btn-abort:hover { background: #64748b; }
-    .btn-auth { background: var(--ind-blue); color: white; border-radius: 50rem; padding: 12px 35px; font-weight: 800; font-size: 12px; border: none; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 15px rgba(79, 115, 217, 0.4);}
-    .btn-auth:hover { background: #3b5cbd; transform: translateY(-2px);}
-    .btn-auth:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; transform: none; }
+    .btn-abort { background: #cbd5e1; color: #475569; border-radius: 50rem; padding: 14px 40px; font-weight: 900; font-size: 13px; border: none; cursor: pointer; transition: 0.3s;}
+    .btn-abort:hover { background: #94a3b8; color: white;}
+    .btn-auth { background: #4f46e5; color: white; border-radius: 50rem; padding: 14px 40px; font-weight: 900; font-size: 13px; border: none; cursor: pointer; transition: 0.3s; box-shadow: 0 6px 20px rgba(79, 70, 229, 0.3);}
+    .btn-auth:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(79, 70, 229, 0.5);}
+    .btn-auth:disabled { background: #cbd5e1; color: #94a3b8; box-shadow: none; cursor: not-allowed; transform: none; }
 
-    /* Fix Select2 */
-    .select2-container--default .select2-selection--single { background-color: #fff; border: 1px solid #e2e8f0; border-radius: 8px; height: 41px; }
-    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 39px; font-weight: 700; font-size: 12px; color: #1e293b; padding-left: 15px; }
-    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 39px; right: 10px; }
+    /* Fix Select2 Tinggi & Styling */
+    .select2-container--default .select2-selection--single { background-color: #fdfdfd; border: 2px solid #f1f5f9; border-radius: 10px; height: 45px; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 41px; font-weight: 700; font-size: 13px; color: #1e293b; padding-left: 15px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 41px; right: 10px; }
+    .select2-container--default.select2-container--open .select2-selection--single { border-color: #3b82f6; }
 </style>
 
 <div class="container-fluid py-4 px-lg-5 animate__animated animate__fadeIn">
@@ -133,7 +130,7 @@
             <input type="date" class="mrp-input px-3 mr-3" value="{{ $date }}" style="width: 160px; height: 38px; cursor:pointer;" onchange="location.href='?date='+this.value+'&shift={{$shift}}'">
             
             <button class="btn-pill btn-new-plan" data-toggle="modal" data-target="#modalRegisterPlan">
-                <i class="fas fa-plus"></i> REGISTER_PLAN
+                <i class="fas fa-plus mr-1"></i> REGISTER_PLAN
             </button>
         </div>
     </div>
@@ -203,7 +200,7 @@
                             @if($plan->total_actual > 0)
                                 <button class="btn btn-sm text-muted rounded-pill px-3 shadow-none border" style="background:#f1f5f9; cursor:not-allowed;" title="LOCKED"><i class="fas fa-lock"></i></button>
                             @else
-                                <button class="btn-revisi border-0" data-toggle="modal" data-target="#modalEditPlan{{ $plan->id }}"><i class="fas fa-edit"></i> REVISI</button>
+                                <button class="btn-revisi border-0" data-toggle="modal" data-target="#modalEditPlan{{ $plan->id }}"><i class="fas fa-edit mr-1"></i> REVISI</button>
                             @endif
                         </td>
                     </tr>
@@ -222,26 +219,26 @@
 </div>
 
 {{-- ========================================================================================= --}}
-{{-- ✨ 1. MODAL REGISTER NEW PLAN (3 KOLOM 100% PERSIS STAMPING) ✨ --}}
+{{-- ✨ 1. MODAL REGISTER NEW PLAN (DESAIN BARU) ✨ --}}
 {{-- ========================================================================================= --}}
 <div class="modal fade animate__animated animate__zoomIn" id="modalRegisterPlan" tabindex="-1" style="z-index: 9999 !important;">
     <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1050px;">
         <div class="modal-content mrp-modal-content">
             <div class="mrp-modal-header">
                 <h5 class="mrp-modal-title">
-                    <i class="fas fa-plus-circle mr-2"></i> REGISTER_PLAN_SYSTEM
+                    <i class="fas fa-plus-circle mr-2" style="color: #93c5fd;"></i> REGISTER_PLAN_SYSTEM
                 </h5>
                 <button type="button" class="close text-white ml-auto" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
             </div>
             
             <form action="{{ route('ppic.welding.mps_store') }}" method="POST" id="formNewPlan">
                 @csrf
-                <div class="modal-body p-4 p-md-5" style="background:#f8fafc;">
+                <div class="modal-body p-4 p-md-5">
                     <div class="row">
-                        <!-- KOLOM 1: Identifikasi (Sesuai Gambar Terakhir) -->
+                        <!-- KOLOM 1: Identifikasi -->
                         <div class="col-md-4 mb-3 col-id">
-                            <div class="mrp-card-box border-0 shadow-sm">
-                                <h6 class="mrp-card-title"><i class="fas fa-tag mr-2"></i> 01. PRODUCT_IDENTITY</h6>
+                            <div class="mrp-card-box">
+                                <h6 class="mrp-card-title"><i class="fas fa-tag"></i> 01. PRODUCT_IDENTITY</h6>
                                 
                                 <label class="mrp-label">Tanggal Produksi</label>
                                 <input type="date" name="plan_date" class="mrp-input mb-4" value="{{ $date }}" required>
@@ -255,10 +252,10 @@
                                 </select>
                                 
                                 <label class="mrp-label">Customer (Auto)</label>
-                                <input type="text" id="custDispNew" name="customer_code" class="mrp-input mb-4 font-mono" value="AUTO DETECT" readonly style="background:#f1f5f9; color:#94a3b8; border-color:transparent;">
+                                <input type="text" id="custDispNew" name="customer_code" class="mrp-input mb-4 font-mono" value="AUTO DETECT" readonly>
 
                                 <label class="mrp-label">Part Identification</label>
-                                <select name="part_no" id="partSelectorNew" class="mrp-input select2-part calc-trigger-new" required style="width:100%;">
+                                <select name="part_no" id="partSelectorNew" class="mrp-input select2-part input-pemicu-jam" required style="width:100%;">
                                     <option value="">Ketik Part No / Nama...</option>
                                     @foreach($availableParts as $p)
                                         @php
@@ -278,19 +275,19 @@
                             </div>
                         </div>
 
-                        <!-- KOLOM 2: M/C Load (Sesuai Gambar Terakhir) -->
+                        <!-- KOLOM 2: M/C Load (DITENGAH!) -->
                         <div class="col-md-4 mb-3 col-pm">
-                            <div class="mrp-card-box border-0 shadow-sm d-flex flex-column">
-                                <h6 class="mrp-card-title"><i class="fas fa-chart-line mr-1"></i> 02. PERFORMANCE_METRICS</h6>
+                            <div class="mrp-card-box d-flex flex-column">
+                                <h6 class="mrp-card-title"><i class="fas fa-chart-line"></i> 02. PERFORMANCE_METRICS</h6>
                                 
                                 <div class="row mb-3">
                                     <div class="col-6">
                                         <label class="mrp-label">Manpower</label>
-                                        <input type="number" name="manpower" class="mrp-input font-mono calc-trigger-new" value="1" required>
+                                        <input type="number" name="manpower" class="mrp-input font-mono input-pemicu-jam" value="1" required>
                                     </div>
                                     <div class="col-6">
                                         <label class="mrp-label">Cap/Hour</label>
-                                        <input type="number" name="cap_per_hour" id="cap_new" class="mrp-input font-mono calc-trigger-new" value="400" required>
+                                        <input type="number" name="cap_per_hour" id="cap_new" class="mrp-input font-mono input-pemicu-jam" value="400" required>
                                     </div>
                                 </div>
                                 
@@ -303,10 +300,10 @@
                             </div>
                         </div>
 
-                        <!-- KOLOM 3: Target Allocation & Parameters -->
+                        <!-- KOLOM 3: Target Allocation -->
                         <div class="col-md-4 mb-3 col-qa">
-                            <div class="mrp-card-box pb-2 border-0 shadow-sm">
-                                <h6 class="mrp-card-title"><i class="fas fa-crosshairs mr-1"></i> 03. QUANTITY_PLANNING</h6>
+                            <div class="mrp-card-box pb-2">
+                                <h6 class="mrp-card-title"><i class="fas fa-crosshairs"></i> 03. QUANTITY_PLANNING</h6>
                                 
                                 <div class="mrp-tabs">
                                     <div class="mrp-tab active" data-tab="shift1">SHIFT_1</div>
@@ -316,13 +313,13 @@
                                 <!-- Tab 1 -->
                                 <div class="tab-content-mrp active" id="tab-shift1">
                                     <div class="row">
-                                        <div class="col-12 mb-3">
+                                        <div class="col-12 mb-4">
                                             <label class="mrp-label text-primary">S1 Reguler Plan</label>
-                                            <input type="number" name="s1_plan_reg" id="new_s1_reg" class="mrp-input font-mono calc-trigger-new" value="0" required>
+                                            <input type="number" name="s1_plan_reg" id="new_s1_reg" class="mrp-input font-mono input-pemicu-jam" value="0" required>
                                         </div>
-                                        <div class="col-12 mb-3">
+                                        <div class="col-12 mb-4">
                                             <label class="mrp-label text-danger">S1 Overtime Plan</label>
-                                            <input type="number" name="s1_plan_ot" id="new_s1_ot" class="mrp-input font-mono calc-trigger-new" value="0" required>
+                                            <input type="number" name="s1_plan_ot" id="new_s1_ot" class="mrp-input font-mono input-pemicu-jam" value="0" required>
                                         </div>
                                     </div>
                                 </div>
@@ -330,13 +327,13 @@
                                 <!-- Tab 2 -->
                                 <div class="tab-content-mrp" id="tab-shift2">
                                     <div class="row">
-                                        <div class="col-12 mb-3">
+                                        <div class="col-12 mb-4">
                                             <label class="mrp-label text-primary">S2 Reguler Plan</label>
-                                            <input type="number" name="s2_plan_reg" id="new_s2_reg" class="mrp-input font-mono calc-trigger-new" value="0" required>
+                                            <input type="number" name="s2_plan_reg" id="new_s2_reg" class="mrp-input font-mono input-pemicu-jam" value="0" required>
                                         </div>
-                                        <div class="col-12 mb-3">
+                                        <div class="col-12 mb-4">
                                             <label class="mrp-label text-danger">S2 Overtime Plan</label>
-                                            <input type="number" name="s2_plan_ot" id="new_s2_ot" class="mrp-input font-mono calc-trigger-new" value="0" required>
+                                            <input type="number" name="s2_plan_ot" id="new_s2_ot" class="mrp-input font-mono input-pemicu-jam" value="0" required>
                                         </div>
                                     </div>
                                 </div>
@@ -345,13 +342,13 @@
                     </div>
                 </div>
                 
-                <div class="modal-footer d-flex flex-column align-items-center pb-4 pt-0" style="background:#f8fafc; border:none;">
-                    <!-- TEMPAT KOTAK PERINGATAN MUNCUL LANGSUNG SAAT MENGETIK -->
-                    <div id="wipValidationMsgNew" class="w-100 px-3"></div>
+                <div class="modal-footer d-flex flex-column align-items-center pb-4 pt-0" style="background:#f8fafc; border-top: 1px solid #e2e8f0;">
+                    <!-- TEMPAT KOTAK PERINGATAN MUNCUL PAS KLIK DEPLOY -->
+                    <div id="wipValidationMsgNew" class="w-100 px-3 mt-3"></div>
                     
                     <div class="d-flex justify-content-center gap-3 w-100 mt-2">
                         <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                        <button type="submit" id="btnAuthNew" class="btn-auth disabled" disabled><i class="fas fa-rocket mr-1"></i> AUTHORIZE & DEPLOY</button>
+                        <button type="button" id="btnAuthNew" class="btn-auth"><i class="fas fa-rocket mr-2"></i> AUTHORIZE & DEPLOY</button>
                     </div>
                 </div>
             </form>
@@ -364,9 +361,9 @@
     @if($plan->total_actual == 0)
     <div class="modal fade animate__animated animate__zoomIn" id="modalEditPlan{{ $plan->id }}" tabindex="-1" style="z-index: 9999 !important;">
         <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 1050px;">
-            <div class="modal-content mrp-modal-content border-0">
+            <div class="modal-content mrp-modal-content">
                 <div class="mrp-modal-header" style="background:#f59e0b;">
-                    <h5 class="mrp-modal-title"><i class="fas fa-edit mr-2"></i> REVISE_PLAN_SYSTEM</h5>
+                    <h5 class="mrp-modal-title"><i class="fas fa-edit mr-2" style="color: #fde68a;"></i> REVISE_PLAN_SYSTEM</h5>
                     <button type="button" class="close text-white ml-auto" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
                 </div>
                 
@@ -378,8 +375,8 @@
                         <div class="row">
                             <!-- BOX 1: Identifikasi -->
                             <div class="col-md-4 mb-3 col-id">
-                                <div class="mrp-card-box shadow-sm border-0" style="border:1px solid #fde68a;">
-                                    <h6 class="mrp-card-title" style="color:#d97706;"><i class="fas fa-tag mr-2"></i>01. PRODUCT_IDENTITY</h6>
+                                <div class="mrp-card-box" style="border:1px solid #fde68a;">
+                                    <h6 class="mrp-card-title" style="color:#d97706; border-bottom-color:#fef3c7;"><i class="fas fa-tag"></i> 01. PRODUCT_IDENTITY</h6>
                                     
                                     <label class="mrp-label">Select Line</label>
                                     <select name="line_code" class="mrp-input mb-4" required>
@@ -393,23 +390,23 @@
                                 </div>
                             </div>
                             
-                            <!-- BOX 2: M/C Load (PERSIS GAMBAR) -->
+                            <!-- BOX 2: M/C Load (DITENGAH!) -->
                             <div class="col-md-4 mb-3 col-pm">
-                                <div class="mrp-card-box shadow-sm border-0 d-flex flex-column" style="border:1px solid #fde68a;">
-                                    <h6 class="mrp-card-title" style="color:#d97706;"><i class="fas fa-chart-line mr-2"></i>02. PERFORMANCE_METRICS</h6>
+                                <div class="mrp-card-box d-flex flex-column" style="border:1px solid #fde68a;">
+                                    <h6 class="mrp-card-title" style="color:#d97706; border-bottom-color:#fef3c7;"><i class="fas fa-chart-line"></i> 02. PERFORMANCE_METRICS</h6>
                                     
                                     <div class="row mb-3">
                                         <div class="col-6">
                                             <label class="mrp-label">Manpower</label>
-                                            <input type="number" name="manpower" class="mrp-input font-mono calc-trigger-rev-{{ $plan->id }}" value="{{ $plan->manpower }}" required>
+                                            <input type="number" name="manpower" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->manpower }}" required>
                                         </div>
                                         <div class="col-6">
                                             <label class="mrp-label">Cap/Hour</label>
-                                            <input type="number" name="cap_per_hour" id="cap_rev_{{ $plan->id }}" class="mrp-input font-mono calc-trigger-rev-{{ $plan->id }}" value="{{ $plan->cap_per_hour }}" required>
+                                            <input type="number" name="cap_per_hour" id="cap_rev_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->cap_per_hour }}" required>
                                         </div>
                                     </div>
 
-                                    <div class="mc-load-box mt-auto mb-2" style="background:#fffbeb; border-color:#fde68a;">
+                                    <div class="mc-load-box mt-auto mb-2" style="background: linear-gradient(135deg, #fffbeb, #fef3c7); border-color:#fde68a;">
                                         <label class="mc-load-label" style="color:#b45309;">CALCULATED M/C LOAD</label>
                                         
                                         <!-- HITUNG STOK MAKSIMAL DARI PHP -->
@@ -432,30 +429,32 @@
                                         <div class="mc-load-val" id="display_hours_{{ $plan->id }}" style="color:#d97706;">
                                             <span style="font-size:18px;">S1</span> {{ number_format($hS1, 1) }}H <span style="color:#fcd34d; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> {{ number_format($hS2, 1) }}H
                                         </div>
+                                        <!-- Simpan stok maksimal di sini biar bisa dibaca Javascript -->
+                                        <input type="hidden" id="max_stock_rev_{{ $plan->id }}" value="{{ $maxRevAvailable }}">
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- BOX 3: Target -->
                             <div class="col-md-4 mb-3 col-qa">
-                                <div class="mrp-card-box pb-2 shadow-sm border-0" style="border:1px solid #fde68a;">
-                                    <h6 class="mrp-card-title" style="color:#d97706;"><i class="fas fa-crosshairs mr-1"></i> 03. QUANTITY_PLANNING</h6>
+                                <div class="mrp-card-box pb-2" style="border:1px solid #fde68a;">
+                                    <h6 class="mrp-card-title" style="color:#d97706; border-bottom-color:#fef3c7;"><i class="fas fa-crosshairs"></i> 03. QUANTITY_PLANNING</h6>
                                     
-                                    <div class="mrp-tabs">
-                                        <div class="mrp-tab rev-tab-s1-{{ $plan->id }} active" onclick="switchRevTab('{{ $plan->id }}', 1)" style="border-color:#d97706;">SHIFT_1</div>
-                                        <div class="mrp-tab rev-tab-s2-{{ $plan->id }}" onclick="switchRevTab('{{ $plan->id }}', 2)" style="border-color:#d97706;">SHIFT_2</div>
+                                    <div class="mrp-tabs" style="border-color:#f59e0b;">
+                                        <div class="mrp-tab rev-tab-s1-{{ $plan->id }} active" onclick="switchRevTab('{{ $plan->id }}', 1)">SHIFT_1</div>
+                                        <div class="mrp-tab rev-tab-s2-{{ $plan->id }}" onclick="switchRevTab('{{ $plan->id }}', 2)">SHIFT_2</div>
                                     </div>
                                     
                                     <!-- Tab 1 Rev -->
                                     <div class="tab-content-mrp rev-cont-s1-{{ $plan->id }} active">
                                         <div class="row">
-                                            <div class="col-12 mb-3">
+                                            <div class="col-12 mb-4">
                                                 <label class="mrp-label text-primary">S1 Reguler Plan</label>
-                                                <input type="number" name="s1_plan_reg" id="rev_s1_reg_{{ $plan->id }}" class="mrp-input font-mono calc-trigger-rev-{{ $plan->id }}" value="{{ $plan->s1_plan_reg }}" required>
+                                                <input type="number" name="s1_plan_reg" id="rev_s1_reg_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s1_plan_reg }}" required>
                                             </div>
-                                            <div class="col-12 mb-3">
+                                            <div class="col-12 mb-4">
                                                 <label class="mrp-label text-danger">S1 Overtime Plan</label>
-                                                <input type="number" name="s1_plan_ot" id="rev_s1_ot_{{ $plan->id }}" class="mrp-input font-mono calc-trigger-rev-{{ $plan->id }}" value="{{ $plan->s1_plan_ot }}" required>
+                                                <input type="number" name="s1_plan_ot" id="rev_s1_ot_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s1_plan_ot }}" required>
                                             </div>
                                         </div>
                                     </div>
@@ -463,13 +462,13 @@
                                     <!-- Tab 2 Rev -->
                                     <div class="tab-content-mrp rev-cont-s2-{{ $plan->id }}">
                                         <div class="row">
-                                            <div class="col-12 mb-3">
+                                            <div class="col-12 mb-4">
                                                 <label class="mrp-label text-primary">S2 Reguler Plan</label>
-                                                <input type="number" name="s2_plan_reg" id="rev_s2_reg_{{ $plan->id }}" class="mrp-input font-mono calc-trigger-rev-{{ $plan->id }}" value="{{ $plan->s2_plan_reg }}" required>
+                                                <input type="number" name="s2_plan_reg" id="rev_s2_reg_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s2_plan_reg }}" required>
                                             </div>
-                                            <div class="col-12 mb-3">
+                                            <div class="col-12 mb-4">
                                                 <label class="mrp-label text-danger">S2 Overtime Plan</label>
-                                                <input type="number" name="s2_plan_ot" id="rev_s2_ot_{{ $plan->id }}" class="mrp-input font-mono calc-trigger-rev-{{ $plan->id }}" value="{{ $plan->s2_plan_ot }}" required>
+                                                <input type="number" name="s2_plan_ot" id="rev_s2_ot_{{ $plan->id }}" class="mrp-input font-mono input-pemicu-rev-{{ $plan->id }}" value="{{ $plan->s2_plan_ot }}" required>
                                             </div>
                                         </div>
                                     </div>
@@ -478,13 +477,13 @@
                         </div>
                     </div>
                     
-                    <div class="modal-footer d-flex flex-column align-items-center pb-4 pt-0" style="background:#f8fafc; border:none;">
-                        <!-- TEMPAT ERROR REVISI DI SINI -->
-                        <div id="wipValidationMsgRev{{ $plan->id }}" class="w-100 px-3" data-max-stock="{{ $maxRevAvailable }}"></div>
+                    <div class="modal-footer d-flex flex-column align-items-center pb-4 pt-0" style="background:#f8fafc; border-top: 1px solid #e2e8f0;">
+                        <!-- TEMPAT ERROR REVISI MUNCUL PAS KLIK -->
+                        <div id="wipValidationMsgRev{{ $plan->id }}" class="w-100 px-3 mt-3"></div>
                         
                         <div class="d-flex justify-content-center gap-3 w-100 mt-2">
                             <button type="button" class="btn-abort" data-dismiss="modal">ABORT</button>
-                            <button type="submit" id="btnAuthRev{{ $plan->id }}" class="btn-auth active" style="background:#f59e0b; box-shadow: 0 4px 15px rgba(245,158,11,0.4);"><i class="fas fa-check mr-1"></i> AUTHORIZE REVISION</button>
+                            <button type="button" id="btnAuthRev{{ $plan->id }}" class="btn-auth" style="background:#f59e0b;"><i class="fas fa-check mr-2"></i> AUTHORIZE REVISION</button>
                         </div>
                     </div>
                 </form>
@@ -502,7 +501,7 @@
         $(this).siblings().removeClass('active').css('background', 'white').css('color', '#64748b');
         $(this).addClass('active');
         if($(this).closest('.mrp-modal-header').css('background-color') != 'rgb(245, 158, 11)') {
-            $(this).css('background', '#4f73d9').css('color', 'white');
+            $(this).css('background', '#3b82f6').css('color', 'white');
         } else {
             $(this).css('background', '#f59e0b').css('color', 'white'); 
         }
@@ -520,7 +519,7 @@
     }
 
     $(document).ready(function() {
-        // Init Select2 khusus Modal
+        // Init Select2
         $('.select2-part').select2({
             dropdownParent: $('#modalRegisterPlan'),
             placeholder: "Ketik Part No / Nama...",
@@ -529,7 +528,7 @@
         });
 
         // ==========================================
-        // 1. SELECT PART -> AUTO CUSTOMER & TRIGGER INPUT
+        // 1. SELECT PART -> AUTO CUSTOMER
         // ==========================================
         $('#partSelectorNew').on('change', function() {
             let selected = $(this).find('option:selected');
@@ -541,19 +540,13 @@
             } else {
                 $('#custDispNew').val('AUTO DETECT');
             }
-            
-            // PAKSA SEMUA INPUT UNTUK MENGHITUNG ULANG
-            $('.calc-trigger-new').first().trigger('input');
+            $('#wipValidationMsgNew').html(''); // Bersihkan notif error kalau ganti part
         });
 
         // ==========================================
-        // 2. CEK STOK & UPDATE JAM REAL-TIME SAAT MENGETIK (NEW PLAN)
+        // 2. HITUNG JAM SECARA REALTIME SAAT MENGETIK
         // ==========================================
-        $('.calc-trigger-new').on('input change', function() { 
-            let partNo = $('#partSelectorNew').val();
-            let msgBoxNew = $('#wipValidationMsgNew');
-            let submitBtn = $('#btnAuthNew');
-            
+        $('.input-pemicu-jam').on('input change', function() { 
             let s1r = parseInt($('#new_s1_reg').val()) || 0;
             let s1o = parseInt($('#new_s1_ot').val()) || 0;
             let s2r = parseInt($('#new_s2_reg').val()) || 0;
@@ -561,51 +554,70 @@
             
             let totalS1 = s1r + s1o;
             let totalS2 = s2r + s2o;
-            let totalTarget = totalS1 + totalS2;
             
             let cap = parseFloat($('#cap_new').val()) || 0;
             
-            // Ubah Tampilan Jam
             let h1 = (cap > 0) ? (totalS1 / cap) : 0;
             let h2 = (cap > 0) ? (totalS2 / cap) : 0;
+            
             $('#display_hours_new').html(`<span style="font-size:18px;">S1</span> ${h1.toFixed(1)}H <span style="color:#94a3b8; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> ${h2.toFixed(1)}H`);
             
-            // Logika Peringatan Stok
-            if (!partNo || totalTarget === 0) {
-                msgBoxNew.html('');
-                submitBtn.prop('disabled', true).removeClass('active').css('background', '#cbd5e1');
-                return;
-            }
+            // Hapus peringatan bawah pas lagi ngetik supaya bersih
+            $('#wipValidationMsgNew').html('');
+        });
 
+        // ==============================================================
+        // 3. EVENT KLIK DEPLOY -> DISINI VALIDASI STOK MUNCUL!
+        // ==============================================================
+        $('#btnAuthNew').on('click', function(e) {
+            let partNo = $('#partSelectorNew').val();
+            let msgBoxNew = $('#wipValidationMsgNew');
+            
+            if(!partNo) { 
+                msgBoxNew.html(`<div class="alert-stok-error animate__animated animate__headShake"><div class="title">❌ PART KOSONG</div><div class="desc">Harap pilih Part Number terlebih dahulu!</div></div>`);
+                return; 
+            } 
+            
             let selected = $('#partSelectorNew').find('option:selected');
-            let currentWipStock = parseInt(selected.attr('data-wip')) || 0;
+            let currentWipStock = parseInt(selected.attr('data-wip')) || 0; 
 
-            if (totalTarget > currentWipStock) {
+            let s1r = parseInt($('#new_s1_reg').val()) || 0;
+            let s1o = parseInt($('#new_s1_ot').val()) || 0;
+            let s2r = parseInt($('#new_s2_reg').val()) || 0;
+            let s2o = parseInt($('#new_s2_ot').val()) || 0;
+            let totalTarget = s1r + s1o + s2r + s2o;
+
+            if (totalTarget === 0) {
+                msgBoxNew.html(`<div class="alert-stok-error animate__animated animate__headShake"><div class="title">❌ TARGET KOSONG</div><div class="desc">Harap isi angka target produksi di salah satu shift!</div></div>`);
+            } else if (totalTarget > currentWipStock) {
                 msgBoxNew.html(`
-                    <div class="alert-stok-error error animate__animated animate__headShake">
+                    <div class="alert-stok-error animate__animated animate__headShake">
                         <div class="title"><i class="fas fa-times-circle mr-1"></i> PLAN DITOLAK: STOK WIP KURANG!</div>
-                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia WIP: <b style="font-size:13px;">${currentWipStock}</b> Pcs</div>
+                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia WIP: <b>${currentWipStock}</b> Pcs</div>
                     </div>
                 `);
-                submitBtn.prop('disabled', true).removeClass('active').css('background', '#cbd5e1');
             } else {
+                // STOK AMAN! Tampilkan pesan Hijau, dan submit form!
                 msgBoxNew.html(`
                     <div class="alert-stok-success animate__animated animate__fadeInUp">
-                        <div class="title"><i class="fas fa-check-square mr-1"></i> STOK WIP AMAN!</div>
-                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia WIP: <b style="font-size:13px;">${currentWipStock}</b> Pcs</div>
+                        <div class="title"><i class="fas fa-check-circle mr-1"></i> STOK WIP AMAN!</div>
+                        <div class="desc">Mendeploy ${totalTarget} Pcs (Sisa Gudang: ${currentWipStock - totalTarget} Pcs)</div>
                     </div>
                 `);
-                submitBtn.prop('disabled', false).addClass('active').css('background', '#4f73d9');
+                
+                // Matikan tombol biar gak ke-klik 2x, trus submit formnya
+                $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MEMPROSES...');
+                $('#formNewPlan').submit();
             }
         });
 
-        // 3. EVENT LISTENER REVISI REAL-TIME
+        // ==============================================================
+        // 4. LOGIKA REVISI (NGITUNG JAM REALTIME & VALIDASI PAS KLIK)
+        // ==============================================================
         @foreach($plans as $plan)
             @if($plan->total_actual == 0)
             
-            $('.calc-trigger-rev-{{ $plan->id }}').on('input change', function() { 
-                let maxAvailable = parseInt($('#wipValidationMsgRev{{ $plan->id }}').attr('data-max-stock')) || 0;
-                
+            $('.input-pemicu-rev-{{ $plan->id }}').on('input change', function() { 
                 let s1r = parseInt($('#rev_s1_reg_{{ $plan->id }}').val()) || 0;
                 let s1o = parseInt($('#rev_s1_ot_{{ $plan->id }}').val()) || 0;
                 let s2r = parseInt($('#rev_s2_reg_{{ $plan->id }}').val()) || 0;
@@ -613,7 +625,6 @@
                 
                 let totalS1 = s1r + s1o;
                 let totalS2 = s2r + s2o;
-                let totalTarget = totalS1 + totalS2;
 
                 let cap = parseFloat($('#cap_rev_{{ $plan->id }}').val()) || 0;
                 
@@ -622,39 +633,52 @@
                 
                 $('#display_hours_{{ $plan->id }}').html(`<span style="font-size:18px;">S1</span> ${h1.toFixed(1)}H <span style="color:#fcd34d; font-size:18px; margin:0 5px;">|</span> <span style="font-size:18px;">S2</span> ${h2.toFixed(1)}H`);
                 
-                let msgBox = $('#wipValidationMsgRev{{ $plan->id }}');
-                let btn = $('#btnAuthRev{{ $plan->id }}');
+                $('#wipValidationMsgRev{{ $plan->id }}').html(''); // Bersihkan error saat ngetik ulang
+            });
 
-                if (totalTarget === 0) {
+            // Pas Klik Tombol Revisi
+            $('#btnAuthRev{{ $plan->id }}').on('click', function(e) {
+                let maxAvailable = parseInt($('#max_stock_rev_{{ $plan->id }}').val()) || 0; // Ambil nilai stok dari input hidden
+                
+                let s1r = parseInt($('#rev_s1_reg_{{ $plan->id }}').val()) || 0;
+                let s1o = parseInt($('#rev_s1_ot_{{ $plan->id }}').val()) || 0;
+                let s2r = parseInt($('#rev_s2_reg_{{ $plan->id }}').val()) || 0;
+                let s2o = parseInt($('#rev_s2_ot_{{ $plan->id }}').val()) || 0;
+                let newTarget = s1r + s1o + s2r + s2o;
+                
+                let msgBox = $('#wipValidationMsgRev{{ $plan->id }}');
+
+                if (newTarget === 0) {
                     msgBox.html(`
-                        <div class="alert-stok-info animate__animated animate__pulse">
-                            <div class="title" style="color:#0f52ba;">⚠️ JADWAL AKAN DIBATALKAN</div>
-                            <div class="desc" style="color:#1e3a8a;">Lanjutkan simpan untuk menghapus jadwal. <b style="font-size:12px;">${maxAvailable}</b> Pcs WIP akan kembali ke gudang!</div>
+                        <div class="alert-stok-info animate__animated animate__fadeInUp">
+                            <div class="title" style="color:#0f52ba;"><i class="fas fa-trash mr-1"></i> JADWAL DIBATALKAN</div>
+                            <div class="desc" style="color:#1e3a8a;"><b style="font-size:12px;">${maxAvailable}</b> Pcs WIP dikembalikan ke gudang.</div>
                         </div>
                     `);
-                    btn.prop('disabled', false).addClass('active').css('background', '#ef4444').html('<i class="fas fa-trash"></i> HAPUS JADWAL');
-                } else if (totalTarget > maxAvailable) {
+                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MENGHAPUS...');
+                    $('#formRev{{ $plan->id }}').submit();
+                } else if (newTarget > maxAvailable) {
                     msgBox.html(`
-                        <div class="alert-stok-error error animate__animated animate__headShake">
+                        <div class="alert-stok-error animate__animated animate__headShake">
                             <div class="title"><i class="fas fa-times-circle mr-1"></i> REVISI DITOLAK: STOK WIP KURANG!</div>
                             <div class="desc">Maksimal target revisi untuk part ini adalah <b style="font-size:13px;">${maxAvailable}</b> Pcs.</div>
                         </div>
                     `);
-                    btn.prop('disabled', true).removeClass('active').css('background', '#cbd5e1').html('<i class="fas fa-check"></i> AUTHORIZE REVISION');
                 } else {
                     msgBox.html(`
                         <div class="alert-stok-success animate__animated animate__fadeInUp">
-                            <div class="title"><i class="fas fa-check-square mr-1"></i> STOK AMAN!</div>
-                            <div class="desc">Sisa WIP di gudang setelah revisi: <b style="font-size:13px;">${maxAvailable - totalTarget}</b> Pcs.</div>
+                            <div class="title"><i class="fas fa-check-circle mr-1"></i> STOK AMAN!</div>
+                            <div class="desc">Sisa WIP di gudang setelah revisi: <b style="font-size:13px;">${maxAvailable - newTarget}</b> Pcs.</div>
                         </div>
                     `);
-                    btn.prop('disabled', false).addClass('active').css('background', '#f59e0b').html('<i class="fas fa-check"></i> AUTHORIZE REVISION');
+                    $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> MEMPROSES...');
+                    $('#formRev{{ $plan->id }}').submit();
                 }
             });
 
-            // Langsung munculin status saat modal revisi dibuka
+            // Langsung panggil event input saat modal dibuka biar status jam nya ngitung
             $('#modalEditPlan{{ $plan->id }}').on('shown.bs.modal', function () {
-                $('.calc-trigger-rev-{{ $plan->id }}').first().trigger('input');
+                $('.input-pemicu-rev-{{ $plan->id }}').first().trigger('input');
             });
             @endif
         @endforeach
