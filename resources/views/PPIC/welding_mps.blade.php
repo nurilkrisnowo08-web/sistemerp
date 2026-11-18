@@ -95,7 +95,7 @@
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-3 mb-3"><div class="kpi-card" style="--accent-color: var(--ind-blue)"><div class="kpi-label">Volume Target</div><div class="kpi-value" style="color:var(--ind-blue);">{{ number_format($totalPlanQty) }}<small class="ml-1 text-muted" style="font-size: 12px">PCS</small></div></div></div>
+        <div class="col-md-3 mb-3"><div class="kpi-card" style="--accent-color: var(--ind-blue)"><div class="kpi-label">Volume Target ({{ $shift }})</div><div class="kpi-value" style="color:var(--ind-blue);">{{ number_format($totalPlanQty) }}<small class="ml-1 text-muted" style="font-size: 12px">PCS</small></div></div></div>
         <div class="col-md-3 mb-3"><div class="kpi-card" style="--accent-color: #8b5cf6"><div class="kpi-label">Load Capacity</div><div class="kpi-value" style="color: #8b5cf6">{{ number_format($totalWorkingHours, 1) }}<small class="ml-1 text-muted" style="font-size: 12px">HRS</small></div></div></div>
         <div class="col-md-3 mb-3"><div class="kpi-card" style="--accent-color: #f59e0b"><div class="kpi-label">Switching Loss</div><div class="kpi-value" style="color: #f59e0b">{{ $totalDandory }}<small class="ml-1 text-muted" style="font-size: 12px">MIN</small></div></div></div>
         <div class="col-md-3 mb-3"><div class="kpi-card bg-dark-slate border-0" style="background:linear-gradient(135deg, #1e293b, #334155);"><div class="kpi-label" style="color:#94a3b8;">Operational Shift</div><div class="kpi-value text-white">{{ $shift == 'S1' ? 'DAY_OPS' : 'NIGHT_OPS' }}</div></div></div>
@@ -301,7 +301,7 @@
     </div>
 </div>
 
-{{-- ✨ 2. MODAL REVISI (DILOOPING DI LUAR TABEL) ✨ --}}
+{{-- ✨ 2. MODAL REVISI (DILOOPING DI LUAR TABEL DENGAN LOGIKA CEK STOK) ✨ --}}
 @foreach($plans as $plan)
     @if($plan->total_actual == 0)
     <div class="modal fade animate__animated animate__zoomIn" id="modalEditPlan{{ $plan->id }}" tabindex="-1" style="z-index: 9999 !important;">
@@ -314,16 +314,11 @@
                     <button type="button" class="close text-white" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
                 </div>
                 
-                {{-- ⚠️ INI YANG PALING PENTING, ACTION HARUS MENGARAH KE update_wos WELDING! ⚠️ --}}
                 <form action="{{ route('ppic.welding.update_wos', $plan->id) }}" method="POST">
                     @csrf
                     @method('PUT') 
                     
                     <div class="modal-body p-4">
-                        <div class="alert mb-4" style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; font-size:12.5px; font-weight:800; border-radius:16px;">
-                            <i class="fas fa-info-circle mr-2"></i> <strong>TIPS REVISI:</strong> Kosongkan (Isi angka 0) pada semua target form di bawah untuk <strong>MENGHAPUS</strong> jadwal ini. Stok WIP gudang akan kembali secara otomatis!
-                        </div>
-                        
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="tech-input-group" style="background:white; border-color:#fde68a;">
@@ -390,9 +385,12 @@
                         </div>
                     </div>
                     
-                    <div class="modal-footer pb-4 pt-3 d-flex justify-content-center gap-3" style="background:white; border-top:2px dashed #fde68a;">
-                        <button type="button" class="btn-pill" data-dismiss="modal" style="background:#e2e8f0; color:var(--ind-slate); width:150px;">BATAL</button>
-                        <button type="submit" class="btn-pill" style="width:300px; font-size:14px; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; box-shadow:0 6px 20px rgba(245,158,11,0.4);">🚀 SIMPAN REVISI</button>
+                    <div class="modal-footer pb-4 pt-3 d-flex flex-column align-items-center" style="background:white; border-top:2px dashed #fde68a;">
+                        <div id="msgRev{{ $plan->id }}" class="w-100 text-center mb-3"></div>
+                        <div class="d-flex w-100 justify-content-center gap-3">
+                            <button type="button" class="btn-pill" data-dismiss="modal" style="background:#e2e8f0; color:var(--ind-slate); width:150px;">BATAL</button>
+                            <button type="submit" id="btnSubmitRev{{ $plan->id }}" class="btn-pill" style="width:300px; font-size:14px; background:linear-gradient(135deg, #f59e0b, #d97706); color:white; box-shadow:0 6px 20px rgba(245,158,11,0.4);">🚀 SIMPAN REVISI</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -409,7 +407,8 @@
         $('.select2-part').select2({
             dropdownParent: $('#modalRegisterPlan'),
             placeholder: "Cari Part Number...",
-            allowClear: true
+            allowClear: true,
+            width: '100%'
         });
 
         // ==========================================
@@ -420,7 +419,6 @@
         let msgBoxNew = $('#wipValidationMsg');
 
         function validateWipStock() {
-            // Ambil input khusus dari dalam #modalRegisterPlan agar tidak bentrok dengan modal revisi
             let s1r = parseInt($('#modalRegisterPlan input[name="s1_plan_reg"]').val()) || 0;
             let s1o = parseInt($('#modalRegisterPlan input[name="s1_plan_ot"]').val()) || 0;
             let s2r = parseInt($('#modalRegisterPlan input[name="s2_plan_reg"]').val()) || 0;
@@ -442,7 +440,6 @@
                 submitBtnNew.prop('disabled', false).css('opacity', '1');
             }
             
-            // Kalkulasi Cap/Hr New Plan
             let cap = parseFloat($('#cap_new').val()) || 0;
             let hours = (cap > 0) ? (totalTarget / cap) : 0;
             $('#display_hours_new').text(hours.toFixed(1) + 'H');
@@ -456,7 +453,9 @@
             if(partNo) {
                 $('#displayWipStock').html('<i class="fas fa-spinner fa-spin" style="color:#94a3b8;"></i>');
                 submitBtnNew.prop('disabled', true);
-                $.get('/planning/ppic/check-wip-stock/' + encodeURIComponent(partNo), function(res) {
+                
+                // MENGGUNAKAN URL() LARAVEL AGAR ROUTE PASTI BENAR!
+                $.get('{{ url("ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
                         currentWipStock = res.wip_stock;
                         let color = currentWipStock <= 0 ? '#ef4444' : '#10b981';
@@ -470,24 +469,69 @@
             }
         });
 
-        // Trigger validasi saat mengetik (khusus modal NEW PLAN)
         $('.input-calc-new').on('input', function() { validateWipStock(); });
 
         // ==========================================
-        // 2. KALKULASI CAP/HR DINAMIS (UNTUK MODAL REVISI)
+        // 2. VALIDASI STOK REALTIME & KALKULASI CAP/HR (UNTUK MODAL REVISI)
         // ==========================================
         @foreach($plans as $plan)
-            $('.input-calc-rev-{{ $plan->id }}').on('input', function() {
+            @if($plan->total_actual == 0)
+            
+            // Ketika modal revisi terbuka, tarik info stok WIP asli dari server
+            $('#modalEditPlan{{ $plan->id }}').on('show.bs.modal', function () {
+                let partNo = '{{ $plan->part_no }}';
+                let oldTarget = {{ $plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot }};
+                let msgBox = $('#msgRev{{ $plan->id }}');
+                let btnSubmit = $('#btnSubmitRev{{ $plan->id }}');
+                
+                msgBox.html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek ketersediaan stok WIP gudang...</span>');
+                btnSubmit.prop('disabled', true);
+                
+                // MENGGUNAKAN URL() LARAVEL AGAR ROUTE PASTI BENAR!
+                $.get('{{ url("ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
+                    if(res.status === 'success') {
+                        // Max stok yg bisa direvisi = Sisa WIP di gudang SEKARANG + Target jadwal ini yg mau direvisi
+                        let maxAvailable = res.wip_stock + oldTarget;
+                        $('#modalEditPlan{{ $plan->id }}').attr('data-max-stock', maxAvailable);
+                        validateRev{{ $plan->id }}();
+                    }
+                }).fail(function() {
+                    msgBox.html('<span class="text-danger font-weight-bold"><i class="fas fa-wifi"></i> Gagal mengecek stok WIP.</span>');
+                });
+            });
+
+            // Fungsi untuk memvalidasi angka saat diketik di modal revisi
+            function validateRev{{ $plan->id }}() {
+                let maxStock = parseInt($('#modalEditPlan{{ $plan->id }}').attr('data-max-stock')) || 0;
                 let s1r = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s1_plan_reg"]').val()) || 0;
                 let s1o = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s1_plan_ot"]').val()) || 0;
                 let s2r = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s2_plan_reg"]').val()) || 0;
                 let s2o = parseInt($('#modalEditPlan{{ $plan->id }} input[name="s2_plan_ot"]').val()) || 0;
                 let cap = parseFloat($('#cap_rev_{{ $plan->id }}').val()) || 0;
                 
-                let total = s1r + s1o + s2r + s2o;
-                let hours = (cap > 0) ? (total / cap) : 0;
-                $('#display_hours_{{ $plan->id }}').text(hours.toFixed(1) + 'H');
+                let newTarget = s1r + s1o + s2r + s2o;
+                let btn = $('#btnSubmitRev{{ $plan->id }}');
+                let msgBox = $('#msgRev{{ $plan->id }}');
+                
+                // Update Jam
+                $('#display_hours_{{ $plan->id }}').text((cap > 0 ? (newTarget/cap) : 0).toFixed(1) + 'H');
+
+                if (newTarget > maxStock) {
+                    msgBox.html(`<div class="alert alert-danger p-2 m-0 shadow-sm" style="border-radius:12px; font-size:12px;"><b>❌ STOK TIDAK CUKUP!</b> Maksimal target yg bisa direvisi: <b style="font-size:14px;">${maxStock}</b> Pcs.</div>`);
+                    btn.prop('disabled', true).css('opacity', '0.5');
+                } else if (newTarget === 0) {
+                    msgBox.html(`<div class="alert alert-info p-2 m-0 shadow-sm" style="border-radius:12px; font-size:12px;"><b>⚠️ TARGET 0:</b> Jadwal akan dihapus. Sebanyak <b>${maxStock}</b> Pcs WIP akan kembali ke gudang!</div>`);
+                    btn.prop('disabled', false).css('opacity', '1');
+                } else {
+                    msgBox.html(`<div class="alert alert-success p-2 m-0 shadow-sm" style="border-radius:12px; font-size:12px; background:#ecfdf5; color:#065f46;"><b>✅ STOK AMAN.</b> Sisa WIP di gudang setelah revisi: <b>${maxStock - newTarget}</b> Pcs.</div>`);
+                    btn.prop('disabled', false).css('opacity', '1');
+                }
+            }
+
+            $('.input-calc-rev-{{ $plan->id }}').on('input', function() {
+                validateRev{{ $plan->id }}();
             });
+            @endif
         @endforeach
     });
 </script>
