@@ -65,7 +65,7 @@
         foreach($plansS2 as $p) { if($p->no_produksi != '-') $allWos->push($p->no_produksi); }
         $uniqueWos = $allWos->unique()->values();
         
-        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : 'AUTO-DEPLOY';
+        $displayWos = $uniqueWos->count() > 0 ? strtoupper($uniqueWos->first()) : '';
         if($uniqueWos->count() > 1) {
             $displayWos .= ' (+'.($uniqueWos->count() - 1).' WOS)';
         }
