@@ -30,39 +30,6 @@
     .table-mps thead th { background: #f8fafc; color: var(--ind-slate); font-size: 10.5px; font-weight: 900; text-transform: uppercase; padding: 18px; border: none; letter-spacing: 0.5px; }
     .table-mps tbody td { padding: 18px; vertical-align: middle; border-bottom: 1px dashed #e2e8f0; font-weight: 700; font-size: 13px; }
     .table-mps tbody tr:hover td { background-color: #fcfdfd; }
-    /* 🌟 CUSTOM ALERT STOK (STYLE SEPERTI GAMBAR) 🌟 */
-    .alert-stok-error {
-        background-color: #fce8e6; /* Merah soft */
-        border-radius: 12px;
-        padding: 12px 20px;
-        text-align: center;
-        border: 1px solid #f9d2ce;
-        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1);
-        width: 100%;
-    }
-    .alert-stok-error .title { color: #c5221f; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
-    .alert-stok-error .desc { color: #a50e0e; font-size: 11.5px; font-weight: 500; }
-    
-    .alert-stok-success {
-        background-color: #e6f4ea; /* Hijau soft */
-        border-radius: 12px;
-        padding: 12px 20px;
-        text-align: center;
-        border: 1px solid #ceead6;
-        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.1);
-        width: 100%;
-    }
-    .alert-stok-success .title { color: #137333; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
-    .alert-stok-success .desc { color: #0d652d; font-size: 11.5px; font-weight: 500; }
-    
-    .alert-stok-info {
-        background-color: #e8f0fe; /* Biru soft */
-        border-radius: 12px;
-        padding: 12px 20px;
-        text-align: center;
-        border: 1px solid #d2e3fc;
-        width: 100%;
-    }
     
     /* BUTTON & PILL */
     .shift-toggle { background: #e2e8f0; border-radius: 50px; padding: 5px; display: inline-flex; }
@@ -70,7 +37,7 @@
     .shift-btn.active { background: var(--ind-navy); color: white; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2); }
     .shift-btn:hover { text-decoration: none; }
     
-    .btn-pill { border-radius: 50rem; padding: 10px 24px; font-weight: 900; font-size: 11.5px; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; }
+    .btn-pill { border-radius: 50rem; padding: 10px 24px; font-weight: 900; font-size: 11.5px; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; cursor: pointer; }
     .btn-new-plan { background: linear-gradient(135deg, #4318FF, #5c67f2); color: white; box-shadow: 0 6px 15px rgba(67, 24, 255, 0.3); }
     .btn-new-plan:hover { transform: translateY(-2px); color: white; box-shadow: 0 8px 20px rgba(67, 24, 255, 0.4); }
     .btn-revisi { background: #fffbeb; color: #f59e0b; border: 1px solid #fde68a; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.1); }
@@ -84,17 +51,27 @@
     .modal-header.bubble-header-modal { border-bottom: none; padding: 25px 35px 10px 35px; }
     .tech-input-group { background: #ffffff; padding: 25px; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); height: 100%; transition: 0.3s; }
     .tech-input-group:hover { border-color: #e2e8f0; }
-    
-    /* FIX UI INPUT TEXT & SELECT (BIAR NGGAK KEPOTONG) */
     .form-control.bubble-input { border-radius: 16px; border: 2px solid #f1f5f9; padding: 14px 20px; font-weight: 800; background: #f8fafc; color: #1e293b; transition: 0.3s; height: 50px; line-height: 1.5; font-size: 13px;}
     .form-control.bubble-input:focus { border-color: var(--ind-blue); background: #fff; box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1); }
     select.form-control.bubble-input { appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 20px; padding-right: 40px;}
     
-    /* FIX UI SELECT2 (BIAR SAMA TEBALNYA DENGAN BUBBLE INPUT) */
     .select2-container--default .select2-selection--single { background-color: #f8fafc; border: 2px solid #f1f5f9; border-radius: 16px; height: 50px; transition: 0.3s; }
     .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 46px; color: #1e293b; font-weight: 800; padding-left: 20px; font-size: 13px;}
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px; right: 15px; }
     .select2-container--default.select2-container--open .select2-selection--single { border-color: var(--ind-blue); background: #fff; box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1); }
+
+    /* 🌟 CUSTOM ALERT STOK (STYLE SEPERTI GAMBAR) 🌟 */
+    .alert-stok-error { background-color: #fce8e6; border-radius: 12px; padding: 12px 20px; text-align: center; border: 1px solid #f9d2ce; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1); width: 100%; }
+    .alert-stok-error .title { color: #c5221f; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .alert-stok-error .desc { color: #a50e0e; font-size: 11.5px; font-weight: 500; }
+    
+    .alert-stok-success { background-color: #e6f4ea; border-radius: 12px; padding: 12px 20px; text-align: center; border: 1px solid #ceead6; box-shadow: 0 4px 15px rgba(5, 150, 105, 0.1); width: 100%; }
+    .alert-stok-success .title { color: #137333; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .alert-stok-success .desc { color: #0d652d; font-size: 11.5px; font-weight: 500; }
+    
+    .alert-stok-info { background-color: #e8f0fe; border-radius: 12px; padding: 12px 20px; text-align: center; border: 1px solid #d2e3fc; width: 100%; }
+    .alert-stok-info .title { color: #0f52ba; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .alert-stok-info .desc { color: #1e3a8a; font-size: 11.5px; font-weight: 500; }
 </style>
 
 <div class="container-fluid py-4 px-lg-5 animate__animated animate__fadeIn">
@@ -353,16 +330,12 @@
                     <button type="button" class="close text-white" data-dismiss="modal" style="opacity:1;"><span>&times;</span></button>
                 </div>
                 
-                {{-- ⚠️ INI YANG PALING PENTING, ACTION HARUS MENGARAH KE update_wos WELDING! ⚠️ --}}
+                {{-- ACTION MENGARAH KE update_wos WELDING! --}}
                 <form action="{{ route('ppic.welding.update_wos', $plan->id) }}" method="POST">
                     @csrf
                     @method('PUT') 
                     
                     <div class="modal-body p-4">
-                        <div class="alert mb-4" style="background:#fef3c7; border:1px solid #fde68a; color:#b45309; font-size:12.5px; font-weight:800; border-radius:16px;">
-                            <i class="fas fa-info-circle mr-2"></i> <strong>TIPS REVISI:</strong> Kosongkan (Isi angka 0) pada semua target form di bawah untuk <strong>MENGHAPUS</strong> jadwal ini. Stok WIP gudang akan kembali secara otomatis!
-                        </div>
-                        
                         <div class="row">
                             <div class="col-md-4 mb-3">
                                 <div class="tech-input-group" style="background:white; border-color:#fde68a;">
@@ -463,7 +436,6 @@
         let msgBoxNew = $('#wipValidationMsg');
 
         function validateWipStock() {
-            // Ambil input khusus dari dalam #modalRegisterPlan agar tidak bentrok dengan modal revisi
             let s1r = parseInt($('#modalRegisterPlan input[name="s1_plan_reg"]').val()) || 0;
             let s1o = parseInt($('#modalRegisterPlan input[name="s1_plan_ot"]').val()) || 0;
             let s2r = parseInt($('#modalRegisterPlan input[name="s2_plan_reg"]').val()) || 0;
@@ -478,14 +450,23 @@
             }
             
             if (totalTarget > currentWipStock) {
-                msgBoxNew.html(`<div class="alert alert-danger p-2 m-0 border-0 shadow-sm" style="border-radius:12px;"><b>❌ STOK WIP KURANG!</b> Butuh: <b style="font-size:14px;">${totalTarget}</b> | Tersedia: <b>${currentWipStock}</b></div>`);
+                msgBoxNew.html(`
+                    <div class="alert-stok-error animate__animated animate__headShake">
+                        <div class="title">❌ STOK WIP TIDAK CUKUP!</div>
+                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia: <b>${currentWipStock}</b> Pcs</div>
+                    </div>
+                `);
                 submitBtnNew.prop('disabled', true).css('opacity', '0.5');
             } else {
-                msgBoxNew.html(`<div class="alert alert-success p-2 m-0 border-0 shadow-sm" style="border-radius:12px; background:#ecfdf5; color:#065f46;"><b>✅ STOK AMAN!</b> Butuh: <b>${totalTarget}</b> | Tersedia: <b>${currentWipStock}</b></div>`);
+                msgBoxNew.html(`
+                    <div class="alert-stok-success animate__animated animate__fadeInUp">
+                        <div class="title">✅ STOK WIP AMAN!</div>
+                        <div class="desc">Butuh: <b style="font-size:13px;">${totalTarget}</b> Pcs | Tersedia: <b>${currentWipStock}</b> Pcs</div>
+                    </div>
+                `);
                 submitBtnNew.prop('disabled', false).css('opacity', '1');
             }
             
-            // Kalkulasi Cap/Hr New Plan
             let cap = parseFloat($('#cap_new').val()) || 0;
             let hours = (cap > 0) ? (totalTarget / cap) : 0;
             $('#display_hours_new').text(hours.toFixed(1) + 'H');
@@ -500,7 +481,6 @@
                 $('#displayWipStock').html('<i class="fas fa-spinner fa-spin" style="color:#94a3b8;"></i>');
                 submitBtnNew.prop('disabled', true);
                 
-                // KITA PAKE URL ABSOLUT LARAVEL SUPAYA ROUTING SELALU BENAR!
                 $.get('{{ url("/ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
                         currentWipStock = res.wip_stock;
@@ -517,7 +497,6 @@
             }
         });
 
-        // Trigger validasi saat mengetik (khusus modal NEW PLAN)
         $('.input-calc-new').on('input', function() { validateWipStock(); });
 
         // ==========================================
@@ -526,10 +505,8 @@
         @foreach($plans as $plan)
             @if($plan->total_actual == 0)
             
-            // Ketika modal revisi terbuka, tarik info stok WIP asli dari server
             $('#modalEditPlan{{ $plan->id }}').on('show.bs.modal', function () {
                 let partNo = '{{ $plan->part_no }}';
-                // Target asli waktu plan ini dibuat
                 let oldTarget = {{ $plan->s1_plan_reg + $plan->s1_plan_ot + $plan->s2_plan_reg + $plan->s2_plan_ot }};
                 let msgBox = $('#msgRev{{ $plan->id }}');
                 let btnSubmit = $('#btnSubmitRev{{ $plan->id }}');
@@ -537,10 +514,8 @@
                 msgBox.html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek ketersediaan stok WIP gudang...</span>');
                 btnSubmit.prop('disabled', true);
                 
-                // KITA PAKE URL ABSOLUT LARAVEL SUPAYA ROUTING SELALU BENAR!
                 $.get('{{ url("/ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
-                        // Max stok yg bisa direvisi = Sisa WIP di gudang SEKARANG + Target jadwal ini yg mau direvisi
                         let maxAvailable = res.wip_stock + oldTarget;
                         $('#modalEditPlan{{ $plan->id }}').attr('data-max-stock', maxAvailable);
                         validateRev{{ $plan->id }}();
@@ -550,7 +525,6 @@
                 });
             });
 
-            // Fungsi untuk memvalidasi angka saat diketik di modal revisi
             function validateRev{{ $plan->id }}() {
                 let maxStock = parseInt($('#modalEditPlan{{ $plan->id }}').attr('data-max-stock')) || 0;
                 
@@ -564,17 +538,31 @@
                 let btn = $('#btnSubmitRev{{ $plan->id }}');
                 let msgBox = $('#msgRev{{ $plan->id }}');
                 
-                // Update Jam
                 $('#display_hours_{{ $plan->id }}').text((cap > 0 ? (newTarget/cap) : 0).toFixed(1) + 'H');
 
                 if (newTarget > maxStock) {
-                    msgBox.html(`<div class="alert alert-danger p-2 m-0 shadow-sm" style="border-radius:12px; font-size:12px;"><b>❌ STOK TIDAK CUKUP!</b> Maksimal target yg bisa direvisi: <b style="font-size:14px;">${maxStock}</b> Pcs.</div>`);
+                    msgBox.html(`
+                        <div class="alert-stok-error animate__animated animate__headShake">
+                            <div class="title">❌ STOK WIP TIDAK CUKUP!</div>
+                            <div class="desc">Maksimal target revisi: <b style="font-size:13px;">${maxStock}</b> Pcs</div>
+                        </div>
+                    `);
                     btn.prop('disabled', true).css('opacity', '0.5');
                 } else if (newTarget === 0) {
-                    msgBox.html(`<div class="alert alert-info p-2 m-0 shadow-sm" style="border-radius:12px; font-size:12px;"><b>⚠️ TARGET 0:</b> Jadwal akan dihapus. Sebanyak <b>${maxStock}</b> Pcs WIP akan kembali ke gudang!</div>`);
+                    msgBox.html(`
+                        <div class="alert-stok-info animate__animated animate__fadeInUp">
+                            <div class="title" style="color:#0f52ba;">⚠️ JADWAL DIBATALKAN</div>
+                            <div class="desc" style="color:#1e3a8a;">Sebanyak <b>${maxStock}</b> Pcs WIP akan kembali ke gudang!</div>
+                        </div>
+                    `);
                     btn.prop('disabled', false).css('opacity', '1');
                 } else {
-                    msgBox.html(`<div class="alert alert-success p-2 m-0 shadow-sm" style="border-radius:12px; font-size:12px; background:#ecfdf5; color:#065f46;"><b>✅ STOK AMAN.</b> Sisa WIP di gudang setelah revisi: <b>${maxStock - newTarget}</b> Pcs.</div>`);
+                    msgBox.html(`
+                        <div class="alert-stok-success animate__animated animate__fadeInUp">
+                            <div class="title">✅ STOK AMAN.</div>
+                            <div class="desc">Sisa WIP di gudang setelah revisi: <b>${maxStock - newTarget}</b> Pcs.</div>
+                        </div>
+                    `);
                     btn.prop('disabled', false).css('opacity', '1');
                 }
             }
