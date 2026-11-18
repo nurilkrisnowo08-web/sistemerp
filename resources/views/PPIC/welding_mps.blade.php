@@ -51,10 +51,13 @@
     .modal-header.bubble-header-modal { border-bottom: none; padding: 25px 35px 10px 35px; }
     .tech-input-group { background: #ffffff; padding: 25px; border-radius: 24px; border: 1px solid #f1f5f9; box-shadow: 0 4px 15px rgba(0,0,0,0.02); height: 100%; transition: 0.3s; }
     .tech-input-group:hover { border-color: #e2e8f0; }
+    
+    /* FIX UI INPUT TEXT & SELECT (BIAR NGGAK KEPOTONG) */
     .form-control.bubble-input { border-radius: 16px; border: 2px solid #f1f5f9; padding: 14px 20px; font-weight: 800; background: #f8fafc; color: #1e293b; transition: 0.3s; height: 50px; line-height: 1.5; font-size: 13px;}
     .form-control.bubble-input:focus { border-color: var(--ind-blue); background: #fff; box-shadow: 0 0 0 4px rgba(67, 24, 255, 0.1); }
     select.form-control.bubble-input { appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2364748b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 20px; padding-right: 40px;}
     
+    /* FIX UI SELECT2 (BIAR SAMA TEBALNYA DENGAN BUBBLE INPUT) */
     .select2-container--default .select2-selection--single { background-color: #f8fafc; border: 2px solid #f1f5f9; border-radius: 16px; height: 50px; transition: 0.3s; }
     .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 46px; color: #1e293b; font-weight: 800; padding-left: 20px; font-size: 13px;}
     .select2-container--default .select2-selection--single .select2-selection__arrow { height: 46px; right: 15px; }
@@ -107,6 +110,9 @@
             <button class="btn-pill btn-new-plan" data-toggle="modal" data-target="#modalRegisterPlan">
                 <i class="fas fa-plus"></i> NEW_PLAN
             </button>
+            <a href="{{ route('ppic.welding.print_report', ['date' => $date]) }}" target="_blank" class="btn-pill ml-2" style="background:#05CD99; color:white; box-shadow:0 6px 15px rgba(5,205,153,0.3); text-decoration:none;">
+                <i class="fas fa-print"></i> REPORT
+            </a>
         </div>
     </div>
 
@@ -481,7 +487,8 @@
                 $('#displayWipStock').html('<i class="fas fa-spinner fa-spin" style="color:#94a3b8;"></i>');
                 submitBtnNew.prop('disabled', true);
                 
-                $.get('{{ url("/ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
+                // MENGGUNAKAN NAME ROUTE AGAR URL SELALU BENAR (LEBIH AMAN)
+                $.get("{{ route('ppic.welding.mps') }}".replace('mps', 'ajax/check-wip/') + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
                         currentWipStock = res.wip_stock;
                         let color = currentWipStock <= 0 ? '#ef4444' : '#10b981';
@@ -489,7 +496,7 @@
                         validateWipStock();
                     }
                 }).fail(function() {
-                    $('#displayWipStock').html('<span class="text-danger" style="font-size:14px;">ERROR URL</span>');
+                    $('#displayWipStock').html('<span class="text-danger" style="font-size:14px;">GAGAL MENARIK DATA</span>');
                 });
             } else {
                 $('#displayWipStock').html('0 <span style="font-size:12px; color:#64748b;">PCS</span>');
@@ -514,7 +521,8 @@
                 msgBox.html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek ketersediaan stok WIP gudang...</span>');
                 btnSubmit.prop('disabled', true);
                 
-                $.get('{{ url("/ppic/welding/ajax/check-wip") }}/' + encodeURIComponent(partNo), function(res) {
+                // MENGGUNAKAN NAME ROUTE AGAR URL SELALU BENAR (LEBIH AMAN)
+                $.get("{{ route('ppic.welding.mps') }}".replace('mps', 'ajax/check-wip/') + encodeURIComponent(partNo), function(res) {
                     if(res.status === 'success') {
                         let maxAvailable = res.wip_stock + oldTarget;
                         $('#modalEditPlan{{ $plan->id }}').attr('data-max-stock', maxAvailable);
