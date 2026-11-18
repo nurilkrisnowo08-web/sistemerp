@@ -30,6 +30,39 @@
     .table-mps thead th { background: #f8fafc; color: var(--ind-slate); font-size: 10.5px; font-weight: 900; text-transform: uppercase; padding: 18px; border: none; letter-spacing: 0.5px; }
     .table-mps tbody td { padding: 18px; vertical-align: middle; border-bottom: 1px dashed #e2e8f0; font-weight: 700; font-size: 13px; }
     .table-mps tbody tr:hover td { background-color: #fcfdfd; }
+    /* 🌟 CUSTOM ALERT STOK (STYLE SEPERTI GAMBAR) 🌟 */
+    .alert-stok-error {
+        background-color: #fce8e6; /* Merah soft */
+        border-radius: 12px;
+        padding: 12px 20px;
+        text-align: center;
+        border: 1px solid #f9d2ce;
+        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1);
+        width: 100%;
+    }
+    .alert-stok-error .title { color: #c5221f; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .alert-stok-error .desc { color: #a50e0e; font-size: 11.5px; font-weight: 500; }
+    
+    .alert-stok-success {
+        background-color: #e6f4ea; /* Hijau soft */
+        border-radius: 12px;
+        padding: 12px 20px;
+        text-align: center;
+        border: 1px solid #ceead6;
+        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.1);
+        width: 100%;
+    }
+    .alert-stok-success .title { color: #137333; font-weight: 900; font-size: 13px; margin-bottom: 5px; letter-spacing: 0.5px; }
+    .alert-stok-success .desc { color: #0d652d; font-size: 11.5px; font-weight: 500; }
+    
+    .alert-stok-info {
+        background-color: #e8f0fe; /* Biru soft */
+        border-radius: 12px;
+        padding: 12px 20px;
+        text-align: center;
+        border: 1px solid #d2e3fc;
+        width: 100%;
+    }
     
     /* BUTTON & PILL */
     .shift-toggle { background: #e2e8f0; border-radius: 50px; padding: 5px; display: inline-flex; }
