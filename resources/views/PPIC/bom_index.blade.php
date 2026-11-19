@@ -65,9 +65,9 @@
     @endforelse
 </div>
 
-{{-- MODAL TAMBAH BOM --}}
+{{-- MODAL TAMBAH BOM (MULTI-KOMPONEN) --}}
 <div class="modal fade" id="modalAddBom" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow" style="border-radius: 16px;">
             <div class="modal-header bg-primary text-white">
                 <h6 class="modal-title font-weight-bold">TAMBAH RESEP KOMPONEN BOM</h6>
@@ -76,61 +76,107 @@
             <form action="{{ route('ppic.bom.store') }}" method="POST">
                 @csrf
                 <div class="modal-body p-4">
-                    <div class="form-group">
+                    <div class="form-group mb-4">
                         <label class="small font-weight-bold">Part Jadi (Parent Welding)</label>
-                        <select name="parent_part_no" class="form-control" required>
+                        <select name="parent_part_no" class="form-control font-weight-bold" required>
                             <option value="">-- Pilih Part Jadi --</option>
                             @foreach($parentParts as $p)
                                 <option value="{{ $p->part_no }}">[{{ $p->customer_code }}] {{ $p->part_no }} - {{ $p->part_name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="small font-weight-bold">Sumber Stok Komponen</label>
-                        <select name="source_type" id="bom_source_type" class="form-control" required onchange="toggleCompList()">
-                            <option value="WIP">WIP (Hasil Stamping / finished_goods)</option>
-                            <option value="RM">RM (Nut / Plat / rm_stocks)</option>
-                        </select>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="small font-weight-bold mb-0 text-primary">DAFTAR KOMPONEN PENYUSUN (WIP / RM)</label>
+                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3 font-weight-bold" onclick="addBomRow()">
+                            <i class="fas fa-plus mr-1"></i> Tambah Baris
+                        </button>
                     </div>
-                    <div class="form-group" id="box_comp_wip">
-                        <label class="small font-weight-bold">Pilih Komponen WIP</label>
-                        <select id="sel_wip" class="form-control" onchange="document.getElementById('final_comp_code').value = this.value">
-                            <option value="">-- Pilih Part WIP --</option>
-                            @foreach($wipParts as $wp)
-                                <option value="{{ $wp->part_no }}">{{ $wp->part_no }} - {{ $wp->part_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="form-group" id="box_comp_rm" style="display:none;">
-                        <label class="small font-weight-bold">Pilih Material RM / Nut</label>
-                        <select id="sel_rm" class="form-control" onchange="document.getElementById('final_comp_code').value = this.value">
-                            <option value="">-- Pilih Material RM --</option>
-                            @foreach($rmMaterials as $rm)
-                                <option value="{{ $rm->material_code }}">{{ $rm->material_code }} - {{ $rm->material_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <input type="hidden" name="component_code" id="final_comp_code" required>
-                    <div class="form-group">
-                        <label class="small font-weight-bold">Kebutuhan per 1 Pcs Part Jadi</label>
-                        <input type="number" name="qty_per_unit" class="form-control" value="1" min="1" required>
+
+                    <div id="bomRowsContainer">
+                        {{-- Baris komponen pertama otomatis muncul di sini via JS --}}
                     </div>
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-light" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary px-4 font-weight-bold">Simpan BOM</button>
+                    <button type="submit" class="btn btn-primary px-4 font-weight-bold">Simpan Semua BOM</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+{{-- TEMPLATE OPSI DROPDOWN (DISIMPAN DI HIDDEN TEMPLATE BIAR RAPI) --}}
+<template id="tplOptionsWip">
+    <option value="">-- Pilih Part WIP --</option>
+    @foreach($wipParts as $wp)
+        <option value="{{ $wp->part_no }}">{{ $wp->part_no }} - {{ $wp->part_name }}</option>
+    @endforeach
+</template>
+
+<template id="tplOptionsRm">
+    <option value="">-- Pilih Material RM / Nut --</option>
+    @foreach($rmMaterials as $rm)
+        <option value="{{ $rm->material_code }}">{{ $rm->material_code }} - {{ $rm->material_name }}</option>
+    @endforeach
+</template>
+
 <script>
-    function toggleCompList() {
-        let src = document.getElementById('bom_source_type').value;
-        document.getElementById('box_comp_wip').style.display = (src === 'WIP') ? 'block' : 'none';
-        document.getElementById('box_comp_rm').style.display  = (src === 'RM')  ? 'block' : 'none';
-        document.getElementById('final_comp_code').value = '';
+    function addBomRow() {
+        const container = document.getElementById('bomRowsContainer');
+        const wipOptions = document.getElementById('tplOptionsWip').innerHTML;
+
+        const row = document.createElement('div');
+        row.className = 'bom-row row align-items-center bg-light p-2 mb-2 rounded border';
+        row.innerHTML = `
+            <div class="col-md-3 mb-2 mb-md-0">
+                <label class="small font-weight-bold mb-1">Sumber</label>
+                <select name="source_type[]" class="form-control form-control-sm font-weight-bold" onchange="switchRowOptions(this)" required>
+                    <option value="WIP">WIP (Stamping)</option>
+                    <option value="RM">RM (Nut / Plat)</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-2 mb-md-0">
+                <label class="small font-weight-bold mb-1">Komponen / Material</label>
+                <select name="component_code[]" class="form-control form-control-sm comp-select" required>
+                    ${wipOptions}
+                </select>
+            </div>
+            <div class="col-md-2 mb-2 mb-md-0">
+                <label class="small font-weight-bold mb-1">Qty / Pcs</label>
+                <input type="number" name="qty_per_unit[]" class="form-control form-control-sm text-center font-weight-bold" value="1" min="1" required>
+            </div>
+            <div class="col-md-1 text-right pt-md-3">
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeBomRow(this)" title="Hapus Baris">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
     }
+
+    function switchRowOptions(selectEl) {
+        const row = selectEl.closest('.bom-row');
+        const compSelect = row.querySelector('.comp-select');
+        if (selectEl.value === 'WIP') {
+            compSelect.innerHTML = document.getElementById('tplOptionsWip').innerHTML;
+        } else {
+            compSelect.innerHTML = document.getElementById('tplOptionsRm').innerHTML;
+        }
+    }
+
+    function removeBomRow(btn) {
+        const rows = document.querySelectorAll('#bomRowsContainer .bom-row');
+        if (rows.length > 1) {
+            btn.closest('.bom-row').remove();
+        } else {
+            alert('Minimal harus ada 1 baris komponen.');
+        }
+    }
+
+    // Otomatis buat 1 baris awal saat halaman siap
+    document.addEventListener('DOMContentLoaded', function() {
+        addBomRow();
+    });
 </script>
 @endsection

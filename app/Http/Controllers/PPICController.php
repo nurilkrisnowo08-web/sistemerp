@@ -2526,26 +2526,41 @@ class PPICController extends Controller
         return view('PPIC.bom_index', compact('boms', 'parentParts', 'wipParts', 'rmMaterials'));
     }
 
-    public function bomStore(Request $request)
-    {
-        $request->validate([
-            'parent_part_no' => 'required',
-            'component_code' => 'required',
-            'source_type'    => 'required|in:WIP,RM',
-            'qty_per_unit'   => 'required|integer|min:1',
-        ]);
+   public function bomStore(Request $request)
+{
+    $request->validate([
+        'parent_part_no'   => 'required',
+        'source_type'      => 'required|array|min:1',
+        'source_type.*'    => 'required|in:WIP,RM',
+        'component_code'   => 'required|array|min:1',
+        'component_code.*' => 'required|string',
+        'qty_per_unit'     => 'required|array|min:1',
+        'qty_per_unit.*'   => 'required|integer|min:1',
+    ]);
 
-        DB::table('part_boms')->insert([
-            'parent_part_no' => trim($request->parent_part_no),
-            'component_code' => trim($request->component_code),
-            'source_type'    => $request->source_type,
-            'qty_per_unit'   => (int)$request->qty_per_unit,
-            'created_at'     => now(),
-            'updated_at'     => now(),
-        ]);
+    $insertData = [];
+    $now = now();
+    $parent = trim($request->parent_part_no);
 
-        return redirect()->back()->with('success', 'Komponen BOM berhasil ditambahkan.');
+    foreach ($request->component_code as $i => $compCode) {
+        if (empty($compCode)) continue;
+
+        $insertData[] = [
+            'parent_part_no' => $parent,
+            'component_code' => trim($compCode),
+            'source_type'    => $request->source_type[$i],
+            'qty_per_unit'   => (int) $request->qty_per_unit[$i],
+            'created_at'     => $now,
+            'updated_at'     => $now,
+        ];
     }
+
+    if (!empty($insertData)) {
+        DB::table('part_boms')->insert($insertData);
+    }
+
+    return redirect()->back()->with('success', count($insertData) . ' komponen BOM berhasil ditambahkan sekaligus.');
+}
 
     public function bomDestroy($id)
     {
