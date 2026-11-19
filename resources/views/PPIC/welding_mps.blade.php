@@ -170,7 +170,10 @@
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content modal-industrial shadow-2xl border-warning">
                 <div class="modal-header bg-warning text-dark p-4 border-0"><h5 class="modal-title font-weight-black" style="font-family: 'Orbitron'">REVISI_PRODUCTION_PLAN</h5><button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button></div>
-                <form action="{{ route('ppic.welding.mps_store') }}" method="POST">
+                {{-- GANTI BARIS INI --}}
+                <form action="{{ route('ppic.welding.update_wos', $plan->id) }}" method="POST">
+                     @csrf
+                     @method('PUT')
                     @csrf
                     <div class="modal-body p-5">
                         <div class="alert alert-info border-0 mb-4 rounded-lg"><i class="fas fa-info-circle mr-2"></i> <strong>Tips:</strong> Kosongkan (Isi angka 0) pada kedua target Shift untuk MENGHAPUS / MEMBATALKAN jadwal secara otomatis. WIP akan kembali utuh.</div>

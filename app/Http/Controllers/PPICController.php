@@ -1504,7 +1504,7 @@ class PPICController extends Controller
         $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
         $batches = $allBatches;
 
-        return view('PPIC.print_serah_terima', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
+       return view('PPIC.print_serah_terima_welding', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
     }
 
     /**
