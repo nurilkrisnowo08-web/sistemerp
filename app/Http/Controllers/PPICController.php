@@ -1126,6 +1126,9 @@ class PPICController extends Controller
     /**
      * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
      */
+   /**
+     * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
+     */
     public function weldingMps(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
@@ -1177,7 +1180,23 @@ class PPICController extends Controller
         }
 
         $availableLines = DB::table('line_welding')->get();
-        $availableParts = DB::table('parts')->where('next_process', 'WELDING')->get();
+
+        $bomParents = Schema::hasTable('part_boms')
+            ? DB::table('part_boms')->distinct()->pluck('parent_part_no')->toArray()
+            : [];
+
+        $bomWipComponents = Schema::hasTable('part_boms')
+            ? DB::table('part_boms')->where('source_type', 'WIP')->distinct()->pluck('component_code')->toArray()
+            : [];
+
+        $availableParts = DB::table('parts')
+            ->where(function($q) use ($bomWipComponents) {
+                $q->where('next_process', 'WELDING')
+                  ->whereNotIn('part_no', $bomWipComponents);
+            })
+            ->orWhereIn('part_no', $bomParents)
+            ->orderBy('part_no', 'asc')
+            ->get();
 
         return view('PPIC.welding_mps', compact(
             'plans', 'date', 'availableLines', 'availableParts', 
