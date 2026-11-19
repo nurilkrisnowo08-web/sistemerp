@@ -2511,15 +2511,19 @@ class PPICController extends Controller
      */
     public function bomIndex()
     {
-        $boms = DB::table('part_boms')
-            ->leftJoin('parts', 'part_boms.parent_part_no', '=', 'parts.part_no')
-            ->select('part_boms.*', 'parts.part_name as parent_name', 'parts.customer_code')
-            ->orderBy('part_boms.parent_part_no', 'asc')
-            ->orderBy('part_boms.id', 'asc')
-            ->get()
-            ->groupBy('parent_part_no');
+       // UBAH BARIS INI:
+$bomParents = Schema::hasTable('part_boms')
+    ? DB::table('part_boms')->distinct()->pluck('parent_part_no')->toArray()
+    : [];
 
-        $parentParts = DB::table('parts')->where('next_process', 'WELDING')->orderBy('part_no', 'asc')->get();
+$availableParts = DB::table('parts')
+    ->where('next_process', 'WELDING')
+    ->orWhereIn('part_no', $bomParents)
+    ->orderBy('part_no', 'asc')
+    ->get();
+
+       // UBAH BARIS INI:
+        $parentParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
         $wipParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
         $rmMaterials = DB::table('rm_stocks')->select('material_code', 'material_name')->distinct()->orderBy('material_code', 'asc')->get();
 
