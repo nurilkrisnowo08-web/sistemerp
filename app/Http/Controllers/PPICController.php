@@ -1650,7 +1650,7 @@ class PPICController extends Controller
 
         $allBatches = collect();
 
-        foreach ($batchesRaw as $batch) {
+      foreach ($batchesRaw as $batch) {
             $boms = Schema::hasTable('part_boms')
                 ? DB::table('part_boms')->where('parent_part_no', $batch->part_no)->get()
                 : collect();
@@ -1665,6 +1665,19 @@ class PPICController extends Controller
                 $item->qty_ambil_pcs     = $batch->qty_masuk;
                 $allBatches->push($item);
             } else {
+                // Jika BOM hanya berisi RM (Nut/Baut) tanpa komponen WIP,
+                // otomatis cetak juga part induknya sendiri dari WIP-STAMPING
+                if ($boms->where('source_type', 'WIP')->isEmpty()) {
+                    $itemWip = clone $batch;
+                    $itemWip->display_part_no   = $batch->part_no;
+                    $itemWip->display_part_name = $batch->part_name;
+                    $itemWip->customer_code     = $batch->part_cust ?? 'SAI';
+                    $itemWip->no_surat_jalan    = 'WIP-STAMPING';
+                    $itemWip->coil_id = '-'; $itemWip->spec = '-'; $itemWip->size = '-';
+                    $itemWip->qty_ambil_pcs     = $batch->qty_masuk;
+                    $allBatches->push($itemWip);
+                }
+
                 foreach ($boms as $bom) {
                     $item = clone $batch;
                     $item->display_part_no   = $bom->component_code;
