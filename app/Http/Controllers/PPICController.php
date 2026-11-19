@@ -1856,6 +1856,9 @@ class PPICController extends Controller
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG BOM)
      */
+    /**
+     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG RINCIAN BOM)
+     */
     public function checkWipStockAjax(Request $request, $part_no = null)
     {
         try {
@@ -1873,19 +1876,31 @@ class PPICController extends Controller
                 ? DB::table('part_boms')->where('parent_part_no', $cleanPart)->get()
                 : collect();
 
+            $bomDetails = [];
+
             if ($boms->isEmpty()) {
                 $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
                 $wipStock = $fg ? (int)$fg->welding_stock : 0;
             } else {
-                // Hitung kapasitas maksimal produksi berdasarkan komponen BOM yang paling sedikit
                 $maxBuildable = null;
                 foreach ($boms as $bom) {
                     $qtyPerUnit = max(1, (int)$bom->qty_per_unit);
                     if ($bom->source_type === 'WIP') {
                         $avail = (int)(DB::table('finished_goods')->where('part_no', $bom->component_code)->value('welding_stock') ?? 0);
+                        $compName = DB::table('parts')->where('part_no', $bom->component_code)->value('part_name') ?? '-';
                     } else {
                         $avail = (int)DB::table('rm_stocks')->where('material_code', $bom->component_code)->where('stock_pcs', '>', 0)->sum('stock_pcs');
+                        $compName = DB::table('rm_stocks')->where('material_code', $bom->component_code)->value('material_name') ?? '-';
                     }
+
+                    $bomDetails[] = [
+                        'component_code'  => $bom->component_code,
+                        'component_name'  => $compName,
+                        'source_type'     => $bom->source_type,
+                        'qty_per_unit'    => $qtyPerUnit,
+                        'available_stock' => $avail,
+                    ];
+
                     $possible = (int) floor($avail / $qtyPerUnit);
                     $maxBuildable = is_null($maxBuildable) ? $possible : min($maxBuildable, $possible);
                 }
@@ -1893,9 +1908,11 @@ class PPICController extends Controller
             }
 
             return response()->json([
-                'status' => 'success',
-                'wip_stock' => $wipStock,
-                'customer_code' => $customerCode
+                'status'        => 'success',
+                'wip_stock'     => $wipStock,
+                'customer_code' => $customerCode,
+                'is_bom'        => $boms->isNotEmpty(),
+                'bom_details'   => $bomDetails
             ]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
