@@ -2510,25 +2510,21 @@ class PPICController extends Controller
      * 21. MASTER BOM WELDING (INDEX, STORE, DESTROY)
      */
     public function bomIndex()
-    {
-       // UBAH BARIS INI:
-$bomParents = Schema::hasTable('part_boms')
-    ? DB::table('part_boms')->distinct()->pluck('parent_part_no')->toArray()
-    : [];
+{
+    $boms = DB::table('part_boms')
+        ->leftJoin('parts', 'part_boms.parent_part_no', '=', 'parts.part_no')
+        ->select('part_boms.*', 'parts.part_name as parent_name', 'parts.customer_code')
+        ->orderBy('part_boms.parent_part_no', 'asc')
+        ->orderBy('part_boms.id', 'asc')
+        ->get()
+        ->groupBy('parent_part_no');
 
-$availableParts = DB::table('parts')
-    ->where('next_process', 'WELDING')
-    ->orWhereIn('part_no', $bomParents)
-    ->orderBy('part_no', 'asc')
-    ->get();
+    $parentParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
+    $wipParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
+    $rmMaterials = DB::table('rm_stocks')->select('material_code', 'material_name')->distinct()->orderBy('material_code', 'asc')->get();
 
-       // UBAH BARIS INI:
-        $parentParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
-        $wipParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
-        $rmMaterials = DB::table('rm_stocks')->select('material_code', 'material_name')->distinct()->orderBy('material_code', 'asc')->get();
-
-        return view('PPIC.bom_index', compact('boms', 'parentParts', 'wipParts', 'rmMaterials'));
-    }
+    return view('PPIC.bom_index', compact('boms', 'parentParts', 'wipParts', 'rmMaterials'));
+}
 
    public function bomStore(Request $request)
 {
