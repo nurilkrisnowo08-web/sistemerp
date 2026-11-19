@@ -170,11 +170,9 @@
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content modal-industrial shadow-2xl border-warning">
                 <div class="modal-header bg-warning text-dark p-4 border-0"><h5 class="modal-title font-weight-black" style="font-family: 'Orbitron'">REVISI_PRODUCTION_PLAN</h5><button type="button" class="close text-dark" data-dismiss="modal"><span>&times;</span></button></div>
-                {{-- GANTI BARIS INI --}}
                 <form action="{{ route('ppic.welding.update_wos', $plan->id) }}" method="POST">
-                     @csrf
-                     @method('PUT')
                     @csrf
+                    @method('PUT')
                     <div class="modal-body p-5">
                         <div class="alert alert-info border-0 mb-4 rounded-lg"><i class="fas fa-info-circle mr-2"></i> <strong>Tips:</strong> Kosongkan (Isi angka 0) pada kedua target Shift untuk MENGHAPUS / MEMBATALKAN jadwal secara otomatis. WIP akan kembali utuh.</div>
                         <div class="row">
@@ -230,31 +228,106 @@
 <script>
     $(document).ready(function() {
         let currentWipStock = 0;
-        
-        // 1. Buat kotak notifikasi dinamis di atas tombol "EXECUTE PRODUCTION PLAN"
-        let submitBtn = $('button:contains("EXECUTE PRODUCTION PLAN")');
-        if(submitBtn.length === 0) {
-             submitBtn = $('button[type="submit"]'); // Fallback jika teks tombol berbeda
+        let isBomPart = false;
+        let bomDetails = [];
+
+        const modalReg = $('#modalRegisterPlan');
+        let submitBtn = modalReg.find('button:contains("EXECUTE PRODUCTION PLAN")');
+        if (submitBtn.length === 0) {
+            submitBtn = modalReg.find('button[type="submit"]');
         }
-        submitBtn.parent().prepend('<div id="wipValidationMsg" class="w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>');
-        
-        // 2. Fungsi inti kalkulasi Real-Time
+
+        if (modalReg.find('#wipValidationMsg').length === 0) {
+            submitBtn.parent().prepend('<div id="wipValidationMsg" class="w-100 text-center mb-3" style="font-size:12px; transition: 0.3s;"></div>');
+        }
+
         function validateWipStock() {
-            // Mengambil angka dari input Shift 1 dan Shift 2 (sesuaikan dengan name di form kamu)
-            let s1 = parseInt($('input[name="s1_plan_reg"]').val()) || 0;
-            let s2 = parseInt($('input[name="s2_plan_reg"]').val()) || 0;
-            
+            let s1 = parseInt($('#inp_s1_new').val()) || 0;
+            let s2 = parseInt($('#inp_s2_new').val()) || 0;
             let totalTarget = s1 + s2;
             let msgBox = $('#wipValidationMsg');
-            
-            if (totalTarget === 0) {
-                msgBox.html('<span class="text-muted font-weight-bold"><i class="fas fa-info-circle"></i> Input target qty untuk cek ketersediaan WIP Stamping.</span>');
-                submitBtn.prop('disabled', true);
+
+            // === JIKA PART PUNYA BOM (MULTI-KOMPONEN WIP & RM) ===
+            if (isBomPart && bomDetails.length > 0) {
+                let allSafe = true;
+                let rowsHtml = '';
+
+                bomDetails.forEach(function(comp) {
+                    let needQty = totalTarget * comp.qty_per_unit;
+                    let isEnough = comp.available_stock >= needQty;
+                    if (totalTarget > 0 && !isEnough) {
+                        allSafe = false;
+                    }
+
+                    let badgeSource = comp.source_type === 'WIP'
+                        ? '<span class="badge badge-primary px-2">WIP</span>'
+                        : '<span class="badge badge-warning px-2">RM</span>';
+
+                    let statusBadge = totalTarget === 0
+                        ? '<span class="badge badge-secondary">STANDBY</span>'
+                        : (isEnough
+                            ? '<span class="badge badge-success">✅ AMAN</span>'
+                            : '<span class="badge badge-danger">❌ KURANG</span>');
+
+                    rowsHtml += `
+                        <tr>
+                            <td class="text-left"><b>${comp.component_code}</b><br><small class="text-muted">${comp.component_name}</small></td>
+                            <td>${badgeSource}</td>
+                            <td>x${comp.qty_per_unit}</td>
+                            <td><b>${needQty.toLocaleString('id-ID')}</b> Pcs</td>
+                            <td><b class="${(totalTarget > 0 && !isEnough) ? 'text-danger' : 'text-success'}">${comp.available_stock.toLocaleString('id-ID')}</b> Pcs</td>
+                            <td>${statusBadge}</td>
+                        </tr>
+                    `;
+                });
+
+                let alertClass = totalTarget === 0
+                    ? 'alert-light border'
+                    : (allSafe ? 'alert-success' : 'alert-danger');
+
+                let headerTitle = totalTarget === 0
+                    ? 'ℹ️ <b>RINCIAN STOK KOMPONEN BOM</b> (Input target Shift 1 / Shift 2 untuk validasi)'
+                    : (allSafe
+                        ? `✅ <b>SEMUA KOMPONEN BOM AMAN!</b> (Target: ${totalTarget.toLocaleString('id-ID')} Pcs)`
+                        : `❌ <b>PLAN DITOLAK: ADA KOMPONEN BOM YANG KURANG!</b> (Target: ${totalTarget.toLocaleString('id-ID')} Pcs)`);
+
+                msgBox.html(`
+                    <div class="alert ${alertClass} p-3 m-0 shadow-sm text-left" style="border-radius:12px;">
+                        <div class="text-center mb-2">${headerTitle}</div>
+                        <div class="table-responsive bg-white rounded border">
+                            <table class="table table-sm mb-0 text-center" style="font-size:11.5px;">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="text-left">Komponen</th>
+                                        <th>Sumber</th>
+                                        <th>Rasio</th>
+                                        <th>Butuh</th>
+                                        <th>Tersedia</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `);
+
+                if (totalTarget === 0 || !allSafe) {
+                    submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
+                } else {
+                    submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
+                }
                 return;
             }
-            
+
+            // === JIKA PART WELDING BIASA (1:1 TANPA BOM) ===
+            if (totalTarget === 0) {
+                msgBox.html('<span class="text-muted font-weight-bold"><i class="fas fa-info-circle"></i> Input target qty untuk cek ketersediaan WIP Stamping. (Tersedia: ' + currentWipStock + ' Pcs)</span>');
+                submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
+                return;
+            }
+
             if (totalTarget > currentWipStock) {
-                // NOTIFIKASI JIKA STOK WIP KURANG (TOMBOL MATI)
                 msgBox.html(`
                     <div class="alert alert-danger p-2 m-0 border-0 shadow-sm animate__animated animate__headShake" style="border-radius:10px;">
                         <b>❌ STOK WIP WELDING TIDAK CUKUP!</b><br>
@@ -263,7 +336,6 @@
                 `);
                 submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
             } else {
-                // NOTIFIKASI JIKA STOK WIP AMAN (TOMBOL AKTIF)
                 msgBox.html(`
                     <div class="alert alert-success p-2 m-0 border-0 shadow-sm" style="border-radius:10px; background-color: #d1fae5; color: #065f46;">
                         <b>✅ STOK WIP AMAN!</b><br>
@@ -273,27 +345,37 @@
                 submitBtn.prop('disabled', false).removeClass('btn-secondary').addClass('btn-primary');
             }
         }
-        
-        // 3. Auto-Trigger saat nama Part dipilih di Dropdown
-        $('select[name="part_no"]').on('change', function() {
-            let partNo = $(this).val();
+
+        function fetchStock(partNo) {
             if (!partNo) return;
-            
-            $('#wipValidationMsg').html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek stok WIP Stamping di Gudang...</span>');
+            $('#wipValidationMsg').html('<span class="text-warning font-weight-bold"><i class="fas fa-spinner fa-spin"></i> Mengecek stok WIP & RM di Gudang...</span>');
             submitBtn.prop('disabled', true);
-            
+
             $.get('/planning/ppic/check-wip-stock/' + encodeURIComponent(partNo), function(res) {
                 if (res.status === 'success') {
                     currentWipStock = res.wip_stock;
-                    validateWipStock(); // Panggil ulang untuk kalkulasi
+                    isBomPart = res.is_bom === true;
+                    bomDetails = res.bom_details || [];
+                    validateWipStock();
                 }
             }).fail(function() {
                 $('#wipValidationMsg').html('<span class="text-danger font-weight-bold"><i class="fas fa-exclamation-triangle"></i> Gagal terhubung ke database.</span>');
             });
+        }
+
+        // Trigger saat ganti part di modal Register
+        modalReg.find('select[name="part_no"]').on('change', function() {
+            fetchStock($(this).val());
         });
-        
-        // 4. Auto-Trigger saat angka target mulai diketik
-        $('input[name="s1_plan_reg"], input[name="s2_plan_reg"], input[name="s1_plan_ot"], input[name="s2_plan_ot"]').on('input', function() {
+
+        // Otomatis cek stok saat modal Register baru dibuka
+        modalReg.on('shown.bs.modal', function() {
+            let selectedPart = modalReg.find('select[name="part_no"]').val();
+            if (selectedPart) fetchStock(selectedPart);
+        });
+
+        // Trigger saat ketik target Shift 1 / Shift 2 di modal Register
+        $('#inp_s1_new, #inp_s2_new').on('input', function() {
             validateWipStock();
         });
     });
