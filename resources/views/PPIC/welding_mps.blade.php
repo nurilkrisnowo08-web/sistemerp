@@ -76,7 +76,7 @@
                 <thead>
                     <tr>
                         <th class="text-center">Pos</th><th>Part Identification</th><th class="text-center">M/P</th>
-                        <th class="text-center">Quota</th><th class="text-center">Actual</th><th class="text-center">Gap</th>
+                        <th class="text-center">PLANNING</th><th class="text-center">Actual</th><th class="text-center">Gap</th>
                         <th class="text-center">T-Start</th><th class="text-center">T-Finish</th><th class="text-center">Status</th><th class="text-right pr-4">Action</th>
                     </tr>
                 </thead>
