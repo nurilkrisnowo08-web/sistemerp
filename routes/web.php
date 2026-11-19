@@ -195,6 +195,9 @@ Route::get('/ppic/inventory-trace', [App\Http\Controllers\PPICController::class,
 Route::get('/ppic/inventory-trace/print', [App\Http\Controllers\PPICController::class, 'printInventoryTrace'])->name('ppic.inventory.trace.print');
 Route::get('/ppic/inventory-trace/print-summary', [App\Http\Controllers\PPICController::class, 'printInventorySummary'])->name('ppic.inventory.trace.print_summary');
 Route::get('/ppic/sto/print-detail/{id}', [App\Http\Controllers\PPICController::class, 'printStoDetail'])->name('ppic.sto.print_detail');
+Route::get('/ppic/bom', [PPICController::class, 'bomIndex'])->name('ppic.bom.index');
+Route::post('/ppic/bom/store', [PPICController::class, 'bomStore'])->name('ppic.bom.store');
+Route::delete('/ppic/bom/{id}', [PPICController::class, 'bomDestroy'])->name('ppic.bom.destroy');
 // REVISI / UPDATE WOS WELDING
 Route::put('/ppic/welding/mps/update/{id}', [App\Http\Controllers\PPICController::class, 'updateWosWelding'])->name('ppic.welding.update_wos');
 // ROUTE WELDING YANG WAJIB ADA BIAR BUTTON TIDAK ERROR

@@ -1186,7 +1186,7 @@ class PPICController extends Controller
     }
     
     /**
-     * 10. STORE MPS WELDING (SIMPAN JADWAL & AUTO-DEPLOY KE TERMINAL)
+     * 10. STORE MPS WELDING (MENDUKUNG BOM WIP & RM + FALLBACK 1:1)
      */
     public function weldingMpsStore(Request $request)
     {
@@ -1208,11 +1208,65 @@ class PPICController extends Controller
             $partData = DB::table('parts')->where('part_no', $cleanPart)->first();
             $actualCustomerCode = $partData ? $partData->customer_code : ($request->customer_code ?? 'SAI');
 
-            $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
-            $wipStock = $fg ? (int)$fg->welding_stock : 0;
+            // CEK APAKAH PART MEMILIKI BOM (RESEP KOMPONEN)
+            $boms = Schema::hasTable('part_boms')
+                ? DB::table('part_boms')->where('parent_part_no', $cleanPart)->get()
+                : collect();
 
-            if ($wipStock < $total_target) {
-                throw new \Exception("❌ PLAN DITOLAK: STOK WIP KURANG! Butuh {$total_target} Pcs, Tersedia {$wipStock} Pcs.");
+            if ($boms->isEmpty()) {
+                // CARA LAMA (1:1)
+                $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
+                $wipStock = $fg ? (int)$fg->welding_stock : 0;
+
+                if ($wipStock < $total_target) {
+                    throw new \Exception("❌ PLAN DITOLAK: STOK WIP KURANG! Butuh {$total_target} Pcs, Tersedia {$wipStock} Pcs.");
+                }
+
+                DB::table('finished_goods')->where('part_no', $cleanPart)->decrement('welding_stock', $total_target);
+            } else {
+                // CARA BARU (BOM) - Validasi semua komponen terlebih dahulu
+                foreach ($boms as $bom) {
+                    $needQty = $total_target * (int)$bom->qty_per_unit;
+
+                    if ($bom->source_type === 'WIP') {
+                        $fgComp = DB::table('finished_goods')->where('part_no', $bom->component_code)->first();
+                        $avail = $fgComp ? (int)$fgComp->welding_stock : 0;
+                        if ($avail < $needQty) {
+                            throw new \Exception("❌ STOK WIP KOMPONEN [{$bom->component_code}] KURANG! Butuh {$needQty} Pcs, Tersedia {$avail} Pcs.");
+                        }
+                    } elseif ($bom->source_type === 'RM') {
+                        $avail = (int) DB::table('rm_stocks')
+                            ->where('material_code', $bom->component_code)
+                            ->where('stock_pcs', '>', 0)
+                            ->sum('stock_pcs');
+                        if ($avail < $needQty) {
+                            throw new \Exception("❌ STOK RM/NUT [{$bom->component_code}] KURANG! Butuh {$needQty} Pcs, Tersedia {$avail} Pcs.");
+                        }
+                    }
+                }
+
+                // Eksekusi pemotongan stok semua komponen BOM
+                foreach ($boms as $bom) {
+                    $needQty = $total_target * (int)$bom->qty_per_unit;
+
+                    if ($bom->source_type === 'WIP') {
+                        DB::table('finished_goods')->where('part_no', $bom->component_code)->decrement('welding_stock', $needQty);
+                    } elseif ($bom->source_type === 'RM') {
+                        $rmRows = DB::table('rm_stocks')
+                            ->where('material_code', $bom->component_code)
+                            ->where('stock_pcs', '>', 0)
+                            ->orderBy('id', 'asc')
+                            ->get();
+
+                        $rem = $needQty;
+                        foreach ($rmRows as $rm) {
+                            if ($rem <= 0) break;
+                            $take = min((int)$rm->stock_pcs, $rem);
+                            DB::table('rm_stocks')->where('id', $rm->id)->decrement('stock_pcs', $take);
+                            $rem -= $take;
+                        }
+                    }
+                }
             }
 
             $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
@@ -1237,9 +1291,6 @@ class PPICController extends Controller
 
             $mesin = DB::table('line_welding')->where('kode_line', $request->line_code)->first();
             $mesin_id = $mesin ? $mesin->id : null;
-
-            DB::table('finished_goods')->where('part_no', $cleanPart)->decrement('welding_stock', $total_target);
-
             $ket = "AUTO-DEPLOY FROM PPIC";
 
             if ($target_s1 > 0) {
@@ -1273,7 +1324,7 @@ class PPICController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dideploy ke Terminal! Total {$total_target} Pcs WIP otomatis dipotong dari Gudang.");
+            return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dideploy ke Terminal! Total {$total_target} Pcs (dan komponen terkait) otomatis dipotong dari Gudang.");
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', $e->getMessage());
@@ -1281,7 +1332,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 10B. UPDATE & REVISI WOS WELDING
+     * 10B. UPDATE & REVISI WOS WELDING (MENDUKUNG BOM WIP & RM + FALLBACK 1:1)
      */
     public function updateWosWelding(Request $request, $id)
     {
@@ -1308,27 +1359,86 @@ class PPICController extends Controller
             $new_target_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
             $new_total = $new_target_s1 + $new_target_s2;
 
+            $boms = Schema::hasTable('part_boms')
+                ? DB::table('part_boms')->where('parent_part_no', $plan->part_no)->get()
+                : collect();
+
+            // 1. JIKA REVISI JADI 0 (BATAL)
             if ($new_total <= 0) {
-                DB::table('finished_goods')->where('part_no', $plan->part_no)->increment('welding_stock', $old_total);
+                if ($boms->isEmpty()) {
+                    DB::table('finished_goods')->where('part_no', $plan->part_no)->increment('welding_stock', $old_total);
+                } else {
+                    foreach ($boms as $bom) {
+                        $returnQty = $old_total * (int)$bom->qty_per_unit;
+                        if ($bom->source_type === 'WIP') {
+                            DB::table('finished_goods')->where('part_no', $bom->component_code)->increment('welding_stock', $returnQty);
+                        } else {
+                            $rmTarget = DB::table('rm_stocks')->where('material_code', $bom->component_code)->orderBy('id', 'desc')->first();
+                            if ($rmTarget) {
+                                DB::table('rm_stocks')->where('id', $rmTarget->id)->increment('stock_pcs', $returnQty);
+                            }
+                        }
+                    }
+                }
+
                 DB::table('welding_batches')->where('part_no', $plan->part_no)->whereDate('created_at', $plan->plan_date)->delete();
                 DB::table('welding_plans')->where('id', $id)->delete();
                 
                 DB::commit();
-                return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dibatalkan (Target 0). Stok WIP dikembalikan ke Gudang!");
+                return redirect()->back()->with('success', "✅ Jadwal Welding Berhasil Dibatalkan (Target 0). Seluruh stok komponen (WIP/RM) dikembalikan ke Gudang!");
             }
 
+            // 2. JIKA REVISI BERUBAH JUMLAH
             $selisih = $new_total - $old_total;
-            if ($selisih > 0) {
-                $fg = DB::table('finished_goods')->where('part_no', $plan->part_no)->first();
-                $wipStock = $fg ? (int)$fg->welding_stock : 0;
-                
-                if ($wipStock < $selisih) {
-                    throw new \Exception("❌ REVISI DITOLAK! Sisa stok WIP di gudang hanya {$wipStock} Pcs, tidak cukup untuk menambah {$selisih} Pcs.");
+            if ($selisih != 0) {
+                if ($boms->isEmpty()) {
+                    if ($selisih > 0) {
+                        $fg = DB::table('finished_goods')->where('part_no', $plan->part_no)->first();
+                        $wipStock = $fg ? (int)$fg->welding_stock : 0;
+                        
+                        if ($wipStock < $selisih) {
+                            throw new \Exception("❌ REVISI DITOLAK! Sisa stok WIP di gudang hanya {$wipStock} Pcs, tidak cukup untuk menambah {$selisih} Pcs.");
+                        }
+                        DB::table('finished_goods')->where('part_no', $plan->part_no)->decrement('welding_stock', $selisih);
+                    } else {
+                        DB::table('finished_goods')->where('part_no', $plan->part_no)->increment('welding_stock', abs($selisih));
+                    }
+                } else {
+                    foreach ($boms as $bom) {
+                        $diffQty = abs($selisih) * (int)$bom->qty_per_unit;
+                        if ($selisih > 0) {
+                            if ($bom->source_type === 'WIP') {
+                                $avail = (int)(DB::table('finished_goods')->where('part_no', $bom->component_code)->value('welding_stock') ?? 0);
+                                if ($avail < $diffQty) {
+                                    throw new \Exception("❌ REVISI DITOLAK! WIP [{$bom->component_code}] kurang. Butuh +{$diffQty} Pcs, Sisa {$avail} Pcs.");
+                                }
+                                DB::table('finished_goods')->where('part_no', $bom->component_code)->decrement('welding_stock', $diffQty);
+                            } else {
+                                $avail = (int)DB::table('rm_stocks')->where('material_code', $bom->component_code)->where('stock_pcs', '>', 0)->sum('stock_pcs');
+                                if ($avail < $diffQty) {
+                                    throw new \Exception("❌ REVISI DITOLAK! RM/Nut [{$bom->component_code}] kurang. Butuh +{$diffQty} Pcs, Sisa {$avail} Pcs.");
+                                }
+                                $rem = $diffQty;
+                                $rmRows = DB::table('rm_stocks')->where('material_code', $bom->component_code)->where('stock_pcs', '>', 0)->orderBy('id', 'asc')->get();
+                                foreach ($rmRows as $rm) {
+                                    if ($rem <= 0) break;
+                                    $take = min((int)$rm->stock_pcs, $rem);
+                                    DB::table('rm_stocks')->where('id', $rm->id)->decrement('stock_pcs', $take);
+                                    $rem -= $take;
+                                }
+                            }
+                        } else {
+                            if ($bom->source_type === 'WIP') {
+                                DB::table('finished_goods')->where('part_no', $bom->component_code)->increment('welding_stock', $diffQty);
+                            } else {
+                                $rmTarget = DB::table('rm_stocks')->where('material_code', $bom->component_code)->orderBy('id', 'desc')->first();
+                                if ($rmTarget) {
+                                    DB::table('rm_stocks')->where('id', $rmTarget->id)->increment('stock_pcs', $diffQty);
+                                }
+                            }
+                        }
+                    }
                 }
-                DB::table('finished_goods')->where('part_no', $plan->part_no)->decrement('welding_stock', $selisih);
-            } elseif ($selisih < 0) {
-                $raw_return = abs($selisih);
-                DB::table('finished_goods')->where('part_no', $plan->part_no)->increment('welding_stock', $raw_return);
             }
 
             DB::table('welding_plans')->where('id', $id)->update([
@@ -1379,7 +1489,7 @@ class PPICController extends Controller
             }
 
             DB::commit();
-            return redirect()->back()->with('success', "✅ Revisi Welding Sukses! Target diperbarui dan Stok WIP disesuaikan otomatis.");
+            return redirect()->back()->with('success', "✅ Revisi Welding Sukses! Target diperbarui dan Stok Komponen (WIP/RM) disesuaikan otomatis.");
         } catch (\Exception $e) {
             DB::rollBack(); return redirect()->back()->with('error', $e->getMessage());
         }
@@ -1448,7 +1558,7 @@ class PPICController extends Controller
                 $p->actual_end   = ($batchData->status == 'COMPLETED') ? date('H:i', strtotime($batchData->updated_at)) : '';
             } else {
                 $p->no_produksi = '-';
-                $p->actual_ok = 0; $plan->actual_ng = 0; $p->actual_ret = 0;
+                $p->actual_ok = 0; $p->actual_ng = 0; $p->actual_ret = 0;
                 $p->actual_start = ''; $p->actual_end = '';
             }
         }
@@ -1457,7 +1567,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 12. PRINT SERAH TERIMA WELDING (WIP)
+     * 12. PRINT SERAH TERIMA WELDING (WIP & BOM KOMPONEN)
      */
     public function printSerahTerimaWelding(Request $request, $date, $line_code)
     {
@@ -1484,27 +1594,38 @@ class PPICController extends Controller
         $allBatches = collect();
 
         foreach ($batchesRaw as $batch) {
-            $item = clone $batch;
-            
-            $item->display_part_no = $batch->part_no;
-            $item->display_part_name = $batch->part_name;
-            $item->customer_code = $batch->part_cust ?? 'SAI';
-            
-            $item->no_surat_jalan = 'WIP-STAMPING';
-            $item->coil_id = '-';
-            $item->spec = '-';
-            $item->size = '-';
-            
-            $item->qty_ambil_pcs = $batch->qty_masuk;
-            
-            $allBatches->push($item);
+            $boms = Schema::hasTable('part_boms')
+                ? DB::table('part_boms')->where('parent_part_no', $batch->part_no)->get()
+                : collect();
+
+            if ($boms->isEmpty()) {
+                $item = clone $batch;
+                $item->display_part_no   = $batch->part_no;
+                $item->display_part_name = $batch->part_name;
+                $item->customer_code     = $batch->part_cust ?? 'SAI';
+                $item->no_surat_jalan    = 'WIP-STAMPING';
+                $item->coil_id = '-'; $item->spec = '-'; $item->size = '-';
+                $item->qty_ambil_pcs     = $batch->qty_masuk;
+                $allBatches->push($item);
+            } else {
+                foreach ($boms as $bom) {
+                    $item = clone $batch;
+                    $item->display_part_no   = $bom->component_code;
+                    $item->display_part_name = "COMP FOR: {$batch->part_no} (x{$bom->qty_per_unit})";
+                    $item->customer_code     = $batch->part_cust ?? 'SAI';
+                    $item->no_surat_jalan    = $bom->source_type === 'WIP' ? 'WIP-STAMPING' : 'RM-WAREHOUSE';
+                    $item->coil_id = '-'; $item->spec = '-'; $item->size = '-';
+                    $item->qty_ambil_pcs     = $batch->qty_masuk * (int)$bom->qty_per_unit;
+                    $allBatches->push($item);
+                }
+            }
         }
 
         $batchesS1 = $allBatches->filter(fn($b) => in_array($b->shift, ['Pagi', 'S1', 'Shift 1']))->values();
         $batchesS2 = $allBatches->filter(fn($b) => in_array($b->shift, ['Malam', 'S2', 'Shift 2']))->values();
         $batches = $allBatches;
 
-       return view('PPIC.print_serah_terima_welding', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
+        return view('PPIC.print_serah_terima_welding', compact('batches', 'batchesS1', 'batchesS2', 'date', 'shift', 'line_code'));
     }
 
     /**
@@ -1714,7 +1835,7 @@ class PPICController extends Controller
     }
     
     /**
-     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN)
+     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG BOM)
      */
     public function checkWipStockAjax(Request $request, $part_no = null)
     {
@@ -1729,8 +1850,28 @@ class PPICController extends Controller
             $partData = DB::table('parts')->where('part_no', $cleanPart)->first();
             $customerCode = $partData ? $partData->customer_code : 'AUTO DETECT';
 
-            $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
-            $wipStock = $fg ? (int)$fg->welding_stock : 0;
+            $boms = Schema::hasTable('part_boms')
+                ? DB::table('part_boms')->where('parent_part_no', $cleanPart)->get()
+                : collect();
+
+            if ($boms->isEmpty()) {
+                $fg = DB::table('finished_goods')->where('part_no', $cleanPart)->first();
+                $wipStock = $fg ? (int)$fg->welding_stock : 0;
+            } else {
+                // Hitung kapasitas maksimal produksi berdasarkan komponen BOM yang paling sedikit
+                $maxBuildable = null;
+                foreach ($boms as $bom) {
+                    $qtyPerUnit = max(1, (int)$bom->qty_per_unit);
+                    if ($bom->source_type === 'WIP') {
+                        $avail = (int)(DB::table('finished_goods')->where('part_no', $bom->component_code)->value('welding_stock') ?? 0);
+                    } else {
+                        $avail = (int)DB::table('rm_stocks')->where('material_code', $bom->component_code)->where('stock_pcs', '>', 0)->sum('stock_pcs');
+                    }
+                    $possible = (int) floor($avail / $qtyPerUnit);
+                    $maxBuildable = is_null($maxBuildable) ? $possible : min($maxBuildable, $possible);
+                }
+                $wipStock = $maxBuildable ?? 0;
+            }
 
             return response()->json([
                 'status' => 'success',
@@ -1922,7 +2063,6 @@ class PPICController extends Controller
         $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
 
-        // Tarik Histori Log
         $partNos = $parts->pluck('part_no')->toArray();
         $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
@@ -2012,6 +2152,7 @@ class PPICController extends Controller
 
         return view('PPIC.print_inventory_trace', compact('parts', 'search', 'selectedCustomer', 'selectedPart'));
     }
+
     /**
      * 15. PRINT INVENTORY TRACEABILITY (SUMMARY ONLY)
      */
@@ -2123,7 +2264,6 @@ class PPICController extends Controller
         $search = $request->search;
         $selectedCustomer = $request->customer; 
         
-        // Tarik data Parts & stok Finish Good / WIP saat ini
         $query = DB::table('parts')
             ->leftJoin('finished_goods', 'parts.part_no', '=', 'finished_goods.part_no')
             ->select('parts.part_no', 'parts.part_name', 'parts.customer_code', 'finished_goods.actual_stock as fg_stock', 'finished_goods.welding_stock as wip_stock');
@@ -2140,7 +2280,6 @@ class PPICController extends Controller
         $parts = $query->orderBy('parts.part_no', 'asc')->get();
         $customersList = DB::table('parts')->distinct()->pluck('customer_code');
 
-        // Mapping dari master_materials
         $partMaterials = DB::table('master_materials')->get()->groupBy('part_no');
         $allRmStocksRaw = DB::table('rm_stocks')->get();
 
@@ -2179,7 +2318,6 @@ class PPICController extends Controller
             $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
         }
 
-        // ✨ TARIK DATA REKAP STO (HISTORY) DARI DATABASE ✨
         $historySto = [];
         if (Schema::hasTable('sto_logs')) {
             $historySto = DB::table('sto_logs')->orderBy('created_at', 'desc')->get();
@@ -2249,7 +2387,6 @@ class PPICController extends Controller
             $p->rm_stock = $myOwnStocks->sum('stock_pcs'); 
         }
         
-        // Dummy Riwayat STO Bulan Ini untuk ditampilkan di bawah kertas
         $historySto = [];
         if (Schema::hasTable('sto_logs')) {
             $historySto = DB::table('sto_logs')->orderBy('created_at', 'desc')->get();
@@ -2272,10 +2409,8 @@ class PPICController extends Controller
                 throw new \Exception("Tidak ada data part yang diinput.");
             }
 
-            // Buat Nomor Dokumen STO (Format: STO-YYMM-XXX)
             $prefix = 'STO-' . date('ym') . '-';
             
-            // Cek tabel sto_logs (hanya jalankan pencarian jika tabel sudah di-migrate)
             $nextNum = 1;
             if (Schema::hasTable('sto_logs')) {
                 $lastSto = DB::table('sto_logs')->where('doc_no', 'LIKE', $prefix . '%')->orderBy('id', 'desc')->first();
@@ -2283,18 +2418,15 @@ class PPICController extends Controller
             }
             $docNo = $prefix . str_pad($nextNum, 3, '0', STR_PAD_LEFT);
 
-            // 1. Simpan Header STO
-            // Kalau tabelnya belum ada, sistem akan otomatis melempar Exception dan kita tangkap dengan sopan di Catch
             $stoId = DB::table('sto_logs')->insertGetId([
                 'doc_no' => $docNo,
                 'period' => date('Y-m'),
                 'created_by' => auth()->user()->name ?? 'Administrator',
-                'status' => 'RECORDED', // Hanya dicatat, tidak mengubah stok live
+                'status' => 'RECORDED',
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
 
-            // 2. Simpan Detail STO
             $rm_sys = $request->input('rm_sys');
             $wip_sys = $request->input('wip_sys');
             $fg_sys = $request->input('fg_sys');
@@ -2308,19 +2440,15 @@ class PPICController extends Controller
                 $details[] = [
                     'sto_id' => $stoId,
                     'part_no' => $partNo,
-                    
                     'rm_sys' => $rm_sys[$idx] ?? 0,
                     'rm_act' => $rm_act[$idx] ?? 0,
                     'rm_diff' => ($rm_act[$idx] ?? 0) - ($rm_sys[$idx] ?? 0),
-                    
                     'wip_sys' => $wip_sys[$idx] ?? 0,
                     'wip_act' => $wip_act[$idx] ?? 0,
                     'wip_diff' => ($wip_act[$idx] ?? 0) - ($wip_sys[$idx] ?? 0),
-                    
                     'fg_sys' => $fg_sys[$idx] ?? 0,
                     'fg_act' => $fg_act[$idx] ?? 0,
                     'fg_diff' => ($fg_act[$idx] ?? 0) - ($fg_sys[$idx] ?? 0),
-                    
                     'created_at' => now()
                 ];
             }
@@ -2331,7 +2459,6 @@ class PPICController extends Controller
             return redirect()->back()->with('success', "✅ Laporan STO Berhasil Disimpan! Dokumen {$docNo} tercatat sebagai riwayat bulanan tanpa merubah stok di database.");
         } catch (\Exception $e) {
             DB::rollBack();
-            // Pesan kalau tabel STO belum dibuat di database
             if (str_contains($e->getMessage(), 'Base table or view not found')) {
                 return redirect()->back()->with('error', "Fitur Simpan STO Backend sudah aktif, tapi tabel 'sto_logs' & 'sto_log_details' belum dibuat di database MySQL Anda. Silakan hubungi IT/Programmer untuk jalankan migration.");
             }
@@ -2344,13 +2471,11 @@ class PPICController extends Controller
      */
     public function stoDetail($id)
     {
-        // Cari Header STO
         $sto = DB::table('sto_logs')->where('id', $id)->first();
         if (!$sto) {
             return redirect()->route('ppic.sto.index')->with('error', 'Dokumen STO tidak ditemukan.');
         }
 
-        // Tarik Detail Part yang disimpan beserta nama part-nya
         $details = DB::table('sto_log_details')
             ->leftJoin('parts', 'sto_log_details.part_no', '=', 'parts.part_no')
             ->select('sto_log_details.*', 'parts.part_name', 'parts.customer_code')
@@ -2366,13 +2491,11 @@ class PPICController extends Controller
      */
     public function printStoDetail($id)
     {
-        // Cari Header STO
         $sto = DB::table('sto_logs')->where('id', $id)->first();
         if (!$sto) {
             return redirect()->route('ppic.sto.index')->with('error', 'Dokumen STO tidak ditemukan.');
         }
 
-        // Tarik Detail Part beserta nama part-nya
         $details = DB::table('sto_log_details')
             ->leftJoin('parts', 'sto_log_details.part_no', '=', 'parts.part_no')
             ->select('sto_log_details.*', 'parts.part_name', 'parts.customer_code')
@@ -2381,5 +2504,52 @@ class PPICController extends Controller
             ->get();
 
         return view('PPIC.print_sto_detail', compact('sto', 'details'));
+    }
+
+    /**
+     * 21. MASTER BOM WELDING (INDEX, STORE, DESTROY)
+     */
+    public function bomIndex()
+    {
+        $boms = DB::table('part_boms')
+            ->leftJoin('parts', 'part_boms.parent_part_no', '=', 'parts.part_no')
+            ->select('part_boms.*', 'parts.part_name as parent_name', 'parts.customer_code')
+            ->orderBy('part_boms.parent_part_no', 'asc')
+            ->orderBy('part_boms.id', 'asc')
+            ->get()
+            ->groupBy('parent_part_no');
+
+        $parentParts = DB::table('parts')->where('next_process', 'WELDING')->orderBy('part_no', 'asc')->get();
+        $wipParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
+        $rmMaterials = DB::table('rm_stocks')->select('material_code', 'material_name')->distinct()->orderBy('material_code', 'asc')->get();
+
+        return view('PPIC.bom_index', compact('boms', 'parentParts', 'wipParts', 'rmMaterials'));
+    }
+
+    public function bomStore(Request $request)
+    {
+        $request->validate([
+            'parent_part_no' => 'required',
+            'component_code' => 'required',
+            'source_type'    => 'required|in:WIP,RM',
+            'qty_per_unit'   => 'required|integer|min:1',
+        ]);
+
+        DB::table('part_boms')->insert([
+            'parent_part_no' => trim($request->parent_part_no),
+            'component_code' => trim($request->component_code),
+            'source_type'    => $request->source_type,
+            'qty_per_unit'   => (int)$request->qty_per_unit,
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Komponen BOM berhasil ditambahkan.');
+    }
+
+    public function bomDestroy($id)
+    {
+        DB::table('part_boms')->where('id', $id)->delete();
+        return redirect()->back()->with('success', 'Komponen BOM berhasil dihapus.');
     }
 }

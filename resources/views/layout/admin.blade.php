@@ -244,12 +244,12 @@
             </li>
             @endif
 
-            <div class="sidebar-heading">MANUFACTURING PLAN</div>
+           <div class="sidebar-heading">MANUFACTURING PLAN</div>
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseStamping">
                     <i class="fas fa-fw fa-calendar-alt"></i><span>Stamping Control</span>
                 </a>
-                <div id="collapseStamping" class="collapse {{ Request::is('ppic*') && !Request::is('ppic-welding*') && !Request::routeIs('ppic.inventory.trace') || Request::is('*mps*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div id="collapseStamping" class="collapse {{ (Request::is('ppic*') && !Request::is('ppic-welding*') && !Request::routeIs('ppic.inventory.trace') && !Request::routeIs('ppic.sto.index') && !Request::routeIs('ppic.bom.index')) || Request::is('*mps*') ? 'show' : '' }}" data-parent="#accordionSidebar">
                     <div class="collapse-inner">
                         <a class="collapse-item {{ Request::routeIs('ppic.index') ? 'active' : '' }}" href="{{ route('ppic.index') }}">
                             <span>Intelligence Hub</span>
@@ -271,11 +271,12 @@
                 <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseWeldingPPIC">
                     <i class="fas fa-fw fa-burn"></i><span>Welding Control</span>
                 </a>
-                <div id="collapseWeldingPPIC" class="collapse {{ Request::is('ppic-welding*') ? 'show' : '' }}" data-parent="#accordionSidebar">
+                <div id="collapseWeldingPPIC" class="collapse {{ Request::is('ppic-welding*') || Request::routeIs('ppic.bom.index') ? 'show' : '' }}" data-parent="#accordionSidebar">
                     <div class="collapse-inner">
-                        <a class="collapse-item" href="{{ route('ppic.welding.index') }}">Welding Dashboard</a>
-                        <a class="collapse-item" href="{{ route('ppic.welding.mps') }}">Welding MPS</a>
-                        <a class="collapse-item" href="{{ route('ppic.welding.quality') }}">Quality Hub Las</a>
+                        <a class="collapse-item {{ Request::routeIs('ppic.welding.index') ? 'active' : '' }}" href="{{ route('ppic.welding.index') }}">Welding Dashboard</a>
+                        <a class="collapse-item {{ Request::routeIs('ppic.welding.mps') ? 'active' : '' }}" href="{{ route('ppic.welding.mps') }}">Welding MPS</a>
+                        <a class="collapse-item {{ Request::routeIs('ppic.bom.index') ? 'active' : '' }}" href="{{ route('ppic.bom.index') }}">Master Part BOM</a>
+                        <a class="collapse-item {{ Request::routeIs('ppic.welding.quality') ? 'active' : '' }}" href="{{ route('ppic.welding.quality') }}">Quality Hub Las</a>
                     </div>
                 </div>
             </li>
