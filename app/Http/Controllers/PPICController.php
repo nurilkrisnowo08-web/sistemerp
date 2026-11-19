@@ -1207,6 +1207,9 @@ class PPICController extends Controller
     /**
      * 10. STORE MPS WELDING (MENDUKUNG BOM WIP & RM + FALLBACK 1:1)
      */
+    /**
+     * 10. STORE MPS WELDING (MENDUKUNG BOM WIP & RM + LOG OUT RM + FALLBACK 1:1)
+     */
     public function weldingMpsStore(Request $request)
     {
         DB::beginTransaction();
@@ -1226,6 +1229,9 @@ class PPICController extends Controller
 
             $partData = DB::table('parts')->where('part_no', $cleanPart)->first();
             $actualCustomerCode = $partData ? $partData->customer_code : ($request->customer_code ?? 'SAI');
+
+            $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
+            $noProdRef = 'WOS-WELD-' . date('YmdHis');
 
             // CEK APAKAH PART MEMILIKI BOM (RESEP KOMPONEN)
             $boms = Schema::hasTable('part_boms')
@@ -1282,13 +1288,21 @@ class PPICController extends Controller
                             if ($rem <= 0) break;
                             $take = min((int)$rm->stock_pcs, $rem);
                             DB::table('rm_stocks')->where('id', $rm->id)->decrement('stock_pcs', $take);
+
+                            // CATAT OUT RM KE rm_production_logs AGAR KEBACA DI INVENTORY TRACE
+                            DB::table('rm_production_logs')->insert([
+                                'rm_stock_id'   => $rm->id,
+                                'material_code' => $bom->component_code,
+                                'pcs_used'      => $take,
+                                'no_produksi'   => $noProdRef,
+                                'created_at'    => $logTimestamp
+                            ]);
+
                             $rem -= $take;
                         }
                     }
                 }
             }
-
-            $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
 
             DB::table('welding_plans')->insert([
                 'plan_date'     => $request->plan_date, 
@@ -1351,7 +1365,7 @@ class PPICController extends Controller
     }
 
     /**
-     * 10B. UPDATE & REVISI WOS WELDING (MENDUKUNG BOM WIP & RM + FALLBACK 1:1)
+     * 10B. UPDATE & REVISI WOS WELDING (MENDUKUNG BOM WIP & RM + LOG OUT/RETURN RM + FALLBACK 1:1)
      */
     public function updateWosWelding(Request $request, $id)
     {
@@ -1378,6 +1392,8 @@ class PPICController extends Controller
             $new_target_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
             $new_total = $new_target_s1 + $new_target_s2;
 
+            $logTimestamp = date('Y-m-d H:i:s', strtotime($plan->plan_date . ' ' . date('H:i:s')));
+
             $boms = Schema::hasTable('part_boms')
                 ? DB::table('part_boms')->where('parent_part_no', $plan->part_no)->get()
                 : collect();
@@ -1395,6 +1411,14 @@ class PPICController extends Controller
                             $rmTarget = DB::table('rm_stocks')->where('material_code', $bom->component_code)->orderBy('id', 'desc')->first();
                             if ($rmTarget) {
                                 DB::table('rm_stocks')->where('id', $rmTarget->id)->increment('stock_pcs', $returnQty);
+                                DB::table('rm_incoming_logs')->insert([
+                                    'rm_stock_id'   => $rmTarget->id,
+                                    'material_code' => $bom->component_code,
+                                    'pcs_in'        => $returnQty,
+                                    'source'        => 'return',
+                                    'no_produksi'   => 'REV-WELD-CANCEL-' . date('YmdHis'),
+                                    'created_at'    => $logTimestamp
+                                ]);
                             }
                         }
                     }
@@ -1443,6 +1467,13 @@ class PPICController extends Controller
                                     if ($rem <= 0) break;
                                     $take = min((int)$rm->stock_pcs, $rem);
                                     DB::table('rm_stocks')->where('id', $rm->id)->decrement('stock_pcs', $take);
+                                    DB::table('rm_production_logs')->insert([
+                                        'rm_stock_id'   => $rm->id,
+                                        'material_code' => $bom->component_code,
+                                        'pcs_used'      => $take,
+                                        'no_produksi'   => 'REV-WELD-ADD-' . date('YmdHis'),
+                                        'created_at'    => $logTimestamp
+                                    ]);
                                     $rem -= $take;
                                 }
                             }
@@ -1453,6 +1484,14 @@ class PPICController extends Controller
                                 $rmTarget = DB::table('rm_stocks')->where('material_code', $bom->component_code)->orderBy('id', 'desc')->first();
                                 if ($rmTarget) {
                                     DB::table('rm_stocks')->where('id', $rmTarget->id)->increment('stock_pcs', $diffQty);
+                                    DB::table('rm_incoming_logs')->insert([
+                                        'rm_stock_id'   => $rmTarget->id,
+                                        'material_code' => $bom->component_code,
+                                        'pcs_in'        => $diffQty,
+                                        'source'        => 'return',
+                                        'no_produksi'   => 'REV-WELD-RTN-' . date('YmdHis'),
+                                        'created_at'    => $logTimestamp
+                                    ]);
                                 }
                             }
                         }
@@ -1473,7 +1512,6 @@ class PPICController extends Controller
             $mesin = DB::table('line_welding')->where('kode_line', $request->line_code ?? $plan->line_code)->first();
             $mesin_id = $mesin ? $mesin->id : null;
             $keteranganRev = "DIREVISI PPIC (TGL: ".date('d/m').")";
-            $logTimestamp = date('Y-m-d H:i:s', strtotime($plan->plan_date . ' ' . date('H:i:s')));
 
             $bS1 = $existingBatches->where('shift', 'Pagi')->first();
             if ($new_target_s1 > 0) {
