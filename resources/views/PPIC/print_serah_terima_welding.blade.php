@@ -145,7 +145,12 @@
             @php $rowCountS1 = 0; @endphp
             @if(isset($batchesS1) && count($batchesS1) > 0)
                 @foreach($batchesS1 as $index => $b)
-                    @php $rowCountS1++; @endphp
+                    @php
+                        $rowCountS1++;
+                        $qtyOk  = $b->qty_ok ?? $b->qty_hasil_ok ?? 0;
+                        $qtyNg  = $b->qty_ng ?? $b->qty_hasil_ng ?? 0;
+                        $qtyRet = $b->qty_return ?? $b->qty_return_warehouse ?? 0;
+                    @endphp
                     <tr>
                         <td>{{ $rowCountS1 }}</td>
                         <td class="font-bold">{{ $b->customer_code }}</td>
@@ -160,17 +165,17 @@
                         
                         <!-- QUANTITY -->
                         <td></td> <!-- Sheet kosong untuk Welding -->
-                        <td class="font-bold">{{ number_format($b->qty_ambil_pcs) }}</td>
+                        <td class="font-bold">{{ number_format($b->qty_ambil_pcs ?? 0) }}</td>
                         
                         <!-- ACTUAL PRODUCTION -->
-                        <td style="font-weight: 800; color: #10b981;">{{ $b->qty_hasil_ok > 0 ? number_format($b->qty_hasil_ok) : '' }}</td>
+                        <td style="font-weight: 800; color: #10b981;">{{ $qtyOk > 0 ? number_format($qtyOk) : '' }}</td>
                         <td></td>
-                        <td style="font-weight: 800; color: #ef4444;">{{ $b->qty_hasil_ng > 0 ? number_format($b->qty_hasil_ng) : '' }}</td>
+                        <td style="font-weight: 800; color: #ef4444;">{{ $qtyNg > 0 ? number_format($qtyNg) : '' }}</td>
                         <td></td>
-                        <td style="font-weight: 800; color: #0284c7;">{{ $b->qty_return_warehouse > 0 ? number_format($b->qty_return_warehouse) : '' }}</td>
+                        <td style="font-weight: 800; color: #0284c7;">{{ $qtyRet > 0 ? number_format($qtyRet) : '' }}</td>
                         
                         <!-- REMARK -->
-                        <td class="text-left" style="font-size: 7px;">{{ $b->keterangan }}</td>
+                        <td class="text-left" style="font-size: 7px;">{{ $b->keterangan ?? '' }}</td>
                     </tr>
                 @endforeach
             @endif
@@ -189,7 +194,12 @@
             @php $rowCountS2 = 0; @endphp
             @if(isset($batchesS2) && count($batchesS2) > 0)
                 @foreach($batchesS2 as $index => $b)
-                    @php $rowCountS2++; @endphp
+                    @php
+                        $rowCountS2++;
+                        $qtyOk  = $b->qty_ok ?? $b->qty_hasil_ok ?? 0;
+                        $qtyNg  = $b->qty_ng ?? $b->qty_hasil_ng ?? 0;
+                        $qtyRet = $b->qty_return ?? $b->qty_return_warehouse ?? 0;
+                    @endphp
                     <tr>
                         <td>{{ $rowCountS2 }}</td>
                         <td class="font-bold">{{ $b->customer_code }}</td>
@@ -203,17 +213,17 @@
                         
                         <!-- QUANTITY -->
                         <td></td>
-                        <td class="font-bold">{{ number_format($b->qty_ambil_pcs) }}</td>
+                        <td class="font-bold">{{ number_format($b->qty_ambil_pcs ?? 0) }}</td>
                         
                         <!-- ACTUAL PRODUCTION -->
-                        <td style="font-weight: 800; color: #10b981;">{{ $b->qty_hasil_ok > 0 ? number_format($b->qty_hasil_ok) : '' }}</td>
+                        <td style="font-weight: 800; color: #10b981;">{{ $qtyOk > 0 ? number_format($qtyOk) : '' }}</td>
                         <td></td>
-                        <td style="font-weight: 800; color: #ef4444;">{{ $b->qty_hasil_ng > 0 ? number_format($b->qty_hasil_ng) : '' }}</td>
+                        <td style="font-weight: 800; color: #ef4444;">{{ $qtyNg > 0 ? number_format($qtyNg) : '' }}</td>
                         <td></td>
-                        <td style="font-weight: 800; color: #0284c7;">{{ $b->qty_return_warehouse > 0 ? number_format($b->qty_return_warehouse) : '' }}</td>
+                        <td style="font-weight: 800; color: #0284c7;">{{ $qtyRet > 0 ? number_format($qtyRet) : '' }}</td>
                         
                         <!-- REMARK -->
-                        <td class="text-left" style="font-size: 7px;">{{ $b->keterangan }}</td>
+                        <td class="text-left" style="font-size: 7px;">{{ $b->keterangan ?? '' }}</td>
                     </tr>
                 @endforeach
             @endif
