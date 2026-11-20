@@ -183,13 +183,13 @@
                         <th width="20%">STATUS</th>
                     </tr>
                 </thead>
-                <tbody>
+               <tbody>
                     @forelse($historySto ?? [] as $h)
                     <tr>
-                        <td class="text-num">{{ date('d M Y', strtotime($h['tanggal'])) }}</td>
-                        <td class="fw-bold">{{ $h['doc_no'] }}</td>
-                        <td>{{ $h['petugas'] }}</td>
-                        <td style="color: #059669; font-weight: bold;">{{ $h['status'] }}</td>
+                        <td class="text-num">{{ date('d M Y', strtotime($h->created_at)) }}</td>
+                        <td class="fw-bold">{{ $h->doc_no }}</td>
+                        <td>{{ $h->created_by }}</td>
+                        <td style="color: #059669; font-weight: bold;">{{ $h->status }}</td>
                     </tr>
                     @empty
                     <tr><td colspan="4" style="color:#64748b; font-style:italic;">Belum ada pelaksanaan STO di bulan ini.</td></tr>
