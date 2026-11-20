@@ -1939,6 +1939,9 @@ class PPICController extends Controller
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG RINCIAN BOM)
      */
+  /**
+     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG RINCIAN BOM + AUTO WIP INDUK)
+     */
     public function checkWipStockAjax(Request $request, $part_no = null)
     {
         try {
@@ -1963,6 +1966,21 @@ class PPICController extends Controller
                 $wipStock = $fg ? (int)$fg->welding_stock : 0;
             } else {
                 $maxBuildable = null;
+
+                // Jika BOM hanya berisi RM (Nut/Baut) tanpa komponen WIP,
+                // otomatis tampilkan & validasi stok WIP milik part induknya sendiri
+                if ($boms->where('source_type', 'WIP')->isEmpty()) {
+                    $availWipInduk = (int)(DB::table('finished_goods')->where('part_no', $cleanPart)->value('welding_stock') ?? 0);
+                    $bomDetails[] = [
+                        'component_code'  => $cleanPart,
+                        'component_name'  => $partData->part_name ?? '-',
+                        'source_type'     => 'WIP',
+                        'qty_per_unit'    => 1,
+                        'available_stock' => $availWipInduk,
+                    ];
+                    $maxBuildable = $availWipInduk;
+                }
+
                 foreach ($boms as $bom) {
                     $qtyPerUnit = max(1, (int)$bom->qty_per_unit);
                     if ($bom->source_type === 'WIP') {
