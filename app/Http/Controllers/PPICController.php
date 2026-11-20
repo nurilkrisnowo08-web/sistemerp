@@ -1129,54 +1129,67 @@ class PPICController extends Controller
    /**
      * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
      */
+    /**
+     * 9. WELDING MPS (GABUNG SHIFT 1 & SHIFT 2 DALAM 1 TAMPILAN, 1 WOS & 1 BPRM)
+     */
     public function weldingMps(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
-        $shiftParam = $request->shift ?? 'S1'; 
-        $dbShiftName = ($shiftParam == 'S1') ? 'Pagi' : 'Malam'; 
+        $shiftParam = 'ALL';
 
-        $query = DB::table('welding_plans')->where('plan_date', $date);
-        
-        if ($shiftParam == 'S1') {
-            $query->where(DB::raw('s1_plan_reg + s1_plan_ot'), '>', 0);
-        } else {
-            $query->where(DB::raw('s2_plan_reg + s2_plan_ot'), '>', 0);
-        }
-
-        $plans = $query->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
-                       ->select('welding_plans.*', 'parts.part_name')
-                       ->orderBy('line_code', 'asc')
-                       ->orderBy('welding_plans.id', 'asc')
-                       ->get();
+        // Tarik semua jadwal Welding pada tanggal tersebut (Shift 1 & Shift 2 digabung)
+        $plans = DB::table('welding_plans')
+            ->where('welding_plans.plan_date', $date)
+            ->where(DB::raw('welding_plans.s1_plan_reg + welding_plans.s1_plan_ot + welding_plans.s2_plan_reg + welding_plans.s2_plan_ot'), '>', 0)
+            ->leftJoin('parts', 'welding_plans.part_no', '=', 'parts.part_no')
+            ->select('welding_plans.*', 'parts.part_name')
+            ->orderBy('welding_plans.line_code', 'asc')
+            ->orderBy('welding_plans.id', 'asc')
+            ->get();
 
         $totalPlanQty = 0;
         $totalWorkingHours = 0;
         $totalDandory = 0;
-        $lineFinishTime = []; 
-        $defaultStart = ($shiftParam == 'S1') ? "07:30" : "19:30";
+        $lineFinishTime = [];
 
-        foreach($plans as $plan) {
+        foreach ($plans as $plan) {
+            $t_s1 = (int)($plan->s1_plan_reg + $plan->s1_plan_ot);
+            $t_s2 = (int)($plan->s2_plan_reg + $plan->s2_plan_ot);
+            $totalTarget = $t_s1 + $t_s2;
+
+            // Gabungkan aktual OK dari Shift Pagi & Malam pada tanggal tersebut
             $actual = DB::table('welding_actuals')
                 ->where('part_no', $plan->part_no)
-                ->where('shift', $dbShiftName) 
                 ->whereDate('created_at', $date)
                 ->sum('qty_ok');
 
             $plan->total_actual = (int)$actual;
-            $plan->total_target = ($shiftParam == 'S1') ? ($plan->s1_plan_reg + $plan->s1_plan_ot) : ($plan->s2_plan_reg + $plan->s2_plan_ot);
+            $plan->total_target = $totalTarget;
             $plan->balance = $plan->total_target - $plan->total_actual;
+
+            // Penanda shift jika ingin ditampilkan di tabel
+            if ($t_s1 > 0 && $t_s2 > 0) {
+                $plan->display_shift = 'S1 & S2';
+            } elseif ($t_s1 > 0) {
+                $plan->display_shift = 'S1';
+            } else {
+                $plan->display_shift = 'S2';
+            }
 
             $totalPlanQty += $plan->total_target;
             $totalDandory += ($plan->dandory_time ?? 15);
 
             $dandoryH = ($plan->dandory_time ?? 15) / 60;
-            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0) ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH : 0;
+            $duration = ($plan->cap_per_hour > 0 && $plan->total_target > 0)
+                ? ($plan->total_target / $plan->cap_per_hour) + $dandoryH
+                : 0;
             $totalWorkingHours += $duration;
 
+            $defaultStart = ($t_s1 > 0) ? "07:30" : "19:30";
             $startTime = $lineFinishTime[$plan->line_code] ?? $defaultStart;
             $plan->start_time = $startTime;
             $plan->ahir_time = date('H:i', strtotime($startTime . " + " . round($duration * 60) . " minutes"));
-            $lineFinishTime[$plan->line_code] = $plan->ahir_time; 
+            $lineFinishTime[$plan->line_code] = $plan->ahir_time;
         }
 
         $availableLines = DB::table('line_welding')->get();
@@ -1190,7 +1203,7 @@ class PPICController extends Controller
             : [];
 
         $availableParts = DB::table('parts')
-            ->where(function($q) use ($bomWipComponents) {
+            ->where(function ($q) use ($bomWipComponents) {
                 $q->where('next_process', 'WELDING')
                   ->whereNotIn('part_no', $bomWipComponents);
             })
@@ -1199,7 +1212,7 @@ class PPICController extends Controller
             ->get();
 
         return view('PPIC.welding_mps', compact(
-            'plans', 'date', 'availableLines', 'availableParts', 
+            'plans', 'date', 'availableLines', 'availableParts',
             'totalPlanQty', 'totalWorkingHours', 'totalDandory'
         ))->with('shift', $shiftParam);
     }
