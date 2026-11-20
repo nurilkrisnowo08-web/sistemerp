@@ -1124,12 +1124,6 @@ class PPICController extends Controller
     }
 
     /**
-     * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
-     */
-   /**
-     * 9. WELDING MPS (FUNGSI UTAMA HALAMAN MPS)
-     */
-    /**
      * 9. WELDING MPS (GABUNG SHIFT 1 & SHIFT 2 DALAM 1 TAMPILAN, 1 WOS & 1 BPRM)
      */
     public function weldingMps(Request $request)
@@ -1137,7 +1131,6 @@ class PPICController extends Controller
         $date = $request->date ?? date('Y-m-d');
         $shiftParam = 'ALL';
 
-        // Tarik semua jadwal Welding pada tanggal tersebut (Shift 1 & Shift 2 digabung)
         $plans = DB::table('welding_plans')
             ->where('welding_plans.plan_date', $date)
             ->where(DB::raw('welding_plans.s1_plan_reg + welding_plans.s1_plan_ot + welding_plans.s2_plan_reg + welding_plans.s2_plan_ot'), '>', 0)
@@ -1157,17 +1150,27 @@ class PPICController extends Controller
             $t_s2 = (int)($plan->s2_plan_reg + $plan->s2_plan_ot);
             $totalTarget = $t_s1 + $t_s2;
 
-            // Gabungkan aktual OK dari Shift Pagi & Malam pada tanggal tersebut
-            $actual = DB::table('welding_actuals')
+            // Filter aktual sesuai Shift & Station masing-masing plan
+            $actualQuery = DB::table('welding_actuals')
                 ->where('part_no', $plan->part_no)
-                ->whereDate('created_at', $date)
-                ->sum('qty_ok');
+                ->whereDate('created_at', $date);
+
+            if (Schema::hasColumn('welding_actuals', 'line_code')) {
+                $actualQuery->where('line_code', $plan->line_code);
+            }
+
+            if ($t_s1 > 0 && $t_s2 == 0) {
+                $actualQuery->where('shift', 'Pagi');
+            } elseif ($t_s2 > 0 && $t_s1 == 0) {
+                $actualQuery->where('shift', 'Malam');
+            }
+
+            $actual = $actualQuery->sum('qty_ok');
 
             $plan->total_actual = (int)$actual;
             $plan->total_target = $totalTarget;
             $plan->balance = $plan->total_target - $plan->total_actual;
 
-            // Penanda shift jika ingin ditampilkan di tabel
             if ($t_s1 > 0 && $t_s2 > 0) {
                 $plan->display_shift = 'S1 & S2';
             } elseif ($t_s1 > 0) {
@@ -1217,9 +1220,6 @@ class PPICController extends Controller
         ))->with('shift', $shiftParam);
     }
     
-    /**
-     * 10. STORE MPS WELDING (MENDUKUNG BOM WIP & RM + FALLBACK 1:1)
-     */
     /**
      * 10. STORE MPS WELDING (MENDUKUNG BOM WIP & RM + LOG OUT RM + FALLBACK 1:1)
      */
@@ -1387,7 +1387,28 @@ class PPICController extends Controller
             $plan = DB::table('welding_plans')->where('id', $id)->first();
             if (!$plan) throw new \Exception("Schedule Welding tidak ditemukan.");
 
-            $existingBatches = DB::table('welding_batches')->where('part_no', $plan->part_no)->whereDate('created_at', $plan->plan_date)->get();
+            $mesinPlan = DB::table('line_welding')->where('kode_line', $plan->line_code)->first();
+            $planLineId = $mesinPlan ? $mesinPlan->id : null;
+
+            $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
+            $old_target_s2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
+            $old_total = $old_target_s1 + $old_target_s2;
+
+            $batchQuery = DB::table('welding_batches')
+                ->where('part_no', $plan->part_no)
+                ->whereDate('created_at', $plan->plan_date);
+
+            if ($planLineId) {
+                $batchQuery->where('line_id', $planLineId);
+            }
+
+            if ($old_target_s1 > 0 && $old_target_s2 == 0) {
+                $batchQuery->where('shift', 'Pagi');
+            } elseif ($old_target_s2 > 0 && $old_target_s1 == 0) {
+                $batchQuery->where('shift', 'Malam');
+            }
+
+            $existingBatches = $batchQuery->get();
             
             $isStarted = $existingBatches->contains(function($b) {
                 return $b->qty_ok > 0 || $b->qty_ng > 0 || $b->status === 'COMPLETED';
@@ -1396,10 +1417,6 @@ class PPICController extends Controller
             if ($isStarted) {
                 throw new \Exception("❌ REVISI DITOLAK! WOS Welding ini sudah mulai dikerjakan (Aktual > 0) atau sudah ditutup.");
             }
-
-            $old_target_s1 = $plan->s1_plan_reg + $plan->s1_plan_ot;
-            $old_target_s2 = $plan->s2_plan_reg + $plan->s2_plan_ot;
-            $old_total = $old_target_s1 + $old_target_s2;
 
             $new_target_s1 = (int)($request->s1_plan_reg ?? 0) + (int)($request->s1_plan_ot ?? 0);
             $new_target_s2 = (int)($request->s2_plan_reg ?? 0) + (int)($request->s2_plan_ot ?? 0);
@@ -1437,7 +1454,9 @@ class PPICController extends Controller
                     }
                 }
 
-                DB::table('welding_batches')->where('part_no', $plan->part_no)->whereDate('created_at', $plan->plan_date)->delete();
+                if ($existingBatches->isNotEmpty()) {
+                    DB::table('welding_batches')->whereIn('id', $existingBatches->pluck('id'))->delete();
+                }
                 DB::table('welding_plans')->where('id', $id)->delete();
                 
                 DB::commit();
@@ -1663,7 +1682,7 @@ class PPICController extends Controller
 
         $allBatches = collect();
 
-      foreach ($batchesRaw as $batch) {
+        foreach ($batchesRaw as $batch) {
             $boms = Schema::hasTable('part_boms')
                 ? DB::table('part_boms')->where('parent_part_no', $batch->part_no)->get()
                 : collect();
@@ -1917,9 +1936,6 @@ class PPICController extends Controller
         }
     }
     
-    /**
-     * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG BOM)
-     */
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER WELDING PLAN - MENDUKUNG RINCIAN BOM)
      */
@@ -2610,57 +2626,57 @@ class PPICController extends Controller
      * 21. MASTER BOM WELDING (INDEX, STORE, DESTROY)
      */
     public function bomIndex()
-{
-    $boms = DB::table('part_boms')
-        ->leftJoin('parts', 'part_boms.parent_part_no', '=', 'parts.part_no')
-        ->select('part_boms.*', 'parts.part_name as parent_name', 'parts.customer_code')
-        ->orderBy('part_boms.parent_part_no', 'asc')
-        ->orderBy('part_boms.id', 'asc')
-        ->get()
-        ->groupBy('parent_part_no');
+    {
+        $boms = DB::table('part_boms')
+            ->leftJoin('parts', 'part_boms.parent_part_no', '=', 'parts.part_no')
+            ->select('part_boms.*', 'parts.part_name as parent_name', 'parts.customer_code')
+            ->orderBy('part_boms.parent_part_no', 'asc')
+            ->orderBy('part_boms.id', 'asc')
+            ->get()
+            ->groupBy('parent_part_no');
 
-    $parentParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
-    $wipParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
-    $rmMaterials = DB::table('rm_stocks')->select('material_code', 'material_name')->distinct()->orderBy('material_code', 'asc')->get();
+        $parentParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
+        $wipParts = DB::table('parts')->orderBy('part_no', 'asc')->get();
+        $rmMaterials = DB::table('rm_stocks')->select('material_code', 'material_name')->distinct()->orderBy('material_code', 'asc')->get();
 
-    return view('PPIC.bom_index', compact('boms', 'parentParts', 'wipParts', 'rmMaterials'));
-}
-
-   public function bomStore(Request $request)
-{
-    $request->validate([
-        'parent_part_no'   => 'required',
-        'source_type'      => 'required|array|min:1',
-        'source_type.*'    => 'required|in:WIP,RM',
-        'component_code'   => 'required|array|min:1',
-        'component_code.*' => 'required|string',
-        'qty_per_unit'     => 'required|array|min:1',
-        'qty_per_unit.*'   => 'required|integer|min:1',
-    ]);
-
-    $insertData = [];
-    $now = now();
-    $parent = trim($request->parent_part_no);
-
-    foreach ($request->component_code as $i => $compCode) {
-        if (empty($compCode)) continue;
-
-        $insertData[] = [
-            'parent_part_no' => $parent,
-            'component_code' => trim($compCode),
-            'source_type'    => $request->source_type[$i],
-            'qty_per_unit'   => (int) $request->qty_per_unit[$i],
-            'created_at'     => $now,
-            'updated_at'     => $now,
-        ];
+        return view('PPIC.bom_index', compact('boms', 'parentParts', 'wipParts', 'rmMaterials'));
     }
 
-    if (!empty($insertData)) {
-        DB::table('part_boms')->insert($insertData);
-    }
+    public function bomStore(Request $request)
+    {
+        $request->validate([
+            'parent_part_no'   => 'required',
+            'source_type'      => 'required|array|min:1',
+            'source_type.*'    => 'required|in:WIP,RM',
+            'component_code'   => 'required|array|min:1',
+            'component_code.*' => 'required|string',
+            'qty_per_unit'     => 'required|array|min:1',
+            'qty_per_unit.*'   => 'required|integer|min:1',
+        ]);
 
-    return redirect()->back()->with('success', count($insertData) . ' komponen BOM berhasil ditambahkan sekaligus.');
-}
+        $insertData = [];
+        $now = now();
+        $parent = trim($request->parent_part_no);
+
+        foreach ($request->component_code as $i => $compCode) {
+            if (empty($compCode)) continue;
+
+            $insertData[] = [
+                'parent_part_no' => $parent,
+                'component_code' => trim($compCode),
+                'source_type'    => $request->source_type[$i],
+                'qty_per_unit'   => (int) $request->qty_per_unit[$i],
+                'created_at'     => $now,
+                'updated_at'     => $now,
+            ];
+        }
+
+        if (!empty($insertData)) {
+            DB::table('part_boms')->insert($insertData);
+        }
+
+        return redirect()->back()->with('success', count($insertData) . ' komponen BOM berhasil ditambahkan sekaligus.');
+    }
 
     public function bomDestroy($id)
     {
