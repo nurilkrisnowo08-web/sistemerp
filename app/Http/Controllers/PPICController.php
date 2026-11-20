@@ -2041,7 +2041,8 @@ class PPICController extends Controller
         $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
         $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
         $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-        $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+        $wipMapped = $this->getWipOutMapped(true);
+        $weldBatches = $wipMapped['totals'];
         $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
 
@@ -2049,7 +2050,7 @@ class PPICController extends Controller
         $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allDelv = DB::table('deliveries')->orderBy('id', 'desc')->take(2000)->get();
-        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
+        $allWeldBatches = $wipMapped['history'];
         
         $allRmIn = DB::table('rm_incoming_logs')
             ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
@@ -2175,7 +2176,8 @@ class PPICController extends Controller
         $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
         $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
         $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-        $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+        $wipMapped = $this->getWipOutMapped(true);
+        $weldBatches = $wipMapped['totals'];
         $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
 
@@ -2183,7 +2185,7 @@ class PPICController extends Controller
         $allProdAct = DB::table('production_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allWeldAct = DB::table('welding_actuals')->orderBy('id', 'desc')->take(2000)->get();
         $allDelv = DB::table('deliveries')->orderBy('id', 'desc')->take(2000)->get();
-        $allWeldBatches = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
+        $allWeldBatches = $wipMapped['history'];
         
         $allRmIn = DB::table('rm_incoming_logs')
             ->leftJoin('rm_stocks', 'rm_incoming_logs.rm_stock_id', '=', 'rm_stocks.id')
@@ -2302,7 +2304,8 @@ class PPICController extends Controller
         $rmIncAgg = DB::table('rm_incoming_logs')->select('rm_stock_id', 'source', DB::raw('SUM(pcs_in) as total'))->groupBy('rm_stock_id', 'source')->get();
         $rmOutAgg = DB::table('rm_production_logs')->select('rm_stock_id', DB::raw('SUM(pcs_used) as total'))->groupBy('rm_stock_id')->pluck('total', 'rm_stock_id');
         $prodAct = DB::table('production_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
-        $weldBatches = DB::table('welding_batches')->select('part_no', DB::raw('SUM(qty_masuk) as total'))->groupBy('part_no')->pluck('total', 'part_no');
+        $wipMapped = $this->getWipOutMapped(false);
+        $weldBatches = $wipMapped['totals'];
         $weldAct = DB::table('welding_actuals')->select('part_no', DB::raw('SUM(qty_ok) as total'))->groupBy('part_no')->pluck('total', 'part_no');
         $delvOut = DB::table('deliveries')->select('part_no', DB::raw('SUM(qty_delivery) as total'))->groupBy('part_no')->pluck('total', 'part_no');
 
@@ -2682,5 +2685,56 @@ class PPICController extends Controller
     {
         DB::table('part_boms')->where('id', $id)->delete();
         return redirect()->back()->with('success', 'Komponen BOM berhasil dihapus.');
+    }
+
+    /**
+     * HELPER: PETAKAN OUT WIP DARI WELDING BATCHES KE CHILD PART BOM (JIKA ADA)
+     */
+    private function getWipOutMapped($includeHistory = false)
+    {
+        $wipBomsByParent = Schema::hasTable('part_boms')
+            ? DB::table('part_boms')->where('source_type', 'WIP')->get()->groupBy('parent_part_no')
+            : collect();
+
+        $rawTotals = DB::table('welding_batches')
+            ->select('part_no', DB::raw('SUM(qty_masuk) as total'))
+            ->groupBy('part_no')
+            ->get();
+
+        $totals = [];
+        foreach ($rawTotals as $row) {
+            if (isset($wipBomsByParent[$row->part_no])) {
+                foreach ($wipBomsByParent[$row->part_no] as $bom) {
+                    $code = $bom->component_code;
+                    $totals[$code] = ($totals[$code] ?? 0) + ((int)$row->total * (int)$bom->qty_per_unit);
+                }
+            } else {
+                $totals[$row->part_no] = ($totals[$row->part_no] ?? 0) + (int)$row->total;
+            }
+        }
+
+        $history = collect();
+        if ($includeHistory) {
+            $rawHistory = DB::table('welding_batches')->orderBy('id', 'desc')->take(2000)->get();
+            foreach ($rawHistory as $b) {
+                if (isset($wipBomsByParent[$b->part_no])) {
+                    foreach ($wipBomsByParent[$b->part_no] as $bom) {
+                        $item = clone $b;
+                        $item->part_no    = $bom->component_code;
+                        $item->qty_masuk  = (int)$b->qty_masuk * (int)$bom->qty_per_unit;
+                        $item->keterangan = "BOM FOR: {$b->part_no} (x{$bom->qty_per_unit})";
+                        $history->push($item);
+                    }
+                } else {
+                    $history->push($b);
+                }
+            }
+        }
+
+        return [
+            'totals'     => $totals,
+            'history'    => $history,
+            'bomParents' => $wipBomsByParent->keys()->toArray(),
+        ];
     }
 }
