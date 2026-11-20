@@ -27,21 +27,21 @@
 
     /* LEDGER TABLE WIDGET */
     .ledger-container { background: #fff; border-radius: 20px; border: 1px solid var(--ind-border); overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 28px; }
-    .ledger-topbar { background: var(--dark-surface); color: #fff; padding: 14px 22px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+    .ledger-topbar { background: var(--dark-surface); color: #fff; padding: 14px 22px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+    .cust-filter-wrap { background: rgba(255,255,255,0.1); padding: 4px; border-radius: 12px; display: inline-flex; flex-wrap: wrap; gap: 4px; }
+    .cust-filter-btn { border: none; background: transparent; color: #cbd5e1; font-size: 11px; font-weight: 800; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: 0.2s; outline: none !important; }
+    .cust-filter-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .cust-filter-btn.active { background: var(--brand-primary); color: #fff; box-shadow: 0 3px 10px rgba(59,130,246,0.35); }
+
     .table-ledger { margin-bottom: 0; }
     .table-ledger thead th { background: #f8fafc; color: #475569; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; padding: 14px 16px; border-bottom: 1px solid var(--ind-border); font-weight: 800; }
     .table-ledger td { padding: 12px 16px; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-weight: 700; font-size: 13px; }
     .table-ledger tbody tr:hover { background-color: #f8fafc; }
 
-    /* TOOLBAR CUSTOMER & SHIFT */
-    .control-bar { background: #fff; padding: 10px 14px; border-radius: 18px; border: 1px solid var(--ind-border); box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 22px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
-    .nav-pills { gap: 6px; }
-    .nav-pills .nav-link { border-radius: 12px; padding: 9px 18px; font-weight: 800; font-size: 12px; transition: 0.25s; color: #64748b !important; white-space: nowrap; border: 1px solid transparent; }
-    .nav-pills .nav-link.active { background: var(--dark-surface) !important; color: #fff !important; box-shadow: 0 6px 14px rgba(15, 23, 42, 0.15); }
-    .nav-pills .nav-link:not(.active):hover { background: #f1f5f9; border-color: #e2e8f0; }
-
+    /* TOOLBAR SHIFT */
+    .control-bar { background: #fff; padding: 12px 18px; border-radius: 18px; border: 1px solid var(--ind-border); box-shadow: 0 2px 10px rgba(0,0,0,0.02); margin-bottom: 22px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
     .shift-filter-wrap { background: #f1f5f9; padding: 4px; border-radius: 12px; display: inline-flex; gap: 4px; }
-    .shift-filter-btn { border: none; background: transparent; color: #64748b; font-size: 11px; font-weight: 800; padding: 7px 14px; border-radius: 9px; cursor: pointer; transition: 0.2s; outline: none !important; }
+    .shift-filter-btn { border: none; background: transparent; color: #64748b; font-size: 11px; font-weight: 800; padding: 7px 16px; border-radius: 9px; cursor: pointer; transition: 0.2s; outline: none !important; }
     .shift-filter-btn.active { background: var(--brand-primary); color: #fff; box-shadow: 0 3px 8px rgba(59,130,246,0.25); }
 
     /* SHIFT DIVIDER */
@@ -62,6 +62,7 @@
     .badge-shift-pagi { background: #eff6ff; color: var(--brand-primary); padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; border: 1px solid #bfdbfe; }
     .badge-shift-malam { background: #1e293b; color: #f8fafc; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; }
     .badge-station { background: #fff; color: #0f172a; padding: 4px 10px; border-radius: 6px; font-size: 10.5px; font-weight: 800; border: 1px solid #cbd5e1; }
+    .badge-cust { background: #e2e8f0; color: #334155; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; }
 
     .target-pill { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 10px 16px; text-align: center; min-width: 105px; }
     .qty-display { font-family: 'Orbitron', sans-serif; font-size: 24px; font-weight: 900; color: var(--dark-surface); line-height: 1.1; }
@@ -72,6 +73,18 @@
     .btn-cyber { padding: 11px 22px; border-radius: 12px; font-weight: 800; font-size: 12.5px; letter-spacing: 0.5px; transition: all 0.25s ease; border: none; }
     .btn-cyber:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,0.1); }
 </style>
+
+@php
+    // Mapping customer per part untuk filter Live WIP Inventory Ledger
+    $partCustMap = \Illuminate\Support\Facades\DB::table('parts')->pluck('customer_code', 'part_no');
+    $ledgerCustomers = collect($inventoryWelding)->map(function($inv) use ($partCustMap) {
+        return strtoupper(trim($inv->customer_code ?? $inv->customer ?? $partCustMap[$inv->part_no] ?? 'OTHER'));
+    })->unique()->sort()->values();
+
+    // Pisahkan antrean batch aktif langsung per Shift 1 & Shift 2
+    $s1Batches = $activeWelding->filter(fn($b) => $b->shift != 'Malam');
+    $s2Batches = $activeWelding->filter(fn($b) => $b->shift == 'Malam');
+@endphp
 
 <div class="container-fluid py-4 px-lg-4 animate__animated animate__fadeIn">
 
@@ -116,11 +129,19 @@
         </div>
     </div>
 
-    {{-- LEDGER TABLE (LIVE INVENTORY) --}}
+    {{-- LEDGER TABLE (LIVE INVENTORY + FILTER CUSTOMER) --}}
     <div class="ledger-container">
         <div class="ledger-topbar">
-            <div class="font-weight-bold" style="font-size: 12.5px; letter-spacing: 0.8px;">
-                <i class="fas fa-warehouse text-info mr-2"></i> LIVE WIP INVENTORY LEDGER
+            <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
+                <div class="font-weight-bold" style="font-size: 12.5px; letter-spacing: 0.8px;">
+                    <i class="fas fa-warehouse text-info mr-2"></i> LIVE WIP INVENTORY LEDGER
+                </div>
+                <div class="cust-filter-wrap">
+                    <button type="button" class="cust-filter-btn active" onclick="filterLedgerCustomer('ALL', this)">ALL</button>
+                    @foreach($ledgerCustomers as $custName)
+                        <button type="button" class="cust-filter-btn" onclick="filterLedgerCustomer('{{ $custName }}', this)">{{ $custName }}</button>
+                    @endforeach
+                </div>
             </div>
             <div style="width: 240px;">
                 <input type="text" id="searchLedger" class="form-control form-control-sm rounded-pill border-0 px-3" placeholder="Cari Part No / Nama..." style="font-size: 12px;">
@@ -141,10 +162,16 @@
                 </thead>
                 <tbody>
                     @foreach($inventoryWelding as $inv)
-                    <tr>
+                    @php
+                        $invCust = strtoupper(trim($inv->customer_code ?? $inv->customer ?? $partCustMap[$inv->part_no] ?? 'OTHER'));
+                    @endphp
+                    <tr data-customer="{{ $invCust }}">
                         <td class="text-left pl-4">
-                            <div class="font-weight-black text-dark" style="font-size: 13.5px;">{{ $inv->part_no }}</div>
-                            <small class="text-muted font-weight-bold text-uppercase" style="font-size: 10px;">{{ $inv->part_name }}</small>
+                            <div class="d-flex align-items-center" style="gap: 8px;">
+                                <span class="badge-cust">{{ $invCust }}</span>
+                                <span class="font-weight-black text-dark" style="font-size: 13.5px;">{{ $inv->part_no }}</span>
+                            </div>
+                            <small class="text-muted font-weight-bold text-uppercase d-block mt-1" style="font-size: 10px;">{{ $inv->part_name }}</small>
                         </td>
                         <td class="text-muted font-mono">{{ number_format($inv->init) }}</td>
                         <td class="text-success font-mono">+{{ number_format($inv->in_s) }}</td>
@@ -161,19 +188,14 @@
         </div>
     </div>
 
-    {{-- TOOLBAR: PT NAVIGATION + SHIFT FILTER --}}
+    {{-- TOOLBAR ANTREAN PRODUKSI (KHUSUS FILTER SHIFT) --}}
     <div class="control-bar animate__animated animate__fadeIn">
-        <ul class="nav nav-pills flex-nowrap overflow-auto" id="ptTab">
-            @foreach($availableCustomers as $index => $customer)
-            @php $slugPT = Str::slug($customer); $count = $activeWelding->where('customer', $customer)->count(); @endphp
-            <li class="nav-item">
-                <a class="nav-link {{ $index == 0 ? 'active' : '' }}" data-toggle="pill" href="#pt-{{ $slugPT }}">
-                    {{ strtoupper($customer) }}
-                    @if($count > 0) <span class="badge badge-pill badge-danger ml-1">{{ $count }}</span> @endif
-                </a>
-            </li>
-            @endforeach
-        </ul>
+        <div class="d-flex align-items-center" style="gap: 10px;">
+            <span class="font-weight-black text-dark" style="font-family: 'Orbitron'; font-size: 13px; letter-spacing: 0.5px;">
+                <i class="fas fa-fire text-primary mr-2"></i> ACTIVE WELDING QUEUE
+            </span>
+            <span class="badge badge-danger badge-pill px-3 py-1 font-weight-bold">{{ $activeWelding->count() }} BATCH</span>
+        </div>
 
         <div class="shift-filter-wrap">
             <button type="button" class="shift-filter-btn active" onclick="filterTerminalShift('ALL', this)">ALL SHIFT</button>
@@ -183,147 +205,136 @@
     </div>
 
     {{-- ACTIVE PRODUCTION CARDS (DIPETAKAN PER SHIFT & GRID 2 KOLOM) --}}
-    <div class="tab-content" id="ptTabContent">
-        @foreach($availableCustomers as $index => $customer)
-        @php
-            $slugPT = Str::slug($customer);
-            $custBatches = $activeWelding->where('customer', $customer);
-            $s1Batches = $custBatches->filter(fn($b) => $b->shift != 'Malam');
-            $s2Batches = $custBatches->filter(fn($b) => $b->shift == 'Malam');
-        @endphp
-        <div class="tab-pane fade {{ $index == 0 ? 'show active' : '' }}" id="pt-{{ $slugPT }}">
-
-            @if($custBatches->isEmpty())
-                <div class="bg-white rounded-lg border text-center py-5 shadow-sm" style="border-radius: 20px !important;">
-                    <i class="fas fa-check-circle text-muted mb-2" style="font-size: 32px; opacity: 0.35;"></i>
-                    <h6 class="font-weight-bold text-muted mb-0">TIDAK ADA ANTREAN BATCH AKTIF UNTUK {{ strtoupper($customer) }}</h6>
-                </div>
-            @else
-                {{-- ================= SHIFT 1 - PAGI ================= --}}
-                @if($s1Batches->isNotEmpty())
-                <div class="terminal-shift-block" data-shift="Pagi">
-                    <div class="shift-divider">
-                        <span class="badge badge-primary px-3 py-2 rounded-pill font-weight-bold" style="font-size: 11px; letter-spacing: 0.8px;">
-                            <i class="fas fa-sun mr-1"></i> SHIFT 1 - PAGI ({{ $s1Batches->count() }} BATCH)
-                        </span>
-                        <div class="shift-divider-line"></div>
-                    </div>
-
-                    <div class="row">
-                        @foreach($s1Batches as $aw)
-                        @php $isRobot = str_contains(strtoupper($aw->kode_line ?? ''), 'ROBOT'); @endphp
-                        <div class="col-lg-6 mb-3">
-                            <div class="work-card-grid shift-pagi animate__animated animate__fadeInUp">
-                                <div class="wc-head">
-                                    <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
-                                        <span class="badge-station">
-                                            <i class="fas {{ $isRobot ? 'fa-robot text-primary' : 'fa-bolt text-info' }} mr-1"></i>
-                                            {{ $aw->kode_line ?? 'STANDBY' }}
-                                        </span>
-                                        <span class="badge-shift-pagi"><i class="fas fa-sun mr-1"></i> S1</span>
-                                        @if($aw->qty_return > 0)
-                                            <span class="badge-rework"><i class="fas fa-redo-alt mr-1"></i> REWORK</span>
-                                        @endif
-                                    </div>
-                                    <span class="font-mono text-primary" style="font-size: 11.5px;">{{ $aw->no_produksi_stamping }}</span>
-                                </div>
-
-                                <div class="wc-body">
-                                    <div class="pr-2">
-                                        <div class="font-weight-black text-dark" style="font-size: 18px; line-height: 1.2;">{{ $aw->part_no }}</div>
-                                        <small class="text-muted font-weight-bold text-uppercase d-block mt-1" style="font-size: 11px;">{{ $aw->part_name }}</small>
-                                    </div>
-                                    <div class="target-pill">
-                                        <div class="qty-display">{{ number_format($aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk) }}</div>
-                                        <small class="text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.8px;">Target Pcs</small>
-                                    </div>
-                                </div>
-
-                                <div class="wc-foot">
-                                    @if($aw->status == 'PENDING')
-                                        <form action="{{ route('welding.start', $aw->id) }}" method="POST">
-                                            @csrf @method('PUT')
-                                            <button class="btn btn-primary btn-cyber btn-block shadow-sm">
-                                                <i class="fas fa-play mr-1"></i> START OPERATION
-                                            </button>
-                                        </form>
-                                    @else
-                                        <button class="btn btn-success btn-cyber btn-block shadow-sm" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">
-                                            <i class="fas fa-check-double mr-1"></i> FINISH BATCH
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-
-                {{-- ================= SHIFT 2 - MALAM ================= --}}
-                @if($s2Batches->isNotEmpty())
-                <div class="terminal-shift-block" data-shift="Malam">
-                    <div class="shift-divider">
-                        <span class="badge badge-dark px-3 py-2 rounded-pill font-weight-bold" style="font-size: 11px; letter-spacing: 0.8px;">
-                            <i class="fas fa-moon mr-1 text-warning"></i> SHIFT 2 - MALAM ({{ $s2Batches->count() }} BATCH)
-                        </span>
-                        <div class="shift-divider-line"></div>
-                    </div>
-
-                    <div class="row">
-                        @foreach($s2Batches as $aw)
-                        @php $isRobot = str_contains(strtoupper($aw->kode_line ?? ''), 'ROBOT'); @endphp
-                        <div class="col-lg-6 mb-3">
-                            <div class="work-card-grid shift-malam animate__animated animate__fadeInUp">
-                                <div class="wc-head">
-                                    <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
-                                        <span class="badge-station">
-                                            <i class="fas {{ $isRobot ? 'fa-robot text-primary' : 'fa-bolt text-info' }} mr-1"></i>
-                                            {{ $aw->kode_line ?? 'STANDBY' }}
-                                        </span>
-                                        <span class="badge-shift-malam"><i class="fas fa-moon mr-1"></i> S2</span>
-                                        @if($aw->qty_return > 0)
-                                            <span class="badge-rework"><i class="fas fa-redo-alt mr-1"></i> REWORK</span>
-                                        @endif
-                                    </div>
-                                    <span class="font-mono text-primary" style="font-size: 11.5px;">{{ $aw->no_produksi_stamping }}</span>
-                                </div>
-
-                                <div class="wc-body">
-                                    <div class="pr-2">
-                                        <div class="font-weight-black text-dark" style="font-size: 18px; line-height: 1.2;">{{ $aw->part_no }}</div>
-                                        <small class="text-muted font-weight-bold text-uppercase d-block mt-1" style="font-size: 11px;">{{ $aw->part_name }}</small>
-                                    </div>
-                                    <div class="target-pill">
-                                        <div class="qty-display">{{ number_format($aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk) }}</div>
-                                        <small class="text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.8px;">Target Pcs</small>
-                                    </div>
-                                </div>
-
-                                <div class="wc-foot">
-                                    @if($aw->status == 'PENDING')
-                                        <form action="{{ route('welding.start', $aw->id) }}" method="POST">
-                                            @csrf @method('PUT')
-                                            <button class="btn btn-primary btn-cyber btn-block shadow-sm">
-                                                <i class="fas fa-play mr-1"></i> START OPERATION
-                                            </button>
-                                        </form>
-                                    @else
-                                        <button class="btn btn-success btn-cyber btn-block shadow-sm" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">
-                                            <i class="fas fa-check-double mr-1"></i> FINISH BATCH
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endif
-            @endif
+    @if($activeWelding->isEmpty())
+        <div class="bg-white rounded-lg border text-center py-5 shadow-sm" style="border-radius: 20px !important;">
+            <i class="fas fa-check-circle text-muted mb-2" style="font-size: 32px; opacity: 0.35;"></i>
+            <h6 class="font-weight-bold text-muted mb-0">TIDAK ADA ANTREAN BATCH WELDING AKTIF</h6>
         </div>
-        @endforeach
-    </div>
+    @else
+        {{-- ================= SHIFT 1 - PAGI ================= --}}
+        @if($s1Batches->isNotEmpty())
+        <div class="terminal-shift-block" data-shift="Pagi">
+            <div class="shift-divider">
+                <span class="badge badge-primary px-3 py-2 rounded-pill font-weight-bold" style="font-size: 11px; letter-spacing: 0.8px;">
+                    <i class="fas fa-sun mr-1"></i> SHIFT 1 - PAGI ({{ $s1Batches->count() }} BATCH)
+                </span>
+                <div class="shift-divider-line"></div>
+            </div>
+
+            <div class="row">
+                @foreach($s1Batches as $aw)
+                @php $isRobot = str_contains(strtoupper($aw->kode_line ?? ''), 'ROBOT'); @endphp
+                <div class="col-lg-6 mb-3">
+                    <div class="work-card-grid shift-pagi animate__animated animate__fadeInUp">
+                        <div class="wc-head">
+                            <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
+                                <span class="badge-station">
+                                    <i class="fas {{ $isRobot ? 'fa-robot text-primary' : 'fa-bolt text-info' }} mr-1"></i>
+                                    {{ $aw->kode_line ?? 'STANDBY' }}
+                                </span>
+                                <span class="badge-cust">{{ strtoupper($aw->customer ?? '-') }}</span>
+                                <span class="badge-shift-pagi"><i class="fas fa-sun mr-1"></i> S1</span>
+                                @if($aw->qty_return > 0)
+                                    <span class="badge-rework"><i class="fas fa-redo-alt mr-1"></i> REWORK</span>
+                                @endif
+                            </div>
+                            <span class="font-mono text-primary" style="font-size: 11.5px;">{{ $aw->no_produksi_stamping }}</span>
+                        </div>
+
+                        <div class="wc-body">
+                            <div class="pr-2">
+                                <div class="font-weight-black text-dark" style="font-size: 18px; line-height: 1.2;">{{ $aw->part_no }}</div>
+                                <small class="text-muted font-weight-bold text-uppercase d-block mt-1" style="font-size: 11px;">{{ $aw->part_name }}</small>
+                            </div>
+                            <div class="target-pill">
+                                <div class="qty-display">{{ number_format($aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk) }}</div>
+                                <small class="text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.8px;">Target Pcs</small>
+                            </div>
+                        </div>
+
+                        <div class="wc-foot">
+                            @if($aw->status == 'PENDING')
+                                <form action="{{ route('welding.start', $aw->id) }}" method="POST">
+                                    @csrf @method('PUT')
+                                    <button class="btn btn-primary btn-cyber btn-block shadow-sm">
+                                        <i class="fas fa-play mr-1"></i> START OPERATION
+                                    </button>
+                                </form>
+                            @else
+                                <button class="btn btn-success btn-cyber btn-block shadow-sm" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">
+                                    <i class="fas fa-check-double mr-1"></i> FINISH BATCH
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- ================= SHIFT 2 - MALAM ================= --}}
+        @if($s2Batches->isNotEmpty())
+        <div class="terminal-shift-block" data-shift="Malam">
+            <div class="shift-divider">
+                <span class="badge badge-dark px-3 py-2 rounded-pill font-weight-bold" style="font-size: 11px; letter-spacing: 0.8px;">
+                    <i class="fas fa-moon mr-1 text-warning"></i> SHIFT 2 - MALAM ({{ $s2Batches->count() }} BATCH)
+                </span>
+                <div class="shift-divider-line"></div>
+            </div>
+
+            <div class="row">
+                @foreach($s2Batches as $aw)
+                @php $isRobot = str_contains(strtoupper($aw->kode_line ?? ''), 'ROBOT'); @endphp
+                <div class="col-lg-6 mb-3">
+                    <div class="work-card-grid shift-malam animate__animated animate__fadeInUp">
+                        <div class="wc-head">
+                            <div class="d-flex align-items-center flex-wrap" style="gap: 6px;">
+                                <span class="badge-station">
+                                    <i class="fas {{ $isRobot ? 'fa-robot text-primary' : 'fa-bolt text-info' }} mr-1"></i>
+                                    {{ $aw->kode_line ?? 'STANDBY' }}
+                                </span>
+                                <span class="badge-cust">{{ strtoupper($aw->customer ?? '-') }}</span>
+                                <span class="badge-shift-malam"><i class="fas fa-moon mr-1"></i> S2</span>
+                                @if($aw->qty_return > 0)
+                                    <span class="badge-rework"><i class="fas fa-redo-alt mr-1"></i> REWORK</span>
+                                @endif
+                            </div>
+                            <span class="font-mono text-primary" style="font-size: 11.5px;">{{ $aw->no_produksi_stamping }}</span>
+                        </div>
+
+                        <div class="wc-body">
+                            <div class="pr-2">
+                                <div class="font-weight-black text-dark" style="font-size: 18px; line-height: 1.2;">{{ $aw->part_no }}</div>
+                                <small class="text-muted font-weight-bold text-uppercase d-block mt-1" style="font-size: 11px;">{{ $aw->part_name }}</small>
+                            </div>
+                            <div class="target-pill">
+                                <div class="qty-display">{{ number_format($aw->qty_return > 0 ? $aw->qty_return : $aw->qty_masuk) }}</div>
+                                <small class="text-muted font-weight-bold text-uppercase" style="font-size: 9.5px; letter-spacing: 0.8px;">Target Pcs</small>
+                            </div>
+                        </div>
+
+                        <div class="wc-foot">
+                            @if($aw->status == 'PENDING')
+                                <form action="{{ route('welding.start', $aw->id) }}" method="POST">
+                                    @csrf @method('PUT')
+                                    <button class="btn btn-primary btn-cyber btn-block shadow-sm">
+                                        <i class="fas fa-play mr-1"></i> START OPERATION
+                                    </button>
+                                </form>
+                            @else
+                                <button class="btn btn-success btn-cyber btn-block shadow-sm" data-toggle="modal" data-target="#modalFinish{{ $aw->id }}">
+                                    <i class="fas fa-check-double mr-1"></i> FINISH BATCH
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+    @endif
 </div>
 
 {{-- MODAL FINISH --}}
@@ -413,8 +424,32 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
     const listPenyakit = @json($listNG->pluck('ng_name'));
+    let activeLedgerCust = 'ALL';
 
-    // Filter cepat Shift 1 / Shift 2 di Terminal
+    // Filter Customer di tabel Live WIP Inventory Ledger
+    function filterLedgerCustomer(cust, btnEl) {
+        activeLedgerCust = cust;
+        $('.cust-filter-btn').removeClass('active');
+        $(btnEl).addClass('active');
+        applyLedgerFilter();
+    }
+
+    function applyLedgerFilter() {
+        const keyword = $('#searchLedger').val().toLowerCase();
+        $('#tableLedger tbody tr').each(function() {
+            const rowCust = $(this).data('customer');
+            const text = $(this).text().toLowerCase();
+            const matchCust = (activeLedgerCust === 'ALL' || rowCust === activeLedgerCust);
+            const matchText = (text.indexOf(keyword) > -1);
+            $(this).toggle(matchCust && matchText);
+        });
+    }
+
+    $('#searchLedger').on('input', function() {
+        applyLedgerFilter();
+    });
+
+    // Filter cepat Shift 1 / Shift 2 di antrean bawah
     function filterTerminalShift(mode, btnEl) {
         $('.shift-filter-btn').removeClass('active');
         $(btnEl).addClass('active');
@@ -428,15 +463,6 @@
             }
         });
     }
-
-    // Pencarian cepat di tabel Live WIP Inventory
-    $('#searchLedger').on('input', function() {
-        const keyword = $(this).val().toLowerCase();
-        $('#tableLedger tbody tr').each(function() {
-            const text = $(this).text().toLowerCase();
-            $(this).toggle(text.indexOf(keyword) > -1);
-        });
-    });
 
     function addNgRow(batchId, target) {
         $(`#no_ng_msg_${batchId}`).hide();
