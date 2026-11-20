@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class WeldingStockController extends Controller
@@ -15,6 +16,7 @@ class WeldingStockController extends Controller
     public function index(Request $request)
     {
         $date = $request->date ?? date('Y-m-d');
+        $outMap = $this->getMappedWeldingOut($date, $date);
 
         $inventoryWelding = DB::table('finished_goods')
             ->select('part_no', 'part_name', 'customer', 'welding_stock as live_stock')
@@ -28,7 +30,7 @@ class WeldingStockController extends Controller
                   });
             })
             ->get()
-            ->map(function($item) use ($date) {
+            ->map(function($item) use ($date, $outMap) {
                 $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
 
                 $in_stamping = DB::table('production_logs')
@@ -43,12 +45,9 @@ class WeldingStockController extends Controller
                     ->whereDate('created_at', $date)
                     ->sum('qty_ret') ?? 0;
 
-                $out_welding = DB::table('welding_batches')
-                    ->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])
-                    ->whereDate('created_at', $date)
-                    ->sum('qty_masuk') ?? 0;
+                // OUT sudah dipetakan ke child part WIP jika part induk punya BOM
+                $out_welding = $outMap[$cleanPart] ?? 0;
 
-                // 🔥 PERBAIKAN: Penulisan matematika yang sebelumnya error
                 $item->init = $item->live_stock - ($in_stamping + $in_return) + $out_welding;
                 $item->in_s = $in_stamping;
                 $item->in_r = $in_return; 
@@ -268,14 +267,17 @@ class WeldingStockController extends Controller
         $endDate = $request->end_date ?? date('Y-m-d');
         $clients = DB::table('customers')->get();
 
+        $outPeriodMap = $this->getMappedWeldingOut($startDate, $endDate);
+        $futureOutMap = $this->getMappedWeldingOut(null, null, $endDate);
+
         $query = DB::table('finished_goods')->select('part_no', 'part_name', 'customer', 'welding_stock');
         if ($customerFilter && $customerFilter != 'ALL') { $query->where('customer', trim($customerFilter)); }
 
-        $historyData = $query->get()->map(function($item) use ($startDate, $endDate) {
+        $historyData = $query->get()->map(function($item) use ($startDate, $endDate, $outPeriodMap, $futureOutMap) {
             $cleanPart = str_replace([' ', '-'], '', trim($item->part_no));
             $in_stamp = DB::table('production_logs')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->where('process_type', 'WELDING')->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('qty') ?? 0;
             $in_ret = DB::table('quality_inspections')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->where('origin', 'WELDING')->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('qty_ret') ?? 0;
-            $out_period = DB::table('welding_batches')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate])->sum('qty_masuk') ?? 0;
+            $out_period = $outPeriodMap[$cleanPart] ?? 0;
 
             $item->in_s = $in_stamp;
             $item->in_r = $in_ret;
@@ -283,9 +285,8 @@ class WeldingStockController extends Controller
             $item->total_out = $out_period;
             
             $future_in = DB::table('production_logs')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->where('process_type', 'WELDING')->whereDate('created_at', '>', $endDate)->sum('qty') ?? 0;
-            $future_out = DB::table('welding_batches')->whereRaw("REPLACE(REPLACE(part_no, ' ', ''), '-', '') = ?", [$cleanPart])->whereDate('created_at', '>', $endDate)->sum('qty_masuk') ?? 0;
+            $future_out = $futureOutMap[$cleanPart] ?? 0;
 
-            // 🔥 PERBAIKAN: Penulisan matematika yang sebelumnya error
             $item->stock_akhir = ($item->welding_stock ?? 0) - $future_in + $future_out;
             $item->stock_awal = $item->stock_akhir - $item->total_in + $item->total_out;
 
@@ -302,14 +303,13 @@ class WeldingStockController extends Controller
     {
         $startDate = $request->start_date ?? date('Y-m-d');
         $endDate = $request->end_date ?? date('Y-m-d');
-        $searchWos = $request->wos ?? null; // ✨ Menangkap inputan pencarian WOS
+        $searchWos = $request->wos ?? null;
 
         $query = DB::table('welding_batches')
             ->leftJoin('line_welding', 'welding_batches.line_id', '=', 'line_welding.id')
             ->where('status', 'COMPLETED')
             ->whereBetween(DB::raw('DATE(welding_batches.updated_at)'), [$startDate, $endDate]);
 
-        // ✨ Filter jika ada No WOS yang dicari
         if ($searchWos) {
             $query->where('welding_batches.no_produksi_stamping', 'LIKE', "%{$searchWos}%");
         }
@@ -323,5 +323,49 @@ class WeldingStockController extends Controller
             });
 
         return view('welding.welding_history_weldig', compact('historyData', 'startDate', 'endDate', 'searchWos'));
+    }
+
+    /**
+     * HELPER: PETAKAN OUT WELDING KE CHILD PART BOM (WIP) JIKA ADA
+     */
+    private function getMappedWeldingOut($startDate = null, $endDate = null, $afterDate = null)
+    {
+        $wipBomsByParent = [];
+        if (Schema::hasTable('part_boms')) {
+            $boms = DB::table('part_boms')->where('source_type', 'WIP')->get();
+            foreach ($boms as $bom) {
+                $parentKey = str_replace([' ', '-'], '', trim($bom->parent_part_no));
+                $wipBomsByParent[$parentKey][] = $bom;
+            }
+        }
+
+        $query = DB::table('welding_batches')
+            ->select('part_no', DB::raw('SUM(qty_masuk) as total'))
+            ->groupBy('part_no');
+
+        if ($startDate && $endDate) {
+            if ($startDate === $endDate) {
+                $query->whereDate('created_at', $startDate);
+            } else {
+                $query->whereBetween(DB::raw('DATE(created_at)'), [$startDate, $endDate]);
+            }
+        } elseif ($afterDate) {
+            $query->whereDate('created_at', '>', $afterDate);
+        }
+
+        $totals = [];
+        foreach ($query->get() as $row) {
+            $partKey = str_replace([' ', '-'], '', trim($row->part_no));
+            if (isset($wipBomsByParent[$partKey])) {
+                foreach ($wipBomsByParent[$partKey] as $bom) {
+                    $childKey = str_replace([' ', '-'], '', trim($bom->component_code));
+                    $totals[$childKey] = ($totals[$childKey] ?? 0) + ((int)$row->total * (int)$bom->qty_per_unit);
+                }
+            } else {
+                $totals[$partKey] = ($totals[$partKey] ?? 0) + (int)$row->total;
+            }
+        }
+
+        return $totals;
     }
 }
