@@ -30,41 +30,41 @@
             .no-print { display: none !important; }
         }
 
-        /* 1. TANGGAL (SUDAH PAS - TIDAK DIUBAH) */
+        /* 1. TANGGAL: GESER KE KANAN BIAR PAS DI GARIS SETELAH "Bogor," */
         .date-area {
             position: absolute;
             top: 0.9cm;
-            left: 14.2cm;
-            width: 6.2cm;
+            left: 15.3cm;
+            width: 5.2cm;
             text-align: left;
             font-weight: bold;
         }
 
-        /* 2. CUSTOMER AREA (NAMA PT TETAP, ALAMAT DIRAPIKAN SESUAI GARIS TITIK-TITIK) */
+        /* 2. CUSTOMER AREA: GESER KE KANAN & TURUN SEDIKIT BIAR PAS DI GARIS TITIK-TITIK */
         .customer-area {
             position: absolute;
-            top: 2.0cm;
-            left: 12.8cm;
-            width: 7.4cm;
+            top: 2.3cm;
+            left: 13.5cm;
+            width: 7.0cm;
         }
         .customer-name {
-            font-size: 10pt;
+            font-size: 9.5pt;
             font-weight: bold;
             text-transform: uppercase;
-            line-height: 0.55cm;
+            line-height: 0.52cm;
         }
         .customer-address {
             font-size: 8pt;
-            margin-top: 0.12cm;
-            line-height: 0.55cm;
+            margin-top: 0.1cm;
+            line-height: 0.52cm;
             word-wrap: break-word;
         }
 
-        /* 3. NOMOR PO & NO. SURAT JALAN (DITURUNKAN SEDIKIT BIAR PAS TITIK DUA) */
+        /* 3. NOMOR PO & NO. SURAT JALAN: TURUN & GESER KANAN BIAR PAS SETELAH ":" */
         .header-info {
             position: absolute;
-            top: 3.1cm;
-            left: 3.8cm;
+            top: 3.45cm;
+            left: 4.1cm;
             font-weight: bold;
             font-size: 9.5pt;
         }
@@ -73,16 +73,17 @@
             line-height: 0.65cm;
         }
 
-        /* 4. DAFTAR BARANG (DITURUNKAN MASUK KE KOTAK BESAR DI BAWAH HEADER TABEL) */
+        /* 4. DAFTAR BARANG: PAS DI DALAM KOTAK JUMLAH & NAMA / NO. PART */
         .content-area {
             position: absolute;
-            top: 5.7cm;
+            top: 6.2cm;
             left: 0.5cm;
             width: 20cm;
         }
         .item-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
         .item-table td {
             padding: 4px 2px;
@@ -125,16 +126,24 @@
                         $pName = $item->part_name ?? ($partNameMap[$item->part_no] ?? '');
                     @endphp
                     <tr>
-                        <td style="width: 10%; text-align: right; padding-right: 4px; font-size: 10.5pt;">{{ number_format($item->qty_delivery) }}</td>
-                        <td style="width: 7%; text-align: left; font-size: 9pt;">PCS</td>
-                        <td style="width: 45%; text-align: left; padding-left: 0.4cm; line-height: 1.25;">
+                        {{-- KOLOM JUMLAH (21%) --}}
+                        <td style="width: 21%; text-align: center; font-size: 10pt;">
+                            {{ number_format($item->qty_delivery) }} PCS
+                        </td>
+
+                        {{-- KOLOM NAMA / NO. PART (40%) --}}
+                        <td style="width: 40%; text-align: left; padding-left: 0.4cm; line-height: 1.25;">
                             <div>{{ $item->part_no }}</div>
                             @if($pName)
                                 <div style="font-size: 8.5pt; font-weight: normal;">{{ $pName }}</div>
                             @endif
                         </td>
-                        <td style="width: 16%;"></td>
-                        <td style="width: 22%;"></td>
+
+                        {{-- KOLOM NO. LOT (16%) --}}
+                        <td style="width: 16%; text-align: center;"></td>
+
+                        {{-- KOLOM KETERANGAN (23%) --}}
+                        <td style="width: 23%; text-align: left;"></td>
                     </tr>
                     @endforeach
                 </tbody>
