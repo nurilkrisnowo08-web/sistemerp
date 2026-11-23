@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title>
     <style>
-        /* Samakan persis dengan Excel: Letter Portrait (21.59cm x 27.94cm) */
+        /* Letter Portrait (21.59cm x 27.94cm) */
         @page {
             size: 21.59cm 27.94cm;
             margin: 0 !important;
@@ -31,55 +31,55 @@
             .no-print { display: none !important; }
         }
 
-        /* 1. TANGGAL (SEJAJAR KIRI DENGAN NAMA PT & ALAMAT) */
+        /* 1. TANGGAL: TURUN & GESER KANAN BIAR PAS DI GARIS SETELAH "Bogor," */
         .date-area {
             position: absolute;
-            top: 0.8cm;
-            left: 13.8cm;
-            width: 6.8cm;
+            top: 1.15cm;
+            left: 15.5cm;
+            width: 5.5cm;
             text-align: left;
             font-weight: bold;
         }
 
-        /* 2. CUSTOMER AREA (NAMA PT + ALAMAT SEJAJAR KIRI DENGAN TANGGAL) */
+        /* 2. CUSTOMER AREA: TURUN & GESER KANAN BIAR TIDAK NABRAK "Kepada Yth," */
         .customer-area {
             position: absolute;
-            top: 1.9cm;
-            left: 13.8cm;
-            width: 6.8cm;
+            top: 2.55cm;
+            left: 14.5cm;
+            width: 6.4cm;
         }
         .customer-name {
             font-size: 9.5pt;
             font-weight: bold;
             text-transform: uppercase;
-            line-height: 0.5cm;
+            line-height: 0.52cm;
         }
         .customer-address {
             font-size: 8pt;
-            margin-top: 0.12cm;
-            line-height: 0.5cm;
+            margin-top: 0.1cm;
+            line-height: 0.52cm;
             word-wrap: break-word;
         }
 
-        /* 3. NO. PO & NO. SURAT JALAN (SEJAJAR KIRI DENGAN PART NO) */
+        /* 3. NO. PO & NO. SURAT JALAN: TURUN & GESER KANAN SEDIKIT */
         .header-info {
             position: absolute;
-            top: 3.1cm;
-            left: 5.5cm;
+            top: 3.6cm;
+            left: 5.9cm;
             font-weight: bold;
             font-size: 9pt;
         }
         .header-row {
-            height: 0.55cm;
-            line-height: 0.55cm;
+            height: 0.6cm;
+            line-height: 0.6cm;
         }
 
-        /* 4. DAFTAR BARANG (QTY | PCS | PART NO + PART NAME) */
+        /* 4. DAFTAR BARANG: TURUN MASUK KOTAK & GESER KANAN LEPAS GARIS VERTIKAL */
         .content-area {
             position: absolute;
-            top: 5.4cm;
-            left: 1.2cm;
-            width: 19.2cm;
+            top: 6.1cm;
+            left: 1.8cm;
+            width: 18.8cm;
         }
         .item-table {
             width: 100%;
@@ -127,18 +127,18 @@
                         $pName = $item->part_name ?? ($partNameMap[$item->part_no] ?? '');
                     @endphp
                     <tr>
-                        {{-- QTY (sekitar 1.2cm - 3.1cm) --}}
+                        {{-- QTY --}}
                         <td style="width: 10%; text-align: right; padding-right: 6px; font-size: 9.5pt;">
                             {{ number_format($item->qty_delivery) }}
                         </td>
 
-                        {{-- SATUAN PCS (sekitar 3.1cm - 4.7cm) --}}
+                        {{-- SATUAN PCS --}}
                         <td style="width: 8%; text-align: center; font-size: 8.5pt;">
                             PCS
                         </td>
 
-                        {{-- PART NO & PART NAME (mulai di ~5.5cm, lurus dengan No. PO & No. SJ) --}}
-                        <td style="width: 52%; text-align: left; padding-left: 0.8cm; line-height: 1.25;">
+                        {{-- PART NO & PART NAME --}}
+                        <td style="width: 52%; text-align: left; padding-left: 1.1cm; line-height: 1.25;">
                             <div>{{ $item->part_no }}</div>
                             @if($pName)
                                 <div style="font-size: 8pt; font-weight: normal;">{{ $pName }}</div>
