@@ -4,25 +4,26 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title>
     <style>
+        /* Samakan persis dengan Excel: Letter Portrait (21.59cm x 27.94cm) */
         @page {
-            size: A4 portrait;
+            size: 21.59cm 27.94cm;
             margin: 0 !important;
         }
 
         html, body {
             margin: 0;
             padding: 0;
-            width: 21cm;
-            height: 16.5cm;
+            width: 21.59cm;
+            height: 27.94cm;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 9.5pt;
+            font-size: 9pt;
             background-color: white;
         }
 
         .print-wrapper {
             position: relative;
-            width: 21cm;
-            height: 16.5cm;
+            width: 21.59cm;
+            height: 27.94cm;
             overflow: hidden;
         }
 
@@ -30,55 +31,55 @@
             .no-print { display: none !important; }
         }
 
-        /* 1. TANGGAL: GESER KE KANAN BIAR PAS DI GARIS SETELAH "Bogor," */
+        /* 1. TANGGAL (SEJAJAR KIRI DENGAN NAMA PT & ALAMAT) */
         .date-area {
             position: absolute;
-            top: 0.9cm;
-            left: 15.3cm;
-            width: 5.2cm;
+            top: 0.8cm;
+            left: 13.8cm;
+            width: 6.8cm;
             text-align: left;
             font-weight: bold;
         }
 
-        /* 2. CUSTOMER AREA: GESER KE KANAN & TURUN SEDIKIT BIAR PAS DI GARIS TITIK-TITIK */
+        /* 2. CUSTOMER AREA (NAMA PT + ALAMAT SEJAJAR KIRI DENGAN TANGGAL) */
         .customer-area {
             position: absolute;
-            top: 2.3cm;
-            left: 13.5cm;
-            width: 7.0cm;
+            top: 1.9cm;
+            left: 13.8cm;
+            width: 6.8cm;
         }
         .customer-name {
             font-size: 9.5pt;
             font-weight: bold;
             text-transform: uppercase;
-            line-height: 0.52cm;
+            line-height: 0.5cm;
         }
         .customer-address {
             font-size: 8pt;
-            margin-top: 0.1cm;
-            line-height: 0.52cm;
+            margin-top: 0.12cm;
+            line-height: 0.5cm;
             word-wrap: break-word;
         }
 
-        /* 3. NOMOR PO & NO. SURAT JALAN: TURUN & GESER KANAN BIAR PAS SETELAH ":" */
+        /* 3. NO. PO & NO. SURAT JALAN (SEJAJAR KIRI DENGAN PART NO) */
         .header-info {
             position: absolute;
-            top: 3.45cm;
-            left: 4.1cm;
+            top: 3.1cm;
+            left: 5.5cm;
             font-weight: bold;
-            font-size: 9.5pt;
+            font-size: 9pt;
         }
         .header-row {
-            height: 0.65cm;
-            line-height: 0.65cm;
+            height: 0.55cm;
+            line-height: 0.55cm;
         }
 
-        /* 4. DAFTAR BARANG: PAS DI DALAM KOTAK JUMLAH & NAMA / NO. PART */
+        /* 4. DAFTAR BARANG (QTY | PCS | PART NO + PART NAME) */
         .content-area {
             position: absolute;
-            top: 6.2cm;
-            left: 0.5cm;
-            width: 20cm;
+            top: 5.4cm;
+            left: 1.2cm;
+            width: 19.2cm;
         }
         .item-table {
             width: 100%;
@@ -86,7 +87,7 @@
             table-layout: fixed;
         }
         .item-table td {
-            padding: 4px 2px;
+            padding: 3px 2px;
             vertical-align: top;
             font-weight: bold;
         }
@@ -126,24 +127,27 @@
                         $pName = $item->part_name ?? ($partNameMap[$item->part_no] ?? '');
                     @endphp
                     <tr>
-                        {{-- KOLOM JUMLAH (21%) --}}
-                        <td style="width: 21%; text-align: center; font-size: 10pt;">
-                            {{ number_format($item->qty_delivery) }} PCS
+                        {{-- QTY (sekitar 1.2cm - 3.1cm) --}}
+                        <td style="width: 10%; text-align: right; padding-right: 6px; font-size: 9.5pt;">
+                            {{ number_format($item->qty_delivery) }}
                         </td>
 
-                        {{-- KOLOM NAMA / NO. PART (40%) --}}
-                        <td style="width: 40%; text-align: left; padding-left: 0.4cm; line-height: 1.25;">
+                        {{-- SATUAN PCS (sekitar 3.1cm - 4.7cm) --}}
+                        <td style="width: 8%; text-align: center; font-size: 8.5pt;">
+                            PCS
+                        </td>
+
+                        {{-- PART NO & PART NAME (mulai di ~5.5cm, lurus dengan No. PO & No. SJ) --}}
+                        <td style="width: 52%; text-align: left; padding-left: 0.8cm; line-height: 1.25;">
                             <div>{{ $item->part_no }}</div>
                             @if($pName)
-                                <div style="font-size: 8.5pt; font-weight: normal;">{{ $pName }}</div>
+                                <div style="font-size: 8pt; font-weight: normal;">{{ $pName }}</div>
                             @endif
                         </td>
 
-                        {{-- KOLOM NO. LOT (16%) --}}
-                        <td style="width: 16%; text-align: center;"></td>
-
-                        {{-- KOLOM KETERANGAN (23%) --}}
-                        <td style="width: 23%; text-align: left;"></td>
+                        {{-- NO. LOT & KETERANGAN --}}
+                        <td style="width: 15%;"></td>
+                        <td style="width: 15%;"></td>
                     </tr>
                     @endforeach
                 </tbody>
