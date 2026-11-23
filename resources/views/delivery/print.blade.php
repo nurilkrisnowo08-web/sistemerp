@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Cetak SJ - {{ $no_sj }}</title>
     <style>
-        /* Kunci ke A4 Portrait margin 0 agar menempel persis di pojok kiri atas kertas */
         @page {
             size: A4 portrait;
             margin: 0 !important;
@@ -31,7 +30,7 @@
             .no-print { display: none !important; }
         }
 
-        /* 1. TANGGAL: KANAN ATAS (LURUS GARIS "Bogor, .......") */
+        /* 1. TANGGAL (SUDAH PAS - TIDAK DIUBAH) */
         .date-area {
             position: absolute;
             top: 0.9cm;
@@ -41,41 +40,43 @@
             font-weight: bold;
         }
 
-        /* 2. CUSTOMER AREA: KANAN (DI BAWAH "Kepada Yth,") */
+        /* 2. CUSTOMER AREA (NAMA PT TETAP, ALAMAT DIRAPIKAN SESUAI GARIS TITIK-TITIK) */
         .customer-area {
             position: absolute;
             top: 2.0cm;
             left: 12.8cm;
-            width: 7.6cm;
-            line-height: 1.25;
+            width: 7.4cm;
         }
         .customer-name {
             font-size: 10pt;
             font-weight: bold;
             text-transform: uppercase;
+            line-height: 0.55cm;
         }
         .customer-address {
             font-size: 8pt;
-            margin-top: 2px;
+            margin-top: 0.12cm;
+            line-height: 0.55cm;
+            word-wrap: break-word;
         }
 
-        /* 3. NOMOR PO & NO. SURAT JALAN: KIRI (SEJAJAR TITIK DUA ":") */
+        /* 3. NOMOR PO & NO. SURAT JALAN (DITURUNKAN SEDIKIT BIAR PAS TITIK DUA) */
         .header-info {
             position: absolute;
-            top: 2.55cm;
+            top: 3.1cm;
             left: 3.8cm;
             font-weight: bold;
             font-size: 9.5pt;
         }
         .header-row {
-            height: 0.58cm;
-            line-height: 0.58cm;
+            height: 0.65cm;
+            line-height: 0.65cm;
         }
 
-        /* 4. DAFTAR BARANG: MASUK DI KOTAK BESAR TABEL */
+        /* 4. DAFTAR BARANG (DITURUNKAN MASUK KE KOTAK BESAR DI BAWAH HEADER TABEL) */
         .content-area {
             position: absolute;
-            top: 4.8cm;
+            top: 5.7cm;
             left: 0.5cm;
             width: 20cm;
         }
@@ -126,7 +127,7 @@
                     <tr>
                         <td style="width: 10%; text-align: right; padding-right: 4px; font-size: 10.5pt;">{{ number_format($item->qty_delivery) }}</td>
                         <td style="width: 7%; text-align: left; font-size: 9pt;">PCS</td>
-                        <td style="width: 45%; text-align: left; padding-left: 0.4cm; line-height: 1.2;">
+                        <td style="width: 45%; text-align: left; padding-left: 0.4cm; line-height: 1.25;">
                             <div>{{ $item->part_no }}</div>
                             @if($pName)
                                 <div style="font-size: 8.5pt; font-weight: normal;">{{ $pName }}</div>
