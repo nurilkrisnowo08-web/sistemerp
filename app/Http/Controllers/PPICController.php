@@ -382,14 +382,14 @@ class PPICController extends Controller
     /**
      * 3. STORE MPS STAMPING
      */
-    public function mpsStore(Request $request)
+   public function mpsStore(Request $request)
     {
         DB::beginTransaction();
         try {
             $target_s1 = ($request->s1_plan_reg ?? 0) + ($request->s1_plan_ot ?? 0);
             $target_s2 = ($request->s2_plan_reg ?? 0) + ($request->s2_plan_ot ?? 0);
             $total_target = $target_s1 + $target_s2;
-            $part_separator = $request->part_no_separator; 
+            $part_separator = $request->part_no_separator;
 
             if ($total_target <= 0) {
                 throw new \Exception("Target produksi tidak boleh kosong / 0.");
@@ -400,25 +400,34 @@ class PPICController extends Controller
                 $cleanPart = trim(explode(' - ', $cleanPart)[0]);
             }
 
-            $mappedCoilIds = DB::table('rm_stocks')
-                ->where(function($q) use ($cleanPart) {
+            $availableCoils = DB::table('rm_stocks')
+                ->where(function ($q) use ($cleanPart) {
                     $q->where('material_code', $cleanPart)
                       ->orWhere('material_name', $cleanPart)
                       ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanPart)]);
                 })
-                ->pluck('coil_id')
-                ->unique();
-
-            $availableCoils = DB::table('rm_stocks')
-                ->whereIn('coil_id', $mappedCoilIds)
                 ->where('stock_pcs', '>', 0)
                 ->orderBy('id', 'asc')
                 ->get()
                 ->unique('coil_id');
 
-            if ($availableCoils->isEmpty()) {
-                $refStock = DB::table('rm_stocks')->where('material_code', $cleanPart)->first();
+            $cavity = 1;
+
+            if ($availableCoils->isNotEmpty()) {
+                $firstCoil = $availableCoils->first();
+                $cavity = ($firstCoil && $firstCoil->cavity > 0) ? (int) $firstCoil->cavity : 1;
+            } else {
+                $refStock = DB::table('rm_stocks')
+                    ->where(function ($q) use ($cleanPart) {
+                        $q->where('material_code', $cleanPart)
+                          ->orWhere('material_name', $cleanPart)
+                          ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanPart)]);
+                    })
+                    ->first();
+
                 if ($refStock) {
+                    $cavity = ($refStock->cavity > 0) ? (int) $refStock->cavity : 1;
+
                     $availableCoils = DB::table('rm_stocks')
                         ->where('customer', trim($refStock->customer))
                         ->where(DB::raw('TRIM(spec)'), trim($refStock->spec))
@@ -435,8 +444,6 @@ class PPICController extends Controller
             }
 
             $firstCoil = $availableCoils->first();
-            $cavity = $firstCoil->cavity > 0 ? (int)$firstCoil->cavity : 1;
-            
             $kebutuhan_lembar = (int) ceil($total_target / $cavity);
             $total_stok_tersedia = (int) $availableCoils->sum('stock_pcs');
 
@@ -447,40 +454,40 @@ class PPICController extends Controller
             $logTimestamp = date('Y-m-d H:i:s', strtotime($request->plan_date . ' ' . date('H:i:s')));
 
             $planIdMain = DB::table('production_plans')->insertGetId([
-                'plan_date'     => $request->plan_date, 
-                'part_no'       => $cleanPart, 
+                'plan_date'     => $request->plan_date,
+                'part_no'       => $cleanPart,
                 'customer_code' => $request->customer_code,
-                'line_code'     => $request->line_code, 
-                'manpower'      => $request->manpower ?? 8, 
+                'line_code'     => $request->line_code,
+                'manpower'      => $request->manpower ?? 8,
                 'process_qty'   => $request->process_qty ?? 4,
-                'qty_lot'       => $request->qty_lot ?? 200, 
+                'qty_lot'       => $request->qty_lot ?? 200,
                 'cap_per_hour'  => $request->cap_per_hour ?? 320,
-                's1_plan_reg'   => $request->s1_plan_reg ?? 0, 
+                's1_plan_reg'   => $request->s1_plan_reg ?? 0,
                 's1_plan_ot'    => $request->s1_plan_ot ?? 0,
-                's2_plan_reg'   => $request->s2_plan_reg ?? 0, 
+                's2_plan_reg'   => $request->s2_plan_reg ?? 0,
                 's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-                'dandory_time'  => $request->dandory_time ?? 15, 
-                'created_at'    => $logTimestamp, 
+                'dandory_time'  => $request->dandory_time ?? 15,
+                'created_at'    => $logTimestamp,
                 'updated_at'    => now()
             ]);
 
             $planIdSub = null;
             if (!empty($part_separator)) {
                 $planIdSub = DB::table('production_plans')->insertGetId([
-                    'plan_date'     => $request->plan_date, 
-                    'part_no'       => $part_separator, 
+                    'plan_date'     => $request->plan_date,
+                    'part_no'       => $part_separator,
                     'customer_code' => $request->customer_code,
-                    'line_code'     => $request->line_code, 
-                    'manpower'      => $request->manpower ?? 8, 
+                    'line_code'     => $request->line_code,
+                    'manpower'      => $request->manpower ?? 8,
                     'process_qty'   => $request->process_qty ?? 4,
-                    'qty_lot'       => $request->qty_lot ?? 200, 
+                    'qty_lot'       => $request->qty_lot ?? 200,
                     'cap_per_hour'  => $request->cap_per_hour ?? 320,
-                    's1_plan_reg'   => $request->s1_plan_reg ?? 0, 
+                    's1_plan_reg'   => $request->s1_plan_reg ?? 0,
                     's1_plan_ot'    => $request->s1_plan_ot ?? 0,
-                    's2_plan_reg'   => $request->s2_plan_reg ?? 0, 
+                    's2_plan_reg'   => $request->s2_plan_reg ?? 0,
                     's2_plan_ot'    => $request->s2_plan_ot ?? 0,
-                    'dandory_time'  => $request->dandory_time ?? 15, 
-                    'created_at'    => $logTimestamp, 
+                    'dandory_time'  => $request->dandory_time ?? 15,
+                    'created_at'    => $logTimestamp,
                     'updated_at'    => now()
                 ]);
             }
@@ -499,7 +506,9 @@ class PPICController extends Controller
                 $coilPool[$c->coil_id] = [
                     'id'            => $c->id,
                     'coil_id'       => $c->coil_id,
-                    'stock'         => (int)$c->stock_pcs,
+                    'spec'          => $c->spec,
+                    'size'          => $c->size,
+                    'stock'         => (int) $c->stock_pcs,
                     'material_code' => $c->material_code
                 ];
             }
@@ -516,7 +525,12 @@ class PPICController extends Controller
                     $cData['stock'] -= $take;
                     $remS1 -= $take;
 
-                    DB::table('rm_stocks')->where('coil_id', trim($cData['coil_id']))->decrement('stock_pcs', $take);
+                    DB::table('rm_stocks')
+                        ->where('coil_id', trim($cData['coil_id']))
+                        ->where('spec', $cData['spec'])
+                        ->where('size', $cData['size'])
+                        ->decrement('stock_pcs', $take);
+
                     DB::table('rm_production_logs')->insert([
                         'rm_stock_id'   => $cData['id'],
                         'material_code' => $cleanPart,
@@ -573,7 +587,12 @@ class PPICController extends Controller
                     $cData['stock'] -= $take;
                     $remS2 -= $take;
 
-                    DB::table('rm_stocks')->where('coil_id', trim($cData['coil_id']))->decrement('stock_pcs', $take);
+                    DB::table('rm_stocks')
+                        ->where('coil_id', trim($cData['coil_id']))
+                        ->where('spec', $cData['spec'])
+                        ->where('size', $cData['size'])
+                        ->decrement('stock_pcs', $take);
+
                     DB::table('rm_production_logs')->insert([
                         'rm_stock_id'   => $cData['id'],
                         'material_code' => $cleanPart,
@@ -625,7 +644,6 @@ class PPICController extends Controller
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
-
     /**
      * 4. UPDATE & REVISI WOS STAMPING
      */
@@ -1884,52 +1902,61 @@ class PPICController extends Controller
     /**
      * AJAX REALTIME STOCK CHECKER (UNTUK VALIDASI MODAL REGISTER PLAN)
      */
-    public function checkRmStockAjax(Request $request, $part_no = null)
+   public function checkRmStockAjax(Request $request, $part_no = null)
     {
         try {
             $rawPart = $part_no ?? $request->part_no ?? $request->part;
             $cleanPart = trim(urldecode($rawPart));
-            
+
             if (strpos($cleanPart, ' - ') !== false) {
                 $cleanPart = trim(explode(' - ', $cleanPart)[0]);
             }
 
-            $mappedCoilIds = DB::table('rm_stocks')
-                ->where(function($q) use ($cleanPart) {
+            $availableCoils = DB::table('rm_stocks')
+                ->where(function ($q) use ($cleanPart) {
                     $q->where('material_code', $cleanPart)
                       ->orWhere('material_name', $cleanPart)
                       ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanPart)]);
                 })
-                ->pluck('coil_id')
-                ->unique();
-
-            $availableCoils = DB::table('rm_stocks')
-                ->whereIn('coil_id', $mappedCoilIds)
                 ->where('stock_pcs', '>', 0)
+                ->orderBy('id', 'asc')
                 ->get()
                 ->unique('coil_id');
 
-            if ($availableCoils->isEmpty()) {
-                $refStock = DB::table('rm_stocks')->where('material_code', $cleanPart)->first();
+            $cavity = 1;
+
+            if ($availableCoils->isNotEmpty()) {
+                $firstCoil = $availableCoils->first();
+                $cavity = ($firstCoil && $firstCoil->cavity > 0) ? (int) $firstCoil->cavity : 1;
+            } else {
+                $refStock = DB::table('rm_stocks')
+                    ->where(function ($q) use ($cleanPart) {
+                        $q->where('material_code', $cleanPart)
+                          ->orWhere('material_name', $cleanPart)
+                          ->orWhereRaw("REPLACE(material_code, ' ', '') = ?", [str_replace(' ', '', $cleanPart)]);
+                    })
+                    ->first();
+
                 if ($refStock) {
+                    $cavity = ($refStock->cavity > 0) ? (int) $refStock->cavity : 1;
+
                     $availableCoils = DB::table('rm_stocks')
                         ->where('customer', trim($refStock->customer))
                         ->where(DB::raw('TRIM(spec)'), trim($refStock->spec))
                         ->where(DB::raw("REPLACE(size, ' ', '')"), str_replace(' ', '', $refStock->size))
                         ->where('stock_pcs', '>', 0)
+                        ->orderBy('id', 'asc')
                         ->get()
                         ->unique('coil_id');
                 }
             }
 
             $totalStock = (int) $availableCoils->sum('stock_pcs');
-            $firstCoil = $availableCoils->first();
-            $cavity = $firstCoil && $firstCoil->cavity > 0 ? (int)$firstCoil->cavity : 1;
 
             return response()->json([
-                'status' => 'success',
+                'status'      => 'success',
                 'total_stock' => $totalStock,
-                'cavity' => $cavity
+                'cavity'      => $cavity
             ]);
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
